@@ -63,7 +63,7 @@ class AstronomersStaff : Weapon() {
 
 class AstronomersRedSkill : Skill() {
     override val name = "<bold>별자리"
-    override val description = listOf("<gray>사용 시 8칸 내의 바라보는 적에게 5의 피해를 입힌다.")
+    override val description = listOf("<gray>8칸 내의 바라보는 적에게 5의 피해를 입힌다.")
     override val cooldown = 10
 
     override fun use(): Boolean {
@@ -79,7 +79,7 @@ class AstronomersRedSkill : Skill() {
 class AstronomersOrangeSkill : Skill() {
     override val name = "<bold>별의 죽음"
     override val description = listOf(
-        "<gray>사용 시 8칸 내의 바라보는 블럭에 4초간 블랙홀을 만든다.",
+        "<gray>8칸 내의 바라보는 블럭에 4초간 블랙홀을 만든다.",
         "<gray>블랙홀에 근접한 적은 끌어당겨지고 초당 2의 피해를 입는다.",
         "<dark_gray>웅크린 상태에서 사용하면 자신의 위치에 블랙홀을 만들 수도 있다."
     )
@@ -119,7 +119,7 @@ class AstronomersBlackHole : Flooring() {
 class AstronomersYellowSkill : Skill() {
     override val name = "<bold>별이 빛나는 밤"
     override val description = listOf(
-        "<gray>사용 시 자신의 위치에 5초간 지속되는 넓은 범위의 결계를 생성한다.",
+        "<gray>자신의 위치에 5초간 지속되는 넓은 범위의 결계를 생성한다.",
         "<gray>결계 내부의 적과 아군은 각각 이하의 효과를 얻는다.",
         "",
         "<gold><bold>받는 피해 15% <red>증가<gray> | <gold>받는 피해 15% <green>감소",

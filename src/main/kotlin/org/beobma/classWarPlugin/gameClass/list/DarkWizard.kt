@@ -59,7 +59,7 @@ class DarkWizardsRedSkill : Skill() {
     override val description = listOf(
         "${Keyword.Mana.string}를 40 소모하고 사용할 수 있다.",
         "",
-        "<gray>사용 시 자신 위치에 4초간 유지되는 연기를 형성한다.",
+        "<gray>자신 위치에 4초간 유지되는 연기를 형성한다.",
         "<gray>연기 속에 들어온 아군은 연기에 가려 숨겨지지만, 적은 숨겨지지 않는다.",
         "<dark_gray>웅크린 상태에서 사용하면 4칸 내의 바라보는 블럭에 연기를 형성할 수도 있다."
     )
@@ -118,7 +118,7 @@ class DarkWizardsOrangeSkill : Skill() {
     override val description = listOf(
         "${Keyword.Mana.string}를 60 소모하고 사용할 수 있다.",
         "",
-        "<gray>사용 시 바라보는 방향으로 잠식된 연기를 발사한다.",
+        "<gray>바라보는 방향으로 잠식된 연기를 발사한다.",
         "<gray>적중한 모든 적에게 5의 피해를 입히고 3초간 ${Keyword.Abyss.string} 상태를 적용한다.",
         "",
         dictionary[Keyword.Abyss] ?: ""
@@ -166,7 +166,7 @@ class DarkWizardsYellowSkill : Skill() {
     override val description = listOf(
         "${Keyword.Mana.string}를 100 소모하고 사용할 수 있다.",
         "",
-        "<gray>사용 시 5초간 전장을 연기로 가득 채워 모든 대상을 ${Keyword.Abyss.string} 상태로 만든다.",
+        "<gray>5초간 전장을 연기로 가득 채워 모든 대상을 ${Keyword.Abyss.string} 상태로 만든다.",
         "<gray>이 효과 발동 전을 기준으로 한 번이라도 ${Keyword.Abyss.string} 상태였던 적은 추가로 지속 시간동안 ${Keyword.Silence.string} 상태가 된다.",
         "",
         dictionary[Keyword.Abyss] ?: "",

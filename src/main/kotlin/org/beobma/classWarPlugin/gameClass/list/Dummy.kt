@@ -14,16 +14,16 @@ class Dummy : GameClass() {
         "<gray>클래스 설명"
     )
     override val classItemMaterial = Material.WOODEN_SWORD
-    override val weapon = GunBladersSword()
+    override val weapon = DummysSword()
 
     override var skills: List<Skill> = listOf(
-        GunBladersRedSkill(),
-        GunBladersOrangeSkill(),
-        GunBladersYellowSkill()
+        DummysRedSkill(),
+        DummysOrangeSkill(),
+        DummysYellowSkill()
     )
 
     override var passives: List<Passive> = listOf(
-        GunBladersPassive2()
+        DummysPassive()
     )
 }
 

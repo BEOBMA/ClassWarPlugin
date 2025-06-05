@@ -93,6 +93,7 @@ class GunBladersPassive1 : Passive() {
         "<gray>3초간 기본 공격을 사용하지 않으면 최대 6발까지 장전한다.",
         "",
         "<gold><bold>쇄진탄</bold><gray>: 이 탄환을 소모한 공격 적중 시 피해량이 ${Keyword.TrueDamage.string}로 전환된다.",
+        "<gray>이 효과는 ${Keyword.VibrationExplosion.string}에도 적용된다.",
         dictionary[Keyword.TrueDamage] ?: ""
     )
 }
@@ -105,7 +106,7 @@ class GunBladersPassive2 : Passive() {
         "<gray>적 사망 시 <red><bold>격진탄</bold><gray>을 즉시 3발 장전한다.",
         "<gray>직접 처치 시 대신 6발 장전한다.",
         "",
-        "<red><bold>격진탄</bold><gray>: 이 탄환을 소모한 공격 적중 시 피해량이 50% 증가하고 피해량이 ${Keyword.TrueDamage.string}로 전환된다.",
+        "<red><bold>격진탄</bold><gray>: 이 탄환을 소모한 공격 적중 시 피해량이 50% 증가하고 ${Keyword.TrueDamage.string}로 전환된다.",
         "<gray>이 효과는 ${Keyword.VibrationExplosion.string}에도 적용된다.",
         dictionary[Keyword.TrueDamage] ?: ""
     )

@@ -129,7 +129,7 @@ class AssassinsYellowSkill : Skill() {
     override val name = "<bold>비열한 일격"
     override val description = listOf(
         "<gray>2칸 내의 바라보는 적에게 10의 피해를 입힌다.",
-        "<gray>자신이 ${Keyword.Stealth.string}중이었다면 5의 피해를 추가로 입힌다.",
+        "<gray>자신이 ${Keyword.Stealth.string} 중이었다면 5의 피해를 추가로 입힌다.",
         "<gray>이 스킬로 적을 처치했다면 재사용 대기시간이 75% 감소한다."
     )
     override val cooldown = 60
