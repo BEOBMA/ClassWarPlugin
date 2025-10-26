@@ -10,6 +10,7 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateSta
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.player.PlayerData
+import org.beobma.classWarPlugin.player.TeamType
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Projectile
 import org.beobma.classWarPlugin.skill.Skill
