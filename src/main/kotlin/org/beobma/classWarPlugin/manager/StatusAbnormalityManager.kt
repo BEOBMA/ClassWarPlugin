@@ -52,8 +52,7 @@ object StatusAbnormalityManager {
 
         val attackSpeedModifier = attackSpeedIncreases.sumOf { it.power }
 
-        val attributeInstance = player.getAttribute(Attribute.ATTACK_SPEED)
-        if (attributeInstance == null) return
+        val attributeInstance = player.getAttribute(Attribute.ATTACK_SPEED) ?: return
 
         val baseValue = 4.0
         val newValue = baseValue * (1 + attackSpeedModifier / 100.0)

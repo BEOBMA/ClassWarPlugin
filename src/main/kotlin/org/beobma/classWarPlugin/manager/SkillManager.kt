@@ -1,11 +1,7 @@
 package org.beobma.classWarPlugin.manager
 
 import net.kyori.adventure.text.minimessage.MiniMessage
-import org.beobma.classWarPlugin.ClassWarPlugin
-import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.player.PlayerData
-import org.beobma.classWarPlugin.skill.Meteor
-import org.beobma.classWarPlugin.skill.Projectile
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.util.TargetType
 import org.beobma.classWarPlugin.util.TargetType.*
@@ -14,27 +10,23 @@ import org.bukkit.Material
 import org.bukkit.block.Block
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
-import org.bukkit.scheduler.BukkitRunnable
 import kotlin.math.cos
 
 
 object SkillManager {
     fun PlayerData.use(skill: Skill, clickedItem: ItemStack) {
-        val skillItem = clickedItem
         if (!playerStatus.canSkillUse) return
-        if (player.hasCooldown(skillItem.type)) return
+        if (player.hasCooldown(clickedItem.type)) return
 
         val isUse = skill.use()
         if (!isUse) return
-        val cooldown = skill.cooldown
-        if (cooldown == null) return
+        val cooldown = skill.cooldown ?: return
         player.setCooldown(clickedItem.type, cooldown * 20)
     }
     fun PlayerData.radius(location: Location,targetType: TargetType, radius: Double, oneself: Boolean): List<PlayerData> {
         val game = game
         val world = player.world
-        val playerLocation = location
-        val nearbyEntities = world.getNearbyEntities(playerLocation, radius, radius, radius).filter { it is Player }
+        val nearbyEntities = world.getNearbyEntities(location, radius, radius, radius).filter { it is Player }
         val playerDatas = game.playerDatas.filter { playerData ->
             val playerStatus = playerData.playerStatus
             return@filter !playerStatus.isDead && playerStatus.isSkillTargeting

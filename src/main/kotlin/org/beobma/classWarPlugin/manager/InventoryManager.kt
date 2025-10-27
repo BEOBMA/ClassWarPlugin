@@ -32,7 +32,7 @@ object InventoryManager {
         val game = game
         val classList = game.classList
         val totalPages = (classList.size + 18 - 1) / 18
-        if (page < 0 || page >= totalPages) return
+        if (page !in 0..<totalPages) return
         val inventory = Bukkit.createInventory(null, 27, miniMessage.deserialize("클래스 목록 (페이지 ${page + 1}/${totalPages})"))
         val startIdx = page * 18
         val endIdx = minOf(startIdx + 18, classList.size)
@@ -70,7 +70,7 @@ object InventoryManager {
     fun Player.openClassListInventory(page: Int) {
         val classList = gameClassList
         val totalPages = (classList.size + 18 - 1) / 18
-        if (page < 0 || page >= totalPages) return
+        if (page !in 0..<totalPages) return
         val inventory = Bukkit.createInventory(null, 27, miniMessage.deserialize("클래스 목록 (페이지 ${page + 1}/${totalPages})"))
         val startIdx = page * 18
         val endIdx = minOf(startIdx + 18, classList.size)
