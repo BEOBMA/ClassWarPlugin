@@ -14,18 +14,9 @@ class OnEntityStatusEffectDamageByEntityEvent : Listener {
     fun onPlayerDamage(event: PlayerStatusEffectDamageByPlayerEvent) {
         val damagerData = event.damager
         val entityData = event.entity
-        val damagerStatus = damagerData.playerStatus
-        val entityStatus = damagerData.playerStatus
 
-        // 1보다 작은 피해는 피해를 받지 않은 것으로 간주
-        if (event.damage < 1) return
         if (isGaming()) return
 
-        // 공격, 피격 가능 여부
-        if (!damagerStatus.canSkillUse || !entityStatus.isSkillTargeting) {
-            event.isCancelled = true
-            return
-        }
         val damagerClass = damagerData.gameClass ?: return
         val entityClass = damagerData.gameClass ?: return
         val damagerPassives = damagerClass.passives
