@@ -11,6 +11,8 @@ import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.getConeTargets
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetPlayerData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
+import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
@@ -65,8 +67,7 @@ class KnightsRedSkill : Skill() {
         }
         target.damage(6.0, DamageType.Normal, playerData)
         val status = target.getOrCreateStatus { Bleeding() }
-        status.increaseDuration(3)
-        status.updateDuration(3)
+        status.applyStatus(duration = 3, durationMode = StatusDurationMode.Refresh)
         return true
     }
 }
@@ -87,8 +88,7 @@ class KnightsOrangeSkill : Skill() {
         targets.forEach {
             it.damage(5.0, DamageType.Normal, playerData)
             val status = it.getOrCreateStatus { Bleeding() }
-            status.increaseDuration(5)
-            status.updateDuration(3)
+            status.applyStatus(duration = 3, durationMode = StatusDurationMode.Refresh)
         }
         return true
     }
@@ -159,8 +159,7 @@ class KnightsPassive : Passive(), OnHitHandler {
         val entity = event.entity
         val entityData = game.playerDatas.find { it.player == entity } ?: return
         val status = entityData.getOrCreateStatus { Bleeding() }
-        status.increaseDuration(1)
-        status.updateDuration(3)
+        status.applyStatus(duration = 3, durationMode = StatusDurationMode.Refresh)
 
         entityData.damage(status.power.toDouble(), DamageType.StatusAbnormality, playerData)
         status.updatePower(status.power / 2)

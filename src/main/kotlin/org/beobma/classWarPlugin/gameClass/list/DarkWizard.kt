@@ -8,6 +8,8 @@ import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
+import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.player.PlayerData
 import org.beobma.classWarPlugin.skill.*
@@ -153,7 +155,7 @@ class DarkWizardsProjectileSmoke : Projectile() {
     override fun onProjectilePlayerHit(hitPlayerData: PlayerData, location: Location) {
         if (hitSet.add(hitPlayerData)) {
             val abyss = hitPlayerData.getOrCreateStatus { Abyss() }
-            abyss.updateDuration(3)
+            abyss.applyStatus(duration = 3, durationMode = StatusDurationMode.Refresh)
             hitPlayerData.damage(5.0, DamageType.Normal, playerData)
         }
     }
@@ -187,13 +189,13 @@ class DarkWizardsYellowSkill : Skill() {
         enemies.forEach {
             if (abyssPlayers.contains(it)) {
                 val silence = it.getOrCreateStatus { Silence() }
-                silence.updateDuration(5)
+                silence.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh)
             }
         }
 
         allPlayers.forEach {
             val abyss = it.getOrCreateStatus { Abyss() }
-            abyss.updateDuration(5)
+            abyss.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh)
         }
 
         abyssPlayers.addAll(allPlayers)

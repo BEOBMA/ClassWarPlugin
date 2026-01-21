@@ -7,6 +7,8 @@ import org.beobma.classWarPlugin.gameClass.Weapon
 import org.beobma.classWarPlugin.manager.PlayerManager.heal
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
+import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.UtilManager.getPlayerMaxHealth
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
@@ -49,9 +51,11 @@ class BerserkersRedSkill : Skill() {
 
     override fun use(): Boolean {
         val playerAttackSpeedIncrease = playerData.getOrCreateStatus { AttackSpeedIncrease() }
-
-        playerAttackSpeedIncrease.increasePower(30)
-        playerAttackSpeedIncrease.increaseDuration(5)
+        playerAttackSpeedIncrease.applyStatus(
+            duration = 5,
+            durationMode = StatusDurationMode.Extend,
+            powerDelta = 30
+        )
         return true
     }
 }
@@ -71,10 +75,16 @@ class BerserkersOrangeSkill : Skill() {
         val playerMoveSpeedIncrease = playerData.addStatus(MoveSpeedIncrease())
         val playerWhenDamageReduction = playerData.addStatus(WhenDamageReduction())
 
-        playerMoveSpeedIncrease.increasePower(30)
-        playerMoveSpeedIncrease.increaseDuration(10)
-        playerWhenDamageReduction.increasePower(40)
-        playerWhenDamageReduction.increaseDuration(10)
+        playerMoveSpeedIncrease.applyStatus(
+            duration = 10,
+            durationMode = StatusDurationMode.Extend,
+            powerDelta = 30
+        )
+        playerWhenDamageReduction.applyStatus(
+            duration = 10,
+            durationMode = StatusDurationMode.Extend,
+            powerDelta = 40
+        )
         return true
     }
 }
