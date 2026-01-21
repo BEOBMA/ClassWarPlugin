@@ -1,7 +1,7 @@
 package org.beobma.classWarPlugin.status.list
 
 import org.beobma.classWarPlugin.keyword.Keyword
-import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.status.StatusAbnormality
 
