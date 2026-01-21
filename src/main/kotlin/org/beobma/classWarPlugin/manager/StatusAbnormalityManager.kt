@@ -13,26 +13,26 @@ enum class StatusDurationMode {
     Extend
 }
 
-fun StatusAbnormality.applyStatus(
-    duration: Int? = null,
-    durationMode: StatusDurationMode = StatusDurationMode.Refresh,
-    powerDelta: Int? = null,
-    powerSet: Int? = null
-) {
-    powerSet?.let { updatePower(it) }
-    powerDelta?.let { increasePower(it) }
-    if (duration != null) {
-        when (durationMode) {
-            StatusDurationMode.Refresh -> updateDuration(duration)
-            StatusDurationMode.Extend -> increaseDuration(duration)
-        }
-    }
-}
-
 object StatusAbnormalityManager {
     data class DamageTakenModifier(val reductionMultiplier: Double, val increaseMultiplier: Double) {
         val combinedMultiplier: Double
             get() = reductionMultiplier * increaseMultiplier
+    }
+
+    fun StatusAbnormality.applyStatus(
+        duration: Int? = null,
+        durationMode: StatusDurationMode = StatusDurationMode.Refresh,
+        powerDelta: Int? = null,
+        powerSet: Int? = null
+    ) {
+        powerSet?.let { updatePower(it) }
+        powerDelta?.let { increasePower(it) }
+        if (duration != null) {
+            when (durationMode) {
+                StatusDurationMode.Refresh -> updateDuration(duration)
+                StatusDurationMode.Extend -> increaseDuration(duration)
+            }
+        }
     }
 
     fun PlayerData.vibrationExplosion(damager: PlayerData) {
