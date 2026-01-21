@@ -131,8 +131,12 @@ class OnInventoryClickEvent : Listener {
             else -> {
                 val gameClassList = gameClassList
                 val gameClass = gameClassList.find { it.classItemMaterial == clickItem.type } ?: return
-                player.closeInventory()
+                val currentPage = getCurrentPageFromTitle(inventory.title().toString())
+                player.scoreboardTags.removeIf { it.startsWith("classListPage:") }
+                player.scoreboardTags.add("classListPage:$currentPage")
+                player.scoreboardTags.add("openingClassStatusInventory")
                 player.openClassStatusInventory(gameClass)
+                player.scoreboardTags.add("openClassStatusInventory")
                 return
             }
         }

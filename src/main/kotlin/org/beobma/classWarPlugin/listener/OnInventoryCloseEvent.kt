@@ -2,6 +2,7 @@ package org.beobma.classWarPlugin.listener
 
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.info.Info.game
+import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassPickInventory
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -23,8 +24,27 @@ class OnInventoryCloseEvent : Listener {
             return
         }
 
+        if (player.scoreboardTags.contains("openingClassStatusInventory")) {
+            player.scoreboardTags.remove("openingClassStatusInventory")
+            player.scoreboardTags.remove("openClassListInventory")
+            return
+        }
+
+        if (player.scoreboardTags.contains("openClassStatusInventory")) {
+            val page = player.scoreboardTags.firstOrNull { it.startsWith("classListPage:") }
+                ?.substringAfter("classListPage:")
+                ?.toIntOrNull()
+                ?: 0
+            player.scoreboardTags.remove("openClassStatusInventory")
+            player.scoreboardTags.remove("openingClassStatusInventory")
+            player.scoreboardTags.removeIf { it.startsWith("classListPage:") }
+            reopenClassListInventoryLater(player, page)
+            return
+        }
+
         if (player.scoreboardTags.contains("openClassListInventory")) {
             player.scoreboardTags.remove("openClassListInventory")
+            player.scoreboardTags.removeIf { it.startsWith("classListPage:") }
             return
         }
     }
@@ -39,5 +59,13 @@ class OnInventoryCloseEvent : Listener {
                 }
             }
         }.runTaskLater(ClassWarPlugin.instance, 10L)
+    }
+
+    private fun reopenClassListInventoryLater(player: Player, page: Int) {
+        object : BukkitRunnable() {
+            override fun run() {
+                player.openClassListInventory(page)
+            }
+        }.runTaskLater(ClassWarPlugin.instance, 1L)
     }
 }
