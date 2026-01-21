@@ -2,6 +2,7 @@ package org.beobma.classWarPlugin.manager
 
 import net.kyori.adventure.text.minimessage.MiniMessage
 import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
+import org.beobma.classWarPlugin.event.PlayerStatusEffectDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.GameStatusHandler
 import org.beobma.classWarPlugin.manager.GameClassManager.toItemStack
 import org.beobma.classWarPlugin.player.PlayerData
@@ -97,13 +98,21 @@ object PlayerManager {
         }
         lastDamageTicks[damager] = currentTick
 
-        val event = PlayerSkillDamageByPlayerEvent(damage, damageType, this, damager)
-        Bukkit.getServer().pluginManager.callEvent(event)
-
-        if (event.isCancelled) {
-            return
+        val finalDamage = if (damageType == DamageType.StatusAbnormality) {
+            val event = PlayerStatusEffectDamageByPlayerEvent(damage, damageType, this, damager)
+            Bukkit.getServer().pluginManager.callEvent(event)
+            if (event.isCancelled) {
+                return
+            }
+            event.damage
+        } else {
+            val event = PlayerSkillDamageByPlayerEvent(damage, damageType, this, damager)
+            Bukkit.getServer().pluginManager.callEvent(event)
+            if (event.isCancelled) {
+                return
+            }
+            event.damage
         }
-        val finalDamage = event.damage
         if (finalDamage <= 0.0) {
             return
         }
