@@ -81,7 +81,7 @@ abstract class StatusAbnormality {
     }
 
     open fun remove() {
-        durationTask?.cancel()
+        stopDurationTask()
         if (canRemove) {
             playerData.statusAbnormalitys.remove(this@StatusAbnormality)
             onRemoveStatusAbnormality()
@@ -97,55 +97,76 @@ abstract class StatusAbnormality {
     }
 
     open fun onDurationChanged() {
-        durationTask?.cancel()
-
-        // 조건 지속 검사
-        if (duration == null) {
-            durationTask = object : BukkitRunnable() {
-                override fun run() {
-                    if (continueWhile != null && !continueWhile!!.invoke()) {
-                        if (canRemove) {
-                            playerData.statusAbnormalitys.remove(this@StatusAbnormality)
-                            onRemoveStatusAbnormality()
-                        } else {
-                            power = 0
-                        }
-                        this.cancel()
-                    }
-                    if (power <= 0) {
-                        this.cancel()
-                    }
-                }
-            }.runTaskTimer(ClassWarPlugin.instance, 20L, 20L)
+        val currentDuration = duration
+        if (currentDuration != null && currentDuration <= 0) {
+            expireStatus()
             return
         }
 
-        // 지속 시간 검사
-        val dur = duration ?: return
-        if (dur <= 0) return
+        refreshDurationTask()
+    }
+
+    open fun onPowerChanged() {
+        refreshDurationTask()
+    }
+
+    open fun onRemoveStatusAbnormality() {}
+
+    private fun refreshDurationTask() {
+        if (shouldTick()) {
+            startDurationTask()
+        } else {
+            stopDurationTask()
+        }
+    }
+
+    private fun shouldTick(): Boolean {
+        if (power <= 0) return false
+        return duration != null || continueWhile != null
+    }
+
+    private fun startDurationTask() {
+        if (durationTask != null) return
         durationTask = object : BukkitRunnable() {
             override fun run() {
-                if ((duration ?: 0) <= 0) {
-                    if (canRemove) {
-                        playerData.statusAbnormalitys.remove(this@StatusAbnormality)
-                    } else {
-                        power = 0
-                    }
-                    this.cancel()
-                    return
-                }
-
-                if (power <= 0) {
-                    this.cancel()
-                    return
-                }
-
-                decreaseDuration(1)
+                tickStatus()
             }
         }.runTaskTimer(ClassWarPlugin.instance, 20L, 20L)
     }
 
-    open fun onPowerChanged() {}
+    private fun stopDurationTask() {
+        durationTask?.cancel()
+        durationTask = null
+    }
 
-    open fun onRemoveStatusAbnormality() {}
+    private fun tickStatus() {
+        if (!shouldTick()) {
+            stopDurationTask()
+            return
+        }
+
+        if (continueWhile != null && !continueWhile!!.invoke()) {
+            expireStatus()
+            return
+        }
+
+        val currentDuration = duration
+        if (currentDuration != null) {
+            val nextDuration = currentDuration - 1
+            duration = nextDuration
+            if (nextDuration <= 0) {
+                expireStatus()
+            }
+        }
+    }
+
+    private fun expireStatus() {
+        stopDurationTask()
+        if (canRemove) {
+            playerData.statusAbnormalitys.remove(this@StatusAbnormality)
+            onRemoveStatusAbnormality()
+        } else {
+            power = 0
+        }
+    }
 }
