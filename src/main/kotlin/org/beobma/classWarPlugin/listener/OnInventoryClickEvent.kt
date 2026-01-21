@@ -9,6 +9,7 @@ import org.beobma.classWarPlugin.manager.GameManager.ready
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassPickInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassStatusInventory
+import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.bukkit.Material
 import org.bukkit.Sound
 import org.bukkit.entity.Player
@@ -43,14 +44,14 @@ class OnInventoryClickEvent : Listener {
 
         if (player !is Player) return
 
-        if (player.scoreboardTags.contains("openClassPickInventory")) {
+        if (PlayerTagManager.hasTag(player, "openClassPickInventory")) {
             val game = game ?: return
             classPickHandler(player, game, clickItem, inventory)
             event.isCancelled = true
             return
         }
 
-        if (player.scoreboardTags.contains("openClassListInventory")) {
+        if (PlayerTagManager.hasTag(player, "openClassListInventory")) {
             classListHandler(player, clickItem, inventory)
             event.isCancelled = true
             return
@@ -94,7 +95,7 @@ class OnInventoryClickEvent : Listener {
                 game.classList[index] = null
                 player.closeInventory()
                 player.playSound(player, Sound.BLOCK_NOTE_BLOCK_GUITAR, 1.0F, 2.0F)
-                player.removeScoreboardTag("openClassPickInventory")
+                PlayerTagManager.removeTag(player, "openClassPickInventory")
                 player.playerListName(
                     player.playerListName().append(MiniMessage.miniMessage().deserialize(" [ ${gameClass.name} ]"))
                 )
@@ -132,11 +133,11 @@ class OnInventoryClickEvent : Listener {
                 val gameClassList = gameClassList
                 val gameClass = gameClassList.find { it.classItemMaterial == clickItem.type } ?: return
                 val currentPage = getCurrentPageFromTitle(inventory.title().toString())
-                player.scoreboardTags.removeIf { it.startsWith("classListPage:") }
-                player.scoreboardTags.add("classListPage:$currentPage")
-                player.scoreboardTags.add("openingClassStatusInventory")
+                PlayerTagManager.removeIf(player) { it.startsWith("classListPage:") }
+                PlayerTagManager.addTag(player, "classListPage:$currentPage")
+                PlayerTagManager.addTag(player, "openingClassStatusInventory")
                 player.openClassStatusInventory(gameClass)
-                player.scoreboardTags.add("openClassStatusInventory")
+                PlayerTagManager.addTag(player, "openClassStatusInventory")
                 return
             }
         }

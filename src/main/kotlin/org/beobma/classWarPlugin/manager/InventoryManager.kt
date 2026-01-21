@@ -4,6 +4,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.manager.GameClassManager.toItemStack
 import org.beobma.classWarPlugin.manager.GameManager.gameClassList
+import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.player.PlayerData
 import org.bukkit.Bukkit
 import org.bukkit.Material
@@ -63,7 +64,7 @@ object InventoryManager {
             inventory.setItem(26, nextPage)
         }
 
-        player.addScoreboardTag("openClassPickInventory")
+        PlayerTagManager.addTag(player, "openClassPickInventory")
         player.openInventory(inventory)
     }
 
@@ -101,7 +102,7 @@ object InventoryManager {
             inventory.setItem(26, nextPage)
         }
 
-        scoreboardTags.add("openClassListInventory")
+        PlayerTagManager.addTag(this, "openClassListInventory")
         openInventory(inventory)
     }
 

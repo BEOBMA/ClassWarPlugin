@@ -8,6 +8,7 @@ import org.beobma.classWarPlugin.manager.GameManager.start
 import org.beobma.classWarPlugin.manager.GameManager.startTest
 import org.beobma.classWarPlugin.manager.GameManager.stop
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
+import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.player.PlayerData
 import org.bukkit.Bukkit
 import org.bukkit.command.Command
@@ -39,7 +40,7 @@ class Command : Listener, CommandExecutor, TabCompleter {
                     }
                     val game = Game(mutableListOf())
                     val players = Bukkit.getOnlinePlayers().map { PlayerData(it, game) }.toHashSet()
-                    game.playerDatas.addAll(players.filter { !it.player.scoreboardTags.contains("isTest") })
+                    game.playerDatas.addAll(players.filter { !PlayerTagManager.hasTag(it.player, "isTest") })
 
 //                    if (game.players.size <= 1) {
 //                        sender.sendWaringMessage("참가자가 2명 이상이여야 게임을 시작할 수 있습니다.")
@@ -78,7 +79,7 @@ class Command : Listener, CommandExecutor, TabCompleter {
                         return false
                     }
 
-                    if (sender.scoreboardTags.contains("isTest")) {
+                    if (PlayerTagManager.hasTag(sender, "isTest")) {
                         sender.sendWaringMessage("이미 테스트 중입니다.")
                         return false
                     }
