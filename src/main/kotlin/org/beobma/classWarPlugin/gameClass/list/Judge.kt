@@ -19,6 +19,7 @@ import org.beobma.classWarPlugin.status.list.Exile
 import org.beobma.classWarPlugin.status.list.Shield
 import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.TargetType
+import org.beobma.classWarPlugin.util.addBaseDamage
 import org.bukkit.Material
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 
@@ -148,9 +149,9 @@ class JudgesPassive : Passive(), OnHitHandler {
 
     override fun onAttackHit(event: EntityDamageByEntityEvent) {
         when (judgesUtils.getTeamStatus(playerData)) {
-            TeamStatus.Advantage -> event.damage -= 4
-            TeamStatus.Balance -> event.damage -= 2
-            TeamStatus.Inferiority -> event.damage += 2
+            TeamStatus.Advantage -> event.addBaseDamage(-4.0)
+            TeamStatus.Balance -> event.addBaseDamage(-2.0)
+            TeamStatus.Inferiority -> event.addBaseDamage(2.0)
         }
     }
 
@@ -177,4 +178,3 @@ class JudgesUtils {
 enum class TeamStatus {
     Advantage, Balance, Inferiority
 }
-

@@ -4,7 +4,7 @@ import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.WhenHitHandler
 import org.beobma.classWarPlugin.info.Info.isGaming
-import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getWhenDamage
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getDamageTakenModifier
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 
@@ -62,7 +62,8 @@ class OnEntitySkillDamageByEntityEvent : Listener {
         }
 
         // 받피증감
-        event.damage *= entityData.getWhenDamage()
+        val damageTakenModifier = entityData.getDamageTakenModifier()
+        event.addDamageTakenMultiplier(damageTakenModifier.combinedMultiplier)
 
         if (event.damage <= 0.0) {
             event.isCancelled = true

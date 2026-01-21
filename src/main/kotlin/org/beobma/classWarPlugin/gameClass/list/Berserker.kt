@@ -14,6 +14,7 @@ import org.beobma.classWarPlugin.status.list.AttackSpeedIncrease
 import org.beobma.classWarPlugin.status.list.WhenDamageReduction
 import org.beobma.classWarPlugin.status.list.MoveSpeedIncrease
 import org.beobma.classWarPlugin.util.DamageType
+import org.beobma.classWarPlugin.util.addBaseDamage
 import org.bukkit.Material
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 
@@ -100,7 +101,7 @@ class BerserkersPassive : Passive(), OnHitHandler {
     override fun onAttackHit(event: EntityDamageByEntityEvent) {
         val missingHealth = player.getPlayerMaxHealth() - player.health
         val damageBoost = (missingHealth * 0.2).coerceAtMost(4.0)
-        event.damage += damageBoost
+        event.addBaseDamage(damageBoost)
 
         if (player.getPlayerMaxHealth() / 2 > player.health) {
             playerData.heal(event.damage / 10, DamageType.Normal, playerData)
