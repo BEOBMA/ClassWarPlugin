@@ -7,6 +7,8 @@ import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetPlayerData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
+import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.player.PlayerData
@@ -109,7 +111,7 @@ class AssassinsDaggerProjectile : Projectile() {
         val direction = blockLocation.toVector().subtract(player.location.toVector()).normalize()
         val speedPerTick = 0.5
         val stealth = playerData.getOrCreateStatus { Stealth() }
-        stealth.increaseDuration(5)
+        stealth.applyStatus(duration = 5, durationMode = StatusDurationMode.Extend)
 
         val task = object : BukkitRunnable() {
             override fun run() {

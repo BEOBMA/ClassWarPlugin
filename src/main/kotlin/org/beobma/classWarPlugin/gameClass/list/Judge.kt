@@ -9,6 +9,8 @@ import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetPlayerData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
+import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.player.PlayerData
@@ -95,8 +97,7 @@ class JudgesOrangeSkill : Skill() {
             TeamStatus.Advantage, TeamStatus.Balance -> 6
             TeamStatus.Inferiority -> 8
         }
-        shield.increasePower(power)
-        shield.increaseDuration(5)
+        shield.applyStatus(duration = 5, durationMode = StatusDurationMode.Extend, powerDelta = power)
         return true
     }
 }
@@ -123,7 +124,7 @@ class JudgesYellowSkill : Skill() {
             val enemies = game.playerDatas.filter { it.team != playerData.team && !it.playerStatus.isDead && it.getStatus<Exile>() == null }
             val enemy = enemies.randomOrNull() ?: break
             val exile = enemy.getOrCreateStatus { Exile() }
-            exile.increaseDuration(5)
+            exile.applyStatus(duration = 5, durationMode = StatusDurationMode.Extend)
         }
         return true
     }
