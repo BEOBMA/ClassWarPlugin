@@ -4,11 +4,8 @@ import org.beobma.classWarPlugin.gameClass.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.WhenHitHandler
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.info.Info.isGaming
-import org.beobma.classWarPlugin.manager.PlayerManager.damage
-import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getDamageTakenModifier
-import org.beobma.classWarPlugin.status.list.Bleeding
-import org.beobma.classWarPlugin.util.DamageType
+import org.beobma.classWarPlugin.status.StatusOnHitHandler
 import org.beobma.classWarPlugin.util.addDamageTakenMultiplier
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -73,11 +70,9 @@ class OnEntityDamageByEntityEvent : Listener {
         }
 
         // 상태이상 적용
-        if (damagerData.statusAbnormalitys.isNotEmpty()) {
-            val bleeding = entityData.getStatus<Bleeding>()
-            if (bleeding != null){
-                entityData.damage(bleeding.power.toDouble(), DamageType.StatusAbnormality, entityData)
-                bleeding.updatePower(bleeding.power / 2)
+        entityData.statusAbnormalitys.forEach { status ->
+            if (status is StatusOnHitHandler) {
+                status.onAttackHit(event, damagerData, entityData)
             }
         }
 
