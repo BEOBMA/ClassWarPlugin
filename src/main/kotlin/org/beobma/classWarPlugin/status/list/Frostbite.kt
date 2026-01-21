@@ -16,11 +16,14 @@ class Frostbite : StatusAbnormality() {
     override var maxPower: Int? = 10
     override var duration: Int? = 5
     private var isOn = true
+    private var moveSpeedDecrease: MoveSpeedDecrease? = null
 
     override fun onPowerChanged() {
-        val moveSpeedDecrease = playerData.addStatus(MoveSpeedDecrease())
-        moveSpeedDecrease.updatePower(power * 5)
-        moveSpeedDecrease.setContinueWhileIf { isOn }
+        val currentMoveSpeedDecrease = moveSpeedDecrease ?: playerData.addStatus(MoveSpeedDecrease()).also {
+            moveSpeedDecrease = it
+        }
+        currentMoveSpeedDecrease.updatePower(power * 5)
+        currentMoveSpeedDecrease.setContinueWhileIf { isOn }
         super.onPowerChanged()
     }
 

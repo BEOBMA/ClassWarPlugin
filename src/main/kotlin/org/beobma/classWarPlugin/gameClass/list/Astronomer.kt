@@ -152,13 +152,13 @@ class AstronomersEnemyField : Flooring() {
             val whenDamageIncrease = hitPlayerData.addStatus(WhenDamageIncreased())
             moveSpeedDecrease.increasePower(20)
             whenDamageIncrease.increasePower(15)
-            moveSpeedDecrease.setContinueWhileIf { affected.contains(playerData) }
-            whenDamageIncrease.setContinueWhileIf { affected.contains(playerData) }
+            moveSpeedDecrease.setContinueWhileIf { affected.contains(hitPlayerData) }
+            whenDamageIncrease.setContinueWhileIf { affected.contains(hitPlayerData) }
         }
     }
 
     override fun onFlooringPlayerOut(hitPlayerData: PlayerData, location: Location) {
-        affected.remove(playerData)
+        affected.remove(hitPlayerData)
     }
 
     override fun onFlooringEnd() {
@@ -180,13 +180,13 @@ class AstronomersTeamField : Flooring() {
             val whenDamageReduction = hitPlayerData.addStatus(WhenDamageReduction())
             moveSpeedIncrease.increasePower(20)
             whenDamageReduction.increasePower(15)
-            moveSpeedIncrease.setContinueWhileIf { affected.contains(playerData) }
-            whenDamageReduction.setContinueWhileIf { affected.contains(playerData) }
+            moveSpeedIncrease.setContinueWhileIf { affected.contains(hitPlayerData) }
+            whenDamageReduction.setContinueWhileIf { affected.contains(hitPlayerData) }
         }
     }
 
     override fun onFlooringPlayerOut(hitPlayerData: PlayerData, location: Location) {
-        affected.remove(playerData)
+        affected.remove(hitPlayerData)
     }
 
     override fun onFlooringEnd() {
