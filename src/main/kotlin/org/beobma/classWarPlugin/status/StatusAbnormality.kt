@@ -93,10 +93,13 @@ abstract class StatusAbnormality {
     fun setContinueWhileIf(predicate: () -> Boolean) {
         this.continueWhile = predicate
         updateDuration(null)
-        onDurationChanged()
     }
 
     open fun onDurationChanged() {
+        if (power <= 0) {
+            expireStatus()
+            return
+        }
         val currentDuration = duration
         if (currentDuration != null && currentDuration <= 0) {
             expireStatus()
@@ -107,6 +110,10 @@ abstract class StatusAbnormality {
     }
 
     open fun onPowerChanged() {
+        if (power <= 0) {
+            expireStatus()
+            return
+        }
         refreshDurationTask()
     }
 
@@ -121,7 +128,6 @@ abstract class StatusAbnormality {
     }
 
     private fun shouldTick(): Boolean {
-        if (power <= 0) return false
         return duration != null || continueWhile != null
     }
 
