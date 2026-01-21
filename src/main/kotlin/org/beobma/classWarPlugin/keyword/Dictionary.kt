@@ -10,7 +10,7 @@ class Dictionary {
             Keyword.VibrationExplosion, "{keyword:VibrationExplosion}: <gold><bold>(진동 수치 x 0.5)</bold><gray> 만큼 {keyword:AbnormalStatusDamage}를 입고 {keyword:Vibration}을 제거한다."
         ),
         Pair(
-            Keyword.AbnormalStatusDamage, "{keyword:AbnormalStatusDamage}: 일반적으로는 피해량이 변하지 않고, 각종 피격 시 상호작용이 일어나지 않는다."
+            Keyword.AbnormalStatusDamage, "{keyword:AbnormalStatusDamage}: 각종 피격 시 상호작용이 일어나지 않는다."
         ),
         Pair(
             Keyword.TrueDamage, "{keyword:TrueDamage}: 어떤 경우에도 피해량이 변하지 않는다."
