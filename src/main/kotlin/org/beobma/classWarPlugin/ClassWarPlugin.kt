@@ -7,6 +7,7 @@ import org.beobma.classWarPlugin.listener.OnEntityStatusEffectDamageByEntityEven
 import org.beobma.classWarPlugin.listener.OnInventoryClickEvent
 import org.beobma.classWarPlugin.listener.OnInventoryCloseEvent
 import org.beobma.classWarPlugin.listener.OnPlayerDeathEvent
+import org.beobma.classWarPlugin.listener.OnPlayerItemHeldEvent
 import org.bukkit.plugin.java.JavaPlugin
 
 class ClassWarPlugin : JavaPlugin() {
@@ -36,6 +37,7 @@ class ClassWarPlugin : JavaPlugin() {
         server.pluginManager.registerEvents(OnEntityDamageByEntityEvent(), this)
         server.pluginManager.registerEvents(OnEntitySkillDamageByEntityEvent(), this)
         server.pluginManager.registerEvents(OnEntityStatusEffectDamageByEntityEvent(), this)
+        server.pluginManager.registerEvents(OnPlayerItemHeldEvent(), this)
     }
 
     fun loggerInfo(msg: String) {

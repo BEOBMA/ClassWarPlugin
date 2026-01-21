@@ -19,7 +19,7 @@ class OnEntitySkillDamageByEntityEvent : Listener {
 
         // 1보다 작은 피해는 피해를 받지 않은 것으로 간주
         if (event.damage < 1) return
-        if (isGaming()) return
+        if (!isGaming()) return
 
         // 공격, 피격 가능 여부
         if (!damagerStatus.canSkillUse || !entityStatus.isSkillTargeting) {

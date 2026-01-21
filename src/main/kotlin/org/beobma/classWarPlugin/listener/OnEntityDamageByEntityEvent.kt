@@ -22,7 +22,7 @@ class OnEntityDamageByEntityEvent : Listener {
         // 1보다 작은 피해는 피해를 받지 않은 것으로 간주
         if (event.damage < 1) return
         if (damager !is Player || entity !is Player) return
-        if (isGaming()) return
+        if (!isGaming()) return
         val damagerData = game?.playerDatas?.find { it.player == damager } ?: return
         val entityData = game?.playerDatas?.find { it.player == entity } ?: return
         val damagerStatus = damagerData.playerStatus

@@ -15,7 +15,7 @@ class OnEntityStatusEffectDamageByEntityEvent : Listener {
         val damagerData = event.damager
         val entityData = event.entity
 
-        if (isGaming()) return
+        if (!isGaming()) return
 
         val damagerClass = damagerData.gameClass ?: return
         val entityClass = damagerData.gameClass ?: return
