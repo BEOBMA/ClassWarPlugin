@@ -17,12 +17,7 @@ class OnPlayerItemHeldEvent : Listener {
         val player = event.player
         val playerData = game?.playerDatas?.find { it.player == player } ?: return
         val gameClass = playerData.gameClass ?: return
-        val item = player.inventory.getItem(next)
-        if (item == null) {
-            event.isCancelled = true
-            return
-        }
-        gameClass.skills[next - 1].use()
+        gameClass.skills.getOrNull(next - 1)?.use()
         event.isCancelled = true
     }
 }
