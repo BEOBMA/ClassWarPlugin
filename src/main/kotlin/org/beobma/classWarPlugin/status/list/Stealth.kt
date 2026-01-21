@@ -21,8 +21,4 @@ class Stealth : StatusAbnormality() {
         player.addPotionEffect(PotionEffect(PotionEffectType.INVISIBILITY, 1, 0, false, false, true))
         super.onDurationChanged()
     }
-
-    override fun onRemoveStatusAbnormality() {
-        super.onRemoveStatusAbnormality()
-    }
 }

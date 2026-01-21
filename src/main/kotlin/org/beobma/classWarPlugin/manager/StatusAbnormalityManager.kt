@@ -8,6 +8,7 @@ import org.beobma.classWarPlugin.util.DamageType
 import org.bukkit.attribute.Attribute
 
 
+// 갱신, 연장
 enum class StatusDurationMode {
     Refresh,
     Extend
