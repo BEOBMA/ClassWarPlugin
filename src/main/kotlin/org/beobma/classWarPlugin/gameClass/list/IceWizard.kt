@@ -13,6 +13,8 @@ import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
+import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.player.PlayerData
 import org.beobma.classWarPlugin.skill.*
@@ -104,8 +106,7 @@ class IceWizardsRedSkill : Skill() {
                     val frostbite = it.getOrCreateStatus { Frostbite() }
                     applyDamagePlayerDatas[it] = applyDamagePlayerDatas.getOrDefault(it, 20) - 1
                     it.damage(3.0, DamageType.Normal, playerData)
-                    frostbite.increasePower(2)
-                    frostbite.updateDuration(5)
+                    frostbite.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh, powerDelta = 2)
                 }
                 mana.decreasePower(10)
             }
@@ -154,8 +155,7 @@ class IceWizardsIcicleProjectile : Projectile() {
         val frostbite = hitPlayerData.getOrCreateStatus { Frostbite() }
         val mana = playerData.getOrCreateStatus { Mana() }
         hitPlayerData.damage(8.0, DamageType.Normal, playerData)
-        frostbite.increasePower(4)
-        frostbite.updateDuration(5)
+        frostbite.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh, powerDelta = 4)
         mana.increasePower(20)
     }
 }
@@ -211,8 +211,7 @@ class IceWizardsIceSpear : Meteor() {
         val mana = playerData.getOrCreateStatus { Mana() }
         val frostbite = hitPlayerData.getOrCreateStatus { Frostbite() }
         hitPlayerData.damage(15.0, DamageType.Normal, playerData)
-        frostbite.increasePower(7)
-        frostbite.updateDuration(5)
+        frostbite.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh, powerDelta = 7)
         mana.increasePower(100)
     }
 }
@@ -273,8 +272,7 @@ class IceWizardsFrostZone(override var location: Location) : Flooring() {
         val moveSpeedDecrease = hitPlayerData.addStatus(MoveSpeedDecrease())
         val frostbite = hitPlayerData.getOrCreateStatus { Frostbite() }
         moveSpeedDecrease.increasePower(25)
-        frostbite.increasePower(2)
-        frostbite.updateDuration(5)
+        frostbite.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh, powerDelta = 2)
         moveSpeedDecrease.setContinueWhileIf { hitPlayerDatas.contains(playerData) }
         hitPlayerDatas.add(hitPlayerData)
     }
