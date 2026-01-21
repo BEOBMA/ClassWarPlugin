@@ -39,6 +39,7 @@ import org.beobma.classWarPlugin.gameClass.list.WindWizard
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassPickInventory
 import org.beobma.classWarPlugin.manager.PlayerManager.classSet
+import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.UtilManager.getPlayerMaxHealth
 import org.beobma.classWarPlugin.manager.UtilManager.isInArea
 import org.beobma.classWarPlugin.map.Map
@@ -103,17 +104,16 @@ object GameManager{
             player.activePotionEffects.forEach { effect ->
                 player.removePotionEffect(effect.type)
             }
-            val playerTags = player.scoreboardTags.toList()
-            for (tag in playerTags) {
-                player.removeScoreboardTag(tag)
+            PlayerTagManager.allTags(player).forEach { tag ->
+                PlayerTagManager.removeTag(player, tag)
             }
+            PlayerTagManager.clear(player)
             player.playerListName(MiniMessage.miniMessage().deserialize(player.name))
             player.fireTicks = 0
             player.inventory.clear()
             player.health = player.getPlayerMaxHealth()
 
             player.teleport(Location(Bukkit.getWorld("world"), 10.0, -60.0, 0.0, 90F, 0F))
-            Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "scoreboard players reset @a")
             player.gameMode = GameMode.ADVENTURE
         }
         game = null

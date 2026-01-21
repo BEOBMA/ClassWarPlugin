@@ -4,6 +4,7 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassPickInventory
+import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -16,7 +17,7 @@ class OnInventoryCloseEvent : Listener {
     fun onInventoryClose(event: InventoryCloseEvent) {
         val player = event.player as? Player ?: return
 
-        if (player.scoreboardTags.contains("openClassPickInventory")) {
+        if (PlayerTagManager.hasTag(player, "openClassPickInventory")) {
             reopenClassPickInventoryLater(
                 player,
                 "openClassPickInventory"
@@ -24,27 +25,27 @@ class OnInventoryCloseEvent : Listener {
             return
         }
 
-        if (player.scoreboardTags.contains("openingClassStatusInventory")) {
-            player.scoreboardTags.remove("openingClassStatusInventory")
-            player.scoreboardTags.remove("openClassListInventory")
+        if (PlayerTagManager.hasTag(player, "openingClassStatusInventory")) {
+            PlayerTagManager.removeTag(player, "openingClassStatusInventory")
+            PlayerTagManager.removeTag(player, "openClassListInventory")
             return
         }
 
-        if (player.scoreboardTags.contains("openClassStatusInventory")) {
-            val page = player.scoreboardTags.firstOrNull { it.startsWith("classListPage:") }
+        if (PlayerTagManager.hasTag(player, "openClassStatusInventory")) {
+            val page = PlayerTagManager.findTag(player) { it.startsWith("classListPage:") }
                 ?.substringAfter("classListPage:")
                 ?.toIntOrNull()
                 ?: 0
-            player.scoreboardTags.remove("openClassStatusInventory")
-            player.scoreboardTags.remove("openingClassStatusInventory")
-            player.scoreboardTags.removeIf { it.startsWith("classListPage:") }
+            PlayerTagManager.removeTag(player, "openClassStatusInventory")
+            PlayerTagManager.removeTag(player, "openingClassStatusInventory")
+            PlayerTagManager.removeIf(player) { it.startsWith("classListPage:") }
             reopenClassListInventoryLater(player, page)
             return
         }
 
-        if (player.scoreboardTags.contains("openClassListInventory")) {
-            player.scoreboardTags.remove("openClassListInventory")
-            player.scoreboardTags.removeIf { it.startsWith("classListPage:") }
+        if (PlayerTagManager.hasTag(player, "openClassListInventory")) {
+            PlayerTagManager.removeTag(player, "openClassListInventory")
+            PlayerTagManager.removeIf(player) { it.startsWith("classListPage:") }
             return
         }
     }
@@ -52,7 +53,7 @@ class OnInventoryCloseEvent : Listener {
     private fun reopenClassPickInventoryLater(player: Player, tag: String) {
         object : BukkitRunnable() {
             override fun run() {
-                if (player.scoreboardTags.contains(tag)) {
+                if (PlayerTagManager.hasTag(player, tag)) {
                     val playerData = game?.playerDatas?.find { it.player == player } ?: return
 
                     playerData.openClassPickInventory(1)
