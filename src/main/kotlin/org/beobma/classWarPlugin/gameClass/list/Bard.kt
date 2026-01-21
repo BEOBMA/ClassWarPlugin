@@ -77,8 +77,8 @@ class BardsYellowSkill : Skill() {
         "<gray>7번째 박자마다 이 스킬을 재사용하면 스킬을 지속하여 사용할 수 있다.",
         "<gray>실패 시 스킬 지속을 종료하며 재사용 대기 시간을 적용한다.",
         "",
-        "<gray>연주를 지속하는 한, 자신 주위 아군만 ${Keyword.Untargetability.string} 상태로 만든다.",
-        "<gray>이 효과는 ${Keyword.Untargetability.string} 상태를 무시한다.",
+        "<gray>연주를 지속하는 한, 자신 주위 아군만 {keyword:Untargetability} 상태로 만든다.",
+        "<gray>이 효과는 {keyword:Untargetability} 상태를 무시한다.",
         "",
         dictionary[Keyword.Untargetability] ?: ""
     )

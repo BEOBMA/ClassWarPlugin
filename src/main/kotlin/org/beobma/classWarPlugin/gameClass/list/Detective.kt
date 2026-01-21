@@ -2,7 +2,6 @@ package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Weapon
-import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
 import org.bukkit.Material
@@ -37,7 +36,7 @@ class DetectivesSword : Weapon() {
 class DetectivesRedSkill : Skill() {
     override val name = "<bold>미행"
     override val description = listOf(
-        "<gray>사용 시 3초간 ${Keyword.Stealth.string}한다.",
+        "<gray>사용 시 3초간 {keyword:Stealth}한다.",
         "<gray>만약, 보이는 적으로부터 7칸 떨어져 있다면 지속 시간이 8초까지 증가한다."
     )
     override val cooldown = 18
@@ -52,7 +51,7 @@ class DetectivesOrangeSkill : Skill() {
     override val name = "<bold>증거 확보"
     override val description = listOf(
         "<gray>주변 10블록 이내에 있는 모든 적의 최근 사용한 스킬 1개와 재사용 대기 시간을 확인한다.",
-        "${Keyword.Stealth.string} 상태였다면, 대상의 현재 마나량과 모든 스킬의 재사용 대기 시간을 확인한다."
+        "{keyword:Stealth} 상태였다면, 대상의 현재 마나량과 모든 스킬의 재사용 대기 시간을 확인한다."
     )
     override val cooldown = 10
 
@@ -67,7 +66,7 @@ class DetectivesYellowSkill : Skill() {
     override val description = listOf(
         "<gray>사용 시 20초간 바라보는 적을 파악한다.",
         "<gray>파악한 적은 피격 시 피해량이 15% 증가한다.",
-        "${Keyword.Stealth.string} 상태였다면, 피해량이 30%까지 증가하고 추가로 지속 시간동안 은신할 수 없다."
+        "{keyword:Stealth} 상태였다면, 피해량이 30%까지 증가하고 추가로 지속 시간동안 은신할 수 없다."
     )
     override val cooldown = 40
 
@@ -82,6 +81,6 @@ class DetectivesPassive : Passive() {
     override val description = listOf(
         "<gray>패시브",
         "",
-        "<gray>5칸 이내에 적이 ${Keyword.Stealth.string}하면, ${Keyword.Stealth.string} 효과를 즉시 제거한다."
+        "<gray>5칸 이내에 적이 {keyword:Stealth}하면, {keyword:Stealth} 효과를 즉시 제거한다."
     )
 }

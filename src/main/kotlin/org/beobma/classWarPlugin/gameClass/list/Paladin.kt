@@ -40,7 +40,7 @@ class PaladinsRedSkill : Skill() {
     override val name = "<gold><bold>맹세"
     override val description = listOf(
         "<gray>5초간 자신의 <gold><bold>기본 공격 피해가 2 증가</bold><gray>한다.",
-        "<gray>또한, 기본 공격 적중 시 ${Keyword.Brightness.string}를 1 부여한다.",
+        "<gray>또한, 기본 공격 적중 시 {keyword:Brightness}를 1 부여한다.",
         "",
         dictionary[Keyword.Brightness]!!
     )
@@ -55,7 +55,7 @@ class PaladinsRedSkill : Skill() {
 class PaladinsOrangeSkill : Skill() {
     override val name = "<yellow><bold>빛의 강타"
     override val description = listOf(
-        "<gray>3칸 내의 바라보는 적에게 (6 + 기본 공격 피해량)의 피해를 입히고 ${Keyword.Brightness.string}를 3 부여한다.",
+        "<gray>3칸 내의 바라보는 적에게 (6 + 기본 공격 피해량)의 피해를 입히고 {keyword:Brightness}를 3 부여한다.",
         "",
         dictionary[Keyword.Brightness]!!
     )
@@ -71,7 +71,7 @@ class PaladinsYellowSkill : Skill() {
     override val name = "<yellow><bold>빛의 방패"
     override val description = listOf(
         "<gray>10초간 다음 3번의 공격으로부터 절반의 피해를 받는다.",
-        "<gray>또한, 공격자에게 ${Keyword.Brightness.string}를 2 부여한다.",
+        "<gray>또한, 공격자에게 {keyword:Brightness}를 2 부여한다.",
         "<gray>이 효과는 원래 피해량이 5 이상인 경우에만 발동한다.",
         "",
         dictionary[Keyword.Brightness]!!
@@ -90,7 +90,7 @@ class PaladinsPassive : Passive() {
         "<gray>패시브",
         "",
         "<gray>아군이 기본 공격 피격 시 공격자에게 표식을 부여한다.",
-        "<gray>표식을 가진 적에게 기본 공격 적중 시 2의 피해를 추가로 입히고 ${Keyword.Brightness.string}를 2 부여한다.",
+        "<gray>표식을 가진 적에게 기본 공격 적중 시 2의 피해를 추가로 입히고 {keyword:Brightness}를 2 부여한다.",
         "<gray>효과 발동 후 표식은 제거된다.",
         "",
         dictionary[Keyword.Brightness]!!

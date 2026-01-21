@@ -44,7 +44,7 @@ class GunBladersRedSkill : Skill() {
     override val name = "<bold>연격"
     override val description = listOf(
         "<gray>2칸 내의 바라보는 적에게 5의 피해를 입힌다.",
-        "<gray>탄환을 소모하면 추가로 10초간 ${Keyword.Vibration.string}을 5 부여한다."
+        "<gray>탄환을 소모하면 추가로 10초간 {keyword:Vibration}을 5 부여한다."
     )
     override val cooldown = 4
 
@@ -58,7 +58,7 @@ class GunBladersOrangeSkill : Skill() {
     override val name = "<bold>진탕"
     override val description = listOf(
         "<gray>2칸 내의 바라보는 적에게 7의 피해를 입힌다.",
-        "<gray>탄환을 소모하면 추가로 ${Keyword.VibrationExplosion.string}을 적용한다."
+        "<gray>탄환을 소모하면 추가로 {keyword:VibrationExplosion}을 적용한다."
     )
     override val cooldown = 10
 
@@ -72,8 +72,8 @@ class GunBladersYellowSkill : Skill() {
     override val name = "<bold>난격"
     override val description = listOf(
         "<gray>자신 주위 적에게 기본 공격과 사격을 번갈아 진행한다.",
-        "<gray>기본 공격 시 ${Keyword.Vibration.string}을 2 부여하고.",
-        "<gray>사격 시 ${Keyword.VibrationExplosion.string}을 적용한다.",
+        "<gray>기본 공격 시 {keyword:Vibration}을 2 부여하고.",
+        "<gray>사격 시 {keyword:VibrationExplosion}을 적용한다.",
         "<gray>사격 시 탄환이 부족하다면 공격이 종료된다."
     )
     override val cooldown = Int.MAX_VALUE
@@ -92,8 +92,8 @@ class GunBladersPassive1 : Passive() {
         "<gray>기본 공격 3회 적중 시 <gold><bold>쇄진탄</bold><gray>을 얻는다.",
         "<gray>3초간 기본 공격을 사용하지 않으면 최대 6발까지 장전한다.",
         "",
-        "<gold><bold>쇄진탄</bold><gray>: 이 탄환을 소모한 공격 적중 시 피해량이 ${Keyword.TrueDamage.string}로 전환된다.",
-        "<gray>이 효과는 ${Keyword.VibrationExplosion.string}에도 적용된다.",
+        "<gold><bold>쇄진탄</bold><gray>: 이 탄환을 소모한 공격 적중 시 피해량이 {keyword:TrueDamage}로 전환된다.",
+        "<gray>이 효과는 {keyword:VibrationExplosion}에도 적용된다.",
         dictionary[Keyword.TrueDamage] ?: ""
     )
 }
@@ -106,8 +106,8 @@ class GunBladersPassive2 : Passive() {
         "<gray>적 사망 시 <red><bold>격진탄</bold><gray>을 즉시 3발 장전한다.",
         "<gray>직접 처치 시 대신 6발 장전한다.",
         "",
-        "<red><bold>격진탄</bold><gray>: 이 탄환을 소모한 공격 적중 시 피해량이 50% 증가하고 ${Keyword.TrueDamage.string}로 전환된다.",
-        "<gray>이 효과는 ${Keyword.VibrationExplosion.string}에도 적용된다.",
+        "<red><bold>격진탄</bold><gray>: 이 탄환을 소모한 공격 적중 시 피해량이 50% 증가하고 {keyword:TrueDamage}로 전환된다.",
+        "<gray>이 효과는 {keyword:VibrationExplosion}에도 적용된다.",
         dictionary[Keyword.TrueDamage] ?: ""
     )
 }

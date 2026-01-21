@@ -2,7 +2,6 @@ package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Weapon
-import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
 import org.bukkit.Material
@@ -63,7 +62,7 @@ class SnipersOrangeSkill() : Skill() {
         "<gray>지속 중 기본 공격과 다른 스킬을 사용할 수 없다.",
         "<gray>지속 중 스킬을 재사용하면 효과는 즉시 종료된다.",
         "",
-        "<gray>생존한 아군이 2명 이상이라면 자신은 효과가 종료될 때까지 ${Keyword.Fix.string}되고 지원 상태에 돌입한다.",
+        "<gray>생존한 아군이 2명 이상이라면 자신은 효과가 종료될 때까지 {keyword:Fix}되고 지원 상태에 돌입한다.",
         "<gray> 지원 상태에서 자신을 제외한 시야 내의 아군의 기본 공격 적중 시 해당 적을 사격하여 3의 피해를 입힌다.",
         "",
         "<gray>생존한 아군이 자신 혼자라면 자신은 효과가 종료될 때까지 <gold><bold>이동 속도가 40% 증가</bold><gray>하고 견제 상태에 돌입한다.",

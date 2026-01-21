@@ -10,8 +10,8 @@ object GameClassManager {
     fun Weapon.toItemStack(): ItemStack {
         val itemStack = ItemStack(material, 1).apply {
             itemMeta.apply {
-                displayName(miniMessage.deserialize(name))
-                lore(description.map { miniMessage.deserialize(it) })
+                displayName(miniMessage.deserialize(UtilManager.applyKeywords(name)))
+                lore(description.map { miniMessage.deserialize(UtilManager.applyKeywords(it)) })
             }
         }
         return itemStack

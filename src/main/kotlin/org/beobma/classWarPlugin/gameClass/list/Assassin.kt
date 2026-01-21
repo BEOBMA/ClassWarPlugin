@@ -76,7 +76,7 @@ class AssassinsOrangeSkill : Skill() {
     override val description = listOf(
         "<gray>바라보는 방향으로 단검을 투척한다.",
         "<gray>단검이 적에게 적중하면 5의 피해를 입히고 해당 적의 뒤로 즉시 이동한다.",
-        "<gray>단검이 블록에 적중하면 4초간 ${Keyword.Stealth.string}하고 해당 방향으로 빠르게 이동한다."
+        "<gray>단검이 블록에 적중하면 4초간 {keyword:Stealth}하고 해당 방향으로 빠르게 이동한다."
     )
     override val cooldown = 10
 
@@ -130,7 +130,7 @@ class AssassinsYellowSkill : Skill() {
     override val name = "<bold>비열한 일격"
     override val description = listOf(
         "<gray>2칸 내의 바라보는 적에게 10의 피해를 입힌다.",
-        "<gray>자신이 ${Keyword.Stealth.string} 중이었다면 5의 피해를 추가로 입힌다.",
+        "<gray>자신이 {keyword:Stealth} 중이었다면 5의 피해를 추가로 입힌다.",
         "<gray>이 스킬로 적을 처치했다면 재사용 대기시간이 75% 감소한다."
     )
     override val cooldown = 60
@@ -156,8 +156,8 @@ class AssassinsPassive : Passive() {
     override val description = listOf(
         "<gray>패시브",
         "",
-        "<gray>암살자는 완벽한 ${Keyword.Stealth.string}을 위해 기본 무기가 존재하지 않는다.",
-        "<gray>${Keyword.Stealth.string}하면 ${Keyword.Untargetability.string} 상태가 된다.",
+        "<gray>암살자는 완벽한 {keyword:Stealth}을 위해 기본 무기가 존재하지 않는다.",
+        "<gray>{keyword:Stealth}하면 {keyword:Untargetability} 상태가 된다.",
         "",
         dictionary[Keyword.Untargetability] ?: ""
     )

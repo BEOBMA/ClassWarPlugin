@@ -44,8 +44,8 @@ object InventoryManager {
         for (i in startIdx until endIdx) {
             val gameClass = classList[i] ?: return
             val classItemType = gameClass.classItemMaterial
-            val name = miniMessage.deserialize(gameClass.name)
-            val description = gameClass.description.map { miniMessage.deserialize(it) }
+            val name = miniMessage.deserialize(UtilManager.applyKeywords(gameClass.name))
+            val description = gameClass.description.map { miniMessage.deserialize(UtilManager.applyKeywords(it)) }
             val classItem = ItemStack(classItemType, 1).apply {
                 itemMeta = itemMeta.apply {
                     displayName(name)
@@ -82,8 +82,8 @@ object InventoryManager {
         for (i in startIdx until endIdx) {
             val gameClass = classList[i]
             val classItemType = gameClass.classItemMaterial
-            val name = miniMessage.deserialize(gameClass.name)
-            val description = gameClass.description.map { miniMessage.deserialize(it) }
+            val name = miniMessage.deserialize(UtilManager.applyKeywords(gameClass.name))
+            val description = gameClass.description.map { miniMessage.deserialize(UtilManager.applyKeywords(it)) }
             val classItem = ItemStack(classItemType, 1).apply {
                 itemMeta = itemMeta.apply {
                     displayName(name)
@@ -106,7 +106,7 @@ object InventoryManager {
     }
 
     fun Player.openClassStatusInventory(gameClass: GameClass) {
-        val inventory = Bukkit.createInventory(null, 27, miniMessage.deserialize(gameClass.name))
+        val inventory = Bukkit.createInventory(null, 27, miniMessage.deserialize(UtilManager.applyKeywords(gameClass.name)))
         inventory.setItem(0, gameClass.weapon.toItemStack())
         for (i in 0..gameClass.skills.size) {
             val skill = gameClass.skills.getOrNull(i) ?: break
@@ -117,8 +117,8 @@ object InventoryManager {
                 3 -> Material.GREEN_DYE
                 else -> Material.RED_DYE
             }
-            val name = miniMessage.deserialize(skill.name)
-            val description = skill.description.map { miniMessage.deserialize(it) }
+            val name = miniMessage.deserialize(UtilManager.applyKeywords(skill.name))
+            val description = skill.description.map { miniMessage.deserialize(UtilManager.applyKeywords(it)) }
             val itemStack = ItemStack(material, 1).apply {
                 itemMeta = itemMeta.apply {
                     displayName(name)
@@ -130,8 +130,8 @@ object InventoryManager {
         for (i in gameClass.skills.size + 1..gameClass.passives.size + gameClass.skills.size + 1) {
             val passive = gameClass.passives.getOrNull(i - gameClass.skills.size - 1) ?: break
             val material = Material.WHITE_DYE
-            val name = miniMessage.deserialize(passive.name)
-            val description = passive.description.map { miniMessage.deserialize(it) }
+            val name = miniMessage.deserialize(UtilManager.applyKeywords(passive.name))
+            val description = passive.description.map { miniMessage.deserialize(UtilManager.applyKeywords(it)) }
             val itemStack = ItemStack(material, 1).apply {
                 itemMeta = itemMeta.apply {
                     displayName(name)

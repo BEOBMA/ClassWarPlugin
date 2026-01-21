@@ -2,7 +2,6 @@ package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Weapon
-import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
 import org.bukkit.Material
@@ -70,7 +69,7 @@ class TimeManiqulatorsPassive() : Passive() {
     override val description = listOf(
         "<gray>패시브",
         "",
-        "<gray>사망 시 ${Keyword.Invalidity.string}로 하고 체크포인트를 불러온다.",
+        "<gray>사망 시 {keyword:Invalidity}로 하고 체크포인트를 불러온다.",
         "<gray>불러온 후 <dark_red><bold>최대 체력이 기본 최대 체력의 40% 만큼 감소</bold><gray>한다."
     )
 }
