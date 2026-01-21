@@ -5,6 +5,7 @@ import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.GameStatusHandler
 import org.beobma.classWarPlugin.manager.GameClassManager.toItemStack
 import org.beobma.classWarPlugin.player.PlayerData
+import org.beobma.classWarPlugin.util.DamageCalculator
 import org.beobma.classWarPlugin.util.DamageType
 import org.bukkit.Bukkit
 import org.bukkit.Material
@@ -76,6 +77,17 @@ object PlayerManager {
     }
 
     fun PlayerData.damage(damage: Double, damageType: DamageType, damager: PlayerData, isInvincibilityTimeIgnore: Boolean = true) {
+        if (damage <= 0.0) {
+            return
+        }
+
+        if (!isInvincibilityTimeIgnore && player.noDamageTicks > 0) {
+            return
+        }
+        if (isInvincibilityTimeIgnore) {
+            player.noDamageTicks = 0
+        }
+
         val currentTick = player.world.fullTime
 
         lastDamageTicks[damager]?.let { lastTick ->
@@ -85,21 +97,24 @@ object PlayerManager {
         }
         lastDamageTicks[damager] = currentTick
 
-        var finalDamage = damage
-        val event = PlayerSkillDamageByPlayerEvent(finalDamage, damageType, this, damager)
+        val event = PlayerSkillDamageByPlayerEvent(damage, damageType, this, damager)
         Bukkit.getServer().pluginManager.callEvent(event)
 
         if (event.isCancelled) {
             return
         }
-        if (damageType != DamageType.True && damageType != DamageType.StatusAbnormality) {
-            finalDamage = event.damage
-        }
-        if (finalDamage < 0) {
+        val finalDamage = event.damage
+        if (finalDamage <= 0.0) {
             return
         }
-        player.damage(0.1, null)
-        player.health -= finalDamage
+
+        val damageResult = DamageCalculator.calculate(finalDamage, player, damageType)
+        if (damageResult.finalDamage <= 0.0) {
+            return
+        }
+
+        val newHealth = (player.health - damageResult.finalDamage).coerceAtLeast(0.0)
+        player.health = newHealth
     }
 
     fun PlayerData.heal(damage: Double, damageType: DamageType, healer: PlayerData) {
