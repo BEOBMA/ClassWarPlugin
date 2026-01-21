@@ -13,12 +13,14 @@ object DamageCalculator {
             return Result(0.0, 0.0)
         }
 
+        if (damageType.isFixed) {
+            return Result(baseDamage, 0.0)
+        }
+
         var damage = baseDamage
 
-        if (damageType != DamageType.True) {
-            damage = applyArmorAndToughness(damage, target)
-            damage = applyResistance(damage, target)
-        }
+        damage = applyArmorAndToughness(damage, target)
+        damage = applyResistance(damage, target)
 
         damage = damage.coerceAtLeast(0.0)
 
