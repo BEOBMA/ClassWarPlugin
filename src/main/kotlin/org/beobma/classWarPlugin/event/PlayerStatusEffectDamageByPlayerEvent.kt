@@ -6,14 +6,14 @@ import org.bukkit.event.Cancellable
 import org.bukkit.event.Event
 import org.bukkit.event.HandlerList
 
-class PlayerSkillDamageByPlayerEvent(
+class PlayerStatusEffectDamageByPlayerEvent(
     baseDamage: Double,
     val damageType: DamageType,
     val damager: PlayerData,
     val entity: PlayerData
 ) : Event(), Cancellable {
     private var isCancelled = false
-    private var baseDamage: Double = baseDamage
+    private val baseDamage: Double = baseDamage
     private var flatDamageBonus: Double = 0.0
     private var damageDealtMultiplier: Double = 1.0
     private var damageTakenMultiplier: Double = 1.0
