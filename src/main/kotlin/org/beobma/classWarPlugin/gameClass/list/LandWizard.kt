@@ -19,6 +19,7 @@ import org.beobma.classWarPlugin.status.list.Shield
 import org.beobma.classWarPlugin.status.list.Vibration
 import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.TargetType
+import org.beobma.classWarPlugin.util.addDamageDealtMultiplier
 import org.bukkit.Material
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 
@@ -133,7 +134,7 @@ class LandWizardsPassive : Passive(), WhenHitHandler {
     }
 
     override fun whenAttackHit(event: EntityDamageByEntityEvent) {
-        event.damage *= 0.7
+        event.addDamageDealtMultiplier(0.7)
     }
 
     override fun whenSkillAttackHit(event: PlayerSkillDamageByPlayerEvent) {

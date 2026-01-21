@@ -9,6 +9,11 @@ import org.bukkit.attribute.Attribute
 
 
 object StatusAbnormalityManager {
+    data class DamageTakenModifier(val reductionMultiplier: Double, val increaseMultiplier: Double) {
+        val combinedMultiplier: Double
+            get() = reductionMultiplier * increaseMultiplier
+    }
+
     fun PlayerData.vibrationExplosion(damager: PlayerData) {
         val vibration = getStatus<Vibration>()
 
@@ -78,7 +83,7 @@ object StatusAbnormalityManager {
         attributeInstance.baseValue = newValue
     }
 
-    fun PlayerData.getWhenDamage(): Double {
+    fun PlayerData.getDamageTakenModifier(): DamageTakenModifier {
         val whenDamageReduction = getAllStatus<WhenDamageReduction>()
         val whenDamageIncrease = getAllStatus<WhenDamageIncreased>()
 
@@ -90,6 +95,10 @@ object StatusAbnormalityManager {
             acc * (1 + status.power / 100.0)
         }
 
-        return reductionFactor * increaseFactor
+        return DamageTakenModifier(reductionFactor, increaseFactor)
+    }
+
+    fun PlayerData.getWhenDamage(): Double {
+        return getDamageTakenModifier().combinedMultiplier
     }
 }
