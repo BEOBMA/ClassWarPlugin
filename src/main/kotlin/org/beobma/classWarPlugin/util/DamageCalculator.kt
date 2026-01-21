@@ -34,8 +34,8 @@ object DamageCalculator {
     }
 
     private fun applyArmorAndToughness(damage: Double, target: Player): Double {
-        val armor = target.getAttribute(Attribute.GENERIC_ARMOR)?.value ?: 0.0
-        val toughness = target.getAttribute(Attribute.GENERIC_ARMOR_TOUGHNESS)?.value ?: 0.0
+        val armor = target.getAttribute(Attribute.ARMOR)?.value ?: 0.0
+        val toughness = target.getAttribute(Attribute.ARMOR_TOUGHNESS)?.value ?: 0.0
 
         val armorFactor = (armor / 5.0).coerceAtLeast(armor - damage / (2.0 + toughness / 4.0))
         val damageMultiplier = 1.0 - (armorFactor.coerceAtMost(20.0) / 25.0)
@@ -44,7 +44,7 @@ object DamageCalculator {
     }
 
     private fun applyResistance(damage: Double, target: Player): Double {
-        val resistanceEffect = target.getPotionEffect(PotionEffectType.DAMAGE_RESISTANCE) ?: return damage
+        val resistanceEffect = target.getPotionEffect(PotionEffectType.RESISTANCE) ?: return damage
         val amplifier = resistanceEffect.amplifier + 1
         val resistanceMultiplier = (1.0 - 0.2 * amplifier).coerceAtLeast(0.0)
 
