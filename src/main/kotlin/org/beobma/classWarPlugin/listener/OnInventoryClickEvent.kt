@@ -134,9 +134,9 @@ class OnInventoryClickEvent : Listener {
                 val currentPage = getCurrentPageFromTitle(inventory.title().toString())
                 player.scoreboardTags.removeIf { it.startsWith("classListPage:") }
                 player.scoreboardTags.add("classListPage:$currentPage")
-                player.scoreboardTags.add("openClassStatusInventory")
-                player.closeInventory()
+                player.scoreboardTags.add("openingClassStatusInventory")
                 player.openClassStatusInventory(gameClass)
+                player.scoreboardTags.add("openClassStatusInventory")
                 return
             }
         }

@@ -24,12 +24,19 @@ class OnInventoryCloseEvent : Listener {
             return
         }
 
+        if (player.scoreboardTags.contains("openingClassStatusInventory")) {
+            player.scoreboardTags.remove("openingClassStatusInventory")
+            player.scoreboardTags.remove("openClassListInventory")
+            return
+        }
+
         if (player.scoreboardTags.contains("openClassStatusInventory")) {
             val page = player.scoreboardTags.firstOrNull { it.startsWith("classListPage:") }
                 ?.substringAfter("classListPage:")
                 ?.toIntOrNull()
                 ?: 0
             player.scoreboardTags.remove("openClassStatusInventory")
+            player.scoreboardTags.remove("openingClassStatusInventory")
             player.scoreboardTags.removeIf { it.startsWith("classListPage:") }
             reopenClassListInventoryLater(player, page)
             return
