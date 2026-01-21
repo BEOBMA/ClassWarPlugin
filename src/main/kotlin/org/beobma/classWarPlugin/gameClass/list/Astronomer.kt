@@ -199,10 +199,10 @@ class AstronomersPassive : Passive(), OnHitHandler {
     override val description = listOf(
         "<gray>패시브",
         "",
-        "<gray>${Keyword.Mana.string} 회복 속도가 감소한다.",
-        "<gray>스킬 적중 시 ${Keyword.Mana.string}를 전부 소모하고 적중한 적 주변에 별을 떨어트린다.",
-        "<gray>떨어트리는 별의 수는 소모한 ${Keyword.Mana.string} 양에 비례하여 증가한다. (20당 1개, 최대 5개)",
-        "<gray>별은 적중한 적에게 1의 ${Keyword.TrueDamage.string}를 입힌다.",
+        "<gray>{keyword:Mana} 회복 속도가 감소한다.",
+        "<gray>스킬 적중 시 {keyword:Mana}를 전부 소모하고 적중한 적 주변에 별을 떨어트린다.",
+        "<gray>떨어트리는 별의 수는 소모한 {keyword:Mana} 양에 비례하여 증가한다. (20당 1개, 최대 5개)",
+        "<gray>별은 적중한 적에게 1의 {keyword:TrueDamage}를 입힌다.",
         "",
         dictionary[Keyword.TrueDamage] ?: ""
     )

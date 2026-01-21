@@ -3,7 +3,6 @@ package org.beobma.classWarPlugin.gameClass.list
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Weapon
-import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.skill.Passive
@@ -51,7 +50,7 @@ data class Marker(
 class LightningWizardsRedSkill : Skill() {
     override val name = "<light_purple><bold>적란운"
     override val description = listOf(
-        "${Keyword.Mana.string}를 20 소모하고 사용할 수 있다.",
+        "{keyword:Mana}를 20 소모하고 사용할 수 있다.",
         "",
         "<gray>자신의 위치 또는 바라보는 블럭 위에 표식을 남긴다. 최대 3개.",
         "<dark_gray>웅크리면 4칸 내 지정 설치 가능."
@@ -93,7 +92,7 @@ class LightningWizardsOrangeSkill : Skill() {
     override val name = "<light_purple><bold>낙뢰 충전"
     override val description = listOf(
         "<gray>표식이 1개 이상 존재할 때만 사용할 수 있다.",
-        "${Keyword.Mana.string}를 40 소모하고 가장 가까운 표식을 활성화한다."
+        "{keyword:Mana}를 40 소모하고 가장 가까운 표식을 활성화한다."
     )
     override val cooldown = 10
 
@@ -122,7 +121,7 @@ class LightningWizardsOrangeSkill : Skill() {
 class LightningWizardsYellowSkill : Skill() {
     override val name = "<yellow><bold>과부하"
     override val description = listOf(
-        "${Keyword.Mana.string}를 100 소모하고 사용할 수 있다.",
+        "{keyword:Mana}를 100 소모하고 사용할 수 있다.",
         "<gray>10초간 모든 표식을 과부하 상태로 만든다. 이후 모든 표식 제거."
     )
     override val cooldown = 20

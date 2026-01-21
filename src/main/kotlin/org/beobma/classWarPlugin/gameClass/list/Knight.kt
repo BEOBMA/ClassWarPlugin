@@ -51,7 +51,7 @@ class KnightsSword : Weapon() {
 class KnightsRedSkill : Skill() {
     override val name = "<red><bold>내려베기"
     override val description = listOf(
-        "<gray>2칸 내의 바라보는 적에게 6의 피해를 입히고 3초간 ${Keyword.Bleeding.string}을 3 부여한다.",
+        "<gray>2칸 내의 바라보는 적에게 6의 피해를 입히고 3초간 {keyword:Bleeding}을 3 부여한다.",
         "",
         dictionary[Keyword.Bleeding]!!,
         dictionary[Keyword.AbnormalStatusDamage]!!
@@ -75,7 +75,7 @@ class KnightsOrangeSkill : Skill() {
     override val name = "<red><bold>가로베기"
     override val description = listOf(
         "<gray>바라보는 방향으로 검을 휘두른다.",
-        "<gray>적중한 모든 적에게 5의 피해를 입히고 3초간 ${Keyword.Bleeding.string}을 5 부여한다.",
+        "<gray>적중한 모든 적에게 5의 피해를 입히고 3초간 {keyword:Bleeding}을 5 부여한다.",
         "",
         dictionary[Keyword.Bleeding]!!,
         dictionary[Keyword.AbnormalStatusDamage]!!
@@ -141,8 +141,8 @@ class KnightsYellowSkill : Skill(), WhenHitHandler {
 class KnightsPassive : Passive(), OnHitHandler {
     override val name = "<dark_red><bold>피로 벼려낸 검"
     override val description = listOf(
-        "<gray>기본 공격 적중 시 3초간 적에게 ${Keyword.Bleeding.string}을 1 부여한다.",
-        "<gray>그리고 즉시 ${Keyword.Bleeding.string}을 발동한다.",
+        "<gray>기본 공격 적중 시 3초간 적에게 {keyword:Bleeding}을 1 부여한다.",
+        "<gray>그리고 즉시 {keyword:Bleeding}을 발동한다.",
         "",
         dictionary[Keyword.Bleeding]!!,
         dictionary[Keyword.AbnormalStatusDamage]!!

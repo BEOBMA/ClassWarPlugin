@@ -57,7 +57,7 @@ class DarkWizardsStaff : Weapon() {
 class DarkWizardsRedSkill : Skill() {
     override val name = "<bold>검은 연기"
     override val description = listOf(
-        "${Keyword.Mana.string}를 40 소모하고 사용할 수 있다.",
+        "{keyword:Mana}를 40 소모하고 사용할 수 있다.",
         "",
         "<gray>자신 위치에 4초간 유지되는 연기를 형성한다.",
         "<gray>연기 속에 들어온 아군은 연기에 가려 숨겨지지만, 적은 숨겨지지 않는다.",
@@ -116,10 +116,10 @@ class DarkWizardsSmoke : Flooring() {
 class DarkWizardsOrangeSkill : Skill() {
     override val name = "<bold>잠식"
     override val description = listOf(
-        "${Keyword.Mana.string}를 60 소모하고 사용할 수 있다.",
+        "{keyword:Mana}를 60 소모하고 사용할 수 있다.",
         "",
         "<gray>바라보는 방향으로 잠식된 연기를 발사한다.",
-        "<gray>적중한 모든 적에게 5의 피해를 입히고 3초간 ${Keyword.Abyss.string} 상태를 적용한다.",
+        "<gray>적중한 모든 적에게 5의 피해를 입히고 3초간 {keyword:Abyss} 상태를 적용한다.",
         "",
         dictionary[Keyword.Abyss] ?: ""
     )
@@ -164,10 +164,10 @@ class DarkWizardsYellowSkill : Skill() {
 
     override val name = "<bold>심연의 공포"
     override val description = listOf(
-        "${Keyword.Mana.string}를 100 소모하고 사용할 수 있다.",
+        "{keyword:Mana}를 100 소모하고 사용할 수 있다.",
         "",
-        "<gray>5초간 전장을 연기로 가득 채워 모든 대상을 ${Keyword.Abyss.string} 상태로 만든다.",
-        "<gray>이 효과 발동 전을 기준으로 한 번이라도 ${Keyword.Abyss.string} 상태였던 적은 추가로 지속 시간동안 ${Keyword.Silence.string} 상태가 된다.",
+        "<gray>5초간 전장을 연기로 가득 채워 모든 대상을 {keyword:Abyss} 상태로 만든다.",
+        "<gray>이 효과 발동 전을 기준으로 한 번이라도 {keyword:Abyss} 상태였던 적은 추가로 지속 시간동안 {keyword:Silence} 상태가 된다.",
         "",
         dictionary[Keyword.Abyss] ?: "",
         dictionary[Keyword.Silence] ?: ""

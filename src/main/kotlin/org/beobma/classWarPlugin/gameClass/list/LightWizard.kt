@@ -37,7 +37,7 @@ class LightWizardsStaff : Weapon() {
 class LightWizardsRedSkill : Skill() {
     override val name = "<white><bold>프리즘"
     override val description = listOf(
-        "${Keyword.Mana.string}를 10 소모하고 사용할 수 있다.",
+        "{keyword:Mana}를 10 소모하고 사용할 수 있다.",
         "",
         "<gray>바라보는 블럭에 십자 모양으로 빛을 반사하는 특수 프리즘을 설치한다.",
         "<gray>설치된 프리즘은 높이 차에 관계 없이 작동한다.",
@@ -54,7 +54,7 @@ class LightWizardsRedSkill : Skill() {
 class LightWizardsOrangeSkill : Skill() {
     override val name = "<white><bold>빛의 광선"
     override val description = listOf(
-        "${Keyword.Mana.string}를 40 소모하고 사용할 수 있다.",
+        "{keyword:Mana}를 40 소모하고 사용할 수 있다.",
         "",
         "<gray>바라보는 방향으로 빛의 광선을 발사한다.",
         "<gray>광선이 프리즘에 적중하면 십자 모양으로 빛이 반사된다.",
@@ -78,7 +78,7 @@ class LightWizardsPassive : Passive() {
     override val description = listOf(
         "<gray>패시브",
         "",
-        "<gray>프리즘으로 반사된 스킬 적중 시 ${Keyword.Brightness.string}를 1 부여한다.",
+        "<gray>프리즘으로 반사된 스킬 적중 시 {keyword:Brightness}를 1 부여한다.",
         "",
         dictionary[Keyword.Brightness]!!
     )

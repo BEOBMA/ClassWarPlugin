@@ -127,8 +127,8 @@ object SkillManager {
         name: String,
         lore: List<String>
     ): ItemStack {
-        val nameComponent = MiniMessage.miniMessage().deserialize(name)
-        val loreComponents = lore.map { MiniMessage.miniMessage().deserialize(it) }
+        val nameComponent = MiniMessage.miniMessage().deserialize(UtilManager.applyKeywords(name))
+        val loreComponents = lore.map { MiniMessage.miniMessage().deserialize(UtilManager.applyKeywords(it)) }
         return ItemStack(material, 1).apply {
             itemMeta = itemMeta.apply {
                 displayName(nameComponent)

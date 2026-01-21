@@ -38,7 +38,7 @@ class GamblersToken : Weapon() {
 class GamblersRedSkill : Skill() {
     override val name = "<gray><bold>손패 섞기"
     override val description = listOf(
-        "<gray>패에서 ${Keyword.SpecialVictoryCard.string}를 제외한 무작위 카드 1장을 버린다.",
+        "<gray>패에서 {keyword:SpecialVictoryCard}를 제외한 무작위 카드 1장을 버린다.",
         "<gray>이후 덱에서 카드를 1장 뽑는다.",
         "",
         dictionary[Keyword.SpecialVictoryCard] ?: ""
@@ -54,7 +54,7 @@ class GamblersRedSkill : Skill() {
 class GamblersOrangeSkill : Skill() {
     override val name = "<gray><bold>버림패"
     override val description = listOf(
-        "<gray>패에서 ${Keyword.SpecialVictoryCard.string}를 제외한 무작위 카드 2장을 버린다.",
+        "<gray>패에서 {keyword:SpecialVictoryCard}를 제외한 무작위 카드 2장을 버린다.",
         "<gray>이후 덱에서 카드를 3장 뽑는다.",
         "",
         dictionary[Keyword.SpecialVictoryCard] ?: ""

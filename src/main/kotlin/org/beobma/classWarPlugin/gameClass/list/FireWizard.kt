@@ -6,7 +6,6 @@ import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.Weapon
 import org.beobma.classWarPlugin.gameClass.WhenHitHandler
-import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
@@ -58,9 +57,9 @@ class FireWizardsStaff : Weapon() {
 class FireWizardsRedSkill : Skill() {
     override val name = "<red><bold>발화"
     override val description = listOf(
-        "${Keyword.Mana.string}를 40 소모하고 사용할 수 있다.",
+        "{keyword:Mana}를 40 소모하고 사용할 수 있다.",
         "",
-        "<gray>사용 시 주위 모든 적에게 8의 피해를 입히고 4초간 ${Keyword.Burn.string} 상태로 만든다."
+        "<gray>사용 시 주위 모든 적에게 8의 피해를 입히고 4초간 {keyword:Burn} 상태로 만든다."
     )
     override val cooldown = 10
 
@@ -84,10 +83,10 @@ class FireWizardsRedSkill : Skill() {
 class FireWizardsOrangeSkill : Skill() {
     override val name = "<red><bold>불기둥"
     override val description = listOf(
-        "${Keyword.Mana.string}를 100 소모하고 사용할 수 있다.",
+        "{keyword:Mana}를 100 소모하고 사용할 수 있다.",
         "",
         "<gray>사용 시 자신 위치에 마법진을 만든다.",
-        "<gray>3초 후 마법진에 불기둥이 떨어지며, 적중한 모든 대상에게 25의 피해를 입히고 5초간 ${Keyword.Burn.string} 상태로 만든다.",
+        "<gray>3초 후 마법진에 불기둥이 떨어지며, 적중한 모든 대상에게 25의 피해를 입히고 5초간 {keyword:Burn} 상태로 만든다.",
         "<dark_gray>웅크린 상태에서 사용하면 4칸 내의 바라보는 블럭에 마법진을 만들 수도 있다."
     )
     override val cooldown = Int.MAX_VALUE
@@ -129,7 +128,7 @@ class FireWizardsPassive : Passive(), WhenHitHandler {
     override val description = listOf(
         "<gray>패시브",
         "",
-        "<gray>기본 공격 피격 시 공격자를 2초간 ${Keyword.Burn.string} 상태로 만든다."
+        "<gray>기본 공격 피격 시 공격자를 2초간 {keyword:Burn} 상태로 만든다."
     )
 
     override fun whenHit(

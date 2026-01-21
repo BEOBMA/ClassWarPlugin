@@ -1,6 +1,7 @@
 package org.beobma.classWarPlugin.manager
 
 import net.kyori.adventure.text.minimessage.MiniMessage
+import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.keyword.Dictionary
 import org.bukkit.Location
 import org.bukkit.attribute.Attribute
@@ -9,6 +10,14 @@ import org.bukkit.entity.Player
 object UtilManager {
     val dictionary = Dictionary().dictionary
     val miniMessage = MiniMessage.miniMessage()
+    private val keywordTokenRegex = "\\{keyword:([A-Za-z]+)}".toRegex()
+    private val keywordTokens = enumValues<Keyword>().associateBy { it.name }
+
+    fun applyKeywords(text: String): String {
+        return keywordTokenRegex.replace(text) { match ->
+            keywordTokens[match.groupValues[1]]?.string ?: match.value
+        }
+    }
 
     fun Player.getPlayerMaxHealth(): Double {
         return this.getAttribute(Attribute.MAX_HEALTH)!!.baseValue

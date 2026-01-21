@@ -2,7 +2,6 @@ package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Weapon
-import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetPlayerData
 import org.beobma.classWarPlugin.player.PlayerData
 import org.beobma.classWarPlugin.skill.Passive
@@ -39,7 +38,7 @@ class WaterWizardsStaff : Weapon() {
 class WaterWizardsRedSkill() : Skill() {
     override val name = "<aqua><bold>물의 결계"
     override val description = listOf(
-        "${Keyword.Mana.string}를 40 소모하고 사용할 수 있다.",
+        "{keyword:Mana}를 40 소모하고 사용할 수 있다.",
         "",
         "<gray>사용 시 바라보는 아군에게 <aqua><bold>8의 피해를 막는 보호막</bold><gray>을 부여한다.",
         "<dark_gray>아군을 바라보고 있지 않았다면 자신에게 시전한다."
@@ -54,7 +53,7 @@ class WaterWizardsRedSkill() : Skill() {
 class WaterWizardsOrangeSkill() : Skill() {
     override val name = "<aqua><bold>파도"
     override val description = listOf(
-        "${Keyword.Mana.string}를 100 소모하고 사용할 수 있다.",
+        "{keyword:Mana}를 100 소모하고 사용할 수 있다.",
         "",
         "<gray>사용 시 바라보는 방향으로 파도를 일으킨다.",
         "<gray>파도는 블럭, 물에 닿을 때까지 나아가며 수평으로만 나아간다.",

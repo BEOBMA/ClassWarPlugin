@@ -27,8 +27,8 @@ object PlayerManager {
         player.inventory.setItem(0, gameClass.weapon.toItemStack())
         gameClass.skills.forEachIndexed { index, skill ->
             if (index + 1 > (8 - gameClass.passives.size)) return
-            val name = skill.name
-            val lore = skill.description.map { miniMessage.deserialize(it) }
+            val name = UtilManager.applyKeywords(skill.name)
+            val lore = skill.description.map { miniMessage.deserialize(UtilManager.applyKeywords(it)) }
             val type = when (index) {
                 0 -> Material.RED_DYE
                 1 -> Material.ORANGE_DYE
@@ -48,8 +48,8 @@ object PlayerManager {
 
         gameClass.passives.forEachIndexed { index, skill ->
             if (8 - index > (gameClass.skills.size + 1)) return
-            val name = skill.name
-            val lore = skill.description.map { miniMessage.deserialize(it) }
+            val name = UtilManager.applyKeywords(skill.name)
+            val lore = skill.description.map { miniMessage.deserialize(UtilManager.applyKeywords(it)) }
             val type = Material.WHITE_DYE
             val item = ItemStack(type, 1).apply {
                 itemMeta = itemMeta.apply {

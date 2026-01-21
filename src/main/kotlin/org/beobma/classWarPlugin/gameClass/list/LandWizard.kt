@@ -61,9 +61,9 @@ class LandWizardsStaff : Weapon() {
 class LandWizardsRedSkill : Skill() {
     override val name = "<gold><bold>지진"
     override val description = listOf(
-        "${Keyword.Mana.string}를 20 소모하고 사용할 수 있다.",
+        "{keyword:Mana}를 20 소모하고 사용할 수 있다.",
         "",
-        "<gray>사용 시 주위 모든 적에게 2의 피해를 입히고 10초간 ${Keyword.Vibration.string}을 2 부여한다.",
+        "<gray>사용 시 주위 모든 적에게 2의 피해를 입히고 10초간 {keyword:Vibration}을 2 부여한다.",
         "",
         dictionary[Keyword.Vibration]!!,
         dictionary[Keyword.AbnormalStatusDamage]!!
@@ -91,9 +91,9 @@ class LandWizardsRedSkill : Skill() {
 class LandWizardsOrangeSkill : Skill() {
     override val name = "<gold><bold>탄성 반발"
     override val description = listOf(
-        "${Keyword.Mana.string}를 100 소모하고 사용할 수 있다.",
+        "{keyword:Mana}를 100 소모하고 사용할 수 있다.",
         "",
-        "<gray>사용 시 5초간 <aqua><bold>8의 피해를 막는 보호막</bold><gray>을 얻고 주위 모든 적에게 ${Keyword.VibrationExplosion.string}을 적용한다.",
+        "<gray>사용 시 5초간 <aqua><bold>8의 피해를 막는 보호막</bold><gray>을 얻고 주위 모든 적에게 {keyword:VibrationExplosion}을 적용한다.",
         "",
         dictionary[Keyword.VibrationExplosion]!!,
         dictionary[Keyword.AbnormalStatusDamage]!!

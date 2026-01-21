@@ -71,9 +71,9 @@ class IceWizardsRedSkill : Skill() {
     override val name = "<dark_blue><bold>눈폭풍"
     override val description = listOf(
         "<gray>사용 시 활성화되고 다시 사용 시 비활성화되는 스킬.",
-        "<gray>초당 ${Keyword.Mana.string}를 10 소모하고 활성화할 수 있다.",
+        "<gray>초당 {keyword:Mana}를 10 소모하고 활성화할 수 있다.",
         "",
-        "<gray>활성화 시 자신 주위 모든 적에게 초당 3의 피해를 입히고 ${Keyword.Frostbite.string}을 2 부여한다.",
+        "<gray>활성화 시 자신 주위 모든 적에게 초당 3의 피해를 입히고 {keyword:Frostbite}을 2 부여한다.",
         "",
         dictionary[Keyword.Frostbite] ?: "",
         dictionary[Keyword.Freezing] ?: "",
@@ -117,11 +117,11 @@ class IceWizardsRedSkill : Skill() {
 class IceWizardsOrangeSkill : Skill() {
     override val name = "<dark_blue><bold>고드름"
     override val description = listOf(
-        "${Keyword.Mana.string}를 40 소모하고 사용할 수 있다.",
+        "{keyword:Mana}를 40 소모하고 사용할 수 있다.",
         "",
         "<gray>사용 시 바라보는 방향으로 고드름을 발사한다.",
-        "<gray>적중한 적에게 8의 피해를 입히고 ${Keyword.Frostbite.string}을 4 부여한다.",
-        "<gray>스킬 적중 시 소모한 ${Keyword.Mana.string}의 50%를 돌려받는다.",
+        "<gray>적중한 적에게 8의 피해를 입히고 {keyword:Frostbite}을 4 부여한다.",
+        "<gray>스킬 적중 시 소모한 {keyword:Mana}의 50%를 돌려받는다.",
         "",
         dictionary[Keyword.Frostbite] ?: "",
         dictionary[Keyword.Freezing] ?: "",
@@ -163,11 +163,11 @@ class IceWizardsIcicleProjectile : Projectile() {
 class IceWizardsYellowSkill : Skill() {
     override val name = "<dark_blue><bold>얼음의 창"
     override val description = listOf(
-        "${Keyword.Mana.string}를 100 소모하고 사용할 수 있다.",
+        "{keyword:Mana}를 100 소모하고 사용할 수 있다.",
         "",
         "<gray>사용 시 8칸 내의 바라보는 블럭 주위에 얼음으로 만들어진 창을 생성해 떨어트린다.",
-        "<gray>적중한 적에게 15의 피해를 입히고 ${Keyword.Frostbite.string}을 7 부여한다.",
-        "<gray>스킬 적중 시 소모한 ${Keyword.Mana.string}를 돌려받는다.",
+        "<gray>적중한 적에게 15의 피해를 입히고 {keyword:Frostbite}을 7 부여한다.",
+        "<gray>스킬 적중 시 소모한 {keyword:Mana}를 돌려받는다.",
         "<dark_gray>웅크린 상태에서 사용하면 자신의 위치에 창을 떨어트릴 수도 있다.",
         "",
         dictionary[Keyword.Frostbite] ?: "",
@@ -223,7 +223,7 @@ class IceWizardsPassive : Passive(), OnHitHandler, WhenHitHandler {
         "<gray>패시브",
         "",
         "<gray>스킬 적중 시 5초간 적중한 적 주위에 접근 시 <gold><bold>이동 속도가 25% 감소</bold><gray>하는 영역을 생성한다.",
-        "<gray>영역의 영향을 받은 적에게 ${Keyword.Frostbite.string}을 2 부여한다.",
+        "<gray>영역의 영향을 받은 적에게 {keyword:Frostbite}을 2 부여한다.",
         "<gray>이 효과는 영역 당 같은 대상에게 1번만 발동할 수 있다.",
         "",
         dictionary[Keyword.Frostbite] ?: "",

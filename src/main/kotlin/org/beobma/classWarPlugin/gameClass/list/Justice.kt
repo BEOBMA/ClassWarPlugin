@@ -81,7 +81,7 @@ class JusticeOrangeSkill : Skill() {
 
     override val name = "<bold>보호조치"
     override val description = listOf(
-        "<gray>5초간 ${Keyword.Shield.string}을 얻는다.",
+        "<gray>5초간 {keyword:Shield}을 얻는다.",
         "",
         "<green><bold>수적 우세</bold><gray> 상황과 <dark_gray><bold>수적 균형</bold><gray> 상황에서는 6의 피해를,",
         "<red><bold>수적 열세</bold><gray> 상황에서는 8의 피해를 막는다."
@@ -105,7 +105,7 @@ class JusticeYellowSkill : Skill() {
     override val description = listOf(
         "<red><bold>수적 열세</bold><gray> 상황에서만 사용할 수 있다.",
         "",
-        "<gray>아군과 적군의 수가 동일해질 때까지 무작위 적을 전장에서 5초간 ${Keyword.Exile.string}한다.",
+        "<gray>아군과 적군의 수가 동일해질 때까지 무작위 적을 전장에서 5초간 {keyword:Exile}한다.",
         "",
         dictionary[Keyword.Exile]!!
     )
