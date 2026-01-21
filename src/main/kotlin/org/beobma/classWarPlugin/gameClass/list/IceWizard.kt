@@ -273,7 +273,7 @@ class IceWizardsFrostZone(override var location: Location) : Flooring() {
         val frostbite = hitPlayerData.getOrCreateStatus { Frostbite() }
         moveSpeedDecrease.increasePower(25)
         frostbite.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh, powerDelta = 2)
-        moveSpeedDecrease.setContinueWhileIf { hitPlayerDatas.contains(playerData) }
+        moveSpeedDecrease.setContinueWhileIf { hitPlayerDatas.contains(hitPlayerData) }
         hitPlayerDatas.add(hitPlayerData)
     }
 
