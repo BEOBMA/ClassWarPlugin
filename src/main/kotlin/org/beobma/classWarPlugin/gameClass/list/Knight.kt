@@ -134,7 +134,7 @@ class KnightsYellowSkill : Skill(), WhenHitHandler {
                 isParry = false
             }
         }.runTaskLater(ClassWarPlugin.instance, 2L)
-        playerData.bukkitTasks.add(task)
+        playerData.trackTask(task)
     }
 }
 

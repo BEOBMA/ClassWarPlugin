@@ -63,7 +63,7 @@ abstract class Projectile {
         val currentLocation = location.clone()
         var ticks = 0
 
-        object : BukkitRunnable() {
+        val task = object : BukkitRunnable() {
             override fun run() {
                 if (time == null) {
                     if (continueWhile != null && !continueWhile!!.invoke()) {
@@ -108,5 +108,6 @@ abstract class Projectile {
                 currentLocation.add(direction)
             }
         }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L)
+        durationTask = playerData.trackTask(task)
     }
 }

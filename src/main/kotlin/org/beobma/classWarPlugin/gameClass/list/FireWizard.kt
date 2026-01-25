@@ -108,7 +108,7 @@ class FireWizardsOrangeSkill : Skill() {
             player.location.clone()
         }
 
-        playerData.bukkitTasks.add(
+        playerData.trackTask(
             object : BukkitRunnable() {
                 override fun run() {
                     val targets = playerData.radius(location, TargetType.All, 5.0, true)

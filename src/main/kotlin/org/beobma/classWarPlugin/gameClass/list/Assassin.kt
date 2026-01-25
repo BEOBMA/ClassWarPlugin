@@ -123,7 +123,7 @@ class AssassinsDaggerProjectile : Projectile() {
             }
         }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L)
 
-        playerData.bukkitTasks.add(task)
+        playerData.trackTask(task)
     }
 }
 

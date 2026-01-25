@@ -14,4 +14,10 @@ data class PlayerData(
     val bukkitTasks: MutableList<BukkitTask> = mutableListOf(),
     val statusAbnormalitys: MutableList<StatusAbnormality> = mutableListOf(),
     val playerStatus: PlayerStatus = PlayerStatus(player)
-)
+) {
+    fun trackTask(task: BukkitTask): BukkitTask {
+        bukkitTasks.add(task)
+        game.tasks.add(task)
+        return task
+    }
+}

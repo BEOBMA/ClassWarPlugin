@@ -93,7 +93,7 @@ class IceWizardsRedSkill : Skill() {
             return true
         }
 
-        bukkitTask = object : BukkitRunnable() {
+        bukkitTask = playerData.trackTask(object : BukkitRunnable() {
             override fun run() {
                 if (mana.power < 10) {
                     cancel()
@@ -110,7 +110,7 @@ class IceWizardsRedSkill : Skill() {
                 }
                 mana.decreasePower(10)
             }
-        }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L)
+        }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
         return true
     }
 }
