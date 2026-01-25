@@ -4,6 +4,7 @@ import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.WhenHitHandler
 import org.beobma.classWarPlugin.info.Info.isGaming
+import org.beobma.classWarPlugin.info.Info.isTraining
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getDamageTakenModifier
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -19,7 +20,11 @@ class OnEntitySkillDamageByEntityEvent : Listener {
 
         // 1보다 작은 피해는 피해를 받지 않은 것으로 간주
         if (event.damage < 1) return
-        if (!isGaming()) return
+        if (!isGaming() && !isTraining(damagerData.player) && !isTraining(entityData.player)) return
+        if ((isTraining(damagerData.player) || isTraining(entityData.player)) && damagerData.player != entityData.player) {
+            event.isCancelled = true
+            return
+        }
 
         // 공격, 피격 가능 여부
         if (!damagerStatus.canSkillUse || !entityStatus.isSkillTargeting) {

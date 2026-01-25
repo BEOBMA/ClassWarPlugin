@@ -1,7 +1,7 @@
 package org.beobma.classWarPlugin.listener
 
 import org.beobma.classWarPlugin.ClassWarPlugin
-import org.beobma.classWarPlugin.info.Info.game
+import org.beobma.classWarPlugin.info.Info.findPlayerData
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassPickInventory
 import org.beobma.classWarPlugin.manager.PlayerTagManager
@@ -54,7 +54,7 @@ class OnInventoryCloseEvent : Listener {
         object : BukkitRunnable() {
             override fun run() {
                 if (PlayerTagManager.hasTag(player, tag)) {
-                    val playerData = game?.playerDatas?.find { it.player == player } ?: return
+                    val playerData = findPlayerData(player) ?: return
 
                     playerData.openClassPickInventory(1)
                 }

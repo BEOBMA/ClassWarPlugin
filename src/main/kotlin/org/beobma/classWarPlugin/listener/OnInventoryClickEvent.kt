@@ -2,7 +2,7 @@ package org.beobma.classWarPlugin.listener
 
 import net.kyori.adventure.text.minimessage.MiniMessage
 import org.beobma.classWarPlugin.game.Game
-import org.beobma.classWarPlugin.info.Info.game
+import org.beobma.classWarPlugin.info.Info.findGame
 import org.beobma.classWarPlugin.manager.GameManager.classPick
 import org.beobma.classWarPlugin.manager.GameManager.gameClassList
 import org.beobma.classWarPlugin.manager.GameManager.ready
@@ -45,8 +45,8 @@ class OnInventoryClickEvent : Listener {
         if (player !is Player) return
 
         if (PlayerTagManager.hasTag(player, "openClassPickInventory")) {
-            val game = game ?: return
-            classPickHandler(player, game, clickItem, inventory)
+            val activeGame = findGame(player) ?: return
+            classPickHandler(player, activeGame, clickItem, inventory)
             event.isCancelled = true
             return
         }

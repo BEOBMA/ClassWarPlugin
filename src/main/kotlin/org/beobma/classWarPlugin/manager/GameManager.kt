@@ -44,6 +44,7 @@ import org.beobma.classWarPlugin.manager.UtilManager.getPlayerMaxHealth
 import org.beobma.classWarPlugin.manager.UtilManager.isInArea
 import org.beobma.classWarPlugin.map.Map
 import org.beobma.classWarPlugin.map.list.Forest
+import org.beobma.classWarPlugin.map.list.TrainingGround
 import org.beobma.classWarPlugin.player.PlayerData
 import org.beobma.classWarPlugin.player.TeamType.*
 import org.bukkit.Bukkit
@@ -52,6 +53,7 @@ import org.bukkit.Location
 import org.bukkit.Sound
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.info.Info
 
 object GameManager{
     private val miniMessage = MiniMessage.miniMessage()
@@ -279,7 +281,32 @@ object GameManager{
     }
 
     fun Player.startTest() {
-        TODO("Not yet implemented")
+        val trainingGame = Game(mutableListOf())
+        val playerData = PlayerData(this, trainingGame)
+        trainingGame.playerDatas.add(playerData)
+        trainingGame.classList.addAll(gameClassList)
+        trainingGame.classPickOrder = mutableListOf(playerData)
+        trainingGame.map = TrainingGround()
+
+        playerData.team = Red
+        val playerStatus = playerData.playerStatus
+        playerStatus.canAttack = true
+        playerStatus.isAttackable = true
+        playerStatus.canSkillUse = true
+        playerStatus.isSkillTargeting = true
+        playerStatus.canMove = true
+
+        inventory.clear()
+        fireTicks = 0
+        gameMode = GameMode.ADVENTURE
+        health = getPlayerMaxHealth()
+        teleport(trainingGame.map!!.redTeamStartLocation)
+
+        PlayerTagManager.addTag(this, "isTraining")
+        PlayerTagManager.addTag(this, "isTest")
+        Info.registerTrainingGame(this, trainingGame)
+
+        playerData.classPick()
     }
 
     fun Game.ready() {
