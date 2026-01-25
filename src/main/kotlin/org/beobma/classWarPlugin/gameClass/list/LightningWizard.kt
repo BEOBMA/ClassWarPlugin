@@ -149,7 +149,7 @@ class LightningWizardsYellowSkill : Skill() {
                 markerList.clear()
             }
         }.runTaskLater(ClassWarPlugin.instance, 200L)
-        playerData.bukkitTasks.add(task)
+        playerData.trackTask(task)
         return true
     }
 }

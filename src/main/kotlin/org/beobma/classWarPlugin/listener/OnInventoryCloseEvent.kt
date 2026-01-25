@@ -51,7 +51,7 @@ class OnInventoryCloseEvent : Listener {
     }
 
     private fun reopenClassPickInventoryLater(player: Player, tag: String) {
-        object : BukkitRunnable() {
+        val task = object : BukkitRunnable() {
             override fun run() {
                 if (PlayerTagManager.hasTag(player, tag)) {
                     val playerData = game?.playerDatas?.find { it.player == player } ?: return
@@ -60,13 +60,15 @@ class OnInventoryCloseEvent : Listener {
                 }
             }
         }.runTaskLater(ClassWarPlugin.instance, 10L)
+        game?.playerDatas?.find { it.player == player }?.trackTask(task)
     }
 
     private fun reopenClassListInventoryLater(player: Player, page: Int) {
-        object : BukkitRunnable() {
+        val task = object : BukkitRunnable() {
             override fun run() {
                 player.openClassListInventory(page)
             }
         }.runTaskLater(ClassWarPlugin.instance, 1L)
+        game?.playerDatas?.find { it.player == player }?.trackTask(task)
     }
 }

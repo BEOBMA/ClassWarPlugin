@@ -133,11 +133,12 @@ abstract class StatusAbnormality {
 
     private fun startDurationTask() {
         if (durationTask != null) return
-        durationTask = object : BukkitRunnable() {
+        val task = object : BukkitRunnable() {
             override fun run() {
                 tickStatus()
             }
         }.runTaskTimer(ClassWarPlugin.instance, 20L, 20L)
+        durationTask = playerData.trackTask(task)
     }
 
     private fun stopDurationTask() {

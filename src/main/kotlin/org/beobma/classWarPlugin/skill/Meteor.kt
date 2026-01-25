@@ -49,7 +49,7 @@ abstract class Meteor(
         val time = time
         var ticks = 0
 
-        object : BukkitRunnable() {
+        val task = object : BukkitRunnable() {
             override fun run() {
                 if (time == null) {
                     if (continueWhile != null && !continueWhile!!.invoke()) {
@@ -90,5 +90,6 @@ abstract class Meteor(
                 currentLocation.y -= speed
             }
         }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L)
+        durationTask = playerData.trackTask(task)
     }
 }

@@ -93,6 +93,6 @@ abstract class Flooring {
             }
         }.runTaskTimer(ClassWarPlugin.Companion.instance, 0L, 1L)
 
-        durationTask = task
+        durationTask = playerData.trackTask(task)
     }
 }
