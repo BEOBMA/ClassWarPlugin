@@ -48,6 +48,12 @@ class OnInventoryCloseEvent : Listener {
             PlayerTagManager.removeIf(player) { it.startsWith("classListPage:") }
             return
         }
+
+        if (PlayerTagManager.hasTag(player, "openTrainingClassListInventory")) {
+            PlayerTagManager.removeTag(player, "openTrainingClassListInventory")
+            PlayerTagManager.removeIf(player) { it.startsWith("classListPage:") }
+            return
+        }
     }
 
     private fun reopenClassPickInventoryLater(player: Player, tag: String) {

@@ -5,10 +5,10 @@ import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.manager.GameManager.start
-import org.beobma.classWarPlugin.manager.GameManager.startTraining
 import org.beobma.classWarPlugin.manager.GameManager.stop
 import org.beobma.classWarPlugin.manager.GameManager.stopTraining
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
+import org.beobma.classWarPlugin.manager.InventoryManager.openTrainingClassListInventory
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.player.PlayerData
 import org.bukkit.Bukkit
@@ -85,7 +85,7 @@ class Command : Listener, CommandExecutor, TabCompleter {
                         return false
                     }
 
-                    sender.startTraining()
+                    sender.openTrainingClassListInventory(0)
                 }
 
                 "exit" -> {

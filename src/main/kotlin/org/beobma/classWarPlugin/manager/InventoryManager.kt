@@ -42,6 +42,12 @@ object InventoryManager {
         openInventory(inventory)
     }
 
+    fun Player.openTrainingClassListInventory(page: Int) {
+        val inventory = buildClassListInventory(page, gameClassList) ?: return
+        PlayerTagManager.addTag(this, "openTrainingClassListInventory")
+        openInventory(inventory)
+    }
+
     fun Player.openClassStatusInventory(gameClass: GameClass) {
         val inventory = Bukkit.createInventory(null, 27, miniMessage.deserialize(UtilManager.applyKeywords(gameClass.name)))
         inventory.setItem(0, gameClass.weapon.toItemStack())

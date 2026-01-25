@@ -6,9 +6,11 @@ import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.manager.GameManager.classPick
 import org.beobma.classWarPlugin.manager.GameManager.gameClassList
 import org.beobma.classWarPlugin.manager.GameManager.ready
+import org.beobma.classWarPlugin.manager.GameManager.startTraining
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassPickInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassStatusInventory
+import org.beobma.classWarPlugin.manager.InventoryManager.openTrainingClassListInventory
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.bukkit.Material
 import org.bukkit.Sound
@@ -53,6 +55,12 @@ class OnInventoryClickEvent : Listener {
 
         if (PlayerTagManager.hasTag(player, "openClassListInventory")) {
             classListHandler(player, clickItem, inventory)
+            event.isCancelled = true
+            return
+        }
+
+        if (PlayerTagManager.hasTag(player, "openTrainingClassListInventory")) {
+            trainingClassListHandler(player, clickItem, inventory)
             event.isCancelled = true
             return
         }
@@ -138,6 +146,35 @@ class OnInventoryClickEvent : Listener {
                 PlayerTagManager.addTag(player, "openingClassStatusInventory")
                 player.openClassStatusInventory(gameClass)
                 PlayerTagManager.addTag(player, "openClassStatusInventory")
+                return
+            }
+        }
+    }
+
+    private fun trainingClassListHandler(player: Player, clickItem: ItemStack, inventory: InventoryView) {
+        val itemMeta = clickItem.itemMeta ?: return
+        when (itemMeta) {
+            previousPage -> {
+                player.closeInventory()
+                val currentPage = getCurrentPageFromTitle(inventory.title().toString())
+                player.openTrainingClassListInventory(currentPage - 1)
+                return
+            }
+
+            nextPage -> {
+                player.closeInventory()
+                val currentPage = getCurrentPageFromTitle(inventory.title().toString())
+                player.openTrainingClassListInventory(currentPage + 1)
+                return
+            }
+
+            nullItem -> return
+
+            else -> {
+                val gameClass = gameClassList.find { it.classItemMaterial == clickItem.type } ?: return
+                player.closeInventory()
+                PlayerTagManager.removeTag(player, "openTrainingClassListInventory")
+                player.startTraining(gameClass)
                 return
             }
         }

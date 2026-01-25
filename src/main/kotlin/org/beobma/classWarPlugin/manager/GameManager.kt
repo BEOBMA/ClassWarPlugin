@@ -286,13 +286,14 @@ object GameManager{
 
     private val trainingInstance: MutableList<Game> = mutableListOf()
     private val trainingGround = TrainingGround()
-    fun Player.startTraining() {
+    fun Player.startTraining(gameClass: GameClass) {
         val game = Game(mutableListOf(), trainingGround)
         val playerData = PlayerData(this, game)
         val playerStatus = playerData.playerStatus
-        val gameClass = playerData.gameClass
-        val passives = gameClass?.passives
+        val passives = gameClass.passives
+        playerData.gameClass = gameClass
         trainingInstance.add(game)
+        PlayerTagManager.addTag(this, "isTraining")
         teleport(game.map!!.spectatorTeamStartLocation)
         playerData.classSet()
         playerData.player.inventory.heldItemSlot = 0
@@ -305,7 +306,7 @@ object GameManager{
         playerStatus.canAttack = true
         playerStatus.isAttackable = true
 
-        passives?.forEach { passive ->
+        passives.forEach { passive ->
             if (passive is GameStatusHandler) {
                 passive.onGameTimePasses()
             }
