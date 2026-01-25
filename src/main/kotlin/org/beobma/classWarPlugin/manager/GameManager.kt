@@ -309,7 +309,63 @@ object GameManager{
         playerData.classPick()
     }
 
+    fun Player.startTraining() {
+        val trainingGame = Game(mutableListOf(), isTraining = true)
+        val playerData = PlayerData(this, trainingGame)
+        trainingGame.playerDatas.add(playerData)
+        trainingGame.classList.addAll(gameClassList)
+        trainingGame.classPickOrder = mutableListOf(playerData)
+        trainingGame.map = TrainingGround()
+
+        playerData.team = null
+        val playerStatus = playerData.playerStatus
+        playerStatus.canAttack = true
+        playerStatus.isAttackable = true
+        playerStatus.canSkillUse = true
+        playerStatus.isSkillTargeting = true
+        playerStatus.canMove = true
+
+        inventory.clear()
+        fireTicks = 0
+        gameMode = GameMode.ADVENTURE
+        health = getPlayerMaxHealth()
+        teleport(trainingGame.map!!.spectatorTeamStartLocation)
+
+        PlayerTagManager.addTag(this, "isTraining")
+        Info.registerTrainingGame(this, trainingGame)
+        sendMessage(miniMessage.deserialize("<gray>훈련이 시작되었습니다. 종료하려면 <yellow>/cw exit</yellow>를 입력하세요.</gray>"))
+
+        playerData.classPick()
+    }
+
+    fun Player.stopTraining() {
+        val trainingGame = Info.findGame(this) ?: return
+        val playerData = Info.findPlayerData(this)
+        trainingGame.playerDatas.removeIf { it.player == this }
+        playerData?.gameClass = null
+
+        activePotionEffects.forEach { effect ->
+            removePotionEffect(effect.type)
+        }
+        PlayerTagManager.allTags(this).forEach { tag ->
+            PlayerTagManager.removeTag(this, tag)
+        }
+        PlayerTagManager.clear(this)
+        playerListName(MiniMessage.miniMessage().deserialize(name))
+        fireTicks = 0
+        inventory.clear()
+        health = getPlayerMaxHealth()
+        teleport(Location(Bukkit.getWorld("world"), 10.0, -60.0, 0.0, 90F, 0F))
+        gameMode = GameMode.ADVENTURE
+        Info.clearTrainingGame(this)
+    }
+
     fun Game.ready() {
+        if (isTraining) {
+            trainingReady()
+            return
+        }
+
         sendNotification("모든 플레이어가 클래스 선택을 마쳤습니다.")
         sendNotification("잠시 후 게임을 시작합니다.")
 
@@ -364,6 +420,20 @@ object GameManager{
                 }
             }
         }.runTaskLater(ClassWarPlugin.instance, 30L)
+    }
+
+    private fun Game.trainingReady() {
+        val currentMap = map ?: return
+        playerDatas.forEach { playerData ->
+            val playerStatus = playerData.playerStatus
+            playerData.player.teleport(currentMap.spectatorTeamStartLocation)
+            playerData.classSet()
+            playerStatus.canAttack = true
+            playerStatus.isAttackable = true
+            playerStatus.canSkillUse = true
+            playerStatus.isSkillTargeting = true
+            playerStatus.canMove = true
+        }
     }
 
     fun Game.gameSet(gameSetType: GameSetType, gameSetDetailType: GameSetDetailType) {

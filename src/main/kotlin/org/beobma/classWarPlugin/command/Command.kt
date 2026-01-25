@@ -7,6 +7,8 @@ import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.info.Info.isTraining
 import org.beobma.classWarPlugin.manager.GameManager.start
 import org.beobma.classWarPlugin.manager.GameManager.startTest
+import org.beobma.classWarPlugin.manager.GameManager.startTraining
+import org.beobma.classWarPlugin.manager.GameManager.stopTraining
 import org.beobma.classWarPlugin.manager.GameManager.stop
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
 import org.beobma.classWarPlugin.manager.PlayerTagManager
@@ -103,7 +105,16 @@ class Command : Listener, CommandExecutor, TabCompleter {
                         return false
                     }
 
-                    sender.startTest()
+                    sender.startTraining()
+                }
+
+                "exit" -> {
+                    if (!isTraining(sender)) {
+                        sender.sendWaringMessage("훈련 중이 아닙니다.")
+                        return false
+                    }
+
+                    sender.stopTraining()
                 }
 
                 else -> {
@@ -121,7 +132,7 @@ class Command : Listener, CommandExecutor, TabCompleter {
     ): List<String> {
         if (command.name.equals("classwar", ignoreCase = true)) {
             return when (args.size) {
-                1 -> listOf("start", "stop", "classlist", "training")
+                1 -> listOf("start", "stop", "classlist", "training", "exit")
 
                 else -> emptyList()
             }

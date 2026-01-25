@@ -9,5 +9,6 @@ data class Game(
     var map: Map? = null,
     var classPickOrder: MutableList<PlayerData> = mutableListOf(),
     val classList: MutableList<GameClass?> = mutableListOf(),
-    val mapList: MutableList<Map> = mutableListOf()
+    val mapList: MutableList<Map> = mutableListOf(),
+    val isTraining: Boolean = false
 )
