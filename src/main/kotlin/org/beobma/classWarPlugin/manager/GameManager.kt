@@ -52,6 +52,7 @@ import org.bukkit.Location
 import org.bukkit.Sound
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitRunnable
+import org.bukkit.scheduler.BukkitTask
 
 object GameManager{
     private val miniMessage = MiniMessage.miniMessage()
@@ -90,13 +91,14 @@ object GameManager{
                     override fun run() {
                         mapPickStart()
                     }
-                }.runTaskLater(ClassWarPlugin.instance, 30L)
+                }.runTaskLater(ClassWarPlugin.instance, 30L).also { track(it) }
             }
-        }.runTaskLater(ClassWarPlugin.instance, 30L)
+        }.runTaskLater(ClassWarPlugin.instance, 30L).also { track(it) }
     }
 
     fun Game.stop() {
-        ClassWarPlugin.instance.server.scheduler.cancelTasks(ClassWarPlugin.instance)
+        tasks.forEach { it.cancel() }
+        tasks.clear()
 
         this.playerDatas.forEach { playerData ->
             val player = playerData.player
@@ -117,6 +119,10 @@ object GameManager{
             player.gameMode = GameMode.ADVENTURE
         }
         game = null
+    }
+
+    private fun Game.track(task: BukkitTask) {
+        tasks.add(task)
     }
 
     private fun Game.mapPickStart() {
@@ -150,13 +156,13 @@ object GameManager{
 
                 timer++
             }
-        }.runTaskTimer(ClassWarPlugin.instance, 30L, 1L)
+        }.runTaskTimer(ClassWarPlugin.instance, 30L, 1L).also { track(it) }
 
         object : BukkitRunnable() {
             override fun run() {
                 teamPickStart()
             }
-        }.runTaskLater(ClassWarPlugin.instance, 140L)
+        }.runTaskLater(ClassWarPlugin.instance, 140L).also { track(it) }
     }
 
     private fun Game.teamPickStart() {
@@ -218,12 +224,12 @@ object GameManager{
                                 override fun run() {
                                     classPick()
                                 }
-                            }.runTaskLater(ClassWarPlugin.instance, 140L)
+                            }.runTaskLater(ClassWarPlugin.instance, 140L).also { track(it) }
                         }
                     }
-                }.runTaskLater(ClassWarPlugin.instance, 200L)
+                }.runTaskLater(ClassWarPlugin.instance, 200L).also { track(it) }
             }
-        }.runTaskLater(ClassWarPlugin.instance, 30L)
+        }.runTaskLater(ClassWarPlugin.instance, 30L).also { track(it) }
     }
 
     private fun Game.classPick() {
@@ -260,7 +266,7 @@ object GameManager{
 
                 pickPlayer.classPick()
             }
-        }.runTaskLater(ClassWarPlugin.instance, 30L)
+        }.runTaskLater(ClassWarPlugin.instance, 30L).also { track(it) }
     }
 
     fun PlayerData.classPick() {
@@ -317,7 +323,7 @@ object GameManager{
                         override fun run() {
                             gameSet(Draw, GameSetDetailType.Draw)
                         }
-                    }.runTaskLater(ClassWarPlugin.instance, 3600L)
+                    }.runTaskLater(ClassWarPlugin.instance, 3600L).also { track(it) }
 
                     object  : BukkitRunnable() {
                         override fun run() {
@@ -333,10 +339,10 @@ object GameManager{
                                 }
                             }
                         }
-                    }.runTaskTimer(ClassWarPlugin.instance, 0L, 20L)
+                    }.runTaskTimer(ClassWarPlugin.instance, 0L, 20L).also { track(it) }
                 }
             }
-        }.runTaskLater(ClassWarPlugin.instance, 30L)
+        }.runTaskLater(ClassWarPlugin.instance, 30L).also { track(it) }
     }
 
     fun Game.gameSet(gameSetType: GameSetType, gameSetDetailType: GameSetDetailType) {
