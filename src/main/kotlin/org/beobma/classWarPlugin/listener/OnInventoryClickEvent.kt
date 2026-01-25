@@ -3,6 +3,7 @@ package org.beobma.classWarPlugin.listener
 import net.kyori.adventure.text.minimessage.MiniMessage
 import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.info.Info.findGame
+import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.manager.GameManager.classPick
 import org.beobma.classWarPlugin.manager.GameManager.gameClassList
 import org.beobma.classWarPlugin.manager.GameManager.ready
@@ -57,7 +58,11 @@ class OnInventoryClickEvent : Listener {
             return
         }
 
-        event.isCancelled = true
+        if (isGaming() || PlayerTagManager.hasTag(player, "isTest")) {
+            event.isCancelled = true
+            return
+        }
+
         return
     }
 
