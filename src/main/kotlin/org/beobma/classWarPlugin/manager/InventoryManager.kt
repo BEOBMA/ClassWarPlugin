@@ -9,99 +9,35 @@ import org.beobma.classWarPlugin.player.PlayerData
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.entity.Player
+import org.bukkit.inventory.Inventory
 import org.bukkit.inventory.ItemStack
 
 object InventoryManager {
     private val miniMessage = MiniMessage.miniMessage()
     private val nextPage = ItemStack(Material.ARROW, 1).apply {
         itemMeta = itemMeta.apply {
-            displayName(MiniMessage.miniMessage().deserialize("<gray>다음 페이지"))
+            displayName(miniMessage.deserialize("<gray>다음 페이지"))
         }
     }
     private val previousPage = ItemStack(Material.ARROW, 1).apply {
         itemMeta = itemMeta.apply {
-            displayName(MiniMessage.miniMessage().deserialize("<gray>이전 페이지"))
+            displayName(miniMessage.deserialize("<gray>이전 페이지"))
         }
     }
     private val nullItem = ItemStack(Material.LIGHT_GRAY_STAINED_GLASS, 1).apply {
         itemMeta = itemMeta.apply {
-            displayName(MiniMessage.miniMessage().deserialize("<gray>비어있음"))
+            displayName(miniMessage.deserialize("<gray>비어있음"))
         }
     }
 
     fun PlayerData.openClassPickInventory(page: Int) {
-        val game = game
-        val classList = game.classList
-        val totalPages = (classList.size + 18 - 1) / 18
-        if (page !in 0..<totalPages) return
-        val inventory = Bukkit.createInventory(null, 27, miniMessage.deserialize("클래스 목록 (페이지 ${page + 1}/${totalPages})"))
-        val startIdx = page * 18
-        val endIdx = minOf(startIdx + 18, classList.size)
-
-        for (i in 0..26) {
-            inventory.setItem(i, nullItem)
-        }
-
-        for (i in startIdx until endIdx) {
-            val gameClass = classList[i] ?: return
-            val classItemType = gameClass.classItemMaterial
-            val name = miniMessage.deserialize(UtilManager.applyKeywords(gameClass.name))
-            val description = gameClass.description.map { miniMessage.deserialize(UtilManager.applyKeywords(it)) }
-            val classItem = ItemStack(classItemType, 1).apply {
-                itemMeta = itemMeta.apply {
-                    displayName(name)
-                    lore(description)
-                }
-            }
-            inventory.setItem(i - startIdx, classItem)
-        }
-
-        if (page > 0) {
-            inventory.setItem(18, previousPage)
-        }
-
-        if (page < totalPages - 1) {
-            inventory.setItem(26, nextPage)
-        }
-
+        val inventory = buildClassListInventory(page, game.classList) ?: return
         PlayerTagManager.addTag(player, "openClassPickInventory")
         player.openInventory(inventory)
     }
 
     fun Player.openClassListInventory(page: Int) {
-        val classList = gameClassList
-        val totalPages = (classList.size + 18 - 1) / 18
-        if (page !in 0..<totalPages) return
-        val inventory = Bukkit.createInventory(null, 27, miniMessage.deserialize("클래스 목록 (페이지 ${page + 1}/${totalPages})"))
-        val startIdx = page * 18
-        val endIdx = minOf(startIdx + 18, classList.size)
-
-        for (i in 0..26) {
-            inventory.setItem(i, nullItem)
-        }
-
-        for (i in startIdx until endIdx) {
-            val gameClass = classList[i]
-            val classItemType = gameClass.classItemMaterial
-            val name = miniMessage.deserialize(UtilManager.applyKeywords(gameClass.name))
-            val description = gameClass.description.map { miniMessage.deserialize(UtilManager.applyKeywords(it)) }
-            val classItem = ItemStack(classItemType, 1).apply {
-                itemMeta = itemMeta.apply {
-                    displayName(name)
-                    lore(description)
-                }
-            }
-            inventory.setItem(i - startIdx, classItem)
-        }
-
-        if (page > 0) {
-            inventory.setItem(18, previousPage)
-        }
-
-        if (page < totalPages - 1) {
-            inventory.setItem(26, nextPage)
-        }
-
+        val inventory = buildClassListInventory(page, gameClassList) ?: return
         PlayerTagManager.addTag(this, "openClassListInventory")
         openInventory(inventory)
     }
@@ -142,5 +78,47 @@ object InventoryManager {
             inventory.setItem(i, itemStack)
         }
         openInventory(inventory)
+    }
+
+    private fun buildClassListInventory(page: Int, classList: List<GameClass?>): Inventory? {
+        val totalPages = (classList.size + 18 - 1) / 18
+        if (page !in 0..<totalPages) return null
+        val inventory = Bukkit.createInventory(null, 27, miniMessage.deserialize("클래스 목록 (페이지 ${page + 1}/${totalPages})"))
+        val startIdx = page * 18
+        val endIdx = minOf(startIdx + 18, classList.size)
+
+        fillWithNullItems(inventory)
+
+        for (i in startIdx until endIdx) {
+            val gameClass = classList[i] ?: continue
+            inventory.setItem(i - startIdx, createClassItem(gameClass))
+        }
+
+        if (page > 0) {
+            inventory.setItem(18, previousPage)
+        }
+
+        if (page < totalPages - 1) {
+            inventory.setItem(26, nextPage)
+        }
+
+        return inventory
+    }
+
+    private fun fillWithNullItems(inventory: Inventory) {
+        for (i in 0..26) {
+            inventory.setItem(i, nullItem)
+        }
+    }
+
+    private fun createClassItem(gameClass: GameClass): ItemStack {
+        val name = miniMessage.deserialize(UtilManager.applyKeywords(gameClass.name))
+        val description = gameClass.description.map { miniMessage.deserialize(UtilManager.applyKeywords(it)) }
+        return ItemStack(gameClass.classItemMaterial, 1).apply {
+            itemMeta = itemMeta.apply {
+                displayName(name)
+                lore(description)
+            }
+        }
     }
 }

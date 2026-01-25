@@ -42,3 +42,11 @@ object UtilManager {
                 playerLocation.z in zMin..zMax)
     }
 }
+
+inline fun <reified T> Iterable<*>.forEachIs(action: (T) -> Unit) {
+    for (item in this) {
+        if (item is T) {
+            action(item)
+        }
+    }
+}
