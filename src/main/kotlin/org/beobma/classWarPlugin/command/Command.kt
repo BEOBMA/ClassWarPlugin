@@ -5,8 +5,9 @@ import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.manager.GameManager.start
-import org.beobma.classWarPlugin.manager.GameManager.startTest
+import org.beobma.classWarPlugin.manager.GameManager.startTraining
 import org.beobma.classWarPlugin.manager.GameManager.stop
+import org.beobma.classWarPlugin.manager.GameManager.stopTraining
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.player.PlayerData
@@ -40,12 +41,12 @@ class Command : Listener, CommandExecutor, TabCompleter {
                     }
                     val game = Game(mutableListOf())
                     val players = Bukkit.getOnlinePlayers().map { PlayerData(it, game) }.toHashSet()
-                    game.playerDatas.addAll(players.filter { !PlayerTagManager.hasTag(it.player, "isTest") })
+                    game.playerDatas.addAll(players.filter { !PlayerTagManager.hasTag(it.player, "isTraining") })
 
-//                    if (game.players.size <= 1) {
-//                        sender.sendWaringMessage("참가자가 2명 이상이여야 게임을 시작할 수 있습니다.")
-//                        return false
-//                    }
+                    if (game.playerDatas.size <= 1) {
+                        sender.sendWaringMessage("참가자가 2명 이상이여야 게임을 시작할 수 있습니다.")
+                        return false
+                    }
                     game.start()
                     return true
                 }
@@ -73,18 +74,32 @@ class Command : Listener, CommandExecutor, TabCompleter {
                     sender.openClassListInventory(0)
                 }
 
-                "test" -> {
+                "training" -> {
                     if (isGaming()) {
                         sender.sendWaringMessage("게임 진행 중 사용할 수 없는 명령어입니다.")
                         return false
                     }
 
-                    if (PlayerTagManager.hasTag(sender, "isTest")) {
-                        sender.sendWaringMessage("이미 테스트 중입니다.")
+                    if (PlayerTagManager.hasTag(sender, "isTraining")) {
+                        sender.sendWaringMessage("이미 훈련 중입니다.")
                         return false
                     }
 
-                    sender.startTest()
+                    sender.startTraining()
+                }
+
+                "exit" -> {
+                    if (isGaming()) {
+                        sender.sendWaringMessage("게임 진행 중 사용할 수 없는 명령어입니다.")
+                        return false
+                    }
+
+                    if (!PlayerTagManager.hasTag(sender, "isTraining")) {
+                        sender.sendWaringMessage("훈련 중에만 사용할 수 있습니다.")
+                        return false
+                    }
+
+                    sender.stopTraining()
                 }
 
                 else -> {

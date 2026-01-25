@@ -1,7 +1,6 @@
 package org.beobma.classWarPlugin.manager
 
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.format.TextDecoration
 import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.title.Title
 import org.beobma.classWarPlugin.ClassWarPlugin
@@ -36,14 +35,15 @@ import org.beobma.classWarPlugin.gameClass.list.TimeManiqulator
 import org.beobma.classWarPlugin.gameClass.list.Warlock
 import org.beobma.classWarPlugin.gameClass.list.WaterWizard
 import org.beobma.classWarPlugin.gameClass.list.WindWizard
+import org.beobma.classWarPlugin.info.Info
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassPickInventory
 import org.beobma.classWarPlugin.manager.PlayerManager.classSet
-import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.UtilManager.getPlayerMaxHealth
 import org.beobma.classWarPlugin.manager.UtilManager.isInArea
 import org.beobma.classWarPlugin.map.Map
 import org.beobma.classWarPlugin.map.list.Forest
+import org.beobma.classWarPlugin.map.list.TrainingGround
 import org.beobma.classWarPlugin.player.PlayerData
 import org.beobma.classWarPlugin.player.TeamType.*
 import org.bukkit.Bukkit
@@ -284,8 +284,53 @@ object GameManager{
         openClassPickInventory(0)
     }
 
-    fun Player.startTest() {
-        TODO("Not yet implemented")
+    private val trainingInstance: MutableList<Game> = mutableListOf()
+    private val trainingGround = TrainingGround()
+    fun Player.startTraining() {
+        val game = Game(mutableListOf(), trainingGround)
+        val playerData = PlayerData(this, game)
+        val playerStatus = playerData.playerStatus
+        val gameClass = playerData.gameClass
+        val passives = gameClass?.passives
+        trainingInstance.add(game)
+        teleport(game.map!!.spectatorTeamStartLocation)
+        playerData.classSet()
+        playerData.player.inventory.heldItemSlot = 0
+        playerData.player.showTitle(
+            Title.title(
+                miniMessage.deserialize("<bold>훈련장"),
+                miniMessage.deserialize("")
+            )
+        )
+        playerStatus.canAttack = true
+        playerStatus.isAttackable = true
+
+        passives?.forEach { passive ->
+            if (passive is GameStatusHandler) {
+                passive.onGameTimePasses()
+            }
+        }
+    }
+
+    fun Player.stopTraining() {
+        val game = trainingInstance.find {
+            it.playerDatas.map { playerData -> playerData.player }.any { player -> player == this }
+        } ?: return
+        inventory.clear()
+        activePotionEffects.forEach { effect ->
+            removePotionEffect(effect.type)
+        }
+        PlayerTagManager.allTags(this).forEach { tag ->
+            PlayerTagManager.removeTag(this, tag)
+        }
+        PlayerTagManager.clear(this)
+        fireTicks = 0
+        inventory.clear()
+        health = getPlayerMaxHealth()
+
+        teleport(Location(Bukkit.getWorld("world"), 10.0, -60.0, 0.0, 90F, 0F))
+        gameMode = GameMode.ADVENTURE
+        trainingInstance.remove(game)
     }
 
     fun Game.ready() {
@@ -316,7 +361,8 @@ object GameManager{
                     }
 
                     playerData.classSet()
-                    playerData.player.showTitle(Title.title(Component.text("Fight!").decorate(TextDecoration.BOLD), Component.text("무승부까지 3분").decorate(TextDecoration.BOLD)))
+                    playerData.player.inventory.heldItemSlot = 0
+                    playerData.player.showTitle(Title.title(miniMessage.deserialize("<bold>Fight!"), miniMessage.deserialize("<gray><bold>무승부까지 3분")))
                     playerStatus.canAttack = true
                     playerStatus.isAttackable = true
                     object : BukkitRunnable() {
