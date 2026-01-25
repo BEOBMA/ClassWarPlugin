@@ -5,13 +5,11 @@ import org.beobma.classWarPlugin.event.PlayerStatusEffectDamageByPlayerEvent
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 
 interface WhenHitHandler {
-    fun whenHit(skillDamageEvent: PlayerSkillDamageByPlayerEvent?, attackDamageEvent: EntityDamageByEntityEvent?)
+    fun whenHit(skillDamageEvent: PlayerSkillDamageByPlayerEvent?, attackDamageEvent: EntityDamageByEntityEvent?) {}
 
-    fun whenAttackHit(event: EntityDamageByEntityEvent)
+    fun whenAttackHit(event: EntityDamageByEntityEvent) {}
 
-    fun whenSkillAttackHit(event: PlayerSkillDamageByPlayerEvent)
-
-    fun whenStatusEffectHit(event: PlayerStatusEffectDamageByPlayerEvent) {}
+    fun whenSkillAttackHit(event: PlayerSkillDamageByPlayerEvent) {}
 
     fun whenStatusEffectAttackHit(event: PlayerStatusEffectDamageByPlayerEvent) {}
 }

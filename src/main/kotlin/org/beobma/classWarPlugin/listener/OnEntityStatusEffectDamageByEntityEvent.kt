@@ -28,13 +28,11 @@ class OnEntityStatusEffectDamageByEntityEvent : Listener {
         damagerPassives.forEach { passive ->
             if (passive is OnHitHandler) {
                 passive.onStatusEffectAttackHit(event)
-                passive.onStatusEffectHit(event)
             }
         }
         entityPassives.forEach { passive ->
             if (passive is WhenHitHandler) {
                 passive.whenStatusEffectAttackHit(event)
-                passive.whenStatusEffectHit(event)
             }
         }
 
@@ -42,13 +40,11 @@ class OnEntityStatusEffectDamageByEntityEvent : Listener {
         damagerSkills.forEach { skill ->
             if (skill is OnHitHandler) {
                 skill.onStatusEffectAttackHit(event)
-                skill.onStatusEffectHit(event)
             }
         }
         entitySkills.forEach { skill ->
             if (skill is WhenHitHandler) {
                 skill.whenStatusEffectAttackHit(event)
-                skill.whenStatusEffectHit(event)
             }
         }
 

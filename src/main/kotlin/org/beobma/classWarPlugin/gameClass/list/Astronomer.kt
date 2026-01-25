@@ -1,6 +1,7 @@
 package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
+import org.beobma.classWarPlugin.event.PlayerStatusEffectDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.OnHitHandler
@@ -206,17 +207,6 @@ class AstronomersPassive : Passive(), OnHitHandler {
         "",
         dictionary[Keyword.TrueDamage] ?: ""
     )
-
-    override fun onHit(
-        skillDamageEvent: PlayerSkillDamageByPlayerEvent?,
-        attackDamageEvent: EntityDamageByEntityEvent?
-    ) {
-        return
-    }
-
-    override fun onAttackHit(event: EntityDamageByEntityEvent) {
-        return
-    }
 
     override fun onSkillAttackHit(event: PlayerSkillDamageByPlayerEvent) {
         val mana = playerData.getOrCreateStatus { Mana() }

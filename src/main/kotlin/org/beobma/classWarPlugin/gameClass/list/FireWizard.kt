@@ -131,18 +131,7 @@ class FireWizardsPassive : Passive(), WhenHitHandler {
         "<gray>기본 공격 피격 시 공격자를 2초간 {keyword:Burn} 상태로 만든다."
     )
 
-    override fun whenHit(
-        skillDamageEvent: PlayerSkillDamageByPlayerEvent?,
-        attackDamageEvent: EntityDamageByEntityEvent?
-    ) {
-        return
-    }
-
     override fun whenAttackHit(event: EntityDamageByEntityEvent) {
         event.damager.fireTicks += 40
-    }
-
-    override fun whenSkillAttackHit(event: PlayerSkillDamageByPlayerEvent) {
-        return
     }
 }
