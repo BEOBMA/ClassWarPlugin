@@ -5,6 +5,7 @@ import org.beobma.classWarPlugin.gameClass.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.WhenHitHandler
 import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getDamageTakenModifier
+import org.beobma.classWarPlugin.manager.forEachIs
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 
@@ -25,27 +26,19 @@ class OnEntityStatusEffectDamageByEntityEvent : Listener {
         val entitySkills = entityClass.skills
 
         // 패시브 적용
-        damagerPassives.forEach { passive ->
-            if (passive is OnHitHandler) {
-                passive.onStatusEffectAttackHit(event)
-            }
+        damagerPassives.forEachIs<OnHitHandler> { passive ->
+            passive.onStatusEffectAttackHit(event)
         }
-        entityPassives.forEach { passive ->
-            if (passive is WhenHitHandler) {
-                passive.whenStatusEffectAttackHit(event)
-            }
+        entityPassives.forEachIs<WhenHitHandler> { passive ->
+            passive.whenStatusEffectAttackHit(event)
         }
 
         // 스킬 패시브 적용
-        damagerSkills.forEach { skill ->
-            if (skill is OnHitHandler) {
-                skill.onStatusEffectAttackHit(event)
-            }
+        damagerSkills.forEachIs<OnHitHandler> { skill ->
+            skill.onStatusEffectAttackHit(event)
         }
-        entitySkills.forEach { skill ->
-            if (skill is WhenHitHandler) {
-                skill.whenStatusEffectAttackHit(event)
-            }
+        entitySkills.forEachIs<WhenHitHandler> { skill ->
+            skill.whenStatusEffectAttackHit(event)
         }
 
         // 받피증감
