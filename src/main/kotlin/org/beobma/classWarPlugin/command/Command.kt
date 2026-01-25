@@ -4,6 +4,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage
 import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.info.Info.isGaming
+import org.beobma.classWarPlugin.info.Info.isTraining
 import org.beobma.classWarPlugin.manager.GameManager.start
 import org.beobma.classWarPlugin.manager.GameManager.startTest
 import org.beobma.classWarPlugin.manager.GameManager.stop
@@ -40,7 +41,11 @@ class Command : Listener, CommandExecutor, TabCompleter {
                     }
                     val game = Game(mutableListOf())
                     val players = Bukkit.getOnlinePlayers().map { PlayerData(it, game) }.toHashSet()
-                    game.playerDatas.addAll(players.filter { !PlayerTagManager.hasTag(it.player, "isTest") })
+                    game.playerDatas.addAll(
+                        players.filter {
+                            !PlayerTagManager.hasTag(it.player, "isTest") && !PlayerTagManager.hasTag(it.player, "isTraining")
+                        }
+                    )
 
 //                    if (game.players.size <= 1) {
 //                        sender.sendWaringMessage("참가자가 2명 이상이여야 게임을 시작할 수 있습니다.")
@@ -87,6 +92,20 @@ class Command : Listener, CommandExecutor, TabCompleter {
                     sender.startTest()
                 }
 
+                "training" -> {
+                    if (isGaming()) {
+                        sender.sendWaringMessage("게임 진행 중 사용할 수 없는 명령어입니다.")
+                        return false
+                    }
+
+                    if (isTraining(sender)) {
+                        sender.sendWaringMessage("이미 훈련 중입니다.")
+                        return false
+                    }
+
+                    sender.startTest()
+                }
+
                 else -> {
                     sender.sendWaringMessage("'${args[0]}'은 알 수 없는 명령어입니다.")
                     return false
@@ -102,7 +121,7 @@ class Command : Listener, CommandExecutor, TabCompleter {
     ): List<String> {
         if (command.name.equals("classwar", ignoreCase = true)) {
             return when (args.size) {
-                1 -> listOf("start", "stop", "classlist")
+                1 -> listOf("start", "stop", "classlist", "training")
 
                 else -> emptyList()
             }

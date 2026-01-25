@@ -4,6 +4,7 @@ import org.beobma.classWarPlugin.event.PlayerStatusEffectDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.WhenHitHandler
 import org.beobma.classWarPlugin.info.Info.isGaming
+import org.beobma.classWarPlugin.info.Info.isTraining
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getDamageTakenModifier
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -15,7 +16,11 @@ class OnEntityStatusEffectDamageByEntityEvent : Listener {
         val damagerData = event.damager
         val entityData = event.entity
 
-        if (!isGaming()) return
+        if (!isGaming() && !isTraining(damagerData.player) && !isTraining(entityData.player)) return
+        if ((isTraining(damagerData.player) || isTraining(entityData.player)) && damagerData.player != entityData.player) {
+            event.isCancelled = true
+            return
+        }
 
         val damagerClass = damagerData.gameClass ?: return
         val entityClass = damagerData.gameClass ?: return
