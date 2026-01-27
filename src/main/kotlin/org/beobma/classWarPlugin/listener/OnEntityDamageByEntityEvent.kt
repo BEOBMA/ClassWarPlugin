@@ -2,8 +2,9 @@ package org.beobma.classWarPlugin.listener
 
 import org.beobma.classWarPlugin.gameClass.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.WhenHitHandler
-import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.info.Info.isGaming
+import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
+import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getDamageTakenModifier
 import org.beobma.classWarPlugin.status.StatusOnHitHandler
 import org.beobma.classWarPlugin.util.addDamageTakenMultiplier
@@ -22,9 +23,12 @@ class OnEntityDamageByEntityEvent : Listener {
         // 1보다 작은 피해는 피해를 받지 않은 것으로 간주
         if (event.damage < 1) return
         if (damager !is Player || entity !is Player) return
-        if (!isGaming()) return
-        val damagerData = game?.playerDatas?.find { it.player == damager } ?: return
-        val entityData = game?.playerDatas?.find { it.player == entity } ?: return
+        if (!isGaming() && !PlayerTagManager.hasTag(damager, "isTraining") && !PlayerTagManager.hasTag(entity, "isTraining")) return
+        val damagerGame = findGameForPlayer(damager) ?: return
+        val entityGame = findGameForPlayer(entity) ?: return
+        if (damagerGame != entityGame) return
+        val damagerData = damagerGame.playerDatas.find { it.player == damager } ?: return
+        val entityData = damagerGame.playerDatas.find { it.player == entity } ?: return
         val damagerStatus = damagerData.playerStatus
         val entityStatus = entityData.playerStatus
 
