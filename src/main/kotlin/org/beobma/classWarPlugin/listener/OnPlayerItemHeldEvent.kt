@@ -1,6 +1,5 @@
 package org.beobma.classWarPlugin.listener
 
-import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
 import org.beobma.classWarPlugin.manager.PlayerTagManager
