@@ -4,7 +4,10 @@ import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.WhenHitHandler
 import org.beobma.classWarPlugin.info.Info.isGaming
+import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getDamageTakenModifier
+import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.manager.forEachIs
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -20,7 +23,7 @@ class OnEntitySkillDamageByEntityEvent : Listener {
 
         // 1보다 작은 피해는 피해를 받지 않은 것으로 간주
         if (event.damage < 1) return
-        if (!isGaming()) return
+        if (!isGaming() && !PlayerTagManager.hasTag(damagerData.player, "isTraining")) return
 
         // 공격, 피격 가능 여부
         if (!damagerStatus.canSkillUse || !entityStatus.isSkillTargeting) {
@@ -57,6 +60,13 @@ class OnEntitySkillDamageByEntityEvent : Listener {
         // 받피증감
         val damageTakenModifier = entityData.getDamageTakenModifier()
         event.addDamageTakenMultiplier(damageTakenModifier.combinedMultiplier)
+
+        if (entityData.player.isMannequin() && PlayerTagManager.hasTag(damagerData.player, "isTraining")) {
+            event.isCancelled = true
+            val formattedDamage = String.format("%.2f", event.damage)
+            damagerData.player.sendMiniMessage("<gray>Damage path: <yellow>${event.damageType}</yellow> <gray>Damage: <gold>$formattedDamage</gold>")
+            return
+        }
 
         if (event.damage <= 0.0) {
             event.isCancelled = true

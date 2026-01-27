@@ -1,6 +1,8 @@
 package org.beobma.classWarPlugin.manager
 
 import net.kyori.adventure.text.minimessage.MiniMessage
+import org.beobma.classWarPlugin.manager.PlayerTagManager
+import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.player.PlayerData
 import org.beobma.classWarPlugin.skill.Skill
@@ -15,6 +17,20 @@ import kotlin.math.cos
 
 
 object SkillManager {
+    private fun PlayerData.isTraining(): Boolean = PlayerTagManager.hasTag(player, "isTraining")
+
+    private fun PlayerData.getTargetCandidates(): List<PlayerData> {
+        val candidates = game.playerDatas.toMutableList()
+        if (isTraining()) {
+            player.world.entities.filterIsInstance<Player>().filter { it.isMannequin() }.forEach { mannequin ->
+                val data = game.playerDatas.find { it.player == mannequin }
+                    ?: PlayerData(mannequin, game).also { game.playerDatas.add(it) }
+                candidates.add(data)
+            }
+        }
+        return candidates.distinctBy { it.player.uniqueId }
+    }
+
     fun PlayerData.use(skill: Skill, clickedItem: ItemStack): Boolean {
         if (!playerStatus.canSkillUse) {
             player.sendMiniMessage("<red><bold>[!] 현재 스킬을 사용할 수 없는 상태입니다.")
@@ -32,22 +48,28 @@ object SkillManager {
         return true
     }
     fun PlayerData.radius(location: Location,targetType: TargetType, radius: Double, oneself: Boolean): List<PlayerData> {
-        val game = game
+        val isTraining = isTraining()
         val world = player.world
-        val nearbyEntities = world.getNearbyEntities(location, radius, radius, radius).filter { it is Player }
-        val playerDatas = game.playerDatas.filter { playerData ->
+        val nearbyPlayers = world.getNearbyEntities(location, radius, radius, radius).filterIsInstance<Player>()
+        val playerDatas = getTargetCandidates().filter { playerData ->
             val playerStatus = playerData.playerStatus
             return@filter !playerStatus.isDead && playerStatus.isSkillTargeting
         }
-        val nearbyPlayerData = nearbyEntities.map { playerDatas.find { it.player == it } ?: return listOf() }
+        val nearbyPlayerData = nearbyPlayers.mapNotNull { target ->
+            playerDatas.find { it.player == target }
+        }
 
         return when (targetType) {
             Team -> {
-                if (oneself) nearbyPlayerData.filter { it.team == team } else nearbyPlayerData.filter { it.team == team && it != this }
+                if (oneself) {
+                    nearbyPlayerData.filter { it.team == team || (isTraining && it.player.isMannequin()) }
+                } else {
+                    nearbyPlayerData.filter { it != this && (it.team == team || (isTraining && it.player.isMannequin())) }
+                }
             }
 
             Enemy -> {
-                nearbyPlayerData.filter { it.team != team }
+                nearbyPlayerData.filter { it.team != team || (isTraining && it.player.isMannequin()) }
             }
 
             All -> {
@@ -56,9 +78,9 @@ object SkillManager {
         }
     }
     fun PlayerData.shotLaserGetPlayerData(maxRange: Double, targetType: TargetType, wallShot: Boolean): PlayerData? {
-        val game = game
+        val isTraining = isTraining()
         val world = player.world
-        val playerDatas = game.playerDatas.filter { playerData ->
+        val playerDatas = getTargetCandidates().filter { playerData ->
             val playerStatus = playerData.playerStatus
             return@filter !playerStatus.isDead && playerStatus.isSkillTargeting
         }
@@ -85,6 +107,17 @@ object SkillManager {
             val hitPlayer = entityRayTraceResult.hitEntity as Player
             val hitPlayerData = playerDatas.find { it.player == hitPlayer } ?: return null
             if (hitPlayerData.playerStatus.isSkillTargeting) {
+                if (isTraining && hitPlayer.isMannequin()) {
+                    return hitPlayerData
+                }
+                val isValidTarget = when (targetType) {
+                    Team -> hitPlayerData.team == team
+                    Enemy -> hitPlayerData.team != team
+                    All -> true
+                }
+                if (!isValidTarget) {
+                    return null
+                }
                 return hitPlayerData
             }
         }
@@ -101,21 +134,23 @@ object SkillManager {
         return blockRayTraceResult?.hitBlock
     }
     fun PlayerData.getConeTargets(radius: Double, angle: Double, targetType: TargetType, includeSelf: Boolean): List<PlayerData> {
-        val game = game
+        val isTraining = isTraining()
         val playerLocation = player.location
         val playerDirection = playerLocation.direction.normalize()
 
-        return game.playerDatas.filter { targetPlayerData ->
+        return getTargetCandidates().filter { targetPlayerData ->
             if (!targetPlayerData.playerStatus.isSkillTargeting || targetPlayerData.playerStatus.isDead)
                 return@filter false
 
             if (!includeSelf && targetPlayerData == this)
                 return@filter false
 
-            when (targetType) {
-                Team -> if (targetPlayerData.team != team) return@filter false
-                Enemy -> if (targetPlayerData.team == team) return@filter false
-                All -> {}
+            if (!(isTraining && targetPlayerData.player.isMannequin())) {
+                when (targetType) {
+                    Team -> if (targetPlayerData.team != team) return@filter false
+                    Enemy -> if (targetPlayerData.team == team) return@filter false
+                    All -> {}
+                }
             }
 
             val targetLocation = targetPlayerData.player.location
