@@ -4,6 +4,7 @@ import org.beobma.classWarPlugin.gameClass.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.WhenHitHandler
 import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
+import org.beobma.classWarPlugin.manager.MannequinStatusManager
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getDamageTakenModifier
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
@@ -28,14 +29,57 @@ class OnEntityDamageByEntityEvent : Listener {
             return
         }
         
-        if (damager !is Player || entity !is Player) return
-        if (!isGaming() && !PlayerTagManager.hasTag(damager, "isTraining") && !PlayerTagManager.hasTag(entity, "isTraining")) return
+        if (damager !is Player) return
+        val isMannequin = entity.isMannequin()
+        if (entity !is Player && !isMannequin) return
+        if (!isGaming()
+            && !PlayerTagManager.hasTag(damager, "isTraining")
+            && !(entity is Player && PlayerTagManager.hasTag(entity, "isTraining"))
+        ) {
+            return
+        }
+
         val damagerGame = findGameForPlayer(damager) ?: return
-        val entityGame = findGameForPlayer(entity) ?: return
-        if (damagerGame != entityGame) return
         val damagerData = damagerGame.playerDatas.find { it.player == damager } ?: return
-        val entityData = damagerGame.playerDatas.find { it.player == entity } ?: return
         val damagerStatus = damagerData.playerStatus
+
+        if (isMannequin) {
+            val mannequinStatus = MannequinStatusManager.getStatus(entity) ?: return
+            if (!damagerStatus.canAttack || !mannequinStatus.isAttackable) {
+                event.isCancelled = true
+                return
+            }
+
+            val damagerClass = damagerData.gameClass ?: return
+            val damagerPassives = damagerClass.passives
+            val damagerSkills = damagerClass.skills
+
+            // 패시브 적용
+            damagerPassives.forEach { passive ->
+                if (passive is OnHitHandler) {
+                    passive.onAttackHit(event)
+                    passive.onHit(null, event)
+                }
+            }
+
+            // 스킬 패시브 적용
+            damagerSkills.forEach { skill ->
+                if (skill is OnHitHandler) {
+                    skill.onAttackHit(event)
+                    skill.onHit(null, event)
+                }
+            }
+
+            event.isCancelled = true
+            val formattedDamage = String.format("%.2f", event.damage)
+            damager.sendMiniMessage("<gray>피해 경로: <yellow><bold>기본 공격</bold></yellow> <gray>피해량: <gold><bold>$formattedDamage</bold></gold>")
+            return
+        }
+
+        val entityPlayer = entity as Player
+        val entityGame = findGameForPlayer(entityPlayer) ?: return
+        if (damagerGame != entityGame) return
+        val entityData = entityGame.playerDatas.find { it.player == entityPlayer } ?: return
         val entityStatus = entityData.playerStatus
 
         // 공격, 피격 가능 여부
@@ -90,7 +134,7 @@ class OnEntityDamageByEntityEvent : Listener {
         val damageTakenModifier = entityData.getDamageTakenModifier()
         event.addDamageTakenMultiplier(damageTakenModifier.combinedMultiplier)
 
-        if (entity.isMannequin()) {
+        if (entityPlayer.isMannequin()) {
             event.isCancelled = true
             val formattedDamage = String.format("%.2f", event.damage)
             damager.sendMiniMessage("<gray>피해 경로: <yellow><bold>기본 공격</bold></yellow> <gray>피해량: <gold><bold>$formattedDamage</bold></gold>")
