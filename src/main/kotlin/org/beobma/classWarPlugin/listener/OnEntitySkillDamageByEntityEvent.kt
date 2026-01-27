@@ -61,10 +61,10 @@ class OnEntitySkillDamageByEntityEvent : Listener {
         val damageTakenModifier = entityData.getDamageTakenModifier()
         event.addDamageTakenMultiplier(damageTakenModifier.combinedMultiplier)
 
-        if (entityData.player.isMannequin() && PlayerTagManager.hasTag(damagerData.player, "isTraining")) {
+        if (entityData.player.isMannequin()) {
             event.isCancelled = true
             val formattedDamage = String.format("%.2f", event.damage)
-            damagerData.player.sendMiniMessage("<gray>Damage path: <yellow>${event.damageType}</yellow> <gray>Damage: <gold>$formattedDamage</gold>")
+            damagerData.player.sendMiniMessage("<gray>피해 경로: <yellow><bold>${event.damageType}</bold></yellow> <gray>피해량: <gold><bold>$formattedDamage</bold></gold>")
             return
         }
 

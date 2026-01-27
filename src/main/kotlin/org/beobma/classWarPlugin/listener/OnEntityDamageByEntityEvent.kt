@@ -6,6 +6,8 @@ import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getDamageTakenModifier
+import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.status.StatusOnHitHandler
 import org.beobma.classWarPlugin.util.addDamageTakenMultiplier
 import org.bukkit.entity.Player
@@ -21,7 +23,11 @@ class OnEntityDamageByEntityEvent : Listener {
         val entity = event.entity
 
         // 1보다 작은 피해는 피해를 받지 않은 것으로 간주
-        if (event.damage < 1) return
+        if (event.damage < 1) {
+            event.isCancelled = true
+            return
+        }
+        
         if (damager !is Player || entity !is Player) return
         if (!isGaming() && !PlayerTagManager.hasTag(damager, "isTraining") && !PlayerTagManager.hasTag(entity, "isTraining")) return
         val damagerGame = findGameForPlayer(damager) ?: return
@@ -83,6 +89,13 @@ class OnEntityDamageByEntityEvent : Listener {
         // 받피증감
         val damageTakenModifier = entityData.getDamageTakenModifier()
         event.addDamageTakenMultiplier(damageTakenModifier.combinedMultiplier)
+
+        if (entity.isMannequin()) {
+            event.isCancelled = true
+            val formattedDamage = String.format("%.2f", event.damage)
+            damager.sendMiniMessage("<gray>피해 경로: <yellow><bold>기본 공격</bold></yellow> <gray>피해량: <gold><bold>$formattedDamage</bold></gold>")
+            return
+        }
 
         if (event.damage <= 0.0) {
             event.isCancelled = true
