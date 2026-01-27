@@ -4,6 +4,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.keyword.Dictionary
 import org.bukkit.Location
+import org.bukkit.Material
 import org.bukkit.attribute.Attribute
 import org.bukkit.entity.Player
 
@@ -40,6 +41,30 @@ object UtilManager {
         return (playerLocation.x in xMin..xMax &&
                 playerLocation.y in yMin..yMax &&
                 playerLocation.z in zMin..zMax)
+    }
+
+    fun Player.resetDyeCooldowns() {
+        val dyes = listOf(
+            Material.WHITE_DYE,
+            Material.ORANGE_DYE,
+            Material.MAGENTA_DYE,
+            Material.LIGHT_BLUE_DYE,
+            Material.YELLOW_DYE,
+            Material.LIME_DYE,
+            Material.PINK_DYE,
+            Material.GRAY_DYE,
+            Material.LIGHT_GRAY_DYE,
+            Material.CYAN_DYE,
+            Material.PURPLE_DYE,
+            Material.BLUE_DYE,
+            Material.BROWN_DYE,
+            Material.GREEN_DYE,
+            Material.RED_DYE,
+            Material.BLACK_DYE
+        )
+        dyes.forEach { dye ->
+            setCooldown(dye, 0)
+        }
     }
 }
 
