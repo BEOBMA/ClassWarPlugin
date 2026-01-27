@@ -2,6 +2,7 @@ package org.beobma.classWarPlugin
 
 import org.beobma.classWarPlugin.command.Command
 import org.beobma.classWarPlugin.listener.OnEntityDamageByEntityEvent
+import org.beobma.classWarPlugin.listener.OnEntityDamageEvent
 import org.beobma.classWarPlugin.listener.OnEntitySkillDamageByEntityEvent
 import org.beobma.classWarPlugin.listener.OnEntityStatusEffectDamageByEntityEvent
 import org.beobma.classWarPlugin.listener.OnInventoryClickEvent
@@ -35,6 +36,7 @@ class ClassWarPlugin : JavaPlugin() {
         server.pluginManager.registerEvents(OnInventoryCloseEvent(), this)
         server.pluginManager.registerEvents(OnPlayerDeathEvent(), this)
         server.pluginManager.registerEvents(OnEntityDamageByEntityEvent(), this)
+        server.pluginManager.registerEvents(OnEntityDamageEvent(), this)
         server.pluginManager.registerEvents(OnEntitySkillDamageByEntityEvent(), this)
         server.pluginManager.registerEvents(OnEntityStatusEffectDamageByEntityEvent(), this)
         server.pluginManager.registerEvents(OnPlayerItemHeldEvent(), this)

@@ -5,6 +5,8 @@ import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.event.PlayerStatusEffectDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.GameStatusHandler
 import org.beobma.classWarPlugin.manager.GameClassManager.toItemStack
+import org.beobma.classWarPlugin.manager.PlayerTagManager
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.player.PlayerData
 import org.beobma.classWarPlugin.util.DamageCalculator
 import org.beobma.classWarPlugin.util.DamageType
@@ -119,6 +121,12 @@ object PlayerManager {
 
         val damageResult = DamageCalculator.calculate(finalDamage, player, damageType)
         if (damageResult.finalDamage <= 0.0) {
+            return
+        }
+
+        if (PlayerTagManager.hasTag(player, "isTraining")) {
+            val formattedDamage = String.format("%.2f", damageResult.finalDamage)
+            player.sendMiniMessage("<gray>훈련 중 피해량: <gold><bold>$formattedDamage</bold></gold>")
             return
         }
 
