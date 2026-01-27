@@ -300,6 +300,7 @@ object GameManager{
         val playerData = PlayerData(this, game)
         val playerStatus = playerData.playerStatus
         val passives = gameClass.passives
+        game.playerDatas.add(playerData)
         playerData.gameClass = gameClass
         trainingInstance.add(game)
         PlayerTagManager.addTag(this, "isTraining")
