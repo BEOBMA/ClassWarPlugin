@@ -2,6 +2,8 @@ package org.beobma.classWarPlugin.skill
 
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.game.Game
+import org.beobma.classWarPlugin.manager.PlayerTagManager
+import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.player.PlayerData
 import org.beobma.classWarPlugin.player.PlayerStatus
 import org.beobma.classWarPlugin.util.TargetType
@@ -68,13 +70,26 @@ abstract class Flooring {
                     }
                 }
 
-                val currentTargets = game.playerDatas.filter {
+                val isTraining = PlayerTagManager.hasTag(player, "isTraining")
+                val targetCandidates = if (isTraining) {
+                    val candidates = game.playerDatas.toMutableList()
+                    player.world.entities.filterIsInstance<Player>().filter { it.isMannequin() }.forEach { mannequin ->
+                        val data = game.playerDatas.find { it.player == mannequin }
+                            ?: PlayerData(mannequin, game).also { game.playerDatas.add(it) }
+                        candidates.add(data)
+                    }
+                    candidates.distinctBy { it.player.uniqueId }
+                } else {
+                    game.playerDatas
+                }
+
+                val currentTargets = targetCandidates.filter {
                     it != playerData &&
                             it.playerStatus.isSkillTargeting &&
                             it.player.location.distanceSquared(currentLocation) <= radius * radius &&
                             when (targetType) {
-                                TargetType.Team -> it.team == playerData.team
-                                TargetType.Enemy -> it.team != playerData.team
+                                TargetType.Team -> it.team == playerData.team || (isTraining && it.player.isMannequin())
+                                TargetType.Enemy -> it.team != playerData.team || (isTraining && it.player.isMannequin())
                                 TargetType.All -> true
                             }
                 }.toSet()

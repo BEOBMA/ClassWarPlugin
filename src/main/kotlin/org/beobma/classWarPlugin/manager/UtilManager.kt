@@ -7,6 +7,7 @@ import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.attribute.Attribute
 import org.bukkit.entity.Player
+import org.bukkit.entity.EntityType
 
 object UtilManager {
     val dictionary = Dictionary().dictionary
@@ -45,6 +46,10 @@ object UtilManager {
 
     fun Player.sendMiniMessage(message: String) {
         this.sendMessage(miniMessage.deserialize(message))
+    }
+
+    fun Player.isMannequin(): Boolean {
+        return this.type == EntityType.MANNEQUIN
     }
 
     fun Player.resetDyeCooldowns() {
