@@ -20,7 +20,7 @@ object SkillManager {
 
         val isUse = skill.use()
         if (!isUse) return false
-        val cooldown = skill.cooldown ?: return true
+        val cooldown = if (skill.cooldown == Int.MAX_VALUE) 999999 else skill.cooldown ?: return true
         player.setCooldown(clickedItem.type, cooldown * 20)
         return true
     }
