@@ -15,8 +15,14 @@ import kotlin.math.cos
 
 object SkillManager {
     fun PlayerData.use(skill: Skill, clickedItem: ItemStack): Boolean {
-        if (!playerStatus.canSkillUse) return false
-        if (player.hasCooldown(clickedItem.type)) return false
+        if (!playerStatus.canSkillUse) {
+            player.sendMessage("<red><bold>[!] 현재 스킬을 사용할 수 없는 상태입니다.")
+            return false
+        }
+        if (player.hasCooldown(clickedItem.type)) {
+            player.sendMessage("<red><bold>[!] 재사용 대기 중입니다.")
+            return false
+        }
 
         val isUse = skill.use()
         if (!isUse) return false

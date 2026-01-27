@@ -27,21 +27,8 @@ class OnPlayerItemHeldEvent : Listener {
         val clickedItem = player.inventory.getItem(next)
         event.isCancelled = true
 
-        if (skill == null || clickedItem == null) {
-            if (isTraining) {
-                ClassWarPlugin.instance.loggerInfo(
-                    "훈련 스킬 사용 실패: ${player.name} (slot=$next, skill=${skill?.name ?: "없음"})"
-                )
-            }
-            return
-        }
+        if (skill == null || clickedItem == null) return
 
-        val isUsed = playerData.use(skill, clickedItem)
-        if (isTraining) {
-            val result = if (isUsed) "성공" else "차단"
-            ClassWarPlugin.instance.loggerInfo(
-                "훈련 스킬 사용 $result: ${player.name} -> ${skill.name} (slot=$next)"
-            )
-        }
+        playerData.use(skill, clickedItem)
     }
 }
