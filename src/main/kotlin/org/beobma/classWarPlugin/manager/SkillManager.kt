@@ -14,14 +14,15 @@ import kotlin.math.cos
 
 
 object SkillManager {
-    fun PlayerData.use(skill: Skill, clickedItem: ItemStack) {
-        if (!playerStatus.canSkillUse) return
-        if (player.hasCooldown(clickedItem.type)) return
+    fun PlayerData.use(skill: Skill, clickedItem: ItemStack): Boolean {
+        if (!playerStatus.canSkillUse) return false
+        if (player.hasCooldown(clickedItem.type)) return false
 
         val isUse = skill.use()
-        if (!isUse) return
-        val cooldown = skill.cooldown ?: return
+        if (!isUse) return false
+        val cooldown = skill.cooldown ?: return true
         player.setCooldown(clickedItem.type, cooldown * 20)
+        return true
     }
     fun PlayerData.radius(location: Location,targetType: TargetType, radius: Double, oneself: Boolean): List<PlayerData> {
         val game = game
