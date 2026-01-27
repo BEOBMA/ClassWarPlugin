@@ -117,7 +117,7 @@ class Command : Listener, CommandExecutor, TabCompleter {
     ): List<String> {
         if (command.name.equals("classwar", ignoreCase = true)) {
             return when (args.size) {
-                1 -> listOf("start", "stop", "classlist")
+                1 -> listOf("start", "stop", "classlist", "training", "exit")
 
                 else -> emptyList()
             }

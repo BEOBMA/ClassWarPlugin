@@ -284,7 +284,7 @@ object GameManager{
         openClassPickInventory(0)
     }
 
-    private val trainingInstance: MutableList<Game> = mutableListOf()
+    val trainingInstance: MutableList<Game> = mutableListOf()
     private val trainingGround = TrainingGround()
     fun Player.startTraining(gameClass: GameClass) {
         val game = Game(mutableListOf(), trainingGround)

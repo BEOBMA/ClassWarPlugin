@@ -66,7 +66,12 @@ class OnInventoryClickEvent : Listener {
             return
         }
 
-        if (!isGaming() || !PlayerTagManager.hasTag(player, "isTraining")) return
+        if (PlayerTagManager.hasTag(player, "openClassStatusInventory")) {
+            event.isCancelled = true
+            return
+        }
+
+        if (!isGaming() && !PlayerTagManager.hasTag(player, "isTraining")) return
 
         event.isCancelled = true
         return
