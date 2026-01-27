@@ -17,7 +17,8 @@ import kotlin.math.cos
 
 
 object SkillManager {
-    private fun PlayerData.isTraining(): Boolean = PlayerTagManager.hasTag(player, "isTraining")
+    private fun PlayerData.isTraining(): Boolean =
+        PlayerTagManager.hasTag(player, "isTraining") || player.isMannequin()
 
     private fun PlayerData.getTargetCandidates(): List<PlayerData> {
         val candidates = game.playerDatas.toMutableList()
@@ -30,6 +31,8 @@ object SkillManager {
         }
         return candidates.distinctBy { it.player.uniqueId }
     }
+
+    fun PlayerData.getSkillTargetCandidates(): List<PlayerData> = getTargetCandidates()
 
     fun PlayerData.use(skill: Skill, clickedItem: ItemStack): Boolean {
         if (!playerStatus.canSkillUse) {
@@ -107,7 +110,7 @@ object SkillManager {
             val hitPlayer = entityRayTraceResult.hitEntity as Player
             val hitPlayerData = playerDatas.find { it.player == hitPlayer } ?: return null
             if (hitPlayerData.playerStatus.isSkillTargeting) {
-                if (isTraining && hitPlayer.isMannequin()) {
+                if (isTraining && (hitPlayer.isMannequin() || player.isMannequin())) {
                     return hitPlayerData
                 }
                 val isValidTarget = when (targetType) {

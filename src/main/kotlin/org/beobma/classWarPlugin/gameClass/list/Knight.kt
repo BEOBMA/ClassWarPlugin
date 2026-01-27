@@ -8,6 +8,7 @@ import org.beobma.classWarPlugin.gameClass.Weapon
 import org.beobma.classWarPlugin.gameClass.WhenHitHandler
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
+import org.beobma.classWarPlugin.manager.SkillManager.getSkillTargetCandidates
 import org.beobma.classWarPlugin.manager.SkillManager.getConeTargets
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetPlayerData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
@@ -158,7 +159,7 @@ class KnightsPassive : Passive(), OnHitHandler {
 
     override fun onAttackHit(event: EntityDamageByEntityEvent) {
         val entity = event.entity
-        val entityData = game.playerDatas.find { it.player == entity } ?: return
+        val entityData = playerData.getSkillTargetCandidates().find { it.player == entity } ?: return
         val status = entityData.getOrCreateStatus { Bleeding() }
         status.applyStatus(duration = 3, durationMode = StatusDurationMode.Refresh)
 

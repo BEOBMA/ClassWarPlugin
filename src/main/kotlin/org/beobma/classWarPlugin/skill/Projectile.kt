@@ -86,7 +86,7 @@ abstract class Projectile {
                 }
 
                 if (isPlayerHit) {
-                    val isTraining = PlayerTagManager.hasTag(player, "isTraining")
+                    val isTraining = PlayerTagManager.hasTag(player, "isTraining") || player.isMannequin()
                     val targetCandidates = if (isTraining) {
                         val candidates = game.playerDatas.toMutableList()
                         player.world.entities.filterIsInstance<Player>().filter { it.isMannequin() }.forEach { mannequin ->

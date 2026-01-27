@@ -2,6 +2,8 @@ package org.beobma.classWarPlugin.skill
 
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.game.Game
+import org.beobma.classWarPlugin.manager.PlayerTagManager
+import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.player.PlayerData
 import org.beobma.classWarPlugin.player.PlayerStatus
 import org.beobma.classWarPlugin.util.TargetType
@@ -69,13 +71,26 @@ abstract class Meteor(
                     return
                 }
 
-                val collidedPlayerData = game.playerDatas
+                val isTraining = PlayerTagManager.hasTag(player, "isTraining") || player.isMannequin()
+                val targetCandidates = if (isTraining) {
+                    val candidates = game.playerDatas.toMutableList()
+                    player.world.entities.filterIsInstance<Player>().filter { it.isMannequin() }.forEach { mannequin ->
+                        val data = game.playerDatas.find { it.player == mannequin }
+                            ?: PlayerData(mannequin, game).also { game.playerDatas.add(it) }
+                        candidates.add(data)
+                    }
+                    candidates.distinctBy { it.player.uniqueId }
+                } else {
+                    game.playerDatas
+                }
+
+                val collidedPlayerData = targetCandidates
                     .filter { it != playerData && it.playerStatus.isSkillTargeting }
                     .firstOrNull { targetData ->
                         targetData.player.location.distanceSquared(currentLocation) <= 1.0 &&
                                 when (targetType) {
-                                    Team -> targetData.team == playerData.team
-                                    Enemy -> targetData.team != playerData.team
+                                    Team -> targetData.team == playerData.team || (isTraining && targetData.player.isMannequin())
+                                    Enemy -> targetData.team != playerData.team || (isTraining && targetData.player.isMannequin())
                                     All -> true
                                 }
                     }

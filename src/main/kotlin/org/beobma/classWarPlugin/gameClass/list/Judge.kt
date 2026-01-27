@@ -6,6 +6,7 @@ import org.beobma.classWarPlugin.gameClass.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.Weapon
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
+import org.beobma.classWarPlugin.manager.SkillManager.getSkillTargetCandidates
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetPlayerData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
@@ -122,7 +123,8 @@ class JudgesYellowSkill : Skill() {
             return false
         }
         while (judgesUtils.getTeamStatus(playerData) != TeamStatus.Balance) {
-            val enemies = game.playerDatas.filter { it.team != playerData.team && !it.playerStatus.isDead && it.getStatus<Exile>() == null }
+            val enemies = playerData.getSkillTargetCandidates()
+                .filter { it.team != playerData.team && !it.playerStatus.isDead && it.getStatus<Exile>() == null }
             val enemy = enemies.randomOrNull() ?: break
             val exile = enemy.getOrCreateStatus { Exile() }
             exile.applyStatus(duration = 5, durationMode = StatusDurationMode.Extend)
@@ -164,7 +166,7 @@ class JudgesPassive : Passive(), OnHitHandler {
 
 class JudgesUtils {
     fun getTeamStatus(playerData: PlayerData): TeamStatus {
-        val (allies, enemies) = playerData.game.playerDatas.partition {
+        val (allies, enemies) = playerData.getSkillTargetCandidates().partition {
             it.team == playerData.team && !it.playerStatus.isDead
         }
         val enemyCount = enemies.count { it.team != TeamType.Spectator && !it.playerStatus.isDead }
