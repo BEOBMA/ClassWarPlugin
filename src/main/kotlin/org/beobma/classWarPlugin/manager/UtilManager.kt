@@ -6,6 +6,7 @@ import org.beobma.classWarPlugin.keyword.Dictionary
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.attribute.Attribute
+import org.bukkit.entity.Entity
 import org.bukkit.entity.Player
 import org.bukkit.entity.EntityType
 
@@ -48,7 +49,7 @@ object UtilManager {
         this.sendMessage(miniMessage.deserialize(message))
     }
 
-    fun Player.isMannequin(): Boolean {
+    fun Entity.isMannequin(): Boolean {
         return this.type == EntityType.MANNEQUIN
     }
 
