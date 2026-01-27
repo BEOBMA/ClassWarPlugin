@@ -286,6 +286,15 @@ object GameManager{
 
     val trainingInstance: MutableList<Game> = mutableListOf()
     private val trainingGround = TrainingGround()
+    fun findGameForPlayer(player: Player): Game? {
+        return if (PlayerTagManager.hasTag(player, "isTraining")) {
+            trainingInstance.find { game ->
+                game.playerDatas.any { playerData -> playerData.player == player }
+            }
+        } else {
+            game
+        }
+    }
     fun Player.startTraining(gameClass: GameClass) {
         val game = Game(mutableListOf(), trainingGround)
         val playerData = PlayerData(this, game)
