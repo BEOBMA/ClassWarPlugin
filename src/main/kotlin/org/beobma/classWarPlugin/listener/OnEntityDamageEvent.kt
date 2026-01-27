@@ -19,7 +19,7 @@ class OnEntityDamageEvent : Listener {
         val finalDamage = event.finalDamage
         if (finalDamage > 0.0) {
             val formattedDamage = String.format("%.2f", finalDamage)
-            player.sendMiniMessage("<gray>훈련 중 피해량: <gold><bold>$formattedDamage</bold></gold>")
+            player.sendMiniMessage("<red>받은 피해 정보 - <gray>피해량: <gold><bold>$formattedDamage</bold></gold>")
         }
         event.isCancelled = true
     }

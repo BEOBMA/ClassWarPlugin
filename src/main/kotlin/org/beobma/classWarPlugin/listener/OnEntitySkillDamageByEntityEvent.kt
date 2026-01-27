@@ -64,7 +64,7 @@ class OnEntitySkillDamageByEntityEvent : Listener {
         if (entityData.player.isMannequin()) {
             event.isCancelled = true
             val formattedDamage = String.format("%.2f", event.damage)
-            damagerData.player.sendMiniMessage("<gray>피해 경로: <yellow><bold>${event.damageType}</bold></yellow> <gray>피해량: <gold><bold>$formattedDamage</bold></gold>")
+            damagerData.player.sendMiniMessage("<gray>가한 피해 정보 - 피해 경로 <yellow><bold>${event.damageType}</bold></yellow> <gray>피해량: <gold><bold>$formattedDamage</bold></gold>")
             return
         }
 

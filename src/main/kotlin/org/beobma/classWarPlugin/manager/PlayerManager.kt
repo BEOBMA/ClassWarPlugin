@@ -126,7 +126,7 @@ object PlayerManager {
 
         if (PlayerTagManager.hasTag(player, "isTraining")) {
             val formattedDamage = String.format("%.2f", damageResult.finalDamage)
-            player.sendMiniMessage("<gray>훈련 중 피해량: <gold><bold>$formattedDamage</bold></gold>")
+            player.sendMiniMessage("<red>받은 피해 정보 - <gray>피해량: <gold><bold>$formattedDamage</bold></gold>")
             return
         }
 
