@@ -1,0 +1,26 @@
+package org.beobma.classWarPlugin.listener
+
+import org.beobma.classWarPlugin.manager.PlayerTagManager
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
+import org.bukkit.entity.Player
+import org.bukkit.event.EventHandler
+import org.bukkit.event.EventPriority
+import org.bukkit.event.Listener
+import org.bukkit.event.entity.EntityDamageEvent
+
+class OnEntityDamageEvent : Listener {
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    fun onEntityDamage(event: EntityDamageEvent) {
+        val player = event.entity as? Player ?: return
+        if (!PlayerTagManager.hasTag(player, "isTraining")) {
+            return
+        }
+
+        val finalDamage = event.finalDamage
+        if (finalDamage > 0.0) {
+            val formattedDamage = String.format("%.2f", finalDamage)
+            player.sendMiniMessage("<gray>훈련 중 피해량: <gold><bold>$formattedDamage</bold></gold>")
+        }
+        event.isCancelled = true
+    }
+}
