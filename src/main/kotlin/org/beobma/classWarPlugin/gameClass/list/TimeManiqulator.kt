@@ -32,7 +32,7 @@ class TimeManiqulatorsStaff : Weapon() {
     override val material = Material.WOODEN_SWORD
 }
 
-class TimeManiqulatorsRedSkill() : Skill() {
+class TimeManiqulatorsRedSkill : Skill() {
     override val name = "<blue><bold>체크포인트"
     override val description = listOf(
         "<gray>사용 시 현재 자신의 상태를 체크포인트로 저장한다.",
@@ -46,7 +46,7 @@ class TimeManiqulatorsRedSkill() : Skill() {
     }
 }
 
-class TimeManiqulatorsOrangeSkill() : Skill() {
+class TimeManiqulatorsOrangeSkill : Skill() {
     override val name = "<gold><bold>불러오기"
     override val description = listOf(
         "<gray>저장된 체크포인트가 있을 때에만 사용할 수 있다.",
@@ -64,7 +64,7 @@ class TimeManiqulatorsOrangeSkill() : Skill() {
     }
 }
 
-class TimeManiqulatorsPassive() : Passive() {
+class TimeManiqulatorsPassive : Passive() {
     override val name = "<yellow><bold>생명 교차"
     override val description = listOf(
         "<gray>패시브",

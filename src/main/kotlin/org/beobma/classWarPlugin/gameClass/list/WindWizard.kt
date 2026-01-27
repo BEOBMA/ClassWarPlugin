@@ -33,7 +33,7 @@ class WindWizardsStaff : Weapon() {
     override val material = Material.WOODEN_SWORD
 }
 
-class WindWizardsRedSkill() : Skill() {
+class WindWizardsRedSkill : Skill() {
     override val name = "<blue><bold>윈드 필드"
     override val description = listOf(
         "{keyword:Mana}를 40 소모하고 사용할 수 있다.",
@@ -48,7 +48,7 @@ class WindWizardsRedSkill() : Skill() {
     }
 }
 
-class WindWizardsOrangeSkill() : Skill() {
+class WindWizardsOrangeSkill : Skill() {
     override val name = "<blue><bold>윈드 스톰"
     override val description = listOf(
         "{keyword:Mana}를 60 소모하고 사용할 수 있다.",
@@ -63,7 +63,7 @@ class WindWizardsOrangeSkill() : Skill() {
     }
 }
 
-class WindWizardsYellowSkill() : Skill() {
+class WindWizardsYellowSkill : Skill() {
     override val name = "<yellow><bold>바람의 길"
     override val description = listOf(
         "{keyword:Mana}를 100 소모하고 사용할 수 있다.",

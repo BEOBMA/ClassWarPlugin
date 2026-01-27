@@ -11,6 +11,7 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.player.PlayerData
 import org.beobma.classWarPlugin.skill.*
 import org.beobma.classWarPlugin.status.list.Abyss
@@ -70,7 +71,7 @@ class DarkWizardsRedSkill : Skill() {
     override fun use(): Boolean {
         val mana = playerData.getOrCreateStatus { Mana() }
         if (mana.power < 40) {
-            player.sendMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
             return false
         }
 
@@ -78,7 +79,7 @@ class DarkWizardsRedSkill : Skill() {
 
         smoke.location = if (player.isSneaking) {
             playerData.shotLaserGetBlock(4.0)?.location?.add(0.5, 1.0, 0.5) ?: run {
-                player.sendMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
                 return false
             }
         } else {
@@ -130,7 +131,7 @@ class DarkWizardsOrangeSkill : Skill() {
     override fun use(): Boolean {
         val mana = playerData.getOrCreateStatus { Mana() }
         if (mana.power < 60) {
-            player.sendMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
             return false
         }
 
@@ -179,7 +180,7 @@ class DarkWizardsYellowSkill : Skill() {
     override fun use(): Boolean {
         val mana = playerData.getOrCreateStatus { Mana() }
         if (mana.power < 100) {
-            player.sendMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
             return false
         }
 

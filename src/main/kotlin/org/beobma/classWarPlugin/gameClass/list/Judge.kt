@@ -13,6 +13,7 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.player.PlayerData
 import org.beobma.classWarPlugin.player.TeamType
 import org.beobma.classWarPlugin.skill.Passive
@@ -67,7 +68,7 @@ class JudgesRedSkill : Skill() {
 
     override fun use(): Boolean {
         val targetData = playerData.shotLaserGetPlayerData(3.0, TargetType.Enemy, false) ?: run {
-            player.sendMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+            player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
             return false
         }
         when (judgesUtils.getTeamStatus(playerData)) {
@@ -117,7 +118,7 @@ class JudgesYellowSkill : Skill() {
 
     override fun use(): Boolean {
         if (judgesUtils.getTeamStatus(playerData) != TeamStatus.Inferiority) {
-            player.sendMessage("<red><bold>[!] 수적 열세 상황에서만 사용할 수 있습니다.")
+            player.sendMiniMessage("<red><bold>[!] 수적 열세 상황에서만 사용할 수 있습니다.")
             return false
         }
         while (judgesUtils.getTeamStatus(playerData) != TeamStatus.Balance) {

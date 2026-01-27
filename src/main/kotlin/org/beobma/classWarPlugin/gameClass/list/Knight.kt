@@ -14,6 +14,7 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateSta
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.Bleeding
@@ -62,7 +63,7 @@ class KnightsRedSkill : Skill() {
 
     override fun use(): Boolean {
         val target = playerData.shotLaserGetPlayerData(2.0, TargetType.Enemy, false) ?: run {
-            player.sendMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+            player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
             return false
         }
         target.damage(6.0, DamageType.Normal, playerData)

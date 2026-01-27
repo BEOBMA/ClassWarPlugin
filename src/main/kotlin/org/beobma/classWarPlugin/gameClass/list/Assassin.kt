@@ -11,6 +11,7 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateSta
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
 import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.player.PlayerData
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Projectile
@@ -60,7 +61,7 @@ class AssassinsRedSkill : Skill() {
 
     override fun use(): Boolean {
         val targetData = playerData.shotLaserGetPlayerData(2.0, TargetType.Enemy, false) ?: run {
-            player.sendMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+            player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
             return false
         }
         targetData.damage(6.0, DamageType.Normal, playerData)
@@ -138,7 +139,7 @@ class AssassinsYellowSkill : Skill() {
 
     override fun use(): Boolean {
         val targetData = playerData.shotLaserGetPlayerData(2.0, TargetType.Enemy, false) ?: run {
-            player.sendMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+            player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
             return false
         }
         targetData.damage(10.0, DamageType.Normal, playerData)

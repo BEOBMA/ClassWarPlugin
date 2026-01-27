@@ -1,7 +1,6 @@
 package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.ClassWarPlugin
-import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.Weapon
@@ -10,7 +9,9 @@ import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
-import org.beobma.classWarPlugin.skill.*
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
+import org.beobma.classWarPlugin.skill.Passive
+import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.Mana
 import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.TargetType
@@ -66,7 +67,7 @@ class FireWizardsRedSkill : Skill() {
     override fun use(): Boolean {
         val mana = playerData.getOrCreateStatus { Mana() }
         if (mana.power < 40) {
-            player.sendMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
             return false
         }
         mana.decreasePower(40)
@@ -94,14 +95,14 @@ class FireWizardsOrangeSkill : Skill() {
     override fun use(): Boolean {
         val mana = playerData.getOrCreateStatus { Mana() }
         if (mana.power < 100) {
-            player.sendMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
             return false
         }
         mana.decreasePower(100)
 
         val location = if (player.isSneaking) {
             playerData.shotLaserGetBlock(4.0)?.location?.add(0.5, 1.0, 0.5) ?: run {
-                player.sendMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
                 return false
             }
         } else {

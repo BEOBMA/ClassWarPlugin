@@ -14,6 +14,7 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.vibrationExplo
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.Mana
@@ -76,7 +77,7 @@ class LandWizardsRedSkill : Skill() {
     override fun use(): Boolean {
         val mana = playerData.getOrCreateStatus { Mana() }
         if (mana.power < 20) {
-            player.sendMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
             return false
         }
         mana.decreasePower(20)
@@ -106,7 +107,7 @@ class LandWizardsOrangeSkill : Skill() {
         val mana = playerData.getOrCreateStatus { Mana() }
         val shield = playerData.addStatus(Shield())
         if (mana.power < 100) {
-            player.sendMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
             return false
         }
         mana.decreasePower(100)

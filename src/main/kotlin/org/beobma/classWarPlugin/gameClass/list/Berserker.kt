@@ -46,7 +46,7 @@ class BerserkersRedSkill : Skill() {
         get() = "<dark_red><bold>피의 분노"
     override val description: List<String>
         get() = listOf("<gray>사용 시 5초 동안 <gold><bold>공격 속도가 30%</bold><gray> 증가한다.")
-    override val cooldown: Int?
+    override val cooldown: Int
         get() = 10
 
     override fun use(): Boolean {
@@ -68,7 +68,7 @@ class BerserkersOrangeSkill : Skill() {
             "<gray>사용 시 10초 동안 <gold><bold>이동 속도가 30%</bold><gray> 증가하고",
             "<gold><bold>받는 피해가 40%</bold><gray> 감소한다."
         )
-    override val cooldown: Int?
+    override val cooldown: Int
         get() = 40
 
     override fun use(): Boolean {

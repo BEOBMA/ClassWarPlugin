@@ -1,7 +1,6 @@
 package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
-import org.beobma.classWarPlugin.event.PlayerStatusEffectDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.OnHitHandler
@@ -14,6 +13,7 @@ import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetPlayerData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.player.PlayerData
 import org.beobma.classWarPlugin.skill.Flooring
 import org.beobma.classWarPlugin.skill.Meteor
@@ -24,7 +24,6 @@ import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.TargetType
 import org.bukkit.Location
 import org.bukkit.Material
-import org.bukkit.event.entity.EntityDamageByEntityEvent
 
 class Astronomer : GameClass(), GameStatusHandler {
     override val name = "<gray>천문학자"
@@ -69,7 +68,7 @@ class AstronomersRedSkill : Skill() {
 
     override fun use(): Boolean {
         val target = playerData.shotLaserGetPlayerData(8.0, TargetType.Enemy, false) ?: run {
-            player.sendMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+            player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
             return false
         }
         target.damage(5.0, DamageType.Normal, playerData)
@@ -93,7 +92,7 @@ class AstronomersOrangeSkill : Skill() {
             origin.clone()
         } else {
             val block = playerData.shotLaserGetBlock(8.0) ?: run {
-                player.sendMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
                 return false
             }
             block.location.add(0.5, 1.0, 0.5)

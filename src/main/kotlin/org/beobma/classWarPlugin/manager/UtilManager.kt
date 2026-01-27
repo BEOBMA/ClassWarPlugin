@@ -43,6 +43,10 @@ object UtilManager {
                 playerLocation.z in zMin..zMax)
     }
 
+    fun Player.sendMiniMessage(message: String) {
+        this.sendMessage(miniMessage.deserialize(message))
+    }
+
     fun Player.resetDyeCooldowns() {
         val dyes = listOf(
             Material.WHITE_DYE,

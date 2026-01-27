@@ -41,7 +41,7 @@ class SnipersGun : Weapon() {
     override val material = Material.SPYGLASS
 }
 
-class SnipersRedSkill() : Skill() {
+class SnipersRedSkill : Skill() {
     override val name = "<gray><bold>재장전"
     override val description = listOf(
         "<gray>사용 시 저격총을 재장전한다.",
@@ -55,7 +55,7 @@ class SnipersRedSkill() : Skill() {
     }
 }
 
-class SnipersOrangeSkill() : Skill() {
+class SnipersOrangeSkill : Skill() {
     override val name = "<gold><bold>견제 사격 / 지원 사격"
     override val description = listOf(
         "<gray>사용 시 생존한 아군의 수에 따라 다른 효과를 발동한다.",
@@ -81,7 +81,7 @@ class SnipersOrangeSkill() : Skill() {
     }
 }
 
-class SnipersPassive() : Passive() {
+class SnipersPassive : Passive() {
     override val name = "<yellow><bold>저지력"
     override val description = listOf(
         "<gray>패시브",

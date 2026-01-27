@@ -1,6 +1,7 @@
 package org.beobma.classWarPlugin.manager
 
 import net.kyori.adventure.text.minimessage.MiniMessage
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.player.PlayerData
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.util.TargetType
@@ -16,11 +17,11 @@ import kotlin.math.cos
 object SkillManager {
     fun PlayerData.use(skill: Skill, clickedItem: ItemStack): Boolean {
         if (!playerStatus.canSkillUse) {
-            player.sendMessage("<red><bold>[!] 현재 스킬을 사용할 수 없는 상태입니다.")
+            player.sendMiniMessage("<red><bold>[!] 현재 스킬을 사용할 수 없는 상태입니다.")
             return false
         }
         if (player.hasCooldown(clickedItem.type)) {
-            player.sendMessage("<red><bold>[!] 재사용 대기 중입니다.")
+            player.sendMiniMessage("<red><bold>[!] 재사용 대기 중입니다.")
             return false
         }
 

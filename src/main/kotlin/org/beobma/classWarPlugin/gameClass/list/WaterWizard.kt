@@ -2,11 +2,8 @@ package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Weapon
-import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetPlayerData
-import org.beobma.classWarPlugin.player.PlayerData
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
-import org.beobma.classWarPlugin.util.TargetType
 import org.bukkit.Material
 
 class WaterWizard : GameClass() {
@@ -35,7 +32,7 @@ class WaterWizardsStaff : Weapon() {
     override val material = Material.WOODEN_SWORD
 }
 
-class WaterWizardsRedSkill() : Skill() {
+class WaterWizardsRedSkill : Skill() {
     override val name = "<aqua><bold>물의 결계"
     override val description = listOf(
         "{keyword:Mana}를 40 소모하고 사용할 수 있다.",
@@ -50,7 +47,7 @@ class WaterWizardsRedSkill() : Skill() {
     }
 }
 
-class WaterWizardsOrangeSkill() : Skill() {
+class WaterWizardsOrangeSkill : Skill() {
     override val name = "<aqua><bold>파도"
     override val description = listOf(
         "{keyword:Mana}를 100 소모하고 사용할 수 있다.",

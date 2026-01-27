@@ -5,6 +5,7 @@ import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Weapon
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.Mana
@@ -61,13 +62,13 @@ class LightningWizardsRedSkill : Skill() {
         val mana = playerData.getOrCreateStatus { Mana() }
 
         if (mana.power < 20) {
-            player.sendMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
             return false
         }
 
         val location = if (player.isSneaking) {
             playerData.shotLaserGetBlock(4.0)?.location?.add(0.0, 1.0, 0.0) ?: run {
-                player.sendMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
                 return false
             }
         }
@@ -100,13 +101,13 @@ class LightningWizardsOrangeSkill : Skill() {
         val mana = playerData.getOrCreateStatus { Mana() }
         val gameClass = playerData.gameClass
         if (mana.power < 40) {
-            player.sendMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
             return false
         }
         if (gameClass !is LightningWizard) return false
         val markerList = gameClass.markers
         if (markerList.isEmpty()) {
-            player.sendMessage("<red><bold>[!] 생성된 표식이 존재하지 않습니다.")
+            player.sendMiniMessage("<red><bold>[!] 생성된 표식이 존재하지 않습니다.")
             return false
         }
 
@@ -130,14 +131,14 @@ class LightningWizardsYellowSkill : Skill() {
         val mana = playerData.getOrCreateStatus { Mana() }
         val gameClass = playerData.gameClass
         if (mana.power < 100) {
-            player.sendMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
             return false
         }
 
         if (gameClass !is LightningWizard) return false
         val markerList = gameClass.markers
         if (markerList.isEmpty()) {
-            player.sendMessage("<red><bold>[!] 생성된 표식이 존재하지 않습니다.")
+            player.sendMiniMessage("<red><bold>[!] 생성된 표식이 존재하지 않습니다.")
             return false
         }
 
