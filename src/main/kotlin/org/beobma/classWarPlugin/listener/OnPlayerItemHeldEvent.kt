@@ -1,8 +1,10 @@
 package org.beobma.classWarPlugin.listener
 
+import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
 import org.beobma.classWarPlugin.manager.PlayerTagManager
+import org.beobma.classWarPlugin.manager.SkillManager.use
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerItemHeldEvent
@@ -13,14 +15,33 @@ class OnPlayerItemHeldEvent : Listener {
     fun onHotbarChange(event: PlayerItemHeldEvent) {
         val player = event.player
         val next = event.newSlot
+        val isTraining = PlayerTagManager.hasTag(player, "isTraining")
 
-        if (!isGaming() && !PlayerTagManager.hasTag(player, "isTraining")) return
+        if (!isGaming() && !isTraining) return
         if (next == 0) return
 
         val currentGame = findGameForPlayer(player) ?: return
         val playerData = currentGame.playerDatas.find { it.player == player } ?: return
         val gameClass = playerData.gameClass ?: return
-        gameClass.skills.getOrNull(next - 1)?.use()
+        val skill = gameClass.skills.getOrNull(next - 1)
+        val clickedItem = player.inventory.getItem(next)
         event.isCancelled = true
+
+        if (skill == null || clickedItem == null) {
+            if (isTraining) {
+                ClassWarPlugin.instance.loggerInfo(
+                    "훈련 스킬 사용 실패: ${player.name} (slot=$next, skill=${skill?.name ?: "없음"})"
+                )
+            }
+            return
+        }
+
+        val isUsed = playerData.use(skill, clickedItem)
+        if (isTraining) {
+            val result = if (isUsed) "성공" else "차단"
+            ClassWarPlugin.instance.loggerInfo(
+                "훈련 스킬 사용 $result: ${player.name} -> ${skill.name} (slot=$next)"
+            )
+        }
     }
 }
