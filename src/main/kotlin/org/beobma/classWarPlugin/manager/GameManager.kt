@@ -41,6 +41,7 @@ import org.beobma.classWarPlugin.manager.InventoryManager.openClassPickInventory
 import org.beobma.classWarPlugin.manager.PlayerManager.classSet
 import org.beobma.classWarPlugin.manager.UtilManager.getPlayerMaxHealth
 import org.beobma.classWarPlugin.manager.UtilManager.isInArea
+import org.beobma.classWarPlugin.manager.UtilManager.resetDyeCooldowns
 import org.beobma.classWarPlugin.map.Map
 import org.beobma.classWarPlugin.map.list.Forest
 import org.beobma.classWarPlugin.map.list.TrainingGround
@@ -114,6 +115,7 @@ object GameManager{
             player.fireTicks = 0
             player.inventory.clear()
             player.health = player.getPlayerMaxHealth()
+            player.resetDyeCooldowns()
 
             player.teleport(Location(Bukkit.getWorld("world"), 10.0, -60.0, 0.0, 90F, 0F))
             player.gameMode = GameMode.ADVENTURE
@@ -338,6 +340,7 @@ object GameManager{
         fireTicks = 0
         inventory.clear()
         health = getPlayerMaxHealth()
+        resetDyeCooldowns()
 
         teleport(Location(Bukkit.getWorld("world"), 10.0, -60.0, 0.0, 90F, 0F))
         gameMode = GameMode.ADVENTURE
