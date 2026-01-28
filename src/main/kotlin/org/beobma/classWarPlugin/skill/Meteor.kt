@@ -74,18 +74,22 @@ abstract class Meteor(
                     return
                 }
 
-                val collidedEntityData = game.playerDatas
-                    .filter { it != playerData && it.entityStatus.isSkillTargeting }
-                    .firstOrNull { targetData ->
-                        targetData.entity.location.distanceSquared(currentLocation) <= 1.0 &&
-                                when (targetType) {
-                                    Team -> targetData.entity.isMannequin() && isTraining ||
-                                        (targetData is PlayerData && targetData.team == playerData.team)
-                                    Enemy -> targetData.entity.isMannequin() && isTraining ||
-                                        (targetData is PlayerData && targetData.team != playerData.team)
-                                    All -> true
-                                }
+                var collidedEntityData: EntityData? = null
+                for (targetData in game.playerDatas) {
+                    if (targetData == playerData || !targetData.entityStatus.isSkillTargeting) continue
+                    if (targetData.entity.location.distanceSquared(currentLocation) > 1.0) continue
+                    val isValidTarget = when (targetType) {
+                        Team -> targetData.entity.isMannequin() && isTraining ||
+                            (targetData is PlayerData && targetData.team == playerData.team)
+                        Enemy -> targetData.entity.isMannequin() && isTraining ||
+                            (targetData is PlayerData && targetData.team != playerData.team)
+                        All -> true
                     }
+                    if (isValidTarget) {
+                        collidedEntityData = targetData
+                        break
+                    }
+                }
 
                 if (collidedEntityData != null) {
                     onMeteorEntityHit(collidedEntityData, currentLocation)

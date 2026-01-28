@@ -17,6 +17,7 @@ import org.bukkit.block.Block
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
+import java.util.UUID
 
 abstract class Projectile {
     protected lateinit var playerData: PlayerData
@@ -67,6 +68,8 @@ abstract class Projectile {
         val direction = location.direction.normalize().multiply(speed)
         val currentLocation = location.clone()
         var ticks = 0
+        val trainingCandidates: MutableList<EntityData> = ArrayList()
+        val trainingCandidateIds: MutableSet<UUID> = HashSet()
 
         val task = object : BukkitRunnable() {
             override fun run() {
@@ -91,28 +94,43 @@ abstract class Projectile {
                 if (isPlayerHit) {
                     val isTraining = PlayerTagManager.hasTag(player, "isTraining")
                     val targetCandidates = if (isTraining) {
-                        val candidates = game.playerDatas.toMutableList()
-                        player.world.entities.filter { it.isMannequin() }.forEach { mannequin ->
+                        trainingCandidates.clear()
+                        trainingCandidateIds.clear()
+                        game.playerDatas.forEach { data ->
+                            val entityId = data.entity.uniqueId
+                            if (trainingCandidateIds.add(entityId)) {
+                                trainingCandidates.add(data)
+                            }
+                        }
+                        for (mannequin in player.world.entities) {
+                            if (!mannequin.isMannequin()) continue
                             val data = game.playerDatas.find { it.entity == mannequin }
                                 ?: DummyEntityData(mannequin, game).also { game.playerDatas.add(it) }
-                            candidates.add(data)
+                            val entityId = data.entity.uniqueId
+                            if (trainingCandidateIds.add(entityId)) {
+                                trainingCandidates.add(data)
+                            }
                         }
-                        candidates.distinctBy { it.entity.uniqueId }
+                        trainingCandidates
                     } else {
                         game.playerDatas
                     }
-                    val collidedEntityData = targetCandidates
-                        .filter { it != playerData && it.entityStatus.isSkillTargeting }
-                        .firstOrNull { targetData ->
-                            targetData.entity.location.distanceSquared(currentLocation) <= 1.0 &&
-                                when (targetType) {
-                                    Team -> targetData.entity.isMannequin() && isTraining ||
-                                        (targetData is PlayerData && targetData.team == playerData.team)
-                                    Enemy -> targetData.entity.isMannequin() && isTraining ||
-                                        (targetData is PlayerData && targetData.team != playerData.team)
-                                    All -> true
-                                }
+                    var collidedEntityData: EntityData? = null
+                    for (targetData in targetCandidates) {
+                        if (targetData == playerData || !targetData.entityStatus.isSkillTargeting) continue
+                        if (targetData.entity.location.distanceSquared(currentLocation) > 1.0) continue
+                        val isValidTarget = when (targetType) {
+                            Team -> targetData.entity.isMannequin() && isTraining ||
+                                (targetData is PlayerData && targetData.team == playerData.team)
+                            Enemy -> targetData.entity.isMannequin() && isTraining ||
+                                (targetData is PlayerData && targetData.team != playerData.team)
+                            All -> true
                         }
+                        if (isValidTarget) {
+                            collidedEntityData = targetData
+                            break
+                        }
+                    }
 
                     if (collidedEntityData != null) {
                         onProjectileEntityHit(collidedEntityData, currentLocation)
