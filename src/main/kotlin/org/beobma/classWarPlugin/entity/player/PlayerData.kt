@@ -12,7 +12,6 @@ import org.bukkit.scheduler.BukkitTask
 class PlayerData(
     val player: Player,
     val initGame: Game,
-    var team: TeamType? = null,
     var gameClass: GameClass? = null,
 ) : EntityData() {
     override val entity: Entity = player

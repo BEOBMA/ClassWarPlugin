@@ -10,6 +10,7 @@ import org.beobma.classWarPlugin.util.TargetType
 import org.beobma.classWarPlugin.util.TargetType.*
 import org.bukkit.Location
 import org.bukkit.block.Block
+import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import kotlin.math.cos
@@ -96,14 +97,15 @@ object SkillManager {
         }
     }
     fun EntityData.shotLaserGetEntityData(maxRange: Double, targetType: TargetType, wallShot: Boolean): EntityData? {
-        val sourcePlayer = this as? PlayerData ?: return null
         val isTraining = isTraining()
-        val world = sourcePlayer.player.world
+        val world = this.entity.world
         val playerDatas = getTargetCandidates().filter { entityData ->
             val playerStatus = entityData.entityStatus
             return@filter !playerStatus.isDead && playerStatus.isSkillTargeting
         }
-        val startLocation = sourcePlayer.player.eyeLocation
+        val entity = entity
+        if (entity !is LivingEntity) return null
+        val startLocation = entity.eyeLocation
         val direction = startLocation.direction
 
         val maxDistance: Double = maxRange
@@ -119,7 +121,7 @@ object SkillManager {
         }
 
         val entityRayTraceResult = world.rayTraceEntities(startLocation, direction, maxDistance, 1.0) { entity ->
-            entity !== sourcePlayer.player
+            entity !== this.entity
         }
 
         val hitEntity = entityRayTraceResult?.hitEntity ?: return null
@@ -130,8 +132,8 @@ object SkillManager {
                 return hitEntityData
             }
             val isValidTarget = when (targetType) {
-                Team -> hitEntityData is PlayerData && hitEntityData.team == sourcePlayer.team
-                Enemy -> hitEntityData is PlayerData && hitEntityData.team != sourcePlayer.team
+                Team -> hitEntityData is PlayerData && hitEntityData.team == this.team
+                Enemy -> hitEntityData is PlayerData && hitEntityData.team != this.team
                 All -> hitEntityData is PlayerData
             }
             if (!isValidTarget) {

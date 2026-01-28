@@ -65,7 +65,7 @@ class AssassinsRedSkill : Skill() {
             return false
         }
         targetData.damage(6.0, DamageType.Normal, playerData)
-        val viewCheck = targetData.shotLaserGetEntityData(5.0, TargetType.Enemy, false)
+        val viewCheck = targetData.shotLaserGetEntityData(5.0, TargetType.All, false)
         if (viewCheck != playerData) {
             targetData.damage(3.0, DamageType.Normal, playerData)
         }
@@ -88,6 +88,18 @@ class AssassinsOrangeSkill : Skill() {
         assassinsDaggerProjectile.spawnProjectile(playerData)
         return true
     }
+}
+
+class AssassinsPassive : Passive() {
+    override val name = "<bold>암살자의 각오"
+    override val description = listOf(
+        "<gray>패시브",
+        "",
+        "<gray>암살자는 완벽한 {keyword:Stealth}을 위해 기본 무기가 존재하지 않는다.",
+        "<gray>{keyword:Stealth}하면 {keyword:Untargetability} 상태가 된다.",
+        "",
+        dictionary[Keyword.Untargetability] ?: ""
+    )
 }
 
 class AssassinsDaggerProjectile : Projectile() {
@@ -152,16 +164,4 @@ class AssassinsYellowSkill : Skill() {
         }
         return true
     }
-}
-
-class AssassinsPassive : Passive() {
-    override val name = "<bold>암살자의 각오"
-    override val description = listOf(
-        "<gray>패시브",
-        "",
-        "<gray>암살자는 완벽한 {keyword:Stealth}을 위해 기본 무기가 존재하지 않는다.",
-        "<gray>{keyword:Stealth}하면 {keyword:Untargetability} 상태가 된다.",
-        "",
-        dictionary[Keyword.Untargetability] ?: ""
-    )
 }
