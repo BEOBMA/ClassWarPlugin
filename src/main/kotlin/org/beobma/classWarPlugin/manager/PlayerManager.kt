@@ -170,14 +170,6 @@ object PlayerManager {
                     targetPlayer?.noDamageTicks = 0
                 }
 
-                val currentTick = entity.world.fullTime
-                lastDamageTicks[damager]?.let { lastTick ->
-                    if (currentTick - lastTick < 20) {
-                        return
-                    }
-                }
-                lastDamageTicks[damager] = currentTick
-
                 val finalDamage = if (damageType == StatusAbnormality) {
                     val event = PlayerStatusEffectDamageByPlayerEvent(damage, damageType, damager, this)
                     Bukkit.getServer().pluginManager.callEvent(event)
