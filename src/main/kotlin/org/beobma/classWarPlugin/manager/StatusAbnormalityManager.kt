@@ -4,11 +4,13 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
+import org.beobma.classWarPlugin.manager.UtilManager.miniMessage
 import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.beobma.classWarPlugin.status.list.*
 import org.beobma.classWarPlugin.util.DamageType
 import org.bukkit.attribute.Attribute
 import org.bukkit.entity.LivingEntity
+import net.kyori.adventure.text.Component
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 
@@ -178,5 +180,24 @@ object StatusAbnormalityManager {
     private fun stopTickingTask() {
         tickingTask?.cancel()
         tickingTask = null
+    }
+
+    fun PlayerData.updateStatusActionBar() {
+        val statusMessage = buildStatusActionBarMessage(statusAbnormalitys)
+        if (statusMessage.isBlank()) {
+            player.sendActionBar(Component.empty())
+            return
+        }
+        player.sendActionBar(miniMessage.deserialize(statusMessage))
+    }
+
+    private fun buildStatusActionBarMessage(statuses: List<StatusAbnormality>): String {
+        if (statuses.isEmpty()) return ""
+        return statuses
+            .sortedBy { it.name }
+            .joinToString(" <dark_gray>|</dark_gray> ") { status ->
+                val durationLabel = status.duration?.let { "${it}s" } ?: "∞"
+                "${status.name}<gold>${status.power}</gold><gray>/<yellow>$durationLabel</yellow>"
+            }
     }
 }
