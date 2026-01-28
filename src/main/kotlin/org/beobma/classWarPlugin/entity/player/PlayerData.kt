@@ -9,7 +9,7 @@ import org.bukkit.entity.Entity
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitTask
 
-data class PlayerData(
+class PlayerData(
     val player: Player,
     val initGame: Game,
     var team: TeamType? = null,
@@ -25,5 +25,16 @@ data class PlayerData(
         bukkitTasks.add(task)
         game.tasks.add(task)
         return task
+    }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is PlayerData) return false
+
+        return player.uniqueId == other.player.uniqueId
+    }
+
+    override fun hashCode(): Int {
+        return player.uniqueId.hashCode()
     }
 }

@@ -1,6 +1,7 @@
 package org.beobma.classWarPlugin.listener
 
 import org.beobma.classWarPlugin.event.PlayerStatusEffectDamageByPlayerEvent
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.WhenHitHandler
 import org.beobma.classWarPlugin.info.Info.isGaming
@@ -24,11 +25,11 @@ class OnEntityStatusEffectDamageByEntityEvent : Listener {
         if (!isGaming()) return
 
         val damagerClass = damagerData.gameClass ?: return
-        val entityClass = damagerData.gameClass ?: return
+        val entityClass = (entityData as? PlayerData)?.gameClass
         val damagerPassives = damagerClass.passives
-        val entityPassives = entityClass.passives
+        val entityPassives = entityClass?.passives.orEmpty()
         val damagerSkills = damagerClass.skills
-        val entitySkills = entityClass.skills
+        val entitySkills = entityClass?.skills.orEmpty()
 
         // 패시브 적용
         damagerPassives.forEachIs<OnHitHandler> { passive ->
@@ -68,6 +69,6 @@ class OnEntityStatusEffectDamageByEntityEvent : Listener {
         }
 
         // 무적 시간 제거
-        entityData.player.noDamageTicks = 0
+        (entityData as? PlayerData)?.player?.noDamageTicks = 0
     }
 }

@@ -9,6 +9,7 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getDamageTaken
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.manager.forEachIs
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.util.DamageType.*
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -20,7 +21,7 @@ class OnEntitySkillDamageByEntityEvent : Listener {
         val damagerData = event.damager
         val entityData = event.entity
         val damagerStatus = damagerData.entityStatus
-        val entityStatus = damagerData.entityStatus
+        val entityStatus = entityData.entityStatus
 
         // 1보다 작은 피해는 피해를 받지 않은 것으로 간주
         if (event.damage < 1) return
@@ -32,11 +33,11 @@ class OnEntitySkillDamageByEntityEvent : Listener {
             return
         }
         val damagerClass = damagerData.gameClass ?: return
-        val entityClass = damagerData.gameClass ?: return
+        val entityClass = (entityData as? PlayerData)?.gameClass
         val damagerPassives = damagerClass.passives
-        val entityPassives = entityClass.passives
+        val entityPassives = entityClass?.passives.orEmpty()
         val damagerSkills = damagerClass.skills
-        val entitySkills = entityClass.skills
+        val entitySkills = entityClass?.skills.orEmpty()
 
         // 패시브 적용
         damagerPassives.forEachIs<OnHitHandler> { passive ->
@@ -80,6 +81,6 @@ class OnEntitySkillDamageByEntityEvent : Listener {
         }
 
         // 무적 시간 제거
-        entityData.player.noDamageTicks = 0
+        (entityData as? PlayerData)?.player?.noDamageTicks = 0
     }
 }

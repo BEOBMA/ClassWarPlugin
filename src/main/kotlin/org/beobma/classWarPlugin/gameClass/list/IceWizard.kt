@@ -259,7 +259,7 @@ class IceWizardsPassive : Passive(), OnHitHandler, WhenHitHandler {
     }
 
     override fun onSkillAttackHit(event: PlayerSkillDamageByPlayerEvent) {
-        IceWizardsFrostZone(event.entity.player.location.clone()).spawnFlooring(playerData)
+        IceWizardsFrostZone(event.entity.entity.location.clone()).spawnFlooring(playerData)
     }
 
     override fun whenHit(
