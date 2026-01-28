@@ -4,15 +4,12 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Weapon
-import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
-import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.hasStatus
 import org.beobma.classWarPlugin.manager.StatusDurationMode
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Projectile
@@ -169,27 +166,37 @@ class AssassinsDaggerProjectile : Projectile() {
         if (toHit.lengthSquared() < 1.0E-6) return
 
         val dir = toHit.clone().normalize()
-
         val target = hitPoint.clone().add(dir.clone().multiply(-0.35))
 
         val stealth = playerData.getOrCreateStatus { Stealth() }
-        stealth.applyStatus(duration = 4, durationMode = StatusDurationMode.Extend)
+        stealth.applyStatus(
+            duration = 4,
+            durationMode = StatusDurationMode.Extend,
+            powerDelta = 1
+        )
 
-        val maxSpeed = 0.95
+        val durationTicks = 20
+        val stopDistance = 0.15
+
         val minSpeed = 0.20
-        val stopDistance = 0.40
-        val smoothing = 0.35
+        val maxSpeedCap = 3.50
 
         val maxUp = 0.75
         val maxDown = 1.10
         val minUpWhenTargetAbove = 0.28
+
+        val startVec = player.location.toVector()
+        val totalDist = target.toVector().subtract(startVec).length()
+
+        val basePerTickSpeed = totalDist / durationTicks.toDouble()
+
+        val perTickSpeed = max(minSpeed, basePerTickSpeed).coerceAtMost(maxSpeedCap)
 
         val originalGravity = player.hasGravity()
         player.setGravity(false)
 
         val task = object : BukkitRunnable() {
             var ticks = 0
-            val maxTicks = 60
 
             private fun stop() {
                 player.velocity = Vector(0, 0, 0)
@@ -202,7 +209,8 @@ class AssassinsDaggerProjectile : Projectile() {
                     stop()
                     return
                 }
-                if (++ticks > maxTicks) {
+
+                if (++ticks > durationTicks) {
                     stop()
                     return
                 }
@@ -215,19 +223,25 @@ class AssassinsDaggerProjectile : Projectile() {
                     return
                 }
 
-                val desiredSpeed = min(maxSpeed, max(minSpeed, dist * 0.38))
-                val desiredVel = delta.normalize().multiply(desiredSpeed)
+                val speedThisTick = min(dist, perTickSpeed)
+                val vel = delta.normalize().multiply(speedThisTick)
 
                 if (delta.y > 0.2) {
-                    desiredVel.y = max(desiredVel.y, minUpWhenTargetAbove)
+                    vel.y = max(vel.y, minUpWhenTargetAbove)
+                }
+                vel.y = vel.y.coerceIn(-maxDown, maxUp)
+
+                val y = vel.y
+                val maxXz = kotlin.math.sqrt(max(0.0, speedThisTick * speedThisTick - y * y))
+                val xz = Vector(vel.x, 0.0, vel.z)
+                val xzLen = xz.length()
+                if (xzLen > 1.0E-6) {
+                    xz.multiply(maxXz / xzLen)
+                    vel.x = xz.x
+                    vel.z = xz.z
                 }
 
-                desiredVel.y = desiredVel.y.coerceIn(-maxDown, maxUp)
-
-                val current = player.velocity
-                val blended = current.multiply(1.0 - smoothing).add(desiredVel.multiply(smoothing))
-
-                player.velocity = blended
+                player.velocity = vel
                 player.fallDistance = 0f
             }
         }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L)

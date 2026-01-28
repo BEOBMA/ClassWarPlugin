@@ -18,11 +18,26 @@ class Stealth : StatusAbnormality() {
     override var maxPower: Int? = 1
     override var duration: Int? = null
 
+    override val showMaxPower = false
+    override val showPower = false
+
     override fun onDurationChanged() {
         val entity = entity
         if (entity is LivingEntity) {
-            entity.addPotionEffect(PotionEffect(PotionEffectType.INVISIBILITY, 1, 0, false, false, true))
+            val effectDurationSeconds = duration ?: 1
+            val effectDurationTicks = (effectDurationSeconds * 20).coerceAtLeast(1)
+            entity.addPotionEffect(
+                PotionEffect(PotionEffectType.INVISIBILITY, effectDurationTicks, 0, false, false, true)
+            )
             super.onDurationChanged()
         }
+    }
+
+    override fun onRemoveStatusAbnormality() {
+        val entity = entity
+        if (entity is LivingEntity) {
+            entity.removePotionEffect(PotionEffectType.INVISIBILITY)
+        }
+        super.onRemoveStatusAbnormality()
     }
 }

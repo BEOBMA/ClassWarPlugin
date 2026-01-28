@@ -197,8 +197,9 @@ object StatusAbnormalityManager {
             .sortedBy { it.name }
             .joinToString(" <dark_gray> | </dark_gray> ") { status ->
                 val durationLabel = status.duration?.let { "<dark_gray>|</dark_gray><yellow>${it}s</yellow>" } ?: ""
-                val maxPowerLabel = status.maxPower?.let { "<dark_gray>/</dark_gray><gold>${it}</gold>" } ?: ""
-                "${status.name}: <gold>${status.power}${maxPowerLabel}${durationLabel}"
+                val powerLabel = if (status.showPower) "<gold>${status.power}</gold>" else ""
+                val maxPowerLabel = if (status.showMaxPower) status.maxPower?.let { "<dark_gray>/</dark_gray><gold>${it}</gold>" } ?: "" else ""
+                "${status.name}: ${powerLabel}${maxPowerLabel}${durationLabel}"
             }
     }
 }

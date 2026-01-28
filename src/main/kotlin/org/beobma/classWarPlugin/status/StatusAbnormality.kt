@@ -20,6 +20,8 @@ abstract class StatusAbnormality {
 
     open var power: Int = 0
     open var maxPower: Int? = null
+    open val showMaxPower = true
+    open val showPower = true
     open var duration: Int? = null
     open var continueWhile: (() -> Boolean)? = null
 
