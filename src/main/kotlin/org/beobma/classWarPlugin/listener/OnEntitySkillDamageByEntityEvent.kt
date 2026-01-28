@@ -9,6 +9,7 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getDamageTaken
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.manager.forEachIs
+import org.beobma.classWarPlugin.util.DamageType.*
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 
@@ -61,10 +62,15 @@ class OnEntitySkillDamageByEntityEvent : Listener {
         val damageTakenModifier = entityData.getDamageTakenModifier()
         event.addDamageTakenMultiplier(damageTakenModifier.combinedMultiplier)
 
-        if (entityData.player.isMannequin()) {
+        if (entityData.entity.isMannequin()) {
             event.isCancelled = true
             val formattedDamage = String.format("%.2f", event.damage)
-            damagerData.player.sendMiniMessage("<gray>가한 피해 정보 - 피해 경로 <yellow><bold>${event.damageType}</bold></yellow> <gray>피해량: <gold><bold>$formattedDamage</bold></gold>")
+            val damageText = when (event.damageType) {
+                Normal -> "<gray>일반 피해</gray>"
+                True -> "<white>고정 피해</white>"
+                StatusAbnormality -> "<green>상태이상 피해</green>"
+            }
+            damagerData.player.sendMiniMessage("<gray>가한 피해 정보 - 피해 종류: <bold>${damageText}</bold> <gray>피해량: <gold><bold>$formattedDamage</bold></gold>")
             return
         }
 

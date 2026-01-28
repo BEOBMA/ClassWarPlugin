@@ -11,6 +11,9 @@ import org.beobma.classWarPlugin.manager.GameClassManager.toItemStack
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.util.DamageCalculator
 import org.beobma.classWarPlugin.util.DamageType
+import org.beobma.classWarPlugin.util.DamageType.Normal
+import org.beobma.classWarPlugin.util.DamageType.StatusAbnormality
+import org.beobma.classWarPlugin.util.DamageType.True
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.inventory.ItemStack
@@ -52,7 +55,6 @@ object PlayerManager {
         }
 
         gameClass.passives.forEachIndexed { index, skill ->
-            if (8 - index > (gameClass.skills.size + 1)) return
             val name = UtilManager.applyKeywords(skill.name)
             val lore = skill.description.map { miniMessage.deserialize(UtilManager.applyKeywords(it)) }
             val type = Material.WHITE_DYE
@@ -63,13 +65,12 @@ object PlayerManager {
                 }
             }
 
-
-            player.inventory.setItem(index + 1, item)
-            player.inventory.setItem(8 - index, item)
+            if (index + 9 > 26) return
+            player.inventory.setItem(9 + index, item)
         }
 
         gameClass.extraItemMaterials.forEachIndexed { index, item ->
-            if (index + 9 > 35) return
+            if (index + 27 > 35) return
             player.inventory.setItem(index + 9, item)
         }
 
@@ -157,8 +158,13 @@ object PlayerManager {
                     return
                 }
                 val formattedDamage = String.format("%.2f", damage)
+                val damageText = when (damageType) {
+                    Normal -> "<gray>일반 피해</gray>"
+                    True -> "<white>고정 피해</white>"
+                    StatusAbnormality -> "<green>상태이상 피해</green>"
+                }
                 damager.player.sendMiniMessage(
-                    "<gray>가한 피해 정보 - 피해 경로 <yellow><bold>$damageType</bold></yellow> <gray>피해량: <gold><bold>$formattedDamage</bold></gold>"
+                    "<gray>가한 피해 정보 - 피해 경로: <bold>$damageText</bold> <gray>피해량: <gold><bold>$formattedDamage</bold></gold>"
                 )
             }
         }

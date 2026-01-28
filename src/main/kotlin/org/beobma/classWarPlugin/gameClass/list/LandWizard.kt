@@ -131,18 +131,7 @@ class LandWizardsPassive : Passive(), WhenHitHandler {
         "<gray>기본 공격 피격 시 <gold><bold>받는 피해가 30% 감소</bold><gray>한다."
     )
 
-    override fun whenHit(
-        skillDamageEvent: PlayerSkillDamageByPlayerEvent?,
-        attackDamageEvent: EntityDamageByEntityEvent?
-    ) {
-        return
-    }
-
     override fun whenAttackHit(event: EntityDamageByEntityEvent) {
         event.addDamageDealtMultiplier(0.7)
-    }
-
-    override fun whenSkillAttackHit(event: PlayerSkillDamageByPlayerEvent) {
-        return
     }
 }
