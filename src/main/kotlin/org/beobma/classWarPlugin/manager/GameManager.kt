@@ -41,6 +41,7 @@ import org.beobma.classWarPlugin.manager.PlayerManager.classSet
 import org.beobma.classWarPlugin.manager.UtilManager.getPlayerMaxHealth
 import org.beobma.classWarPlugin.manager.UtilManager.isInArea
 import org.beobma.classWarPlugin.manager.UtilManager.resetDyeCooldowns
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.unregisterAllTickingStatuses
 import org.beobma.classWarPlugin.map.Map
 import org.beobma.classWarPlugin.map.list.Forest
 import org.beobma.classWarPlugin.map.list.TrainingGround
@@ -102,6 +103,7 @@ object GameManager{
 
         this.playerDatas.filterIsInstance<PlayerData>().forEach { playerData ->
             val player = playerData.player
+            unregisterAllTickingStatuses(playerData.statusAbnormalitys)
             player.inventory.clear()
             player.activePotionEffects.forEach { effect ->
                 player.removePotionEffect(effect.type)
@@ -292,7 +294,12 @@ object GameManager{
     fun findGameForPlayer(player: Player): Game? {
         return if (PlayerTagManager.hasTag(player, "isTraining")) {
             trainingInstance.find { game ->
-                game.playerDatas.filterIsInstance<PlayerData>().any { playerData -> playerData.player == player }
+                for (data in game.playerDatas) {
+                    if (data is PlayerData && data.player == player) {
+                        return@find true
+                    }
+                }
+                false
             }
         } else {
             game
@@ -327,9 +334,17 @@ object GameManager{
     }
 
     fun Player.stopTraining() {
-        val game = trainingInstance.find {
-            it.playerDatas.filterIsInstance<PlayerData>().map { playerData -> playerData.player }.any { player -> player == this }
+        val game = trainingInstance.find { trainingGame ->
+            for (data in trainingGame.playerDatas) {
+                if (data is PlayerData && data.player == this) {
+                    return@find true
+                }
+            }
+            false
         } ?: return
+        game.playerDatas.filterIsInstance<PlayerData>().forEach { playerData ->
+            unregisterAllTickingStatuses(playerData.statusAbnormalitys)
+        }
         inventory.clear()
         activePotionEffects.forEach { effect ->
             removePotionEffect(effect.type)

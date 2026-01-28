@@ -1,12 +1,10 @@
 package org.beobma.classWarPlugin.status
 
-import org.beobma.classWarPlugin.ClassWarPlugin
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager
 import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.entity.player.PlayerStatus
 import org.bukkit.entity.Player
-import org.bukkit.scheduler.BukkitRunnable
-import org.bukkit.scheduler.BukkitTask
 
 abstract class StatusAbnormality {
     protected lateinit var playerData: PlayerData
@@ -22,8 +20,6 @@ abstract class StatusAbnormality {
     open var maxPower: Int? = null
     open var duration: Int? = null
     open var continueWhile: (() -> Boolean)? = null
-
-    private var durationTask: BukkitTask? = null
 
     fun inject(playerData: PlayerData) {
         if (playerData.entityStatus !is PlayerStatus) return
@@ -82,7 +78,7 @@ abstract class StatusAbnormality {
     }
 
     open fun remove() {
-        stopDurationTask()
+        stopDurationTicking()
         if (canRemove) {
             playerData.statusAbnormalitys.remove(this@StatusAbnormality)
             onRemoveStatusAbnormality()
@@ -122,9 +118,9 @@ abstract class StatusAbnormality {
 
     private fun refreshDurationTask() {
         if (shouldTick()) {
-            startDurationTask()
+            startDurationTicking()
         } else {
-            stopDurationTask()
+            stopDurationTicking()
         }
     }
 
@@ -132,24 +128,21 @@ abstract class StatusAbnormality {
         return duration != null || continueWhile != null
     }
 
-    private fun startDurationTask() {
-        if (durationTask != null) return
-        val task = object : BukkitRunnable() {
-            override fun run() {
-                tickStatus()
-            }
-        }.runTaskTimer(ClassWarPlugin.instance, 20L, 20L)
-        durationTask = playerData.trackTask(task)
+    private fun startDurationTicking() {
+        StatusAbnormalityManager.registerTickingStatus(this)
     }
 
-    private fun stopDurationTask() {
-        durationTask?.cancel()
-        durationTask = null
+    private fun stopDurationTicking() {
+        StatusAbnormalityManager.unregisterTickingStatus(this)
+    }
+
+    internal fun tickStatusFromManager() {
+        tickStatus()
     }
 
     private fun tickStatus() {
         if (!shouldTick()) {
-            stopDurationTask()
+            stopDurationTicking()
             return
         }
 
@@ -169,7 +162,7 @@ abstract class StatusAbnormality {
     }
 
     private fun expireStatus() {
-        stopDurationTask()
+        stopDurationTicking()
         if (canRemove) {
             playerData.statusAbnormalitys.remove(this@StatusAbnormality)
             onRemoveStatusAbnormality()

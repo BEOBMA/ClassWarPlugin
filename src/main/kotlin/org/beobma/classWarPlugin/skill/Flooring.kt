@@ -13,6 +13,7 @@ import org.bukkit.Location
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
+import java.util.UUID
 
 abstract class Flooring {
     protected lateinit var playerData: PlayerData
@@ -55,7 +56,10 @@ abstract class Flooring {
         val time = time
         var ticks = 0
 
-        var previousTargets: Set<EntityData> = emptySet()
+        var previousTargets: MutableSet<EntityData> = HashSet()
+        var currentTargets: MutableSet<EntityData> = HashSet()
+        val trainingCandidates: MutableList<EntityData> = ArrayList()
+        val trainingCandidateIds: MutableSet<UUID> = HashSet()
 
         val task = object : BukkitRunnable() {
             override fun run() {
@@ -75,33 +79,49 @@ abstract class Flooring {
 
                 val isTraining = PlayerTagManager.hasTag(player, "isTraining")
                 val targetCandidates = if (isTraining) {
-                    val candidates = game.playerDatas.toMutableList()
-                    player.world.entities.filter { it.isMannequin() }.forEach { mannequin ->
+                    trainingCandidates.clear()
+                    trainingCandidateIds.clear()
+                    game.playerDatas.forEach { data ->
+                        val entityId = data.entity.uniqueId
+                        if (trainingCandidateIds.add(entityId)) {
+                            trainingCandidates.add(data)
+                        }
+                    }
+                    for (mannequin in player.world.entities) {
+                        if (!mannequin.isMannequin()) continue
                         val data = game.playerDatas.find { it.entity == mannequin }
                             ?: DummyEntityData(mannequin, game).also { game.playerDatas.add(it) }
-                        candidates.add(data)
+                        val entityId = data.entity.uniqueId
+                        if (trainingCandidateIds.add(entityId)) {
+                            trainingCandidates.add(data)
+                        }
                     }
-                    candidates.distinctBy { it.entity.uniqueId }
+                    trainingCandidates
                 } else {
                     game.playerDatas
                 }
 
-                val currentTargets = targetCandidates.filter {
-                    it != playerData &&
-                            it.entityStatus.isSkillTargeting &&
-                            it.entity.location.distanceSquared(currentLocation) <= radius * radius &&
-                            when (targetType) {
-                                TargetType.Team -> it.entity.isMannequin() && isTraining ||
-                                    (it is PlayerData && it.team == playerData.team)
-                                TargetType.Enemy -> it.entity.isMannequin() && isTraining ||
-                                    (it is PlayerData && it.team != playerData.team)
-                                TargetType.All -> true
-                            }
-                }.toSet()
+                currentTargets.clear()
+                val radiusSquared = radius * radius
+                for (targetData in targetCandidates) {
+                    if (targetData == playerData || !targetData.entityStatus.isSkillTargeting) continue
+                    if (targetData.entity.location.distanceSquared(currentLocation) > radiusSquared) continue
+                    val isValidTarget = when (targetType) {
+                        TargetType.Team -> targetData.entity.isMannequin() && isTraining ||
+                            (targetData is PlayerData && targetData.team == playerData.team)
+                        TargetType.Enemy -> targetData.entity.isMannequin() && isTraining ||
+                            (targetData is PlayerData && targetData.team != playerData.team)
+                        TargetType.All -> true
+                    }
+                    if (isValidTarget) {
+                        currentTargets.add(targetData)
+                    }
+                }
 
-                val exitedTargets = previousTargets - currentTargets
-                for (exited in exitedTargets) {
-                    onFlooringEntityOut(exited, currentLocation)
+                for (exited in previousTargets) {
+                    if (!currentTargets.contains(exited)) {
+                        onFlooringEntityOut(exited, currentLocation)
+                    }
                 }
 
                 onFlooringContinue(currentLocation)
@@ -109,7 +129,10 @@ abstract class Flooring {
                     onFlooringEntityHit(target, currentLocation)
                 }
 
+                val previousSwap = previousTargets
                 previousTargets = currentTargets
+                currentTargets = previousSwap
+                currentTargets.clear()
             }
         }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L)
 

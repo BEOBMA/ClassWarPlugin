@@ -15,6 +15,24 @@ object UtilManager {
     val miniMessage = MiniMessage.miniMessage()
     private val keywordTokenRegex = "\\{keyword:([A-Za-z]+)}".toRegex()
     private val keywordTokens = enumValues<Keyword>().associateBy { it.name }
+    private val dyeMaterials = listOf(
+        Material.WHITE_DYE,
+        Material.ORANGE_DYE,
+        Material.MAGENTA_DYE,
+        Material.LIGHT_BLUE_DYE,
+        Material.YELLOW_DYE,
+        Material.LIME_DYE,
+        Material.PINK_DYE,
+        Material.GRAY_DYE,
+        Material.LIGHT_GRAY_DYE,
+        Material.CYAN_DYE,
+        Material.PURPLE_DYE,
+        Material.BLUE_DYE,
+        Material.BROWN_DYE,
+        Material.GREEN_DYE,
+        Material.RED_DYE,
+        Material.BLACK_DYE
+    )
 
     fun applyKeywords(text: String): String {
         return keywordTokenRegex.replace(text) { match ->
@@ -54,25 +72,7 @@ object UtilManager {
     }
 
     fun Player.resetDyeCooldowns() {
-        val dyes = listOf(
-            Material.WHITE_DYE,
-            Material.ORANGE_DYE,
-            Material.MAGENTA_DYE,
-            Material.LIGHT_BLUE_DYE,
-            Material.YELLOW_DYE,
-            Material.LIME_DYE,
-            Material.PINK_DYE,
-            Material.GRAY_DYE,
-            Material.LIGHT_GRAY_DYE,
-            Material.CYAN_DYE,
-            Material.PURPLE_DYE,
-            Material.BLUE_DYE,
-            Material.BROWN_DYE,
-            Material.GREEN_DYE,
-            Material.RED_DYE,
-            Material.BLACK_DYE
-        )
-        dyes.forEach { dye ->
+        dyeMaterials.forEach { dye ->
             setCooldown(dye, 0)
         }
     }

@@ -41,7 +41,7 @@ class OnEntityDamageByEntityEvent : Listener {
         }
 
         val damagerGame = findGameForPlayer(damager) ?: return
-        val damagerData = damagerGame.playerDatas.filterIsInstance<PlayerData>().find { it.player == damager } ?: return
+        val damagerData = damagerGame.findPlayerData(damager) ?: return
         val damagerStatus = damagerData.entityStatus
 
         if (isMannequin) {
@@ -56,7 +56,7 @@ class OnEntityDamageByEntityEvent : Listener {
             val damagerSkills = damagerClass.skills
 
             // 패시브 적용
-            damagerPassives.forEach { passive ->
+            for (passive in damagerPassives) {
                 if (passive is OnHitHandler) {
                     passive.onAttackHit(event)
                     passive.onHit(null, event)
@@ -64,7 +64,7 @@ class OnEntityDamageByEntityEvent : Listener {
             }
 
             // 스킬 패시브 적용
-            damagerSkills.forEach { skill ->
+            for (skill in damagerSkills) {
                 if (skill is OnHitHandler) {
                     skill.onAttackHit(event)
                     skill.onHit(null, event)
@@ -80,7 +80,7 @@ class OnEntityDamageByEntityEvent : Listener {
         val entityPlayer = entity as Player
         val entityGame = findGameForPlayer(entityPlayer) ?: return
         if (damagerGame != entityGame) return
-        val entityData = entityGame.playerDatas.filterIsInstance<PlayerData>().find { it.player == entityPlayer } ?: return
+        val entityData = entityGame.findPlayerData(entityPlayer) ?: return
         val entityStatus = entityData.entityStatus
 
         // 공격, 피격 가능 여부
@@ -97,13 +97,13 @@ class OnEntityDamageByEntityEvent : Listener {
         val entitySkills = entityClass.skills
 
         // 패시브 적용
-        damagerPassives.forEach { passive ->
+        for (passive in damagerPassives) {
             if (passive is OnHitHandler) {
                 passive.onAttackHit(event)
                 passive.onHit(null, event)
             }
         }
-        entityPassives.forEach { passive ->
+        for (passive in entityPassives) {
             if (passive is WhenHitHandler) {
                 passive.whenAttackHit(event)
                 passive.whenHit(null, event)
@@ -111,13 +111,13 @@ class OnEntityDamageByEntityEvent : Listener {
         }
 
         // 스킬 패시브 적용
-        damagerSkills.forEach { skill ->
+        for (skill in damagerSkills) {
             if (skill is OnHitHandler) {
                 skill.onAttackHit(event)
                 skill.onHit(null, event)
             }
         }
-        entitySkills.forEach { skill ->
+        for (skill in entitySkills) {
             if (skill is WhenHitHandler) {
                 skill.whenAttackHit(event)
                 skill.whenHit(null, event)
@@ -125,7 +125,7 @@ class OnEntityDamageByEntityEvent : Listener {
         }
 
         // 상태이상 적용
-        entityData.statusAbnormalitys.forEach { status ->
+        for (status in entityData.statusAbnormalitys) {
             if (status is StatusOnHitHandler) {
                 status.onAttackHit(event, damagerData, entityData)
             }
@@ -149,5 +149,14 @@ class OnEntityDamageByEntityEvent : Listener {
 
         // 무적 시간 제거
         entity.noDamageTicks = 0
+    }
+
+    private fun org.beobma.classWarPlugin.game.Game.findPlayerData(player: Player): PlayerData? {
+        for (data in playerDatas) {
+            if (data is PlayerData && data.player == player) {
+                return data
+            }
+        }
+        return null
     }
 }
