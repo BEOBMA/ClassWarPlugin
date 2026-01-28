@@ -14,6 +14,6 @@ class Shield : StatusAbnormality() {
             "<dark_gray>최대치 없음."
         )
     override val canRemove: Boolean = true
-    override var maxPower: Int? = 100
+    override var maxPower: Int? = null
     override var duration: Int? = null
 }

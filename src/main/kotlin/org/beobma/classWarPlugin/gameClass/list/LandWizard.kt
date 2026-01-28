@@ -104,11 +104,11 @@ class LandWizardsOrangeSkill : Skill() {
 
     override fun use(): Boolean {
         val mana = playerData.getOrCreateStatus { Mana() }
-        val shield = playerData.addStatus(Shield())
         if (mana.power < 100) {
             player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
             return false
         }
+        val shield = playerData.addStatus(Shield())
         mana.decreasePower(100)
         shield.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh, powerDelta = 8)
 

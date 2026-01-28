@@ -1,6 +1,7 @@
 package org.beobma.classWarPlugin.listener
 
 import org.beobma.classWarPlugin.manager.PlayerTagManager
+import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -11,6 +12,9 @@ import org.bukkit.event.entity.EntityDamageEvent
 class OnEntityDamageEvent : Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     fun onEntityDamage(event: EntityDamageEvent) {
+        if (event.entity.isMannequin()) {
+            event.isCancelled = true
+        }
         val player = event.entity as? Player ?: return
         if (!PlayerTagManager.hasTag(player, "isTraining")) {
             return

@@ -77,6 +77,7 @@ class DarkWizardsRedSkill : Skill() {
         }
 
         val smoke = DarkWizardsSmoke()
+        smoke.inject(playerData)
 
         smoke.location = if (player.isSneaking) {
             playerData.shotLaserGetBlock(4.0)?.location?.add(0.5, 1.0, 0.5) ?: run {
