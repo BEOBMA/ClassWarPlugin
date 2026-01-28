@@ -143,13 +143,15 @@ class IceWizardsOrangeSkill : Skill() {
         }
 
         mana.decreasePower(40)
-        IceWizardsIcicleProjectile().spawnProjectile(playerData)
+        val projectile = IceWizardsIcicleProjectile()
+        projectile.location = player.location.clone()
+        projectile.spawnProjectile(playerData)
         return true
     }
 }
 
 class IceWizardsIcicleProjectile : Projectile() {
-    override var location: Location = player.location
+    override lateinit var location: Location
     override var targetType: TargetType = TargetType.Enemy
     override var speed: Double = 1.0
     override var isWallHit: Boolean = true
@@ -212,7 +214,7 @@ class IceWizardsYellowSkill : Skill() {
 }
 
 class IceWizardsIceSpear : Meteor() {
-    override var location: Location = player.location
+    override lateinit var location: Location
     override var speed: Double = 1.0
     override var isWallHit: Boolean = true
     override var targetType: TargetType = TargetType.Enemy

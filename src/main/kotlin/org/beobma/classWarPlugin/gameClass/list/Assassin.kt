@@ -84,13 +84,14 @@ class AssassinsOrangeSkill : Skill() {
 
     override fun use(): Boolean {
         val assassinsDaggerProjectile = AssassinsDaggerProjectile()
+        assassinsDaggerProjectile.location = player.location.clone()
         assassinsDaggerProjectile.spawnProjectile(playerData)
         return true
     }
 }
 
 class AssassinsDaggerProjectile : Projectile() {
-    override var location: Location = player.location
+    override lateinit var location: Location
     override var targetType: TargetType = TargetType.Enemy
     override var speed: Double = 1.0
     override var isWallHit: Boolean = true
