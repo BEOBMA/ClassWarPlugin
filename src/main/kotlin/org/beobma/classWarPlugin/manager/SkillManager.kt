@@ -16,39 +16,45 @@ import kotlin.math.cos
 
 
 object SkillManager {
-    private fun PlayerData.isTraining(): Boolean = PlayerTagManager.hasTag(player, "isTraining")
+    private fun EntityData.isTraining(): Boolean = when (this) {
+        is PlayerData -> PlayerTagManager.hasTag(player, "isTraining")
+        else -> false
+    }
 
-    private fun PlayerData.getTargetCandidates(): List<EntityData> {
-        val candidates: MutableList<EntityData> = initGame.playerDatas.toMutableList()
-        if (isTraining()) {
-            player.world.entities.filter { it.isMannequin() }.forEach { mannequin ->
-                val data = initGame.playerDatas.find { it.entity == mannequin }
-                    ?: DummyEntityData(mannequin, initGame).also { initGame.playerDatas.add(it) }
+    private fun EntityData.getTargetCandidates(): List<EntityData> {
+        val candidates: MutableList<EntityData> = game.playerDatas.toMutableList()
+        val sourcePlayer = this as? PlayerData
+        if (sourcePlayer != null && isTraining()) {
+            sourcePlayer.player.world.entities.filter { it.isMannequin() }.forEach { mannequin ->
+                val data = game.playerDatas.find { it.entity == mannequin }
+                    ?: DummyEntityData(mannequin, game).also { game.playerDatas.add(it) }
                 candidates.add(data)
             }
         }
         return candidates.distinctBy { it.entity.uniqueId }
     }
 
-    fun PlayerData.use(skill: Skill, clickedItem: ItemStack): Boolean {
+    fun EntityData.use(skill: Skill, clickedItem: ItemStack): Boolean {
+        val sourcePlayer = this as? PlayerData ?: return false
         if (!entityStatus.canSkillUse) {
-            player.sendMiniMessage("<red><bold>[!] 현재 스킬을 사용할 수 없는 상태입니다.")
+            sourcePlayer.player.sendMiniMessage("<red><bold>[!] 현재 스킬을 사용할 수 없는 상태입니다.")
             return false
         }
-        if (player.hasCooldown(clickedItem.type)) {
-            player.sendMiniMessage("<red><bold>[!] 재사용 대기 중입니다.")
+        if (sourcePlayer.player.hasCooldown(clickedItem.type)) {
+            sourcePlayer.player.sendMiniMessage("<red><bold>[!] 재사용 대기 중입니다.")
             return false
         }
 
         val isUse = skill.use()
         if (!isUse) return false
         val cooldown = if (skill.cooldown == Int.MAX_VALUE) 999999 else skill.cooldown ?: return true
-        player.setCooldown(clickedItem.type, cooldown * 20)
+        sourcePlayer.player.setCooldown(clickedItem.type, cooldown * 20)
         return true
     }
-    fun PlayerData.radius(location: Location, targetType: TargetType, radius: Double, oneself: Boolean): List<EntityData> {
+    fun EntityData.radius(location: Location, targetType: TargetType, radius: Double, oneself: Boolean): List<EntityData> {
         val isTraining = isTraining()
-        val world = player.world
+        val sourcePlayer = this as? PlayerData
+        val world = entity.world
         val nearbyEntities = world.getNearbyEntities(location, radius, radius, radius)
             .filter { it is Player || it.isMannequin() }
         val entityDatas = getTargetCandidates().filter { entityData ->
@@ -61,24 +67,26 @@ object SkillManager {
 
         return when (targetType) {
             Team -> {
+                val team = sourcePlayer?.team
                 if (oneself) {
                     nearbyEntityData.filter {
                         it.entity.isMannequin() && isTraining ||
-                            (it is PlayerData && it.team == team)
+                            (team != null && it is PlayerData && it.team == team)
                     }
                 } else {
                     nearbyEntityData.filter { candidate ->
                         candidate != this &&
                             (candidate.entity.isMannequin() && isTraining ||
-                                (candidate is PlayerData && candidate.team == team))
+                                (team != null && candidate is PlayerData && candidate.team == team))
                     }
                 }
             }
 
             Enemy -> {
+                val team = sourcePlayer?.team
                 nearbyEntityData.filter { candidate ->
                     candidate.entity.isMannequin() && isTraining ||
-                        (candidate is PlayerData && candidate.team != team)
+                        (team != null && candidate is PlayerData && candidate.team != team)
                 }
             }
 
@@ -87,14 +95,15 @@ object SkillManager {
             }
         }
     }
-    fun PlayerData.shotLaserGetEntityData(maxRange: Double, targetType: TargetType, wallShot: Boolean): EntityData? {
+    fun EntityData.shotLaserGetEntityData(maxRange: Double, targetType: TargetType, wallShot: Boolean): EntityData? {
+        val sourcePlayer = this as? PlayerData ?: return null
         val isTraining = isTraining()
-        val world = player.world
+        val world = sourcePlayer.player.world
         val playerDatas = getTargetCandidates().filter { entityData ->
             val playerStatus = entityData.entityStatus
             return@filter !playerStatus.isDead && playerStatus.isSkillTargeting
         }
-        val startLocation = player.eyeLocation
+        val startLocation = sourcePlayer.player.eyeLocation
         val direction = startLocation.direction
 
         val maxDistance: Double = maxRange
@@ -110,7 +119,7 @@ object SkillManager {
         }
 
         val entityRayTraceResult = world.rayTraceEntities(startLocation, direction, maxDistance, 1.0) { entity ->
-            entity !== player
+            entity !== sourcePlayer.player
         }
 
         val hitEntity = entityRayTraceResult?.hitEntity ?: return null
@@ -121,8 +130,8 @@ object SkillManager {
                 return hitEntityData
             }
             val isValidTarget = when (targetType) {
-                Team -> hitEntityData is PlayerData && hitEntityData.team == team
-                Enemy -> hitEntityData is PlayerData && hitEntityData.team != team
+                Team -> hitEntityData is PlayerData && hitEntityData.team == sourcePlayer.team
+                Enemy -> hitEntityData is PlayerData && hitEntityData.team != sourcePlayer.team
                 All -> hitEntityData is PlayerData
             }
             if (!isValidTarget) {
@@ -132,9 +141,10 @@ object SkillManager {
         }
         return null
     }
-    fun PlayerData.shotLaserGetBlock(maxRange: Double): Block? {
-        val world = player.world
-        val startLocation = player.eyeLocation
+    fun EntityData.shotLaserGetBlock(maxRange: Double): Block? {
+        val sourcePlayer = this as? PlayerData ?: return null
+        val world = sourcePlayer.player.world
+        val startLocation = sourcePlayer.player.eyeLocation
         val direction = startLocation.direction
 
         val maxDistance: Double = maxRange
@@ -142,9 +152,10 @@ object SkillManager {
         val blockRayTraceResult = world.rayTraceBlocks(startLocation, direction, maxDistance)
         return blockRayTraceResult?.hitBlock
     }
-    fun PlayerData.getConeTargets(radius: Double, angle: Double, targetType: TargetType, includeSelf: Boolean): List<EntityData> {
+    fun EntityData.getConeTargets(radius: Double, angle: Double, targetType: TargetType, includeSelf: Boolean): List<EntityData> {
+        val sourcePlayer = this as? PlayerData ?: return emptyList()
         val isTraining = isTraining()
-        val playerLocation = player.location
+        val playerLocation = sourcePlayer.player.location
         val playerDirection = playerLocation.direction.normalize()
 
         return getTargetCandidates().filter { targetPlayerData ->
@@ -156,8 +167,8 @@ object SkillManager {
 
             if (!(isTraining && targetPlayerData.entity.isMannequin())) {
                 when (targetType) {
-                    Team -> if (targetPlayerData !is PlayerData || targetPlayerData.team != team) return@filter false
-                    Enemy -> if (targetPlayerData !is PlayerData || targetPlayerData.team == team) return@filter false
+                    Team -> if (targetPlayerData !is PlayerData || targetPlayerData.team != sourcePlayer.team) return@filter false
+                    Enemy -> if (targetPlayerData !is PlayerData || targetPlayerData.team == sourcePlayer.team) return@filter false
                     All -> if (targetPlayerData !is PlayerData) return@filter false
                 }
             }
