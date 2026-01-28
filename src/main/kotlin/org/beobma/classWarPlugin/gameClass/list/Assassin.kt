@@ -22,8 +22,12 @@ import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.TargetType
 import org.bukkit.Location
 import org.bukkit.Material
+import org.bukkit.Particle
 import org.bukkit.block.Block
 import org.bukkit.scheduler.BukkitRunnable
+import org.bukkit.util.Vector
+import kotlin.math.max
+import kotlin.math.min
 
 class Assassin : GameClass() {
     override val name = "<gray>암살자"
@@ -92,7 +96,7 @@ class AssassinsOrangeSkill : Skill() {
 
     override fun use(): Boolean {
         val assassinsDaggerProjectile = AssassinsDaggerProjectile()
-        assassinsDaggerProjectile.location = player.location.clone()
+        assassinsDaggerProjectile.location = player.eyeLocation.clone()
         assassinsDaggerProjectile.spawnProjectile(playerData)
         if (playerData.hasStatus<Stealth>()) {
             player.setCooldown(Material.ORANGE_DYE, (player.getCooldown(Material.YELLOW_DYE) * 0.5).toInt())
@@ -146,6 +150,9 @@ class AssassinsDaggerProjectile : Projectile() {
     override var isPlayerHit: Boolean = true
     override val isPlayerHitRemove: Boolean = true
 
+    override fun onProjectileMove(location: Location) {
+        location.world.spawnParticle(Particle.END_ROD, location, 1, 0.0, 0.0, 0.0, 0.0)
+    }
 
     override fun onProjectileEntityHit(hitEntityData: EntityData, location: Location) {
         val hitEntity = hitEntityData.entity
@@ -156,20 +163,72 @@ class AssassinsDaggerProjectile : Projectile() {
     }
 
     override fun onProjectileBlockHit(hitBlock: Block, location: Location) {
-        val blockLocation = hitBlock.location.add(0.5, 0.5, 0.5)
-        val direction = blockLocation.toVector().subtract(player.location.toVector()).normalize()
-        val speedPerTick = 0.5
+        val hitPoint = location.clone()
+
+        val toHit = hitPoint.toVector().subtract(player.location.toVector())
+        if (toHit.lengthSquared() < 1.0E-6) return
+
+        val dir = toHit.clone().normalize()
+
+        val target = hitPoint.clone().add(dir.clone().multiply(-0.35))
+
         val stealth = playerData.getOrCreateStatus { Stealth() }
-        stealth.applyStatus(duration = 5, durationMode = StatusDurationMode.Extend)
+        stealth.applyStatus(duration = 4, durationMode = StatusDurationMode.Extend)
+
+        val maxSpeed = 0.95
+        val minSpeed = 0.20
+        val stopDistance = 0.40
+        val smoothing = 0.35
+
+        val maxUp = 0.75
+        val maxDown = 1.10
+        val minUpWhenTargetAbove = 0.28
+
+        val originalGravity = player.hasGravity()
+        player.setGravity(false)
 
         val task = object : BukkitRunnable() {
+            var ticks = 0
+            val maxTicks = 60
+
+            private fun stop() {
+                player.velocity = Vector(0, 0, 0)
+                player.setGravity(originalGravity)
+                cancel()
+            }
+
             override fun run() {
-                val nextLoc = player.location.add(direction.clone().multiply(speedPerTick))
-                player.teleport(nextLoc)
-                if (player.location.distance(blockLocation) < speedPerTick) {
-                    player.teleport(blockLocation)
-                    cancel()
+                if (!player.isOnline || player.isDead) {
+                    stop()
+                    return
                 }
+                if (++ticks > maxTicks) {
+                    stop()
+                    return
+                }
+
+                val delta = target.toVector().subtract(player.location.toVector())
+                val dist = delta.length()
+
+                if (dist <= stopDistance) {
+                    stop()
+                    return
+                }
+
+                val desiredSpeed = min(maxSpeed, max(minSpeed, dist * 0.38))
+                val desiredVel = delta.normalize().multiply(desiredSpeed)
+
+                if (delta.y > 0.2) {
+                    desiredVel.y = max(desiredVel.y, minUpWhenTargetAbove)
+                }
+
+                desiredVel.y = desiredVel.y.coerceIn(-maxDown, maxUp)
+
+                val current = player.velocity
+                val blended = current.multiply(1.0 - smoothing).add(desiredVel.multiply(smoothing))
+
+                player.velocity = blended
+                player.fallDistance = 0f
             }
         }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L)
 

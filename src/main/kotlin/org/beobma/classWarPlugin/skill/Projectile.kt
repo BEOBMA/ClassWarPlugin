@@ -17,6 +17,7 @@ import org.bukkit.block.Block
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
+import org.bukkit.util.BoundingBox
 import java.util.UUID
 
 abstract class Projectile {
@@ -33,6 +34,9 @@ abstract class Projectile {
     abstract val isPlayerHitRemove: Boolean
 
     open val isFlatMove: Boolean = false
+    open var xSize: Double = 0.3
+    open var ySize: Double = 0.3
+    open var zSize: Double = 0.3
 
     open var time: Int? = null
     open var continueWhile: (() -> Boolean)? = null
@@ -118,7 +122,8 @@ abstract class Projectile {
                     var collidedEntityData: EntityData? = null
                     for (targetData in targetCandidates) {
                         if (targetData == playerData || !targetData.entityStatus.isSkillTargeting) continue
-                        if (targetData.entity.location.distanceSquared(currentLocation) > 1.0) continue
+                        val bb = targetData.entity.boundingBox.expand(xSize, ySize, zSize)
+                        if (!bb.contains(currentLocation.x, currentLocation.y, currentLocation.z)) continue
                         val isValidTarget = when (targetType) {
                             Team -> targetData.entity.isMannequin() && isTraining ||
                                 (targetData is PlayerData && targetData.team == playerData.team)
