@@ -4,6 +4,7 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassPickInventory
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -60,13 +61,13 @@ class OnInventoryCloseEvent : Listener {
         val task = object : BukkitRunnable() {
             override fun run() {
                 if (PlayerTagManager.hasTag(player, tag)) {
-                    val playerData = game?.playerDatas?.find { it.player == player } ?: return
+                    val playerData = game?.playerDatas?.filterIsInstance<PlayerData>()?.find { it.player == player } ?: return
 
                     playerData.openClassPickInventory(1)
                 }
             }
         }.runTaskLater(ClassWarPlugin.instance, 10L)
-        game?.playerDatas?.find { it.player == player }?.trackTask(task)
+        game?.playerDatas?.filterIsInstance<PlayerData>()?.find { it.player == player }?.trackTask(task)
     }
 
     private fun reopenClassListInventoryLater(player: Player, page: Int) {
@@ -75,6 +76,6 @@ class OnInventoryCloseEvent : Listener {
                 player.openClassListInventory(page)
             }
         }.runTaskLater(ClassWarPlugin.instance, 1L)
-        game?.playerDatas?.find { it.player == player }?.trackTask(task)
+        game?.playerDatas?.filterIsInstance<PlayerData>()?.find { it.player == player }?.trackTask(task)
     }
 }

@@ -122,7 +122,8 @@ class JudgesYellowSkill : Skill() {
             return false
         }
         while (judgesUtils.getTeamStatus(playerData) != TeamStatus.Balance) {
-            val enemies = game.playerDatas.filter { it.team != playerData.team && !it.entityStatus.isDead && it.getStatus<Exile>() == null }
+            val enemies = game.playerDatas.filterIsInstance<PlayerData>()
+                .filter { it.team != playerData.team && !it.entityStatus.isDead && it.getStatus<Exile>() == null }
             val enemy = enemies.randomOrNull() ?: break
             val exile = enemy.getOrCreateStatus { Exile() }
             exile.applyStatus(duration = 5, durationMode = StatusDurationMode.Extend)
@@ -164,9 +165,9 @@ class JudgesPassive : Passive(), OnHitHandler {
 
 class JudgesUtils {
     fun getTeamStatus(playerData: PlayerData): TeamStatus {
-        val (allies, enemies) = playerData.initGame.playerDatas.partition {
-            it.team == playerData.team && !it.entityStatus.isDead
-        }
+        val (allies, enemies) = playerData.initGame.playerDatas
+            .filterIsInstance<PlayerData>()
+            .partition { it.team == playerData.team && !it.entityStatus.isDead }
         val enemyCount = enemies.count { it.team != TeamType.Spectator && !it.entityStatus.isDead }
 
         return when {

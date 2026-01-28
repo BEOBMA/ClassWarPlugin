@@ -69,7 +69,7 @@ object GameManager{
 
     fun Game.start() {
         game = this
-        playerDatas.forEach { playerData ->
+        playerDatas.filterIsInstance<PlayerData>().forEach { playerData ->
             val player = playerData.player
             val playerStatus = playerData.entityStatus
 
@@ -84,7 +84,7 @@ object GameManager{
         object : BukkitRunnable() {
             override fun run() {
                 sendNotification("- 참가자 목록 -")
-                playerDatas.forEachIndexed { index, playerData ->
+                playerDatas.filterIsInstance<PlayerData>().forEachIndexed { index, playerData ->
                     sendNotification("[$index + 1]. ${playerData.player.name}")
                 }
                 object : BukkitRunnable() {
@@ -100,7 +100,7 @@ object GameManager{
         tasks.forEach { it.cancel() }
         tasks.clear()
 
-        this.playerDatas.forEach { playerData ->
+        this.playerDatas.filterIsInstance<PlayerData>().forEach { playerData ->
             val player = playerData.player
             player.inventory.clear()
             player.activePotionEffects.forEach { effect ->
@@ -127,7 +127,7 @@ object GameManager{
     }
 
     private fun Game.mapPickStart() {
-        val players = playerDatas.map { it.player }
+        val players = playerDatas.filterIsInstance<PlayerData>().map { it.player }
         this.mapList.addAll(gameMapList)
         sendNotification("잠시 후 전장이 랜덤으로 선택됩니다.")
 
@@ -166,7 +166,7 @@ object GameManager{
     }
 
     private fun Game.teamPickStart() {
-        val players = playerDatas.map { it.player }
+        val players = playerDatas.filterIsInstance<PlayerData>().map { it.player }
 
         sendNotification("잠시 후 게임을 진행할 팀을 결정합니다.")
 
@@ -182,7 +182,7 @@ object GameManager{
 
                 object : BukkitRunnable() {
                     override fun run() {
-                        this@teamPickStart.playerDatas.forEach { playerData ->
+                        this@teamPickStart.playerDatas.filterIsInstance<PlayerData>().forEach { playerData ->
                             val player = playerData.player
                             if (player.isInArea(Location(Bukkit.getWorld("world"), 7.0, -55.0, -7.0), Location(Bukkit.getWorld("world"), 2.0, -61.0, -12.0))) {
                                 playerData.team = Red
@@ -196,9 +196,9 @@ object GameManager{
                                 playerData.team = Spectator
                             }
 
-                            val redTeamPlayers = this@teamPickStart.playerDatas.filter { it.team == Red }
-                            val blueTeamPlayers = this@teamPickStart.playerDatas.filter { it.team == Blue }
-                            val spectatorTeamPlayers = this@teamPickStart.playerDatas.filter { it.team == Spectator }
+                            val redTeamPlayers = this@teamPickStart.playerDatas.filterIsInstance<PlayerData>().filter { it.team == Red }
+                            val blueTeamPlayers = this@teamPickStart.playerDatas.filterIsInstance<PlayerData>().filter { it.team == Blue }
+                            val spectatorTeamPlayers = this@teamPickStart.playerDatas.filterIsInstance<PlayerData>().filter { it.team == Spectator }
 
 //                            if (redTeamPlayers.isEmpty() || blueTeamPlayers.isEmpty()) {
 //                                sendNotification("상대 팀이 존재하지 않습니다. 게임을 강제로 종료합니다.")
@@ -233,7 +233,10 @@ object GameManager{
     }
 
     private fun Game.classPick() {
-        classPickOrder = playerDatas.filter { it.team != Spectator }.shuffled().toMutableList()
+        classPickOrder = playerDatas.filterIsInstance<PlayerData>()
+            .filter { it.team != Spectator }
+            .shuffled()
+            .toMutableList()
         classList.addAll(gameClassList)
 
         sendNotification("잠시 후 순차적으로 클래스를 선택합니다.")
@@ -289,7 +292,7 @@ object GameManager{
     fun findGameForPlayer(player: Player): Game? {
         return if (PlayerTagManager.hasTag(player, "isTraining")) {
             trainingInstance.find { game ->
-                game.playerDatas.any { playerData -> playerData.player == player }
+                game.playerDatas.filterIsInstance<PlayerData>().any { playerData -> playerData.player == player }
             }
         } else {
             game
@@ -325,7 +328,7 @@ object GameManager{
 
     fun Player.stopTraining() {
         val game = trainingInstance.find {
-            it.playerDatas.map { playerData -> playerData.player }.any { player -> player == this }
+            it.playerDatas.filterIsInstance<PlayerData>().map { playerData -> playerData.player }.any { player -> player == this }
         } ?: return
         inventory.clear()
         activePotionEffects.forEach { effect ->
@@ -355,7 +358,7 @@ object GameManager{
                     return
                 }
 
-                playerDatas.forEach { playerData ->
+                playerDatas.filterIsInstance<PlayerData>().forEach { playerData ->
                     val playerStatus = playerData.entityStatus
                     when (playerData.team) {
                         Red -> {
@@ -385,7 +388,7 @@ object GameManager{
 
                     object  : BukkitRunnable() {
                         override fun run() {
-                            val playerDatas = playerDatas.filter { !it.entityStatus.isDead }
+                            val playerDatas = playerDatas.filterIsInstance<PlayerData>().filter { !it.entityStatus.isDead }
                             playerDatas.forEach { playerData ->
                                 val gameClass = playerData.gameClass
                                 val passives = gameClass?.passives
@@ -404,7 +407,7 @@ object GameManager{
     }
 
     fun Game.gameSet(gameSetType: GameSetType, gameSetDetailType: GameSetDetailType) {
-        val players = playerDatas.map { it.player }
+        val players = playerDatas.filterIsInstance<PlayerData>().map { it.player }
         when (gameSetType) {
             RedTeamWin -> {
                 players.sendTitleNotification(MiniMessage.miniMessage().deserialize("<red><bold>레드팀 승리"), gameSetDetailType.component)

@@ -1,6 +1,8 @@
 package org.beobma.classWarPlugin.skill
 
 import org.beobma.classWarPlugin.ClassWarPlugin
+import org.beobma.classWarPlugin.entity.EntityData
+import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
 import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
@@ -41,8 +43,8 @@ abstract class Flooring {
     }
 
     open fun onFlooringContinue(location: Location) {}
-    open fun onFlooringPlayerHit(hitPlayerData: PlayerData, location: Location) {}
-    open fun onFlooringPlayerOut(hitPlayerData: PlayerData, location: Location) {}
+    open fun onFlooringEntityHit(hitEntityData: EntityData, location: Location) {}
+    open fun onFlooringEntityOut(hitEntityData: EntityData, location: Location) {}
     open fun onFlooringEnd() {}
 
     fun spawnFlooring(playerData: PlayerData) {
@@ -53,7 +55,7 @@ abstract class Flooring {
         val time = time
         var ticks = 0
 
-        var previousTargets: Set<PlayerData> = emptySet()
+        var previousTargets: Set<EntityData> = emptySet()
 
         val task = object : BukkitRunnable() {
             override fun run() {
@@ -74,12 +76,12 @@ abstract class Flooring {
                 val isTraining = PlayerTagManager.hasTag(player, "isTraining")
                 val targetCandidates = if (isTraining) {
                     val candidates = game.playerDatas.toMutableList()
-                    player.world.entities.filterIsInstance<Player>().filter { it.isMannequin() }.forEach { mannequin ->
-                        val data = game.playerDatas.find { it.player == mannequin }
-                            ?: PlayerData(mannequin, game).also { game.playerDatas.add(it) }
+                    player.world.entities.filter { it.isMannequin() }.forEach { mannequin ->
+                        val data = game.playerDatas.find { it.entity == mannequin }
+                            ?: DummyEntityData(mannequin, game).also { game.playerDatas.add(it) }
                         candidates.add(data)
                     }
-                    candidates.distinctBy { it.player.uniqueId }
+                    candidates.distinctBy { it.entity.uniqueId }
                 } else {
                     game.playerDatas
                 }
@@ -87,22 +89,24 @@ abstract class Flooring {
                 val currentTargets = targetCandidates.filter {
                     it != playerData &&
                             it.entityStatus.isSkillTargeting &&
-                            it.player.location.distanceSquared(currentLocation) <= radius * radius &&
+                            it.entity.location.distanceSquared(currentLocation) <= radius * radius &&
                             when (targetType) {
-                                TargetType.Team -> it.team == playerData.team || (isTraining && it.player.isMannequin())
-                                TargetType.Enemy -> it.team != playerData.team || (isTraining && it.player.isMannequin())
+                                TargetType.Team -> it.entity.isMannequin() && isTraining ||
+                                    (it is PlayerData && it.team == playerData.team)
+                                TargetType.Enemy -> it.entity.isMannequin() && isTraining ||
+                                    (it is PlayerData && it.team != playerData.team)
                                 TargetType.All -> true
                             }
                 }.toSet()
 
                 val exitedTargets = previousTargets - currentTargets
                 for (exited in exitedTargets) {
-                    onFlooringPlayerOut(exited, currentLocation)
+                    onFlooringEntityOut(exited, currentLocation)
                 }
 
                 onFlooringContinue(currentLocation)
                 for (target in currentTargets) {
-                    onFlooringPlayerHit(target, currentLocation)
+                    onFlooringEntityHit(target, currentLocation)
                 }
 
                 previousTargets = currentTargets

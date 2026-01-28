@@ -17,6 +17,7 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
+import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.skill.*
 import org.beobma.classWarPlugin.status.list.Frostbite
@@ -69,7 +70,7 @@ class IceWizardsStaff : Weapon() {
 
 class IceWizardsRedSkill : Skill() {
     private var bukkitTask: BukkitTask? = null
-    private val applyDamagePlayerDatas: MutableMap<PlayerData, Int> = mutableMapOf()
+    private val applyDamagePlayerDatas: MutableMap<EntityData, Int> = mutableMapOf()
 
     override val name = "<dark_blue><bold>눈폭풍"
     override val description = listOf(
@@ -104,10 +105,13 @@ class IceWizardsRedSkill : Skill() {
                 val targets = playerData.radius(player.location, TargetType.Enemy, 3.0, false)
                 targets.forEach {
                     if (applyDamagePlayerDatas.getOrDefault(it, 0) == 0) return@forEach
-                    val frostbite = it.getOrCreateStatus { Frostbite() }
+                    val frostbiteTarget = it as? PlayerData
                     applyDamagePlayerDatas[it] = applyDamagePlayerDatas.getOrDefault(it, 20) - 1
                     it.damage(3.0, DamageType.Normal, playerData)
-                    frostbite.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh, powerDelta = 2)
+                    if (frostbiteTarget != null) {
+                        val frostbite = frostbiteTarget.getOrCreateStatus { Frostbite() }
+                        frostbite.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh, powerDelta = 2)
+                    }
                 }
                 mana.decreasePower(10)
             }
@@ -152,7 +156,12 @@ class IceWizardsIcicleProjectile : Projectile() {
     override var isPlayerHit: Boolean = true
     override val isPlayerHitRemove: Boolean = true
 
-    override fun onProjectilePlayerHit(hitPlayerData: PlayerData, location: Location) {
+    override fun onProjectileEntityHit(hitEntityData: EntityData, location: Location) {
+        val hitPlayerData = hitEntityData as? PlayerData
+        if (hitPlayerData == null) {
+            hitEntityData.damage(8.0, DamageType.Normal, playerData)
+            return
+        }
         val frostbite = hitPlayerData.getOrCreateStatus { Frostbite() }
         val mana = playerData.getOrCreateStatus { Mana() }
         hitPlayerData.damage(8.0, DamageType.Normal, playerData)
@@ -208,11 +217,16 @@ class IceWizardsIceSpear : Meteor() {
     override var isWallHit: Boolean = true
     override var targetType: TargetType = TargetType.Enemy
 
-    override fun onMeteorPlayerHit(hitPlayerData: PlayerData, location: Location) {
+    override fun onMeteorEntityHit(hitEntityData: EntityData, location: Location) {
         val mana = playerData.getOrCreateStatus { Mana() }
-        val frostbite = hitPlayerData.getOrCreateStatus { Frostbite() }
-        hitPlayerData.damage(15.0, DamageType.Normal, playerData)
-        frostbite.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh, powerDelta = 7)
+        val hitPlayerData = hitEntityData as? PlayerData
+        if (hitPlayerData != null) {
+            val frostbite = hitPlayerData.getOrCreateStatus { Frostbite() }
+            hitPlayerData.damage(15.0, DamageType.Normal, playerData)
+            frostbite.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh, powerDelta = 7)
+        } else {
+            hitEntityData.damage(15.0, DamageType.Normal, playerData)
+        }
         mana.increasePower(100)
     }
 }
@@ -268,7 +282,8 @@ class IceWizardsFrostZone(override var location: Location) : Flooring() {
 
     private val hitPlayerDatas: MutableList<PlayerData> = mutableListOf()
 
-    override fun onFlooringPlayerHit(hitPlayerData: PlayerData, location: Location) {
+    override fun onFlooringEntityHit(hitEntityData: EntityData, location: Location) {
+        val hitPlayerData = hitEntityData as? PlayerData ?: return
         if (hitPlayerData in hitPlayerDatas) return
         val moveSpeedDecrease = hitPlayerData.addStatus(MoveSpeedDecrease())
         val frostbite = hitPlayerData.getOrCreateStatus { Frostbite() }
@@ -278,7 +293,8 @@ class IceWizardsFrostZone(override var location: Location) : Flooring() {
         hitPlayerDatas.add(hitPlayerData)
     }
 
-    override fun onFlooringPlayerOut(hitPlayerData: PlayerData, location: Location) {
+    override fun onFlooringEntityOut(hitEntityData: EntityData, location: Location) {
+        val hitPlayerData = hitEntityData as? PlayerData ?: return
         hitPlayerDatas.remove(hitPlayerData)
     }
 
