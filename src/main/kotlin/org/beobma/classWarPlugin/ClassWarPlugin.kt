@@ -2,6 +2,7 @@ package org.beobma.classWarPlugin
 
 import org.beobma.classWarPlugin.command.Command
 import org.beobma.classWarPlugin.info.Info
+import org.beobma.classWarPlugin.manager.GameManager
 import org.beobma.classWarPlugin.listener.OnEntityDamageByEntityEvent
 import org.beobma.classWarPlugin.listener.OnEntityDamageEvent
 import org.beobma.classWarPlugin.listener.OnEntitySkillDamageByEntityEvent
@@ -58,9 +59,15 @@ class ClassWarPlugin : JavaPlugin() {
         statusActionBarTask?.cancel()
         statusActionBarTask = object : BukkitRunnable() {
             override fun run() {
-                val game = Info.game ?: return
+                val games = buildList {
+                    Info.game?.let { add(it) }
+                    addAll(GameManager.trainingInstance)
+                }
+                if (games.isEmpty()) return
                 StatusAbnormalityManager.run {
-                    game.playerDatas.filterIsInstance<PlayerData>()
+                    games.flatMap { it.playerDatas }
+                        .filterIsInstance<PlayerData>()
+                        .distinctBy { it.player.uniqueId }
                         .forEach { playerData -> playerData.updateStatusActionBar() }
                 }
             }
