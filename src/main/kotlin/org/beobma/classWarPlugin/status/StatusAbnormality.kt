@@ -2,7 +2,9 @@ package org.beobma.classWarPlugin.status
 
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.EntityStatus
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.updateStatusActionBar
 import org.beobma.classWarPlugin.game.Game
 import org.bukkit.entity.Entity
 
@@ -84,6 +86,7 @@ abstract class StatusAbnormality {
         } else {
             power = 0
         }
+        notifyStatusChanged()
     }
 
     fun setContinueWhileIf(predicate: () -> Boolean) {
@@ -103,6 +106,7 @@ abstract class StatusAbnormality {
         }
 
         refreshDurationTask()
+        notifyStatusChanged()
     }
 
     open fun onPowerChanged() {
@@ -111,6 +115,7 @@ abstract class StatusAbnormality {
             return
         }
         refreshDurationTask()
+        notifyStatusChanged()
     }
 
     open fun onRemoveStatusAbnormality() {}
@@ -156,7 +161,9 @@ abstract class StatusAbnormality {
             duration = nextDuration
             if (nextDuration <= 0) {
                 expireStatus()
+                return
             }
+            notifyStatusChanged()
         }
     }
 
@@ -168,5 +175,11 @@ abstract class StatusAbnormality {
         } else {
             power = 0
         }
+        notifyStatusChanged()
+    }
+
+    private fun notifyStatusChanged() {
+        val playerData = entityData as? PlayerData ?: return
+        playerData.updateStatusActionBar()
     }
 }
