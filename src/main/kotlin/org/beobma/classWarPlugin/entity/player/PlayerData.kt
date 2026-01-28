@@ -15,8 +15,7 @@ data class PlayerData(
     var team: TeamType? = null,
     var gameClass: GameClass? = null,
 ) : EntityData() {
-    override val entity: Entity
-        get() = player
+    override val entity: Entity = player
     override val game: Game = initGame
     override val entityStatus: EntityStatus = PlayerStatus(player)
     override val bukkitTasks: MutableList<BukkitTask> = mutableListOf()

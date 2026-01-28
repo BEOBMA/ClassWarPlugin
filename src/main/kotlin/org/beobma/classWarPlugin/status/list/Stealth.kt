@@ -3,6 +3,7 @@ package org.beobma.classWarPlugin.status.list
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.status.StatusAbnormality
+import org.bukkit.entity.LivingEntity
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
 
@@ -18,7 +19,10 @@ class Stealth : StatusAbnormality() {
     override var duration: Int? = null
 
     override fun onDurationChanged() {
-        player.addPotionEffect(PotionEffect(PotionEffectType.INVISIBILITY, 1, 0, false, false, true))
-        super.onDurationChanged()
+        val entity = entity
+        if (entity is LivingEntity) {
+            entity.addPotionEffect(PotionEffect(PotionEffectType.INVISIBILITY, 1, 0, false, false, true))
+            super.onDurationChanged()
+        }
     }
 }

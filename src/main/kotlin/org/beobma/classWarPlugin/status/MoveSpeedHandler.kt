@@ -8,12 +8,12 @@ abstract class MoveSpeedHandler : StatusAbnormality() {
     override val canRemove: Boolean = true
 
     override fun onPowerChanged() {
-        playerData.moveSpeedChanged()
+        entityData.moveSpeedChanged()
         super.onPowerChanged()
     }
 
     override fun onRemoveStatusAbnormality() {
-        playerData.moveSpeedChanged()
+        entityData.moveSpeedChanged()
         super.onRemoveStatusAbnormality()
     }
 }

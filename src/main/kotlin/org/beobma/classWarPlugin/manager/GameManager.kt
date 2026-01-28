@@ -309,7 +309,6 @@ object GameManager{
         val game = Game(mutableListOf(), trainingGround)
         val playerData = PlayerData(this, game)
         val playerStatus = playerData.entityStatus
-        val passives = gameClass.passives
         game.playerDatas.add(playerData)
         playerData.gameClass = gameClass
         trainingInstance.add(game)
@@ -326,11 +325,26 @@ object GameManager{
         playerStatus.canAttack = true
         playerStatus.isAttackable = true
 
-        passives.forEach { passive ->
-            if (passive is GameStatusHandler) {
-                passive.onGameTimePasses()
+
+        object  : BukkitRunnable() {
+            override fun run() {
+                val playerDatas = game.playerDatas.filterIsInstance<PlayerData>().filter { !it.entityStatus.isDead }
+                playerDatas.forEach { playerData ->
+                    val gameClass = playerData.gameClass
+                    val passives = gameClass?.passives
+
+                    passives?.forEach { passive ->
+                        if (passive is GameStatusHandler) {
+                            passive.onGameTimePasses()
+                        }
+                    }
+
+                    if (gameClass is GameStatusHandler) {
+                        gameClass.onGameTimePasses()
+                    }
+                }
             }
-        }
+        }.runTaskTimer(ClassWarPlugin.instance, 0L, 20L).also { game.track(it) }
     }
 
     fun Player.stopTraining() {
@@ -342,6 +356,8 @@ object GameManager{
             }
             false
         } ?: return
+        game.tasks.forEach { it.cancel() }
+        game.tasks.clear()
         game.playerDatas.filterIsInstance<PlayerData>().forEach { playerData ->
             unregisterAllTickingStatuses(playerData.statusAbnormalitys)
         }
@@ -412,6 +428,10 @@ object GameManager{
                                     if (passive is GameStatusHandler) {
                                         passive.onGameTimePasses()
                                     }
+                                }
+
+                                if (gameClass is GameStatusHandler) {
+                                    gameClass.onGameTimePasses()
                                 }
                             }
                         }

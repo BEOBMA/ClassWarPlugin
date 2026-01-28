@@ -16,7 +16,7 @@ class Exile : StatusAbnormality() {
     override var maxPower: Int? = 1
     override var power: Int = 1
     override var duration: Int? = null
-    private val location = player.location.clone()
+    private val location = entity.location.clone()
 
     override fun onDurationChanged() {
         // 텔레포트 로직
@@ -24,7 +24,7 @@ class Exile : StatusAbnormality() {
     }
 
     override fun onRemoveStatusAbnormality() {
-        player.teleport(location)
+        entity.teleport(location)
         super.onRemoveStatusAbnormality()
     }
 }

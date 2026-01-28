@@ -1,6 +1,5 @@
 package org.beobma.classWarPlugin.gameClass.list
 
-import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.Weapon
@@ -9,11 +8,10 @@ import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.vibrationExplosion
-import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusDurationMode
-import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Passive
@@ -84,11 +82,8 @@ class LandWizardsRedSkill : Skill() {
         mana.decreasePower(20)
         val targets = playerData.radius(player.location, TargetType.Enemy, 4.0, false)
         targets.forEach {
-            val targetPlayer = it as? PlayerData
-            if (targetPlayer != null) {
-                val vibration = targetPlayer.getOrCreateStatus { Vibration() }
-                vibration.applyStatus(duration = 10, durationMode = StatusDurationMode.Refresh, powerDelta = 2)
-            }
+            val vibration = it.getOrCreateStatus { Vibration() }
+            vibration.applyStatus(duration = 10, durationMode = StatusDurationMode.Refresh, powerDelta = 2)
             it.damage(2.0, DamageType.Normal, playerData)
         }
         return true
@@ -118,7 +113,7 @@ class LandWizardsOrangeSkill : Skill() {
         shield.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh, powerDelta = 8)
 
         val targets = playerData.radius(player.location, TargetType.Enemy, 4.0, false)
-        targets.filterIsInstance<PlayerData>().forEach {
+        targets.forEach {
             it.vibrationExplosion(playerData)
         }
         return true

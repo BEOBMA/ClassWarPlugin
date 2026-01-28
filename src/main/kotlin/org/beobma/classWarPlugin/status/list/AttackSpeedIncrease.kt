@@ -17,12 +17,12 @@ class AttackSpeedIncrease : StatusAbnormality() {
     override val canRemove: Boolean = true
 
     override fun onPowerChanged() {
-        playerData.attackSpeedChanged()
+        entityData.attackSpeedChanged()
         super.onPowerChanged()
     }
 
     override fun onRemoveStatusAbnormality() {
-        playerData.attackSpeedChanged()
+        entityData.attackSpeedChanged()
         super.onRemoveStatusAbnormality()
     }
 }

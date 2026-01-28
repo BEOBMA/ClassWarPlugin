@@ -19,7 +19,7 @@ class Frostbite : StatusAbnormality() {
     private var moveSpeedDecrease: MoveSpeedDecrease? = null
 
     override fun onPowerChanged() {
-        val currentMoveSpeedDecrease = moveSpeedDecrease ?: playerData.addStatus(MoveSpeedDecrease()).also {
+        val currentMoveSpeedDecrease = moveSpeedDecrease ?: entityData.addStatus(MoveSpeedDecrease()).also {
             moveSpeedDecrease = it as MoveSpeedDecrease?
         }
         currentMoveSpeedDecrease.updatePower(power * 5)

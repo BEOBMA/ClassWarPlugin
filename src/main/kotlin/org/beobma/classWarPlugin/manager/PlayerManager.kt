@@ -79,6 +79,10 @@ object PlayerManager {
                 passive.onBattleStart()
             }
         }
+
+        if (gameClass is GameStatusHandler) {
+            gameClass.onBattleStart()
+        }
     }
 
     fun PlayerData.damage(damage: Double, damageType: DamageType, damager: PlayerData, isInvincibilityTimeIgnore: Boolean = true) {

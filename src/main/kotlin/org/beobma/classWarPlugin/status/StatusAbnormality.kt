@@ -1,15 +1,15 @@
 package org.beobma.classWarPlugin.status
 
+import org.beobma.classWarPlugin.entity.EntityData
+import org.beobma.classWarPlugin.entity.EntityStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager
 import org.beobma.classWarPlugin.game.Game
-import org.beobma.classWarPlugin.entity.player.PlayerData
-import org.beobma.classWarPlugin.entity.player.PlayerStatus
-import org.bukkit.entity.Player
+import org.bukkit.entity.Entity
 
 abstract class StatusAbnormality {
-    protected lateinit var playerData: PlayerData
-    protected lateinit var player: Player
-    protected lateinit var playerStatus: PlayerStatus
+    protected lateinit var entityData: EntityData
+    protected lateinit var entity: Entity
+    protected lateinit var entityStatus: EntityStatus
     protected lateinit var game: Game
 
     abstract val name: String
@@ -21,12 +21,11 @@ abstract class StatusAbnormality {
     open var duration: Int? = null
     open var continueWhile: (() -> Boolean)? = null
 
-    fun inject(playerData: PlayerData) {
-        if (playerData.entityStatus !is PlayerStatus) return
-        this.playerData = playerData
-        this.player = playerData.player
-        this.playerStatus = playerData.entityStatus
-        this.game = playerData.initGame
+    fun inject(entityData: EntityData) {
+        this.entityData = entityData
+        this.entity = entityData.entity
+        this.entityStatus = entityData.entityStatus
+        this.game = entityData.game
     }
 
     open fun increasePower(amount: Int) {
@@ -80,7 +79,7 @@ abstract class StatusAbnormality {
     open fun remove() {
         stopDurationTicking()
         if (canRemove) {
-            playerData.statusAbnormalitys.remove(this@StatusAbnormality)
+            entityData.statusAbnormalitys.remove(this@StatusAbnormality)
             onRemoveStatusAbnormality()
         } else {
             power = 0
@@ -164,7 +163,7 @@ abstract class StatusAbnormality {
     private fun expireStatus() {
         stopDurationTicking()
         if (canRemove) {
-            playerData.statusAbnormalitys.remove(this@StatusAbnormality)
+            entityData.statusAbnormalitys.remove(this@StatusAbnormality)
             onRemoveStatusAbnormality()
         } else {
             power = 0
