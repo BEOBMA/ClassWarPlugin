@@ -216,6 +216,7 @@ class AstronomersPassive : Passive(), OnHitHandler {
     )
 
     override fun onSkillAttackHit(event: PlayerSkillDamageByPlayerEvent) {
+        if (event.damageType == DamageType.True) return
         val mana = playerData.getOrCreateStatus { Mana() }
         val count = (mana.power / 20).coerceIn(1, 5)
         val targetLoc = event.entity.entity.location.add(0.0, 5.0, 0.0)
@@ -231,7 +232,7 @@ class AstronomersPassive : Passive(), OnHitHandler {
 class AstronomersStarMeteor : Meteor() {
     override lateinit var location: Location
     override var speed: Double = 0.5
-    override var isWallHit: Boolean = true
+    override var isWallHit: Boolean = false
     override var targetType: TargetType = TargetType.Enemy
 
     override fun onMeteorEntityHit(hitEntityData: EntityData, location: Location) {
