@@ -1,50 +1,10 @@
 package org.beobma.classWarPlugin.entity
 
-import org.bukkit.entity.Entity
-
-data class EntityStatus(
-    val entity: Entity,
-    private var _isDead: Boolean = false,
-    private var _canAttack: Boolean = true,
-    private var _canSkillUse: Boolean = true,
-    private var _canMove: Boolean = true,
-    private var _isAttackable: Boolean = true,
-    private var _isSkillTargeting: Boolean = true,
-
-) {
-    var isDead: Boolean
-        get() = _isDead
-        set(value) {
-            // 값이 변함
-            _isDead = value
-        }
-    var canAttack: Boolean
-        get() = _canAttack
-        set(value) {
-            // 값이 변함
-            _canAttack = value
-        }
-    var canSkillUse: Boolean
-        get() = _canSkillUse
-        set(value) {
-            // 값이 변함
-            _canSkillUse = value
-        }
-    var canMove: Boolean
-        get() = _canMove
-        set(value) {
-            _canMove = value
-        }
-    var isAttackable: Boolean
-        get() = _isAttackable
-        set(value) {
-            // 값이 변함
-            _isAttackable = value
-        }
-    var isSkillTargeting: Boolean
-        get() = _isSkillTargeting
-        set(value) {
-            // 값이 변함
-            _isSkillTargeting = value
-        }
+abstract class EntityStatus {
+    open var isDead: Boolean = false
+    open var canAttack: Boolean = true
+    open var canSkillUse: Boolean = true
+    open var canMove: Boolean = true
+    open var isAttackable: Boolean = true
+    open var isSkillTargeting: Boolean = true
 }

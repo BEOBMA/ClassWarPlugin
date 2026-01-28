@@ -1,6 +1,6 @@
 package org.beobma.classWarPlugin.status
 
-import org.beobma.classWarPlugin.player.PlayerData
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 
 interface StatusOnHitHandler {

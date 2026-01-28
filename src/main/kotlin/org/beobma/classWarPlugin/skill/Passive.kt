@@ -1,8 +1,8 @@
 package org.beobma.classWarPlugin.skill
 
 import org.beobma.classWarPlugin.game.Game
-import org.beobma.classWarPlugin.player.PlayerData
-import org.beobma.classWarPlugin.player.PlayerStatus
+import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.entity.player.PlayerStatus
 import org.bukkit.entity.Player
 
 abstract class Passive {
@@ -15,9 +15,10 @@ abstract class Passive {
     abstract val description: List<String>
 
     fun inject(playerData: PlayerData) {
+        if (playerData.entityStatus !is PlayerStatus) return
         this.playerData = playerData
         this.player = playerData.player
-        this.playerStatus = playerData.playerStatus
-        this.game = playerData.game
+        this.playerStatus = playerData.entityStatus
+        this.game = playerData.initGame
     }
 }

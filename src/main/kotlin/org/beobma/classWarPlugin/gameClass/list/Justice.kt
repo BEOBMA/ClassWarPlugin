@@ -6,7 +6,7 @@ import org.beobma.classWarPlugin.gameClass.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.Weapon
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
-import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetPlayerData
+import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusDurationMode
@@ -62,7 +62,7 @@ class JusticeRedSkill : Skill() {
     override val cooldown = 10
 
     override fun use(): Boolean {
-        val targetData = playerData.shotLaserGetPlayerData(3.0, TargetType.Enemy, false) ?: run {
+        val targetData = playerData.shotLaserGetEntityData(3.0, TargetType.Enemy, false) ?: run {
             player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
             return false
         }

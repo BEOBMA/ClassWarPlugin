@@ -2,8 +2,8 @@ package org.beobma.classWarPlugin.status
 
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.game.Game
-import org.beobma.classWarPlugin.player.PlayerData
-import org.beobma.classWarPlugin.player.PlayerStatus
+import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.entity.player.PlayerStatus
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
@@ -26,10 +26,11 @@ abstract class StatusAbnormality {
     private var durationTask: BukkitTask? = null
 
     fun inject(playerData: PlayerData) {
+        if (playerData.entityStatus !is PlayerStatus) return
         this.playerData = playerData
         this.player = playerData.player
-        this.playerStatus = playerData.playerStatus
-        this.game = playerData.game
+        this.playerStatus = playerData.entityStatus
+        this.game = playerData.initGame
     }
 
     open fun increasePower(amount: Int) {

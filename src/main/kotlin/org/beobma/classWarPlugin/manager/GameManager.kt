@@ -35,7 +35,6 @@ import org.beobma.classWarPlugin.gameClass.list.TimeManiqulator
 import org.beobma.classWarPlugin.gameClass.list.Warlock
 import org.beobma.classWarPlugin.gameClass.list.WaterWizard
 import org.beobma.classWarPlugin.gameClass.list.WindWizard
-import org.beobma.classWarPlugin.info.Info
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassPickInventory
 import org.beobma.classWarPlugin.manager.PlayerManager.classSet
@@ -45,8 +44,8 @@ import org.beobma.classWarPlugin.manager.UtilManager.resetDyeCooldowns
 import org.beobma.classWarPlugin.map.Map
 import org.beobma.classWarPlugin.map.list.Forest
 import org.beobma.classWarPlugin.map.list.TrainingGround
-import org.beobma.classWarPlugin.player.PlayerData
-import org.beobma.classWarPlugin.player.TeamType.*
+import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.entity.player.TeamType.*
 import org.bukkit.Bukkit
 import org.bukkit.GameMode
 import org.bukkit.Location
@@ -72,7 +71,7 @@ object GameManager{
         game = this
         playerDatas.forEach { playerData ->
             val player = playerData.player
-            val playerStatus = playerData.playerStatus
+            val playerStatus = playerData.entityStatus
 
             playerStatus.canAttack = false
             playerStatus.isAttackable = false
@@ -135,6 +134,7 @@ object GameManager{
         var timer = 0
         object : BukkitRunnable() {
             override fun run() {
+                timer++
                 if (timer == 80) {
                     cancel()
                     val map = mapList.random()
@@ -155,8 +155,6 @@ object GameManager{
                         }
                     }
                 }
-
-                timer++
             }
         }.runTaskTimer(ClassWarPlugin.instance, 30L, 1L).also { track(it) }
 
@@ -300,7 +298,7 @@ object GameManager{
     fun Player.startTraining(gameClass: GameClass) {
         val game = Game(mutableListOf(), trainingGround)
         val playerData = PlayerData(this, game)
-        val playerStatus = playerData.playerStatus
+        val playerStatus = playerData.entityStatus
         val passives = gameClass.passives
         game.playerDatas.add(playerData)
         playerData.gameClass = gameClass
@@ -358,7 +356,7 @@ object GameManager{
                 }
 
                 playerDatas.forEach { playerData ->
-                    val playerStatus = playerData.playerStatus
+                    val playerStatus = playerData.entityStatus
                     when (playerData.team) {
                         Red -> {
                             playerData.player.teleport(map!!.redTeamStartLocation)
@@ -387,7 +385,7 @@ object GameManager{
 
                     object  : BukkitRunnable() {
                         override fun run() {
-                            val playerDatas = playerDatas.filter { !it.playerStatus.isDead }
+                            val playerDatas = playerDatas.filter { !it.entityStatus.isDead }
                             playerDatas.forEach { playerData ->
                                 val gameClass = playerData.gameClass
                                 val passives = gameClass?.passives

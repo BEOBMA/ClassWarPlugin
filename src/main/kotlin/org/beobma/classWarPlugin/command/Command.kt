@@ -10,7 +10,7 @@ import org.beobma.classWarPlugin.manager.GameManager.stopTraining
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openTrainingClassListInventory
 import org.beobma.classWarPlugin.manager.PlayerTagManager
-import org.beobma.classWarPlugin.player.PlayerData
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.bukkit.Bukkit
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor

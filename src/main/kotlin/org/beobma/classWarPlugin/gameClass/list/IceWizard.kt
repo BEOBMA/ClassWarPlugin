@@ -17,7 +17,7 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
-import org.beobma.classWarPlugin.player.PlayerData
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.skill.*
 import org.beobma.classWarPlugin.status.list.Frostbite
 import org.beobma.classWarPlugin.status.list.Mana

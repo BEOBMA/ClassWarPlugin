@@ -1,7 +1,7 @@
 package org.beobma.classWarPlugin.manager
 
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
-import org.beobma.classWarPlugin.player.PlayerData
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.beobma.classWarPlugin.status.list.*
 import org.beobma.classWarPlugin.util.DamageType

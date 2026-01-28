@@ -1,5 +1,7 @@
-package org.beobma.classWarPlugin.player
+package org.beobma.classWarPlugin.entity.player
 
+import org.beobma.classWarPlugin.entity.EntityData
+import org.beobma.classWarPlugin.entity.EntityStatus
 import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.status.StatusAbnormality
@@ -8,13 +10,15 @@ import org.bukkit.scheduler.BukkitTask
 
 data class PlayerData(
     val player: Player,
-    val game: Game,
+    val initGame: Game,
     var team: TeamType? = null,
     var gameClass: GameClass? = null,
-    val bukkitTasks: MutableList<BukkitTask> = mutableListOf(),
-    val statusAbnormalitys: MutableList<StatusAbnormality> = mutableListOf(),
-    val playerStatus: PlayerStatus = PlayerStatus(player)
-) {
+) : EntityData() {
+    override val game: Game = initGame
+    override val entityStatus: EntityStatus = PlayerStatus(player)
+    override val bukkitTasks: MutableList<BukkitTask> = mutableListOf()
+    override val statusAbnormalitys: MutableList<StatusAbnormality> = mutableListOf()
+
     fun trackTask(task: BukkitTask): BukkitTask {
         bukkitTasks.add(task)
         game.tasks.add(task)

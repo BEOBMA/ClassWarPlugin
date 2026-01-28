@@ -2,8 +2,8 @@ package org.beobma.classWarPlugin.skill
 
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.game.Game
-import org.beobma.classWarPlugin.player.PlayerData
-import org.beobma.classWarPlugin.player.PlayerStatus
+import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.entity.player.PlayerStatus
 import org.beobma.classWarPlugin.util.TargetType
 import org.beobma.classWarPlugin.util.TargetType.All
 import org.beobma.classWarPlugin.util.TargetType.Enemy
@@ -33,10 +33,11 @@ abstract class Meteor(
     private var durationTask: BukkitTask? = null
 
     fun inject(playerData: PlayerData) {
+        if (playerData.entityStatus !is PlayerStatus) return
         this.playerData = playerData
         this.player = playerData.player
-        this.playerStatus = playerData.playerStatus
-        this.game = playerData.game
+        this.playerStatus = playerData.entityStatus
+        this.game = playerData.initGame
     }
 
     open fun onMeteorMove(location: Location) {}
@@ -70,7 +71,7 @@ abstract class Meteor(
                 }
 
                 val collidedPlayerData = game.playerDatas
-                    .filter { it != playerData && it.playerStatus.isSkillTargeting }
+                    .filter { it != playerData && it.entityStatus.isSkillTargeting }
                     .firstOrNull { targetData ->
                         targetData.player.location.distanceSquared(currentLocation) <= 1.0 &&
                                 when (targetType) {

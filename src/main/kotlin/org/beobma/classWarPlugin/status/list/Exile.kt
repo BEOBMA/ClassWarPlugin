@@ -1,13 +1,8 @@
 package org.beobma.classWarPlugin.status.list
 
-import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
-import org.beobma.classWarPlugin.player.PlayerData
 import org.beobma.classWarPlugin.status.StatusAbnormality
-import org.bukkit.potion.PotionEffect
-import org.bukkit.potion.PotionEffectType
-import org.bukkit.scheduler.BukkitRunnable
 
 class Exile : StatusAbnormality() {
     override val name: String

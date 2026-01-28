@@ -4,8 +4,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.manager.GameClassManager.toItemStack
 import org.beobma.classWarPlugin.manager.GameManager.gameClassList
-import org.beobma.classWarPlugin.manager.PlayerTagManager
-import org.beobma.classWarPlugin.player.PlayerData
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.entity.Player
@@ -31,7 +30,7 @@ object InventoryManager {
     }
 
     fun PlayerData.openClassPickInventory(page: Int) {
-        val inventory = buildClassListInventory(page, game.classList) ?: return
+        val inventory = buildClassListInventory(page, initGame.classList) ?: return
         PlayerTagManager.addTag(player, "openClassPickInventory")
         player.openInventory(inventory)
     }

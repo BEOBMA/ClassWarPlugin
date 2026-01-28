@@ -6,7 +6,7 @@ import org.beobma.classWarPlugin.gameClass.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.Weapon
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
-import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetPlayerData
+import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
@@ -14,8 +14,8 @@ import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
-import org.beobma.classWarPlugin.player.PlayerData
-import org.beobma.classWarPlugin.player.TeamType
+import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.entity.player.TeamType
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.Exile
@@ -67,7 +67,7 @@ class JudgesRedSkill : Skill() {
     override val cooldown = 10
 
     override fun use(): Boolean {
-        val targetData = playerData.shotLaserGetPlayerData(3.0, TargetType.Enemy, false) ?: run {
+        val targetData = playerData.shotLaserGetEntityData(3.0, TargetType.Enemy, false) ?: run {
             player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
             return false
         }
@@ -122,7 +122,7 @@ class JudgesYellowSkill : Skill() {
             return false
         }
         while (judgesUtils.getTeamStatus(playerData) != TeamStatus.Balance) {
-            val enemies = game.playerDatas.filter { it.team != playerData.team && !it.playerStatus.isDead && it.getStatus<Exile>() == null }
+            val enemies = game.playerDatas.filter { it.team != playerData.team && !it.entityStatus.isDead && it.getStatus<Exile>() == null }
             val enemy = enemies.randomOrNull() ?: break
             val exile = enemy.getOrCreateStatus { Exile() }
             exile.applyStatus(duration = 5, durationMode = StatusDurationMode.Extend)
@@ -164,10 +164,10 @@ class JudgesPassive : Passive(), OnHitHandler {
 
 class JudgesUtils {
     fun getTeamStatus(playerData: PlayerData): TeamStatus {
-        val (allies, enemies) = playerData.game.playerDatas.partition {
-            it.team == playerData.team && !it.playerStatus.isDead
+        val (allies, enemies) = playerData.initGame.playerDatas.partition {
+            it.team == playerData.team && !it.entityStatus.isDead
         }
-        val enemyCount = enemies.count { it.team != TeamType.Spectator && !it.playerStatus.isDead }
+        val enemyCount = enemies.count { it.team != TeamType.Spectator && !it.entityStatus.isDead }
 
         return when {
             allies.size > enemyCount -> TeamStatus.Advantage

@@ -2,7 +2,7 @@ package org.beobma.classWarPlugin.game
 
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.map.Map
-import org.beobma.classWarPlugin.player.PlayerData
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.bukkit.scheduler.BukkitTask
 
 data class Game(

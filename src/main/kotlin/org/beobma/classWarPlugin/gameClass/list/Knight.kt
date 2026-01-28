@@ -9,7 +9,7 @@ import org.beobma.classWarPlugin.gameClass.WhenHitHandler
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.getConeTargets
-import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetPlayerData
+import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusDurationMode
@@ -62,7 +62,7 @@ class KnightsRedSkill : Skill() {
     override val cooldown = 10
 
     override fun use(): Boolean {
-        val target = playerData.shotLaserGetPlayerData(2.0, TargetType.Enemy, false) ?: run {
+        val target = playerData.shotLaserGetEntityData(2.0, TargetType.Enemy, false) ?: run {
             player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
             return false
         }

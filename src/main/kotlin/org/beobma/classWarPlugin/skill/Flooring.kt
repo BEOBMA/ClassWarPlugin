@@ -4,8 +4,8 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
-import org.beobma.classWarPlugin.player.PlayerData
-import org.beobma.classWarPlugin.player.PlayerStatus
+import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.entity.player.PlayerStatus
 import org.beobma.classWarPlugin.util.TargetType
 import org.bukkit.Location
 import org.bukkit.entity.Player
@@ -28,10 +28,11 @@ abstract class Flooring {
     private var durationTask: BukkitTask? = null
 
     fun inject(playerData: PlayerData) {
+        if (playerData.entityStatus !is PlayerStatus) return
         this.playerData = playerData
         this.player = playerData.player
-        this.playerStatus = playerData.playerStatus
-        this.game = playerData.game
+        this.playerStatus = playerData.entityStatus
+        this.game = playerData.initGame
     }
 
     fun setContinueWhileIf(predicate: () -> Boolean) {
@@ -85,7 +86,7 @@ abstract class Flooring {
 
                 val currentTargets = targetCandidates.filter {
                     it != playerData &&
-                            it.playerStatus.isSkillTargeting &&
+                            it.entityStatus.isSkillTargeting &&
                             it.player.location.distanceSquared(currentLocation) <= radius * radius &&
                             when (targetType) {
                                 TargetType.Team -> it.team == playerData.team || (isTraining && it.player.isMannequin())
@@ -106,7 +107,7 @@ abstract class Flooring {
 
                 previousTargets = currentTargets
             }
-        }.runTaskTimer(ClassWarPlugin.Companion.instance, 0L, 1L)
+        }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L)
 
         durationTask = playerData.trackTask(task)
     }

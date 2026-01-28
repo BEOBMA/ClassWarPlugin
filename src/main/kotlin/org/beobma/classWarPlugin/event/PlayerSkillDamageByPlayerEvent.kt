@@ -1,6 +1,6 @@
 package org.beobma.classWarPlugin.event
 
-import org.beobma.classWarPlugin.player.PlayerData
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.util.DamageType
 import org.bukkit.event.Cancellable
 import org.bukkit.event.Event

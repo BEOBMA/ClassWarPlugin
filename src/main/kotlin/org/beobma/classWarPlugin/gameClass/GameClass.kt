@@ -1,8 +1,8 @@
 package org.beobma.classWarPlugin.gameClass
 
 import org.beobma.classWarPlugin.game.Game
-import org.beobma.classWarPlugin.player.PlayerData
-import org.beobma.classWarPlugin.player.PlayerStatus
+import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.entity.player.PlayerStatus
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
 import org.bukkit.Material
@@ -24,9 +24,11 @@ abstract class GameClass() {
     open val extraItemMaterials: List<ItemStack> = listOf()
 
     fun inject(playerData: PlayerData) {
+        if (playerData.entityStatus !is PlayerStatus) return
+
         this.playerData = playerData
         this.player = playerData.player
-        this.playerStatus = playerData.playerStatus
-        this.game = playerData.game
+        this.playerStatus = playerData.entityStatus
+        this.game = playerData.initGame
     }
 }

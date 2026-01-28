@@ -1,16 +1,16 @@
 package org.beobma.classWarPlugin.manager
 
-import net.kyori.adventure.text.minimessage.MiniMessage
-import org.beobma.classWarPlugin.manager.PlayerTagManager
+import org.beobma.classWarPlugin.entity.EntityData
+import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
-import org.beobma.classWarPlugin.player.PlayerData
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.util.TargetType
 import org.beobma.classWarPlugin.util.TargetType.*
 import org.bukkit.Location
-import org.bukkit.Material
 import org.bukkit.block.Block
+import org.bukkit.entity.Entity
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import kotlin.math.cos
@@ -19,20 +19,20 @@ import kotlin.math.cos
 object SkillManager {
     private fun PlayerData.isTraining(): Boolean = PlayerTagManager.hasTag(player, "isTraining")
 
-    private fun PlayerData.getTargetCandidates(): List<PlayerData> {
-        val candidates = game.playerDatas.toMutableList()
+    private fun PlayerData.getTargetCandidates(): List<EntityData> {
+        val candidates: MutableList<EntityData> = initGame.playerDatas.toMutableList()
         if (isTraining()) {
-            player.world.entities.filterIsInstance<Player>().filter { it.isMannequin() }.forEach { mannequin ->
-                val data = game.playerDatas.find { it.player == mannequin }
-                    ?: PlayerData(mannequin, game).also { game.playerDatas.add(it) }
+            player.world.entities.filterIsInstance<Entity>().filter { it.isMannequin() }.forEach { mannequin ->
+                val data = initGame.playerDatas.find { it.player == mannequin }
+                    ?: DummyEntityData(mannequin, initGame).also { initGame.playerDatas.add(it) }
                 candidates.add(data)
             }
         }
-        return candidates.distinctBy { it.player.uniqueId }
+        return candidates.distinctBy { if (it is PlayerData) it.player.uniqueId else if (it is DummyEntityData) it.entity.uniqueId }
     }
 
     fun PlayerData.use(skill: Skill, clickedItem: ItemStack): Boolean {
-        if (!playerStatus.canSkillUse) {
+        if (!entityStatus.canSkillUse) {
             player.sendMiniMessage("<red><bold>[!] 현재 스킬을 사용할 수 없는 상태입니다.")
             return false
         }
@@ -47,12 +47,12 @@ object SkillManager {
         player.setCooldown(clickedItem.type, cooldown * 20)
         return true
     }
-    fun PlayerData.radius(location: Location,targetType: TargetType, radius: Double, oneself: Boolean): List<PlayerData> {
+    fun PlayerData.radius(location: Location,targetType: TargetType, radius: Double, oneself: Boolean): List<EntityData> {
         val isTraining = isTraining()
         val world = player.world
         val nearbyPlayers = world.getNearbyEntities(location, radius, radius, radius).filterIsInstance<Player>()
         val playerDatas = getTargetCandidates().filter { playerData ->
-            val playerStatus = playerData.playerStatus
+            val playerStatus = playerData.entityStatus
             return@filter !playerStatus.isDead && playerStatus.isSkillTargeting
         }
         val nearbyPlayerData = nearbyPlayers.mapNotNull { target ->
@@ -77,11 +77,11 @@ object SkillManager {
             }
         }
     }
-    fun PlayerData.shotLaserGetPlayerData(maxRange: Double, targetType: TargetType, wallShot: Boolean): PlayerData? {
+    fun PlayerData.shotLaserGetEntityData(maxRange: Double, targetType: TargetType, wallShot: Boolean): EntityData? {
         val isTraining = isTraining()
         val world = player.world
         val playerDatas = getTargetCandidates().filter { playerData ->
-            val playerStatus = playerData.playerStatus
+            val playerStatus = playerData.entityStatus
             return@filter !playerStatus.isDead && playerStatus.isSkillTargeting
         }
         val startLocation = player.eyeLocation
@@ -106,7 +106,7 @@ object SkillManager {
         if (entityRayTraceResult?.hitEntity is Player) {
             val hitPlayer = entityRayTraceResult.hitEntity as Player
             val hitPlayerData = playerDatas.find { it.player == hitPlayer } ?: return null
-            if (hitPlayerData.playerStatus.isSkillTargeting) {
+            if (hitPlayerData.entityStatus.isSkillTargeting) {
                 if (isTraining && hitPlayer.isMannequin()) {
                     return hitPlayerData
                 }
@@ -133,13 +133,13 @@ object SkillManager {
         val blockRayTraceResult = world.rayTraceBlocks(startLocation, direction, maxDistance)
         return blockRayTraceResult?.hitBlock
     }
-    fun PlayerData.getConeTargets(radius: Double, angle: Double, targetType: TargetType, includeSelf: Boolean): List<PlayerData> {
+    fun PlayerData.getConeTargets(radius: Double, angle: Double, targetType: TargetType, includeSelf: Boolean): List<EntityData> {
         val isTraining = isTraining()
         val playerLocation = player.location
         val playerDirection = playerLocation.direction.normalize()
 
         return getTargetCandidates().filter { targetPlayerData ->
-            if (!targetPlayerData.playerStatus.isSkillTargeting || targetPlayerData.playerStatus.isDead)
+            if (!targetPlayerData.entityStatus.isSkillTargeting || targetPlayerData.entityStatus.isDead)
                 return@filter false
 
             if (!includeSelf && targetPlayerData == this)
@@ -161,22 +161,6 @@ object SkillManager {
 
             val dotProduct = playerDirection.dot(directionToTarget)
             dotProduct >= cos(Math.toRadians(angle / 2))
-        }
-    }
-
-
-    fun createSkillItemStack(
-        material: Material,
-        name: String,
-        lore: List<String>
-    ): ItemStack {
-        val nameComponent = MiniMessage.miniMessage().deserialize(UtilManager.applyKeywords(name))
-        val loreComponents = lore.map { MiniMessage.miniMessage().deserialize(UtilManager.applyKeywords(it)) }
-        return ItemStack(material, 1).apply {
-            itemMeta = itemMeta.apply {
-                displayName(nameComponent)
-                lore(loreComponents)
-            }
         }
     }
 }

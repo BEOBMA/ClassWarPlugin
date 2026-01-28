@@ -20,7 +20,7 @@ class OnPlayerDeathEvent : Listener{
         entityBukkitTasks.forEach {
             it.cancel()
         }
-        entityData.playerStatus.isDead = true
+        entityData.entityStatus.isDead = true
         entityData.bukkitTasks.clear()
         entity.setPlayerMaxHealth(40.0)
         entity.gameMode = GameMode.SPECTATOR

@@ -18,8 +18,8 @@ class OnEntitySkillDamageByEntityEvent : Listener {
     fun onPlayerDamage(event: PlayerSkillDamageByPlayerEvent) {
         val damagerData = event.damager
         val entityData = event.entity
-        val damagerStatus = damagerData.playerStatus
-        val entityStatus = damagerData.playerStatus
+        val damagerStatus = damagerData.entityStatus
+        val entityStatus = damagerData.entityStatus
 
         // 1보다 작은 피해는 피해를 받지 않은 것으로 간주
         if (event.damage < 1) return

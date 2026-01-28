@@ -41,7 +41,7 @@ class OnEntityDamageByEntityEvent : Listener {
 
         val damagerGame = findGameForPlayer(damager) ?: return
         val damagerData = damagerGame.playerDatas.find { it.player == damager } ?: return
-        val damagerStatus = damagerData.playerStatus
+        val damagerStatus = damagerData.entityStatus
 
         if (isMannequin) {
             val mannequinStatus = MannequinStatusManager.getStatus(entity) ?: return
@@ -80,7 +80,7 @@ class OnEntityDamageByEntityEvent : Listener {
         val entityGame = findGameForPlayer(entityPlayer) ?: return
         if (damagerGame != entityGame) return
         val entityData = entityGame.playerDatas.find { it.player == entityPlayer } ?: return
-        val entityStatus = entityData.playerStatus
+        val entityStatus = entityData.entityStatus
 
         // 공격, 피격 가능 여부
         if (!damagerStatus.canAttack || !entityStatus.isAttackable) {

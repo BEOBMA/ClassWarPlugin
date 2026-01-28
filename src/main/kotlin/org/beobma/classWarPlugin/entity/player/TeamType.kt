@@ -1,4 +1,4 @@
-package org.beobma.classWarPlugin.player
+package org.beobma.classWarPlugin.entity.player
 
 enum class TeamType {
     Red,
