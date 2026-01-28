@@ -104,7 +104,7 @@ class AstronomersOrangeSkill : Skill() {
 }
 
 class AstronomersBlackHole : Flooring() {
-    override var location = player.location
+    override lateinit var location: Location
     override var radius: Double = 5.0
     override var targetType: TargetType = TargetType.Enemy
     override var time: Int? = 4
@@ -132,6 +132,9 @@ class AstronomersYellowSkill : Skill() {
     override fun use(): Boolean {
         val enemyField = AstronomersEnemyField()
         val teamField = AstronomersTeamField()
+        val currentLocation = player.location.clone()
+        enemyField.location = currentLocation
+        teamField.location = currentLocation
         enemyField.spawnFlooring(playerData)
         teamField.spawnFlooring(playerData)
         return true
@@ -141,7 +144,7 @@ class AstronomersYellowSkill : Skill() {
 class AstronomersEnemyField : Flooring() {
     private val affected = mutableSetOf<PlayerData>()
 
-    override var location = player.location
+    override lateinit var location: Location
     override var radius: Double = 8.0
     override var targetType: TargetType = TargetType.Enemy
     override var time: Int? = 5
@@ -171,7 +174,7 @@ class AstronomersEnemyField : Flooring() {
 class AstronomersTeamField : Flooring() {
     private val affected = mutableSetOf<PlayerData>()
 
-    override var location = player.location
+    override lateinit var location: Location
     override var radius: Double = 8.0
     override var targetType: TargetType = TargetType.Team
     override var time: Int? = 5
@@ -226,7 +229,7 @@ class AstronomersPassive : Passive(), OnHitHandler {
 }
 
 class AstronomersStarMeteor : Meteor() {
-    override var location: Location = player.location.add(0.0, 5.0, 0.0)
+    override lateinit var location: Location
     override var speed: Double = 0.5
     override var isWallHit: Boolean = true
     override var targetType: TargetType = TargetType.Enemy

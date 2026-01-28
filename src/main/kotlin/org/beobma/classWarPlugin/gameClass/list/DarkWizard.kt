@@ -96,7 +96,7 @@ class DarkWizardsRedSkill : Skill() {
 class DarkWizardsSmoke : Flooring() {
     private val applied = mutableListOf<PlayerData>()
 
-    override var location: Location = player.location
+    override lateinit var location: Location
     override var radius: Double = 5.0
     override var targetType: TargetType = TargetType.Enemy
     override var time: Int? = 4
@@ -140,6 +140,7 @@ class DarkWizardsOrangeSkill : Skill() {
         }
 
         val projectile = DarkWizardsProjectileSmoke()
+        projectile.location = player.location.clone()
 
         projectile.spawnProjectile(playerData)
         mana.decreasePower(60)
@@ -148,7 +149,7 @@ class DarkWizardsOrangeSkill : Skill() {
 }
 
 class DarkWizardsProjectileSmoke : Projectile() {
-    override var location: Location = player.location
+    override lateinit var location: Location
     override var targetType: TargetType = TargetType.Enemy
     override var speed: Double = 0.5
     override var isWallHit: Boolean = false
