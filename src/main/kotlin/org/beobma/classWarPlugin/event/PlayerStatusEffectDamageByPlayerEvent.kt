@@ -1,5 +1,6 @@
 package org.beobma.classWarPlugin.event
 
+import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.util.DamageType
 import org.bukkit.event.Cancellable
@@ -10,7 +11,7 @@ class PlayerStatusEffectDamageByPlayerEvent(
     baseDamage: Double,
     val damageType: DamageType,
     val damager: PlayerData,
-    val entity: PlayerData
+    val entity: EntityData
 ) : Event(), Cancellable {
     private var isCancelled = false
     private val baseDamage: Double = baseDamage
