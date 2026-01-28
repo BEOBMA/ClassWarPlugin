@@ -48,10 +48,22 @@ object SkillManager {
             return false
         }
 
+        val cooldownSeconds = when (val cooldown = skill.cooldown) {
+            null -> null
+            Int.MAX_VALUE -> 999999
+            else -> cooldown
+        }
+        if (cooldownSeconds != null) {
+            sourcePlayer.player.setCooldown(clickedItem.type, cooldownSeconds * 20)
+        }
+
         val isUse = skill.use()
-        if (!isUse) return false
-        val cooldown = if (skill.cooldown == Int.MAX_VALUE) 999999 else skill.cooldown ?: return true
-        sourcePlayer.player.setCooldown(clickedItem.type, cooldown * 20)
+        if (!isUse) {
+            if (cooldownSeconds != null) {
+                sourcePlayer.player.setCooldown(clickedItem.type, 0)
+            }
+            return false
+        }
         return true
     }
     fun EntityData.radius(location: Location, targetType: TargetType, radius: Double, oneself: Boolean): List<EntityData> {
