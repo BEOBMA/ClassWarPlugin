@@ -24,19 +24,21 @@ import org.bukkit.inventory.InventoryView
 import org.bukkit.inventory.ItemStack
 
 class OnInventoryClickEvent : Listener {
+    private val miniMessage = MiniMessage.miniMessage()
+    private val pageRegex = "페이지 (\\d+)/(\\d+)".toRegex()
     private val nextPage = ItemStack(Material.ARROW, 1).apply {
         itemMeta = itemMeta.apply {
-            displayName(MiniMessage.miniMessage().deserialize("<gray>다음 페이지"))
+            displayName(miniMessage.deserialize("<gray>다음 페이지"))
         }
     }.itemMeta
     private val previousPage = ItemStack(Material.ARROW, 1).apply {
         itemMeta = itemMeta.apply {
-            displayName(MiniMessage.miniMessage().deserialize("<gray>이전 페이지"))
+            displayName(miniMessage.deserialize("<gray>이전 페이지"))
         }
     }.itemMeta
     private val nullItem = ItemStack(Material.LIGHT_GRAY_STAINED_GLASS, 1).apply {
         itemMeta = itemMeta.apply {
-            displayName(MiniMessage.miniMessage().deserialize("<gray>비어있음"))
+            displayName(miniMessage.deserialize("<gray>비어있음"))
         }
     }.itemMeta
 
@@ -115,7 +117,7 @@ class OnInventoryClickEvent : Listener {
                 player.playSound(player, Sound.BLOCK_NOTE_BLOCK_GUITAR, 1.0F, 2.0F)
                 PlayerTagManager.removeTag(player, "openClassPickInventory")
                 player.playerListName(
-                    player.playerListName().append(MiniMessage.miniMessage().deserialize(" [ ${gameClass.name} ]"))
+                    player.playerListName().append(miniMessage.deserialize(" [ ${gameClass.name} ]"))
                 )
                 game.classPickOrder.remove(playerData)
                 val pickPlayer = game.classPickOrder.firstOrNull() ?: run {
@@ -191,8 +193,7 @@ class OnInventoryClickEvent : Listener {
     }
 
     private fun getCurrentPageFromTitle(title: String): Int {
-        val regex = "페이지 (\\d+)/(\\d+)".toRegex()
-        val matchResult = regex.find(title) ?: return 0
+        val matchResult = pageRegex.find(title) ?: return 0
         return matchResult.groupValues[1].toInt() - 1
     }
 }

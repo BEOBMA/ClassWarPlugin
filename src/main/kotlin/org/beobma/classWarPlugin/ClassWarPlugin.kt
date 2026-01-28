@@ -29,9 +29,10 @@ class ClassWarPlugin : JavaPlugin() {
     }
 
     private fun registerEvents() {
-        server.getPluginCommand("classwar")?.setExecutor(Command())
+        val command = Command()
+        server.getPluginCommand("classwar")?.setExecutor(command)
 
-        server.pluginManager.registerEvents(Command(), this)
+        server.pluginManager.registerEvents(command, this)
         server.pluginManager.registerEvents(OnInventoryClickEvent(), this)
         server.pluginManager.registerEvents(OnInventoryCloseEvent(), this)
         server.pluginManager.registerEvents(OnPlayerDeathEvent(), this)
