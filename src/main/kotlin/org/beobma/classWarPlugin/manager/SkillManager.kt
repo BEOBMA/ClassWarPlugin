@@ -5,7 +5,9 @@ import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.hasStatus
 import org.beobma.classWarPlugin.skill.Skill
+import org.beobma.classWarPlugin.status.list.Stealth
 import org.beobma.classWarPlugin.util.TargetType
 import org.beobma.classWarPlugin.util.TargetType.*
 import org.bukkit.Location
@@ -101,7 +103,7 @@ object SkillManager {
         val world = this.entity.world
         val playerDatas = getTargetCandidates().filter { entityData ->
             val playerStatus = entityData.entityStatus
-            return@filter !playerStatus.isDead && playerStatus.isSkillTargeting
+            return@filter !playerStatus.isDead && playerStatus.isSkillTargeting && !entityData.hasStatus<Stealth>()
         }
         val entity = entity
         if (entity !is LivingEntity) return null

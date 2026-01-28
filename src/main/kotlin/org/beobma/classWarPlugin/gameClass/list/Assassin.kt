@@ -10,6 +10,7 @@ import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.hasStatus
 import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
@@ -46,8 +47,8 @@ class Assassin : GameClass() {
 }
 
 class AssassinsDagger : Weapon() {
-    override val name = "<gray>암살자의 단검"
-    override val description = listOf("<gray>빠르고 치명적이다.")
+    override val name = ""
+    override val description = listOf("")
     override val material = Material.AIR
 }
 
@@ -55,7 +56,9 @@ class AssassinsRedSkill : Skill() {
     override val name = "<gray><bold>찌르기"
     override val description = listOf(
         "<gray>2칸 내의 바라보는 적에게 6의 피해를 입힌다.",
-        "<gray>대상이 자신을 바라보고 있지 않았다면 3의 피해를 추가로 입힌다."
+        "<gray>대상이 자신을 바라보고 있지 않았다면 3의 피해를 추가로 입힌다.",
+        "",
+        "<dark_gray>재사용 대기 시간: 10초"
     )
     override val cooldown = 10
 
@@ -69,6 +72,9 @@ class AssassinsRedSkill : Skill() {
         if (viewCheck != playerData) {
             targetData.damage(3.0, DamageType.Normal, playerData)
         }
+        if (playerData.hasStatus<Stealth>()) {
+            player.setCooldown(Material.RED_DYE, (player.getCooldown(Material.RED_DYE) * 0.5).toInt())
+        }
         return true
     }
 }
@@ -78,7 +84,9 @@ class AssassinsOrangeSkill : Skill() {
     override val description = listOf(
         "<gray>바라보는 방향으로 단검을 투척한다.",
         "<gray>단검이 적에게 적중하면 5의 피해를 입히고 해당 적의 뒤로 즉시 이동한다.",
-        "<gray>단검이 블록에 적중하면 4초간 {keyword:Stealth}하고 해당 방향으로 빠르게 이동한다."
+        "<gray>단검이 블록에 적중하면 4초간 {keyword:Stealth}하고 해당 방향으로 빠르게 이동한다.",
+        "",
+        "<dark_gray>재사용 대기 시간: 10초"
     )
     override val cooldown = 10
 
@@ -86,6 +94,37 @@ class AssassinsOrangeSkill : Skill() {
         val assassinsDaggerProjectile = AssassinsDaggerProjectile()
         assassinsDaggerProjectile.location = player.location.clone()
         assassinsDaggerProjectile.spawnProjectile(playerData)
+        if (playerData.hasStatus<Stealth>()) {
+            player.setCooldown(Material.ORANGE_DYE, (player.getCooldown(Material.YELLOW_DYE) * 0.5).toInt())
+        }
+        return true
+    }
+}
+
+class AssassinsYellowSkill : Skill() {
+    override val name = "<bold>암살"
+    override val description = listOf(
+        "<gray>2칸 내의 바라보는 적에게 10의 피해를 입힌다.",
+        "<gray>자신이 {keyword:Stealth} 중이었다면 5의 피해를 추가로 입힌다.",
+        "<gray>이 스킬로 적을 처치했다면 재사용 대기시간이 75% 감소한다.",
+        "",
+        "<dark_gray>재사용 대기 시간: 60초"
+    )
+    override val cooldown = 60
+
+    override fun use(): Boolean {
+        val targetData = playerData.shotLaserGetEntityData(2.0, TargetType.Enemy, false) ?: run {
+            player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+            return false
+        }
+        targetData.damage(10.0, DamageType.Normal, playerData)
+        if (playerData.hasStatus<Stealth>()) {
+            targetData.damage(5.0, DamageType.Normal, playerData)
+            player.setCooldown(Material.YELLOW_DYE, (player.getCooldown(Material.YELLOW_DYE) * 0.5).toInt())
+        }
+        if (targetData.entityStatus.isDead) {
+            player.setCooldown(Material.YELLOW_DYE, (player.getCooldown(Material.YELLOW_DYE) * 0.25).toInt())
+        }
         return true
     }
 }
@@ -95,10 +134,7 @@ class AssassinsPassive : Passive() {
     override val description = listOf(
         "<gray>패시브",
         "",
-        "<gray>암살자는 완벽한 {keyword:Stealth}을 위해 기본 무기가 존재하지 않는다.",
-        "<gray>{keyword:Stealth}하면 {keyword:Untargetability} 상태가 된다.",
-        "",
-        dictionary[Keyword.Untargetability] ?: ""
+        "<gray>{keyword:Stealth} 상태에서 사용한 스킬의 재사용 대기 시간이 50% 감소한다."
     )
 }
 
@@ -138,30 +174,5 @@ class AssassinsDaggerProjectile : Projectile() {
         }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L)
 
         playerData.trackTask(task)
-    }
-}
-
-class AssassinsYellowSkill : Skill() {
-    override val name = "<bold>비열한 일격"
-    override val description = listOf(
-        "<gray>2칸 내의 바라보는 적에게 10의 피해를 입힌다.",
-        "<gray>자신이 {keyword:Stealth} 중이었다면 5의 피해를 추가로 입힌다.",
-        "<gray>이 스킬로 적을 처치했다면 재사용 대기시간이 75% 감소한다."
-    )
-    override val cooldown = 60
-
-    override fun use(): Boolean {
-        val targetData = playerData.shotLaserGetEntityData(2.0, TargetType.Enemy, false) ?: run {
-            player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-            return false
-        }
-        targetData.damage(10.0, DamageType.Normal, playerData)
-        if (playerData.getStatus<Stealth>() == null) {
-            targetData.damage(5.0, DamageType.Normal, playerData)
-        }
-        if (targetData.entityStatus.isDead) {
-            player.setCooldown(Material.YELLOW_DYE, (cooldown * 0.25).toInt())
-        }
-        return true
     }
 }
