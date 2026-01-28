@@ -16,6 +16,7 @@ import org.beobma.classWarPlugin.util.DamageType.StatusAbnormality
 import org.beobma.classWarPlugin.util.DamageType.True
 import org.bukkit.Bukkit
 import org.bukkit.Material
+import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 
 object PlayerManager {
@@ -160,15 +161,46 @@ object PlayerManager {
                 if (damage <= 0.0) {
                     return
                 }
-                val formattedDamage = String.format("%.2f", damage)
-                val damageText = when (damageType) {
-                    Normal -> "<gray>일반 피해</gray>"
-                    True -> "<white>고정 피해</white>"
-                    StatusAbnormality -> "<green>상태이상 피해</green>"
+
+                val targetPlayer = entity as? Player
+                if (!isInvincibilityTimeIgnore && (targetPlayer?.noDamageTicks ?: 0) > 0) {
+                    return
                 }
-                damager.player.sendMiniMessage(
-                    "<gray>가한 피해 정보 - 피해 경로: <bold>$damageText</bold> <gray>피해량: <gold><bold>$formattedDamage</bold></gold>"
-                )
+                if (isInvincibilityTimeIgnore) {
+                    targetPlayer?.noDamageTicks = 0
+                }
+
+                val currentTick = entity.world.fullTime
+                lastDamageTicks[damager]?.let { lastTick ->
+                    if (currentTick - lastTick < 20) {
+                        return
+                    }
+                }
+                lastDamageTicks[damager] = currentTick
+
+                val finalDamage = if (damageType == StatusAbnormality) {
+                    val event = PlayerStatusEffectDamageByPlayerEvent(damage, damageType, damager, this)
+                    Bukkit.getServer().pluginManager.callEvent(event)
+                    if (event.isCancelled) {
+                        0.0
+                    } else {
+                        event.damage
+                    }
+                } else {
+                    val event = PlayerSkillDamageByPlayerEvent(damage, damageType, damager, this)
+                    Bukkit.getServer().pluginManager.callEvent(event)
+                    if (event.isCancelled) {
+                        0.0
+                    } else {
+                        event.damage
+                    }
+                }
+
+                val damageResult = targetPlayer?.let { DamageCalculator.calculate(finalDamage, it, damageType) }
+                    ?: DamageCalculator.Result(finalDamage, 0.0)
+                if (damageResult.finalDamage <= 0.0) {
+                    return
+                }
             }
         }
     }

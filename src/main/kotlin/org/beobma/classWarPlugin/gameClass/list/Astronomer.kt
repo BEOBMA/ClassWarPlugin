@@ -218,7 +218,7 @@ class AstronomersPassive : Passive(), OnHitHandler {
     override fun onSkillAttackHit(event: PlayerSkillDamageByPlayerEvent) {
         val mana = playerData.getOrCreateStatus { Mana() }
         val count = (mana.power / 20).coerceIn(1, 5)
-        val targetLoc = event.entity.player.location.add(0.0, 5.0, 0.0)
+        val targetLoc = event.entity.entity.location.add(0.0, 5.0, 0.0)
         repeat(count) {
             val starMeteor = AstronomersStarMeteor()
             starMeteor.location = targetLoc
