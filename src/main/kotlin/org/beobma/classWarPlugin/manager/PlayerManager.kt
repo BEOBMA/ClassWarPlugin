@@ -106,7 +106,7 @@ object PlayerManager {
         }
         lastDamageTicks[damager] = currentTick
 
-        val finalDamage = if (damageType == DamageType.StatusAbnormality) {
+        val finalDamage = if (damageType == StatusAbnormality) {
             val event = PlayerStatusEffectDamageByPlayerEvent(damage, damageType, this, damager)
             Bukkit.getServer().pluginManager.callEvent(event)
             if (event.isCancelled) {
@@ -129,7 +129,6 @@ object PlayerManager {
         if (damageResult.finalDamage <= 0.0) {
             return
         }
-
         if (PlayerTagManager.hasTag(player, "isTraining")) {
             val formattedDamage = String.format("%.2f", damageResult.finalDamage)
             player.sendMiniMessage("<red>받은 피해 정보 - <gray>피해량: <gold><bold>$formattedDamage</bold></gold>")
