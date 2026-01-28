@@ -110,7 +110,7 @@ object GameManager{
                 PlayerTagManager.removeTag(player, tag)
             }
             PlayerTagManager.clear(player)
-            player.playerListName(MiniMessage.miniMessage().deserialize(player.name))
+            player.playerListName(miniMessage.deserialize(player.name))
             player.fireTicks = 0
             player.inventory.clear()
             player.health = player.getPlayerMaxHealth()
@@ -186,11 +186,11 @@ object GameManager{
                             val player = playerData.player
                             if (player.isInArea(Location(Bukkit.getWorld("world"), 7.0, -55.0, -7.0), Location(Bukkit.getWorld("world"), 2.0, -61.0, -12.0))) {
                                 playerData.team = Red
-                                player.playerListName(MiniMessage.miniMessage().deserialize("<red>${player.name}"))
+                                player.playerListName(miniMessage.deserialize("<red>${player.name}"))
                             }
                             else if (player.isInArea(Location(Bukkit.getWorld("world"), -5.0, -55.0, -7.0), Location(Bukkit.getWorld("world"), 0.0, -61.0, -12.0))) {
                                 playerData.team = Blue
-                                player.playerListName(MiniMessage.miniMessage().deserialize("<blue>${player.name}"))
+                                player.playerListName(miniMessage.deserialize("<blue>${player.name}"))
                             }
                             else {
                                 playerData.team = Spectator
@@ -410,13 +410,13 @@ object GameManager{
         val players = playerDatas.filterIsInstance<PlayerData>().map { it.player }
         when (gameSetType) {
             RedTeamWin -> {
-                players.sendTitleNotification(MiniMessage.miniMessage().deserialize("<red><bold>레드팀 승리"), gameSetDetailType.component)
+                players.sendTitleNotification(miniMessage.deserialize("<red><bold>레드팀 승리"), gameSetDetailType.component)
             }
             BlueTeamWin -> {
-                players.sendTitleNotification(MiniMessage.miniMessage().deserialize("<blue><bold>블루팀 승리"), gameSetDetailType.component)
+                players.sendTitleNotification(miniMessage.deserialize("<blue><bold>블루팀 승리"), gameSetDetailType.component)
             }
             Draw -> {
-                players.sendTitleNotification(MiniMessage.miniMessage().deserialize("<bold>무승부"), gameSetDetailType.component)
+                players.sendTitleNotification(miniMessage.deserialize("<bold>무승부"), gameSetDetailType.component)
             }
         }
     }
@@ -427,7 +427,7 @@ object GameManager{
         players.forEach { player ->
             player.playSound(player, Sound.BLOCK_NOTE_BLOCK_GUITAR, 1.0F, 2.0F)
         }
-        Bukkit.broadcast(MiniMessage.miniMessage().deserialize("[!] $msg"))
+        Bukkit.broadcast(miniMessage.deserialize("[!] $msg"))
     }
     private fun List<Player>.sendTitleNotification(msg: Component, msg2: Component = Component.text("")) {
         forEach {

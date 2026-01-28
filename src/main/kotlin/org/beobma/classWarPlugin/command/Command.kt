@@ -21,6 +21,8 @@ import org.bukkit.event.Listener
 import java.util.*
 
 class Command : Listener, CommandExecutor, TabCompleter {
+    private val miniMessage = MiniMessage.miniMessage()
+
     override fun onCommand(sender: CommandSender, cmd: Command, label: String, args: Array<String>): Boolean {
         if (cmd.name.equals("classwar", ignoreCase = true) && args.isNotEmpty()) {
             if (sender !is Player) {
@@ -127,6 +129,6 @@ class Command : Listener, CommandExecutor, TabCompleter {
 
 
     private fun CommandSender.sendWaringMessage(msg: String) {
-        sendMessage(MiniMessage.miniMessage().deserialize("<red><bold>[!] $msg"))
+        sendMessage(miniMessage.deserialize("<red><bold>[!] $msg"))
     }
 }
