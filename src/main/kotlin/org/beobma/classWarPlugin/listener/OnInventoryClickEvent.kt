@@ -13,6 +13,7 @@ import org.beobma.classWarPlugin.manager.InventoryManager.openClassPickInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassStatusInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openTrainingClassListInventory
 import org.beobma.classWarPlugin.manager.PlayerTagManager
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.bukkit.Material
 import org.bukkit.Sound
 import org.bukkit.entity.Player
@@ -79,7 +80,8 @@ class OnInventoryClickEvent : Listener {
 
     private fun classPickHandler(player: Player, game: Game, clickItem: ItemStack, inventory: InventoryView) {
         val itemMeta = clickItem.itemMeta ?: return
-        val playerData = game.playerDatas.find { it.player == player } ?: return
+        val playerData = game.playerDatas.filterIsInstance<PlayerData>()
+            .find { it.player == player } ?: return
         when (itemMeta) {
             previousPage -> {
                 player.closeInventory()

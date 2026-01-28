@@ -14,6 +14,7 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
+import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.skill.Flooring
 import org.beobma.classWarPlugin.skill.Meteor
@@ -108,11 +109,11 @@ class AstronomersBlackHole : Flooring() {
     override var targetType: TargetType = TargetType.Enemy
     override var time: Int? = 4
 
-    override fun onFlooringPlayerHit(hitPlayerData: PlayerData, location: Location) {
-        val hitPlayer = hitPlayerData.player
-        val dir = location.clone().subtract(hitPlayer.location).toVector().normalize().multiply(0.1)
-        hitPlayer.velocity = dir
-        hitPlayerData.damage(2.0, DamageType.Normal, playerData, false)
+    override fun onFlooringEntityHit(hitEntityData: EntityData, location: Location) {
+        val hitEntity = hitEntityData.entity
+        val dir = location.clone().subtract(hitEntity.location).toVector().normalize().multiply(0.1)
+        hitEntity.velocity = dir
+        hitEntityData.damage(2.0, DamageType.Normal, playerData, false)
     }
 }
 
@@ -145,7 +146,8 @@ class AstronomersEnemyField : Flooring() {
     override var targetType: TargetType = TargetType.Enemy
     override var time: Int? = 5
 
-    override fun onFlooringPlayerHit(hitPlayerData: PlayerData, location: Location) {
+    override fun onFlooringEntityHit(hitEntityData: EntityData, location: Location) {
+        val hitPlayerData = hitEntityData as? PlayerData ?: return
         hitPlayerData.damage(2.0, DamageType.Normal, playerData, false)
         if (affected.add(hitPlayerData)) {
             val moveSpeedDecrease = hitPlayerData.addStatus(MoveSpeedDecrease())
@@ -157,7 +159,8 @@ class AstronomersEnemyField : Flooring() {
         }
     }
 
-    override fun onFlooringPlayerOut(hitPlayerData: PlayerData, location: Location) {
+    override fun onFlooringEntityOut(hitEntityData: EntityData, location: Location) {
+        val hitPlayerData = hitEntityData as? PlayerData ?: return
         affected.remove(hitPlayerData)
     }
 
@@ -173,7 +176,8 @@ class AstronomersTeamField : Flooring() {
     override var targetType: TargetType = TargetType.Team
     override var time: Int? = 5
 
-    override fun onFlooringPlayerHit(hitPlayerData: PlayerData, location: Location) {
+    override fun onFlooringEntityHit(hitEntityData: EntityData, location: Location) {
+        val hitPlayerData = hitEntityData as? PlayerData ?: return
         hitPlayerData.heal(2.0, DamageType.Normal, playerData)
         if (affected.add(hitPlayerData)) {
             val moveSpeedIncrease = hitPlayerData.addStatus(MoveSpeedIncrease())
@@ -185,7 +189,8 @@ class AstronomersTeamField : Flooring() {
         }
     }
 
-    override fun onFlooringPlayerOut(hitPlayerData: PlayerData, location: Location) {
+    override fun onFlooringEntityOut(hitEntityData: EntityData, location: Location) {
+        val hitPlayerData = hitEntityData as? PlayerData ?: return
         affected.remove(hitPlayerData)
     }
 
@@ -226,7 +231,7 @@ class AstronomersStarMeteor : Meteor() {
     override var isWallHit: Boolean = true
     override var targetType: TargetType = TargetType.Enemy
 
-    override fun onMeteorPlayerHit(hitPlayerData: PlayerData, location: Location) {
-        hitPlayerData.damage(1.0, DamageType.True, playerData)
+    override fun onMeteorEntityHit(hitEntityData: EntityData, location: Location) {
+        hitEntityData.damage(1.0, DamageType.True, playerData)
     }
 }

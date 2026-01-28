@@ -1,7 +1,10 @@
 package org.beobma.classWarPlugin.skill
 
 import org.beobma.classWarPlugin.ClassWarPlugin
+import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.game.Game
+import org.beobma.classWarPlugin.manager.PlayerTagManager
+import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.entity.player.PlayerStatus
 import org.beobma.classWarPlugin.util.TargetType
@@ -41,13 +44,14 @@ abstract class Meteor(
     }
 
     open fun onMeteorMove(location: Location) {}
-    open fun onMeteorPlayerHit(hitPlayerData: PlayerData, location: Location) {}
+    open fun onMeteorEntityHit(hitEntityData: EntityData, location: Location) {}
     open fun onMeteorBlockHit(hitBlock: Block, location: Location) {}
 
     fun spawnMeteor(playerData: PlayerData) {
         inject(playerData)
         val currentLocation = location.clone()
         val time = time
+        val isTraining = PlayerTagManager.hasTag(player, "isTraining")
         var ticks = 0
 
         val task = object : BukkitRunnable() {
@@ -70,19 +74,21 @@ abstract class Meteor(
                     return
                 }
 
-                val collidedPlayerData = game.playerDatas
+                val collidedEntityData = game.playerDatas
                     .filter { it != playerData && it.entityStatus.isSkillTargeting }
                     .firstOrNull { targetData ->
-                        targetData.player.location.distanceSquared(currentLocation) <= 1.0 &&
+                        targetData.entity.location.distanceSquared(currentLocation) <= 1.0 &&
                                 when (targetType) {
-                                    Team -> targetData.team == playerData.team
-                                    Enemy -> targetData.team != playerData.team
+                                    Team -> targetData.entity.isMannequin() && isTraining ||
+                                        (targetData is PlayerData && targetData.team == playerData.team)
+                                    Enemy -> targetData.entity.isMannequin() && isTraining ||
+                                        (targetData is PlayerData && targetData.team != playerData.team)
                                     All -> true
                                 }
                     }
 
-                if (collidedPlayerData != null) {
-                    onMeteorPlayerHit(collidedPlayerData, currentLocation)
+                if (collidedEntityData != null) {
+                    onMeteorEntityHit(collidedEntityData, currentLocation)
                     cancel()
                     return
                 }

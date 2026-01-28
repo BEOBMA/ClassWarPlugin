@@ -12,6 +12,7 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateSta
 import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
+import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.skill.*
 import org.beobma.classWarPlugin.status.list.Abyss
@@ -99,14 +100,16 @@ class DarkWizardsSmoke : Flooring() {
     override var targetType: TargetType = TargetType.Enemy
     override var time: Int? = 4
 
-    override fun onFlooringPlayerHit(hitPlayerData: PlayerData, location: Location) {
+    override fun onFlooringEntityHit(hitEntityData: EntityData, location: Location) {
+        val hitPlayerData = hitEntityData as? PlayerData ?: return
         hitPlayerData.player.isGlowing = true
         applied.add(hitPlayerData)
     }
 
-    override fun onFlooringPlayerOut(hitPlayerData: PlayerData, location: Location) {
+    override fun onFlooringEntityOut(hitEntityData: EntityData, location: Location) {
+        val hitPlayerData = hitEntityData as? PlayerData ?: return
         hitPlayerData.player.isGlowing = false
-        applied.remove(playerData)
+        applied.remove(hitPlayerData)
     }
 
     override fun onFlooringEnd() {
@@ -153,12 +156,15 @@ class DarkWizardsProjectileSmoke : Projectile() {
 
     private val hitSet = mutableSetOf<PlayerData>()
 
-    override fun onProjectilePlayerHit(hitPlayerData: PlayerData, location: Location) {
-        if (hitSet.add(hitPlayerData)) {
+    override fun onProjectileEntityHit(hitEntityData: EntityData, location: Location) {
+        val hitPlayerData = hitEntityData as? PlayerData
+        if (hitPlayerData != null && hitSet.add(hitPlayerData)) {
             val abyss = hitPlayerData.getOrCreateStatus { Abyss() }
             abyss.applyStatus(duration = 3, durationMode = StatusDurationMode.Refresh)
             hitPlayerData.damage(5.0, DamageType.Normal, playerData)
+            return
         }
+        hitEntityData.damage(5.0, DamageType.Normal, playerData)
     }
 }
 
@@ -187,19 +193,19 @@ class DarkWizardsYellowSkill : Skill() {
         val allPlayers = playerData.radius(player.location, TargetType.All, 1000.0, true)
         val enemies = playerData.radius(player.location, TargetType.Enemy, 1000.0, false)
 
-        enemies.forEach {
-            if (abyssPlayers.contains(it)) {
-                val silence = it.getOrCreateStatus { Silence() }
+        enemies.filterIsInstance<PlayerData>().forEach { enemy ->
+            if (abyssPlayers.contains(enemy)) {
+                val silence = enemy.getOrCreateStatus { Silence() }
                 silence.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh)
             }
         }
 
-        allPlayers.forEach {
-            val abyss = it.getOrCreateStatus { Abyss() }
+        allPlayers.filterIsInstance<PlayerData>().forEach { playerTarget ->
+            val abyss = playerTarget.getOrCreateStatus { Abyss() }
             abyss.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh)
         }
 
-        abyssPlayers.addAll(allPlayers)
+        abyssPlayers.addAll(allPlayers.filterIsInstance<PlayerData>())
         mana.updatePower(mana.power - 100)
         return true
     }

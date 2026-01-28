@@ -5,6 +5,7 @@ import org.beobma.classWarPlugin.entity.EntityStatus
 import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.status.StatusAbnormality
+import org.bukkit.entity.Entity
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitTask
 
@@ -14,6 +15,8 @@ data class PlayerData(
     var team: TeamType? = null,
     var gameClass: GameClass? = null,
 ) : EntityData() {
+    override val entity: Entity
+        get() = player
     override val game: Game = initGame
     override val entityStatus: EntityStatus = PlayerStatus(player)
     override val bukkitTasks: MutableList<BukkitTask> = mutableListOf()

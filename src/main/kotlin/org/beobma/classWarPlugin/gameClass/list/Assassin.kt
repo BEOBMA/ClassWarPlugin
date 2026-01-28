@@ -12,6 +12,7 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
 import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
+import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Projectile
@@ -65,7 +66,7 @@ class AssassinsRedSkill : Skill() {
             return false
         }
         targetData.damage(6.0, DamageType.Normal, playerData)
-        val viewCheck = targetData.shotLaserGetEntityData(5.0, TargetType.Enemy, false)
+        val viewCheck = (targetData as? PlayerData)?.shotLaserGetEntityData(5.0, TargetType.Enemy, false)
         if (viewCheck != playerData) {
             targetData.damage(3.0, DamageType.Normal, playerData)
         }
@@ -98,11 +99,11 @@ class AssassinsDaggerProjectile : Projectile() {
     override val isPlayerHitRemove: Boolean = true
 
 
-    override fun onProjectilePlayerHit(hitPlayerData: PlayerData, location: Location) {
-        val hitPlayer = hitPlayerData.player
-        val hitPlayerLocation = hitPlayer.location
-        val behind = hitPlayerLocation.clone().add(hitPlayerLocation.direction.normalize().multiply(-1.5))
-        hitPlayerData.damage(5.0, DamageType.Normal, playerData)
+    override fun onProjectileEntityHit(hitEntityData: EntityData, location: Location) {
+        val hitEntity = hitEntityData.entity
+        val hitEntityLocation = hitEntity.location
+        val behind = hitEntityLocation.clone().add(hitEntityLocation.direction.normalize().multiply(-1.5))
+        hitEntityData.damage(5.0, DamageType.Normal, playerData)
         player.teleport(behind)
     }
 

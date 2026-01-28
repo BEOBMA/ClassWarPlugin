@@ -11,6 +11,7 @@ import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.status.StatusOnHitHandler
 import org.beobma.classWarPlugin.util.addDamageTakenMultiplier
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -40,7 +41,7 @@ class OnEntityDamageByEntityEvent : Listener {
         }
 
         val damagerGame = findGameForPlayer(damager) ?: return
-        val damagerData = damagerGame.playerDatas.find { it.player == damager } ?: return
+        val damagerData = damagerGame.playerDatas.filterIsInstance<PlayerData>().find { it.player == damager } ?: return
         val damagerStatus = damagerData.entityStatus
 
         if (isMannequin) {
@@ -79,7 +80,7 @@ class OnEntityDamageByEntityEvent : Listener {
         val entityPlayer = entity as Player
         val entityGame = findGameForPlayer(entityPlayer) ?: return
         if (damagerGame != entityGame) return
-        val entityData = entityGame.playerDatas.find { it.player == entityPlayer } ?: return
+        val entityData = entityGame.playerDatas.filterIsInstance<PlayerData>().find { it.player == entityPlayer } ?: return
         val entityStatus = entityData.entityStatus
 
         // 공격, 피격 가능 여부

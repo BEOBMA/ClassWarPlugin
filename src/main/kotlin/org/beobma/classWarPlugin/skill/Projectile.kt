@@ -1,6 +1,8 @@
 package org.beobma.classWarPlugin.skill
 
 import org.beobma.classWarPlugin.ClassWarPlugin
+import org.beobma.classWarPlugin.entity.EntityData
+import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
 import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
@@ -52,7 +54,7 @@ abstract class Projectile {
 
     open fun onProjectileMove(location: Location) {}
 
-    open fun onProjectilePlayerHit(hitPlayerData: PlayerData, location: Location) {}
+    open fun onProjectileEntityHit(hitEntityData: EntityData, location: Location) {}
 
     open fun onProjectileBlockHit(hitBlock: Block, location: Location) {}
 
@@ -90,28 +92,30 @@ abstract class Projectile {
                     val isTraining = PlayerTagManager.hasTag(player, "isTraining")
                     val targetCandidates = if (isTraining) {
                         val candidates = game.playerDatas.toMutableList()
-                        player.world.entities.filterIsInstance<Player>().filter { it.isMannequin() }.forEach { mannequin ->
-                            val data = game.playerDatas.find { it.player == mannequin }
-                                ?: PlayerData(mannequin, game).also { game.playerDatas.add(it) }
+                        player.world.entities.filter { it.isMannequin() }.forEach { mannequin ->
+                            val data = game.playerDatas.find { it.entity == mannequin }
+                                ?: DummyEntityData(mannequin, game).also { game.playerDatas.add(it) }
                             candidates.add(data)
                         }
-                        candidates.distinctBy { it.player.uniqueId }
+                        candidates.distinctBy { it.entity.uniqueId }
                     } else {
                         game.playerDatas
                     }
-                    val collidedPlayerData = targetCandidates
+                    val collidedEntityData = targetCandidates
                         .filter { it != playerData && it.entityStatus.isSkillTargeting }
                         .firstOrNull { targetData ->
-                            targetData.player.location.distanceSquared(currentLocation) <= 1.0 &&
-                                    when (targetType) {
-                                        Team -> targetData.team == playerData.team || (isTraining && targetData.player.isMannequin())
-                                        Enemy -> targetData.team != playerData.team || (isTraining && targetData.player.isMannequin())
-                                        All -> true
-                                    }
+                            targetData.entity.location.distanceSquared(currentLocation) <= 1.0 &&
+                                when (targetType) {
+                                    Team -> targetData.entity.isMannequin() && isTraining ||
+                                        (targetData is PlayerData && targetData.team == playerData.team)
+                                    Enemy -> targetData.entity.isMannequin() && isTraining ||
+                                        (targetData is PlayerData && targetData.team != playerData.team)
+                                    All -> true
+                                }
                         }
 
-                    if (collidedPlayerData != null) {
-                        onProjectilePlayerHit(collidedPlayerData, currentLocation)
+                    if (collidedEntityData != null) {
+                        onProjectileEntityHit(collidedEntityData, currentLocation)
                         if (isPlayerHitRemove) {
                             cancel()
                             return

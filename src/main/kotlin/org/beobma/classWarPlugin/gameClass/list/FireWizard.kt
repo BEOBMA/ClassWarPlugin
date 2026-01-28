@@ -75,7 +75,7 @@ class FireWizardsRedSkill : Skill() {
         val targets = playerData.radius(player.location, TargetType.Enemy, 5.0, false)
         targets.forEach {
             it.damage(8.0, DamageType.Normal, playerData)
-            it.player.fireTicks += 80
+            it.entity.fireTicks += 80
         }
         return true
     }
@@ -115,7 +115,7 @@ class FireWizardsOrangeSkill : Skill() {
                     val targets = playerData.radius(location, TargetType.All, 5.0, true)
                     targets.forEach {
                         it.damage(25.0, DamageType.Normal, playerData)
-                        it.player.fireTicks += 100
+                        it.entity.fireTicks += 100
                     }
                 }
             }.runTaskLater(ClassWarPlugin.instance, 60L)

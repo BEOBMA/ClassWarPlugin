@@ -8,7 +8,7 @@ import org.bukkit.entity.Entity
 import org.bukkit.scheduler.BukkitTask
 
 class DummyEntityData(
-    val entity: Entity,
+    override val entity: Entity,
     val initGame: Game,
 ) : EntityData() {
     override val game: Game = initGame
