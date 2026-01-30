@@ -68,12 +68,15 @@ class AssassinsRedSkill : Skill() {
             player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
             return false
         }
-        targetData.damage(6.0, DamageType.Normal, playerData)
         val viewCheck = targetData.shotLaserGetEntityData(5.0, TargetType.All, false)
+
+        targetData.damage(6.0, DamageType.Normal, playerData)
         if (viewCheck != playerData) {
             targetData.damage(3.0, DamageType.Normal, playerData)
         }
         if (playerData.hasStatus<Stealth>()) {
+            val stealth = playerData.getOrCreateStatus { Stealth() }
+            stealth.increaseDuration(2)
             player.setCooldown(Material.RED_DYE, (player.getCooldown(Material.RED_DYE) * 0.5).toInt())
         }
         return true
@@ -96,6 +99,8 @@ class AssassinsOrangeSkill : Skill() {
         assassinsDaggerProjectile.location = player.eyeLocation.clone()
         assassinsDaggerProjectile.spawnProjectile(playerData)
         if (playerData.hasStatus<Stealth>()) {
+            val stealth = playerData.getOrCreateStatus { Stealth() }
+            stealth.increaseDuration(2)
             player.setCooldown(Material.ORANGE_DYE, (player.getCooldown(Material.YELLOW_DYE) * 0.5).toInt())
         }
         return true
@@ -120,6 +125,8 @@ class AssassinsYellowSkill : Skill() {
         }
         targetData.damage(10.0, DamageType.Normal, playerData)
         if (playerData.hasStatus<Stealth>()) {
+            val stealth = playerData.getOrCreateStatus { Stealth() }
+            stealth.increaseDuration(2)
             targetData.damage(5.0, DamageType.Normal, playerData)
             player.setCooldown(Material.YELLOW_DYE, (player.getCooldown(Material.YELLOW_DYE) * 0.5).toInt())
         }
@@ -135,7 +142,7 @@ class AssassinsPassive : Passive() {
     override val description = listOf(
         "<gray>패시브",
         "",
-        "<gray>{keyword:Stealth} 상태에서 사용한 스킬의 재사용 대기 시간이 50% 감소한다."
+        "<gray>{keyword:Stealth} 상태에서 스킬을 사용하면 {keyword:Stealth} 시간이 2초 연장되고, 사용한 스킬의 재사용 대기 시간이 50% 감소한다."
     )
 }
 
