@@ -19,8 +19,10 @@ import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.TargetType
 import org.bukkit.Location
 import org.bukkit.Material
-import org.bukkit.Particle
 import org.bukkit.block.Block
+import org.bukkit.entity.Display
+import org.bukkit.entity.ItemDisplay
+import org.bukkit.inventory.ItemStack
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.util.Vector
 import kotlin.math.max
@@ -153,12 +155,36 @@ class AssassinsDaggerProjectile : Projectile() {
     override var isWallHit: Boolean = true
     override var isPlayerHit: Boolean = true
     override val isPlayerHitRemove: Boolean = true
+    private var daggerDisplay: ItemDisplay? = null
+    private var spinYaw = 0f
+
+    private fun ensureDaggerDisplay(location: Location): ItemDisplay {
+        val existing = daggerDisplay
+        if (existing != null && existing.isValid) return existing
+        val display = location.world.spawn(location, ItemDisplay::class.java) {
+            it.itemStack = ItemStack(Material.IRON_SWORD)
+            it.billboard = Display.Billboard.FIXED
+            it.isPersistent = false
+        }
+        daggerDisplay = display
+        return display
+    }
+
+    private fun removeDaggerDisplay() {
+        daggerDisplay?.remove()
+        daggerDisplay = null
+    }
 
     override fun onProjectileMove(location: Location) {
-        location.world.spawnParticle(Particle.END_ROD, location, 1, 0.0, 0.0, 0.0, 0.0)
+        val display = ensureDaggerDisplay(location)
+        val displayLocation = location.clone()
+        display.teleport(displayLocation)
+        spinYaw = (spinYaw + 25f) % 360f
+        display.setRotation(displayLocation.yaw + spinYaw, displayLocation.pitch)
     }
 
     override fun onProjectileEntityHit(hitEntityData: EntityData, location: Location) {
+        removeDaggerDisplay()
         val hitEntity = hitEntityData.entity
         val hitEntityLocation = hitEntity.location
         val behind = hitEntityLocation.clone().add(hitEntityLocation.direction.normalize().multiply(-1.5))
@@ -167,6 +193,7 @@ class AssassinsDaggerProjectile : Projectile() {
     }
 
     override fun onProjectileBlockHit(hitBlock: Block, location: Location) {
+        removeDaggerDisplay()
         val hitPoint = location.clone()
 
         val toHit = hitPoint.toVector().subtract(player.location.toVector())
@@ -254,5 +281,9 @@ class AssassinsDaggerProjectile : Projectile() {
         }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L)
 
         playerData.trackTask(task)
+    }
+
+    override fun onProjectileEnd(location: Location) {
+        removeDaggerDisplay()
     }
 }
