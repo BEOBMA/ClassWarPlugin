@@ -19,6 +19,7 @@ import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.BoundingBox
 import java.util.UUID
+import kotlin.math.abs
 
 abstract class Projectile {
     protected lateinit var playerData: PlayerData
@@ -59,9 +60,17 @@ abstract class Projectile {
 
     open fun onProjectileMove(location: Location) {}
 
+    open fun interpolateSpeed(previousSpeed: Double, tick: Int): Double {
+        if (speed <= 0.0) return speed
+        val acceleration = abs(speed) * 0.2
+        return (previousSpeed + acceleration).coerceAtMost(speed)
+    }
+
     open fun onProjectileEntityHit(hitEntityData: EntityData, location: Location) {}
 
     open fun onProjectileBlockHit(hitBlock: Block, location: Location) {}
+
+    open fun onProjectileEnd(location: Location) {}
 
     fun spawnProjectile(playerData: PlayerData) {
         inject(playerData)
@@ -69,29 +78,40 @@ abstract class Projectile {
         val time = time
         if (isFlatMove) location.pitch = 0F
 
-        val direction = location.direction.normalize().multiply(speed)
+        val direction = location.direction.normalize()
         val currentLocation = location.clone()
-        var ticks = 0
+        var elapsedTicks = 0
+        var durationTicks = 0
+        var currentSpeed = 0.0
         val trainingCandidates: MutableList<EntityData> = ArrayList()
         val trainingCandidateIds: MutableSet<UUID> = HashSet()
 
         val task = object : BukkitRunnable() {
+            var stopped = false
+
+            private fun stop() {
+                if (stopped) return
+                stopped = true
+                onProjectileEnd(currentLocation)
+                cancel()
+            }
+
             override fun run() {
                 if (time == null) {
                     if (continueWhile != null && !continueWhile!!.invoke()) {
-                        cancel()
+                        stop()
                         return
                     }
                 } else {
-                    if (ticks++ >= time * 20) {
-                        cancel()
+                    if (durationTicks++ >= time * 20) {
+                        stop()
                         return
                     }
                 }
 
                 if (isWallHit && currentLocation.block.type.isSolid) {
                     onProjectileBlockHit(currentLocation.block, currentLocation)
-                    cancel()
+                    stop()
                     return
                 }
 
@@ -140,14 +160,16 @@ abstract class Projectile {
                     if (collidedEntityData != null) {
                         onProjectileEntityHit(collidedEntityData, currentLocation)
                         if (isPlayerHitRemove) {
-                            cancel()
+                            stop()
                             return
                         }
                     }
                 }
 
                 onProjectileMove(currentLocation)
-                currentLocation.add(direction)
+                currentSpeed = interpolateSpeed(currentSpeed, elapsedTicks)
+                currentLocation.add(direction.clone().multiply(currentSpeed))
+                elapsedTicks++
             }
         }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L)
         durationTask = playerData.trackTask(task)
