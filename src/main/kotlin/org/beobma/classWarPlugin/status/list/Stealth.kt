@@ -1,7 +1,6 @@
 package org.beobma.classWarPlugin.status.list
 
 import org.beobma.classWarPlugin.keyword.Keyword
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.bukkit.entity.LivingEntity
 import org.bukkit.potion.PotionEffect
@@ -12,7 +11,7 @@ class Stealth : StatusAbnormality() {
         get() = Keyword.Stealth.string
     override val description: List<String>
         get() = listOf(
-            dictionary[Keyword.Stealth] ?: ""
+            Keyword.Stealth.description ?: ""
         )
     override val canRemove: Boolean = true
     override var maxPower: Int? = 1

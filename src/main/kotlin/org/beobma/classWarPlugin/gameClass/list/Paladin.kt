@@ -3,7 +3,6 @@ package org.beobma.classWarPlugin.gameClass.list
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Weapon
 import org.beobma.classWarPlugin.keyword.Keyword
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
 import org.bukkit.Material
@@ -42,7 +41,7 @@ class PaladinsRedSkill : Skill() {
         "<gray>5초간 자신의 <gold><bold>기본 공격 피해가 2 증가</bold><gray>한다.",
         "<gray>또한, 기본 공격 적중 시 {keyword:Brightness}를 1 부여한다.",
         "",
-        dictionary[Keyword.Brightness]!!
+        Keyword.Brightness.description!!
     )
     override val cooldown = 10
 
@@ -57,7 +56,7 @@ class PaladinsOrangeSkill : Skill() {
     override val description = listOf(
         "<gray>3칸 내의 바라보는 적에게 (6 + 기본 공격 피해량)의 피해를 입히고 {keyword:Brightness}를 3 부여한다.",
         "",
-        dictionary[Keyword.Brightness]!!
+        Keyword.Brightness.description!!
     )
     override val cooldown = 10
 
@@ -74,7 +73,7 @@ class PaladinsYellowSkill : Skill() {
         "<gray>또한, 공격자에게 {keyword:Brightness}를 2 부여한다.",
         "<gray>이 효과는 원래 피해량이 5 이상인 경우에만 발동한다.",
         "",
-        dictionary[Keyword.Brightness]!!
+        Keyword.Brightness.description!!
     )
     override val cooldown = Int.MAX_VALUE
 
@@ -93,6 +92,6 @@ class PaladinsPassive : Passive() {
         "<gray>표식을 가진 적에게 기본 공격 적중 시 2의 피해를 추가로 입히고 {keyword:Brightness}를 2 부여한다.",
         "<gray>효과 발동 후 표식은 제거된다.",
         "",
-        dictionary[Keyword.Brightness]!!
+        Keyword.Brightness.description!!
     )
 }

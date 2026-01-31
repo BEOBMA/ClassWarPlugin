@@ -10,7 +10,6 @@ import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusDurationMode
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
@@ -128,7 +127,7 @@ class DarkWizardsOrangeSkill : Skill() {
         "<gray>바라보는 방향으로 잠식된 연기를 발사한다.",
         "<gray>적중한 모든 적에게 5의 피해를 입히고 3초간 {keyword:Abyss} 상태를 적용한다.",
         "",
-        dictionary[Keyword.Abyss] ?: ""
+        Keyword.Abyss.description ?: ""
     )
     override val cooldown = 10
 
@@ -180,8 +179,8 @@ class DarkWizardsYellowSkill : Skill() {
         "<gray>5초간 전장을 연기로 가득 채워 모든 대상을 {keyword:Abyss} 상태로 만든다.",
         "<gray>이 효과 발동 전을 기준으로 한 번이라도 {keyword:Abyss} 상태였던 적은 추가로 지속 시간동안 {keyword:Silence} 상태가 된다.",
         "",
-        dictionary[Keyword.Abyss] ?: "",
-        dictionary[Keyword.Silence] ?: ""
+        Keyword.Abyss.description ?: "",
+        Keyword.Silence.description ?: ""
     )
     override val cooldown = Int.MAX_VALUE
 

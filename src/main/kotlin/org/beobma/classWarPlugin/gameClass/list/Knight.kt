@@ -13,7 +13,6 @@ import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusDurationMode
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.skill.Passive
@@ -57,8 +56,8 @@ class KnightsRedSkill : Skill() {
     override val description = listOf(
         "<gray>2칸 내의 바라보는 적에게 6의 피해를 입히고 3초간 {keyword:Bleeding}을 3 부여한다.",
         "",
-        dictionary[Keyword.Bleeding]!!,
-        dictionary[Keyword.AbnormalStatusDamage]!!
+        Keyword.Bleeding.description!!,
+        Keyword.AbnormalStatusDamage.description!!
     )
     override val cooldown = 10
 
@@ -83,8 +82,8 @@ class KnightsOrangeSkill : Skill() {
         "<gray>바라보는 방향으로 검을 휘두른다.",
         "<gray>적중한 모든 적에게 5의 피해를 입히고 3초간 {keyword:Bleeding}을 5 부여한다.",
         "",
-        dictionary[Keyword.Bleeding]!!,
-        dictionary[Keyword.AbnormalStatusDamage]!!
+        Keyword.Bleeding.description!!,
+        Keyword.AbnormalStatusDamage.description!!
     )
     override val cooldown = 10
 
@@ -152,8 +151,8 @@ class KnightsPassive : Passive(), OnHitHandler {
         "<gray>기본 공격 적중 시 3초간 적에게 {keyword:Bleeding}을 1 부여한다.",
         "<gray>그리고 즉시 {keyword:Bleeding}을 발동한다.",
         "",
-        dictionary[Keyword.Bleeding]!!,
-        dictionary[Keyword.AbnormalStatusDamage]!!
+        Keyword.Bleeding.description!!,
+        Keyword.AbnormalStatusDamage.description!!
     )
 
     override fun onHit(

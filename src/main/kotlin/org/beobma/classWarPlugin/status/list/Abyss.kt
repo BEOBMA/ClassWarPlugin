@@ -1,7 +1,6 @@
 package org.beobma.classWarPlugin.status.list
 
 import org.beobma.classWarPlugin.keyword.Keyword
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.bukkit.entity.LivingEntity
 import org.bukkit.potion.PotionEffect
@@ -12,7 +11,7 @@ class Abyss : StatusAbnormality() {
         get() = Keyword.Abyss.string
     override val description: List<String>
         get() = listOf(
-            dictionary[Keyword.Abyss] ?: ""
+            Keyword.Abyss.description ?: ""
         )
     override val canRemove: Boolean = false
     override var maxPower: Int? = 1

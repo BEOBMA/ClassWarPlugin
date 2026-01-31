@@ -3,7 +3,6 @@ package org.beobma.classWarPlugin.gameClass.list
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Weapon
 import org.beobma.classWarPlugin.keyword.Keyword
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
 import org.bukkit.Material
@@ -80,7 +79,7 @@ class BardsYellowSkill : Skill() {
         "<gray>연주를 지속하는 한, 자신 주위 아군만 {keyword:Untargetability} 상태로 만든다.",
         "<gray>이 효과는 {keyword:Untargetability} 상태를 무시한다.",
         "",
-        dictionary[Keyword.Untargetability] ?: ""
+        Keyword.Untargetability.description ?: ""
     )
     override val cooldown = 20
 

@@ -12,7 +12,6 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.vibrationExplosion
 import org.beobma.classWarPlugin.manager.StatusDurationMode
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
@@ -68,8 +67,8 @@ class LandWizardsRedSkill : Skill() {
         "",
         "<gray>사용 시 주위 모든 적에게 2의 피해를 입히고 10초간 {keyword:Vibration}을 2 부여한다.",
         "",
-        dictionary[Keyword.Vibration]!!,
-        dictionary[Keyword.AbnormalStatusDamage]!!
+        Keyword.Vibration.description!!,
+        Keyword.AbnormalStatusDamage.description!!
     )
     override val cooldown = 2
 
@@ -97,8 +96,8 @@ class LandWizardsOrangeSkill : Skill() {
         "",
         "<gray>사용 시 5초간 <aqua><bold>8의 피해를 막는 보호막</bold><gray>을 얻고 주위 모든 적에게 {keyword:VibrationExplosion}을 적용한다.",
         "",
-        dictionary[Keyword.VibrationExplosion]!!,
-        dictionary[Keyword.AbnormalStatusDamage]!!
+        Keyword.VibrationExplosion.description!!,
+        Keyword.AbnormalStatusDamage.description!!
     )
     override val cooldown = 10
 

@@ -15,7 +15,6 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusDurationMode
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
@@ -79,9 +78,9 @@ class IceWizardsRedSkill : Skill() {
         "",
         "<gray>활성화 시 자신 주위 모든 적에게 초당 3의 피해를 입히고 {keyword:Frostbite}을 2 부여한다.",
         "",
-        dictionary[Keyword.Frostbite] ?: "",
-        dictionary[Keyword.Freezing] ?: "",
-        dictionary[Keyword.AbnormalStatusDamage] ?: ""
+        Keyword.Frostbite.description ?: "",
+        Keyword.Freezing.description ?: "",
+        Keyword.AbnormalStatusDamage.description ?: ""
     )
     override val cooldown = 1
 
@@ -129,9 +128,9 @@ class IceWizardsOrangeSkill : Skill() {
         "<gray>적중한 적에게 8의 피해를 입히고 {keyword:Frostbite}을 4 부여한다.",
         "<gray>스킬 적중 시 소모한 {keyword:Mana}의 50%를 돌려받는다.",
         "",
-        dictionary[Keyword.Frostbite] ?: "",
-        dictionary[Keyword.Freezing] ?: "",
-        dictionary[Keyword.AbnormalStatusDamage] ?: ""
+        Keyword.Frostbite.description ?: "",
+        Keyword.Freezing.description ?: "",
+        Keyword.AbnormalStatusDamage.description ?: ""
     )
     override val cooldown = 10
 
@@ -182,9 +181,9 @@ class IceWizardsYellowSkill : Skill() {
         "<gray>스킬 적중 시 소모한 {keyword:Mana}를 돌려받는다.",
         "<dark_gray>웅크린 상태에서 사용하면 자신의 위치에 창을 떨어트릴 수도 있다.",
         "",
-        dictionary[Keyword.Frostbite] ?: "",
-        dictionary[Keyword.Freezing] ?: "",
-        dictionary[Keyword.AbnormalStatusDamage] ?: ""
+        Keyword.Frostbite.description ?: "",
+        Keyword.Freezing.description ?: "",
+        Keyword.AbnormalStatusDamage.description ?: ""
     )
     override val cooldown = 30
 
@@ -242,9 +241,9 @@ class IceWizardsPassive : Passive(), OnHitHandler, WhenHitHandler {
         "<gray>영역의 영향을 받은 적에게 {keyword:Frostbite}을 2 부여한다.",
         "<gray>이 효과는 영역 당 같은 대상에게 1번만 발동할 수 있다.",
         "",
-        dictionary[Keyword.Frostbite] ?: "",
-        dictionary[Keyword.Freezing] ?: "",
-        dictionary[Keyword.AbnormalStatusDamage] ?: ""
+        Keyword.Frostbite.description ?: "",
+        Keyword.Freezing.description ?: "",
+        Keyword.AbnormalStatusDamage.description ?: ""
     )
 
     override fun onHit(

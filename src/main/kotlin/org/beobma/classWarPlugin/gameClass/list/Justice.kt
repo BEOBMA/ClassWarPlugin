@@ -10,7 +10,6 @@ import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusDurationMode
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
@@ -105,7 +104,7 @@ class JusticeYellowSkill : Skill() {
         "",
         "<gray>아군과 적군의 수가 동일해질 때까지 무작위 적을 전장에서 5초간 {keyword:Exile}한다.",
         "",
-        dictionary[Keyword.Exile]!!
+        Keyword.Exile.description!!
     )
     override val cooldown = Int.MAX_VALUE
 

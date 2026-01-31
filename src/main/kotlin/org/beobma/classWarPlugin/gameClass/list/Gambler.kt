@@ -3,7 +3,6 @@ package org.beobma.classWarPlugin.gameClass.list
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Weapon
 import org.beobma.classWarPlugin.keyword.Keyword
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
 import org.bukkit.Material
@@ -41,7 +40,7 @@ class GamblersRedSkill : Skill() {
         "<gray>패에서 {keyword:SpecialVictoryCard}를 제외한 무작위 카드 1장을 버린다.",
         "<gray>이후 덱에서 카드를 1장 뽑는다.",
         "",
-        dictionary[Keyword.SpecialVictoryCard] ?: ""
+        Keyword.SpecialVictoryCard.description ?: ""
     )
     override val cooldown = 10
 
@@ -57,7 +56,7 @@ class GamblersOrangeSkill : Skill() {
         "<gray>패에서 {keyword:SpecialVictoryCard}를 제외한 무작위 카드 2장을 버린다.",
         "<gray>이후 덱에서 카드를 3장 뽑는다.",
         "",
-        dictionary[Keyword.SpecialVictoryCard] ?: ""
+        Keyword.SpecialVictoryCard.description ?: ""
     )
     override val cooldown = 10
 

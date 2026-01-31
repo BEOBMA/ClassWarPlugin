@@ -3,7 +3,6 @@ package org.beobma.classWarPlugin.gameClass.list
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Weapon
 import org.beobma.classWarPlugin.keyword.Keyword
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
 import org.bukkit.Material
@@ -91,6 +90,6 @@ class RuneWizardsPassive : Passive() {
         "<gray>전투 시작 시 현재 {keyword:Mana}가 300으로 설정된다.",
         "<gray>스킬 적중 시 소모한 {keyword:Mana}의 50% 만큼 추가로 소모하고 피해를 {keyword:TrueDamage}로 전환한다.",
         "",
-        dictionary[Keyword.TrueDamage]!!
+        Keyword.TrueDamage.description!!
     )
 }

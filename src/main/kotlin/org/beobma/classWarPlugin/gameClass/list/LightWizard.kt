@@ -3,7 +3,6 @@ package org.beobma.classWarPlugin.gameClass.list
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Weapon
 import org.beobma.classWarPlugin.keyword.Keyword
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
 import org.bukkit.Material
@@ -80,6 +79,6 @@ class LightWizardsPassive : Passive() {
         "",
         "<gray>프리즘으로 반사된 스킬 적중 시 {keyword:Brightness}를 1 부여한다.",
         "",
-        dictionary[Keyword.Brightness]!!
+        Keyword.Brightness.description!!
     )
 }

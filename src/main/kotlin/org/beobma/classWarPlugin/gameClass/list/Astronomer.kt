@@ -12,7 +12,6 @@ import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
@@ -212,7 +211,7 @@ class AstronomersPassive : Passive(), OnHitHandler {
         "<gray>떨어트리는 별의 수는 소모한 {keyword:Mana} 양에 비례하여 증가한다. (20당 1개, 최대 5개)",
         "<gray>별은 적중한 적에게 1의 {keyword:TrueDamage}를 입힌다.",
         "",
-        dictionary[Keyword.TrueDamage] ?: ""
+        Keyword.TrueDamage.description ?: ""
     )
 
     override fun onSkillAttackHit(event: PlayerSkillDamageByPlayerEvent) {

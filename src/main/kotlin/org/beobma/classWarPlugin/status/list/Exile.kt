@@ -1,7 +1,6 @@
 package org.beobma.classWarPlugin.status.list
 
 import org.beobma.classWarPlugin.keyword.Keyword
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.status.StatusAbnormality
 
 class Exile : StatusAbnormality() {
@@ -9,7 +8,7 @@ class Exile : StatusAbnormality() {
         get() = Keyword.Exile.string
     override val description: List<String>
         get() = listOf(
-            dictionary[Keyword.Exile] ?: ""
+            Keyword.Exile.description ?: ""
         )
 
     override val canRemove: Boolean = false
