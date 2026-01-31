@@ -1,7 +1,6 @@
 package org.beobma.classWarPlugin.status.list
 
 import org.beobma.classWarPlugin.keyword.Keyword
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.status.StatusAbnormality
@@ -14,7 +13,7 @@ class Bleeding : StatusAbnormality(), StatusOnHitHandler {
         get() = Keyword.Bleeding.string
     override val description: List<String>
         get() = listOf(
-            dictionary[Keyword.Bleeding] ?: "",
+            Keyword.Bleeding.description ?: "",
             "",
             "<dark_gray>최대치 없음."
         )

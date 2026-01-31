@@ -2,7 +2,6 @@ package org.beobma.classWarPlugin.status.list
 
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.status.StatusAbnormality
 
 class Frostbite : StatusAbnormality() {
@@ -10,7 +9,7 @@ class Frostbite : StatusAbnormality() {
         get() = Keyword.Frostbite.string
     override val description: List<String>
         get() = listOf(
-            dictionary[Keyword.Frostbite] ?: ""
+            Keyword.Frostbite.description ?: ""
         )
     override val canRemove: Boolean = false
     override var maxPower: Int? = 10

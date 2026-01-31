@@ -3,7 +3,6 @@ package org.beobma.classWarPlugin.gameClass.list
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Weapon
 import org.beobma.classWarPlugin.keyword.Keyword
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
 import org.bukkit.Material
@@ -43,7 +42,7 @@ class SpaceOperatorsRedSkill : Skill() {
         "<gray>바라보는 방향으로 검을 휘둘러 적중한 모든 적에게 7의 피해를 입힌다.",
         "<gray>강화 시 대신 15의 피해를 입힌다.",
         "",
-        dictionary[Keyword.Charge]!!
+        Keyword.Charge.description!!
     )
     override val cooldown = 10
 
@@ -61,7 +60,7 @@ class SpaceOperatorsOrangeSkill : Skill() {
         "<gray>바라보는 방향으로 4칸 도약하고 착지 지점에 있는 모든 적에게 7의 피해를 입힌다.",
         "<gray>강화 시 대신 도약 거리 사이에 있는 모든 적에게 10의 피해를 입힌다.",
         "",
-        dictionary[Keyword.Charge]!!
+        Keyword.Charge.description!!
     )
     override val cooldown = 10
 
@@ -79,8 +78,8 @@ class SpaceOperatorsYellowSkill : Skill() {
         "<gray>4칸 내의 바라보는 적과 자신을 5초간 {keyword:Exile}한다.",
         "<gray>강화 시 대신 10초간 {keyword:Exile}한다.",
         "",
-        dictionary[Keyword.Charge]!!,
-        dictionary[Keyword.Exile]!!
+        Keyword.Charge.description!!,
+        Keyword.Exile.description!!
     )
     override val cooldown = Int.MAX_VALUE
 
@@ -98,6 +97,6 @@ class SpaceOperatorsPassive : Passive() {
         "<gray>전투 시작 시 무작위 적 1명에게 {keyword:DimensionMarker}을 부여한다.",
         "<gray>이후 8초마다 무작위 적 1명에게 {keyword:DimensionMarker}을 부여한다.",
         "",
-        dictionary[Keyword.Charge]!!
+        Keyword.Charge.description!!
     )
 }

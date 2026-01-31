@@ -1,7 +1,6 @@
 package org.beobma.classWarPlugin.status.list
 
 import org.beobma.classWarPlugin.keyword.Keyword
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.status.StatusAbnormality
 
 class Silence : StatusAbnormality() {
@@ -9,7 +8,7 @@ class Silence : StatusAbnormality() {
         get() = Keyword.Silence.string
     override val description: List<String>
         get() = listOf(
-            dictionary[Keyword.Silence] ?: ""
+            Keyword.Silence.description ?: ""
         )
     override val canRemove: Boolean = false
     override var maxPower: Int? = 1

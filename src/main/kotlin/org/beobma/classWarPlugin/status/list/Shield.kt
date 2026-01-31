@@ -1,7 +1,6 @@
 package org.beobma.classWarPlugin.status.list
 
 import org.beobma.classWarPlugin.keyword.Keyword
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.status.StatusAbnormality
 
 class Shield : StatusAbnormality() {
@@ -9,7 +8,7 @@ class Shield : StatusAbnormality() {
         get() = Keyword.Shield.string
     override val description: List<String>
         get() = listOf(
-            dictionary[Keyword.Shield] ?: "",
+            Keyword.Shield.description ?: "",
             "",
             "<dark_gray>최대치 없음."
         )
