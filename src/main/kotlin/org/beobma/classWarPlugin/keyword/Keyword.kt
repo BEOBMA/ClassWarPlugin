@@ -27,5 +27,6 @@ enum class Keyword(val string: String) {
     Charge("<blue><bold>충전</bold><gray>"),
     Fix("<dark_gray><bold>고정</bold><gray>"),
     Frostbite("<dark_blue><bold>동상</bold><gray>"),
-    Freezing("<white><bold>빙결</bold><gray>")
+    Freezing("<white><bold>빙결</bold><gray>"),
+    DimensionMarker("<blue><bold>차원 표식</bold><gray>")
 }

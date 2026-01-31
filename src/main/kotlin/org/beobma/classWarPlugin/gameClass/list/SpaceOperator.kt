@@ -91,11 +91,12 @@ class SpaceOperatorsYellowSkill : Skill() {
 }
 
 class SpaceOperatorsPassive : Passive() {
-    override val name = "<blue><bold>에너지 보존과 전환"
+    override val name = "<blue><bold>"
     override val description = listOf(
         "<gray>패시브",
         "",
-        "{keyword:Charge} 소모 시 5초간 <gold><bold>기본 공격 피해량이 2 증가</bold><gray>한다.",
+        "<gray>전투 시작 시 무작위 적 1명에게 {keyword:DimensionMarker}을 부여한다.",
+        "<gray>이후 8초마다 무작위 적 1명에게 {keyword:DimensionMarker}을 부여한다.",
         "",
         dictionary[Keyword.Charge]!!
     )
