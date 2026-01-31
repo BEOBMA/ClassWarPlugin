@@ -11,7 +11,7 @@ import org.bukkit.entity.Player
 import org.bukkit.entity.EntityType
 
 object UtilManager {
-    val dictionary = Dictionary.dictionary
+    val dictionary = Dictionary
     val miniMessage = MiniMessage.miniMessage()
     private val keywordTokenRegex = "\\{keyword:([A-Za-z]+)}".toRegex()
     private val keywordTokens = enumValues<Keyword>().associateBy { it.name }
