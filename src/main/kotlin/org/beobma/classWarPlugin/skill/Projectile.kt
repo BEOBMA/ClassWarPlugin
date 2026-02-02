@@ -14,7 +14,9 @@ import org.beobma.classWarPlugin.util.TargetType.Enemy
 import org.beobma.classWarPlugin.util.TargetType.Team
 import org.bukkit.Location
 import org.bukkit.block.Block
+import org.bukkit.entity.ItemDisplay
 import org.bukkit.entity.Player
+import org.bukkit.inventory.ItemStack
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.BoundingBox
@@ -42,7 +44,10 @@ abstract class Projectile {
     open var time: Int? = null
     open var continueWhile: (() -> Boolean)? = null
 
+    open val itemDisplayItem: ItemStack? = null
+
     private var durationTask: BukkitTask? = null
+    private var itemDisplay: ItemDisplay? = null
 
     fun inject(playerData: PlayerData) {
         if (playerData.entityStatus !is PlayerStatus) return
@@ -59,6 +64,10 @@ abstract class Projectile {
 
 
     open fun onProjectileMove(location: Location) {}
+
+    open fun onItemDisplaySpawn(display: ItemDisplay, location: Location) {}
+
+    open fun onItemDisplayMove(display: ItemDisplay, location: Location, speed: Double, tick: Int) {}
 
     open fun interpolateSpeed(previousSpeed: Double, tick: Int): Double {
         if (speed <= 0.0) return speed
@@ -86,12 +95,15 @@ abstract class Projectile {
         val trainingCandidates: MutableList<EntityData> = ArrayList()
         val trainingCandidateIds: MutableSet<UUID> = HashSet()
 
+        spawnItemDisplay(currentLocation)
+
         val task = object : BukkitRunnable() {
             var stopped = false
 
             private fun stop() {
                 if (stopped) return
                 stopped = true
+                removeItemDisplay()
                 onProjectileEnd(currentLocation)
                 cancel()
             }
@@ -166,12 +178,44 @@ abstract class Projectile {
                     }
                 }
 
-                onProjectileMove(currentLocation)
+                val previousLocation = currentLocation.clone()
                 currentSpeed = interpolateSpeed(currentSpeed, elapsedTicks)
-                currentLocation.add(direction.clone().multiply(currentSpeed))
+                val nextLocation = previousLocation.clone().add(direction.clone().multiply(currentSpeed))
+                val speedRatio = if (speed == 0.0) 1.0 else (currentSpeed / speed).coerceIn(0.0, 1.0)
+                val interpolatedLocation = lerpLocation(previousLocation, nextLocation, speedRatio)
+                updateItemDisplay(interpolatedLocation, currentSpeed, elapsedTicks)
+                onProjectileMove(interpolatedLocation)
+                currentLocation.set(nextLocation.x, nextLocation.y, nextLocation.z)
                 elapsedTicks++
             }
         }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L)
         durationTask = playerData.trackTask(task)
+    }
+
+    private fun spawnItemDisplay(startLocation: Location) {
+        val item = itemDisplayItem?.clone() ?: return
+        val display = startLocation.world.spawn(startLocation, ItemDisplay::class.java)
+        display.itemStack = item
+        itemDisplay = display
+        onItemDisplaySpawn(display, startLocation)
+    }
+
+    private fun updateItemDisplay(location: Location, currentSpeed: Double, tick: Int) {
+        val display = itemDisplay ?: return
+        display.teleport(location)
+        onItemDisplayMove(display, location, currentSpeed, tick)
+    }
+
+    private fun removeItemDisplay() {
+        itemDisplay?.remove()
+        itemDisplay = null
+    }
+
+    private fun lerpLocation(start: Location, end: Location, t: Double): Location {
+        val clamped = t.coerceIn(0.0, 1.0)
+        val x = start.x + (end.x - start.x) * clamped
+        val y = start.y + (end.y - start.y) * clamped
+        val z = start.z + (end.z - start.z) * clamped
+        return Location(start.world, x, y, z, start.yaw, start.pitch)
     }
 }
