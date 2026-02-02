@@ -21,7 +21,6 @@ import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.block.Block
-import org.bukkit.entity.Display
 import org.bukkit.entity.ItemDisplay
 import org.bukkit.inventory.ItemStack
 import org.bukkit.scheduler.BukkitRunnable
@@ -156,11 +155,17 @@ class AssassinsDaggerProjectile : Projectile() {
     override var isWallHit: Boolean = true
     override var isPlayerHit: Boolean = true
     override val isPlayerHitRemove: Boolean = true
-    private var daggerDisplay: ItemDisplay? = null
-    private var spinYaw = 0f
+    override val itemDisplayItem: ItemStack = ItemStack(Material.IRON_SWORD)
+    private var isDisplayAligned = false
 
     override fun onProjectileMove(location: Location) {
         location.world.spawnParticle(Particle.END_ROD, location, 1, 0.0, 0.0, 0.0, 0.0)
+    }
+
+    override fun onItemDisplayMove(display: ItemDisplay, location: Location, speed: Double, tick: Int) {
+        if (isDisplayAligned) return
+        display.setRotation(location.yaw, location.pitch)
+        isDisplayAligned = true
     }
 
     override fun onProjectileEntityHit(hitEntityData: EntityData, location: Location) {
