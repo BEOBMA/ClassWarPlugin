@@ -65,6 +65,8 @@ abstract class Projectile {
 
     open fun onProjectileMove(location: Location) {}
 
+    open fun onItemDisplaySpawn(display: ItemDisplay, location: Location) {}
+
     open fun onItemDisplayMove(display: ItemDisplay, location: Location, speed: Double, tick: Int) {}
 
     open fun interpolateSpeed(previousSpeed: Double, tick: Int): Double {
@@ -195,6 +197,7 @@ abstract class Projectile {
         val display = startLocation.world.spawn(startLocation, ItemDisplay::class.java)
         display.itemStack = item
         itemDisplay = display
+        onItemDisplaySpawn(display, startLocation)
     }
 
     private fun updateItemDisplay(location: Location, currentSpeed: Double, tick: Int) {
