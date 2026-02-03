@@ -11,7 +11,11 @@ class Stealth : StatusAbnormality() {
         get() = Keyword.Stealth.string
     override val description: List<String>
         get() = listOf(
-            Keyword.Stealth.description ?: ""
+            Keyword.Stealth.description!!,
+            "",
+            "<gray>수치 없음",
+            "<gray>지속시간 연장 적용",
+            "<gray>지속시간 종료 시 소멸"
         )
     override val canRemove: Boolean = true
     override var maxPower: Int? = 1
