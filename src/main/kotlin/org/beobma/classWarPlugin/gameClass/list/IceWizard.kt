@@ -1,23 +1,18 @@
 package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.ClassWarPlugin
+import org.beobma.classWarPlugin.entity.EntityData
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
-import org.beobma.classWarPlugin.gameClass.GameClass
-import org.beobma.classWarPlugin.gameClass.GameStatusHandler
-import org.beobma.classWarPlugin.gameClass.OnHitHandler
-import org.beobma.classWarPlugin.gameClass.Weapon
-import org.beobma.classWarPlugin.gameClass.WhenHitHandler
+import org.beobma.classWarPlugin.gameClass.*
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
-import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
-import org.beobma.classWarPlugin.manager.StatusDurationMode
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
-import org.beobma.classWarPlugin.entity.EntityData
-import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.skill.*
 import org.beobma.classWarPlugin.status.list.Frostbite
 import org.beobma.classWarPlugin.status.list.Mana
@@ -109,7 +104,7 @@ class IceWizardsRedSkill : Skill() {
                     it.damage(3.0, DamageType.Normal, playerData)
                     if (frostbiteTarget != null) {
                         val frostbite = frostbiteTarget.getOrCreateStatus { Frostbite() }
-                        frostbite.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh, powerDelta = 2)
+                        frostbite.applyStatus(duration = 5, powerDelta = 2)
                     }
                 }
                 mana.decreasePower(10)
@@ -166,7 +161,7 @@ class IceWizardsIcicleProjectile : Projectile() {
         val frostbite = hitPlayerData.getOrCreateStatus { Frostbite() }
         val mana = playerData.getOrCreateStatus { Mana() }
         hitPlayerData.damage(8.0, DamageType.Normal, playerData)
-        frostbite.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh, powerDelta = 4)
+        frostbite.applyStatus(duration = 5, powerDelta = 4)
         mana.increasePower(20)
     }
 }
@@ -224,7 +219,7 @@ class IceWizardsIceSpear : Meteor() {
         if (hitPlayerData != null) {
             val frostbite = hitPlayerData.getOrCreateStatus { Frostbite() }
             hitPlayerData.damage(15.0, DamageType.Normal, playerData)
-            frostbite.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh, powerDelta = 7)
+            frostbite.applyStatus(duration = 5, powerDelta = 7)
         } else {
             hitEntityData.damage(15.0, DamageType.Normal, playerData)
         }
@@ -271,6 +266,7 @@ class IceWizardsPassive : Passive(), OnHitHandler, WhenHitHandler {
     override fun whenAttackHit(event: EntityDamageByEntityEvent) {
         return
     }
+
     override fun whenSkillAttackHit(event: PlayerSkillDamageByPlayerEvent) {
         return
     }
@@ -289,7 +285,7 @@ class IceWizardsFrostZone(override var location: Location) : Flooring() {
         val moveSpeedDecrease = hitPlayerData.addStatus(MoveSpeedDecrease())
         val frostbite = hitPlayerData.getOrCreateStatus { Frostbite() }
         moveSpeedDecrease.increasePower(25)
-        frostbite.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh, powerDelta = 2)
+        frostbite.applyStatus(duration = 5, powerDelta = 2)
         moveSpeedDecrease.setContinueWhileIf { hitPlayerDatas.contains(hitPlayerData) }
         hitPlayerDatas.add(hitPlayerData)
     }

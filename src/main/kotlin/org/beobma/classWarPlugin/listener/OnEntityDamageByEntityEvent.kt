@@ -12,6 +12,8 @@ import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.status.StatusOnHitHandler
 import org.beobma.classWarPlugin.util.addDamageTakenMultiplier
 import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.game.Game
+import org.beobma.classWarPlugin.status.StatusWhenHitHandler
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -125,9 +127,14 @@ class OnEntityDamageByEntityEvent : Listener {
         }
 
         // 상태이상 적용
-        for (status in entityData.statusAbnormalitys) {
+        for (status in damagerData.statusAbnormalitys) {
             if (status is StatusOnHitHandler) {
                 status.onAttackHit(event, damagerData, entityData)
+            }
+        }
+        for (status in entityData.statusAbnormalitys) {
+            if (status is StatusWhenHitHandler) {
+                status.whenAttackHit(event, damagerData, entityData)
             }
         }
 
@@ -151,7 +158,7 @@ class OnEntityDamageByEntityEvent : Listener {
         entity.noDamageTicks = 0
     }
 
-    private fun org.beobma.classWarPlugin.game.Game.findPlayerData(player: Player): PlayerData? {
+    private fun Game.findPlayerData(player: Player): PlayerData? {
         for (data in playerDatas) {
             if (data is PlayerData && data.player == player) {
                 return data

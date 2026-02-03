@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.entity.EntityData
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.Weapon
@@ -9,11 +11,11 @@ import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
-import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
-import org.beobma.classWarPlugin.entity.EntityData
-import org.beobma.classWarPlugin.entity.player.PlayerData
-import org.beobma.classWarPlugin.skill.*
+import org.beobma.classWarPlugin.skill.Flooring
+import org.beobma.classWarPlugin.skill.Passive
+import org.beobma.classWarPlugin.skill.Projectile
+import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.Abyss
 import org.beobma.classWarPlugin.status.list.Mana
 import org.beobma.classWarPlugin.status.list.Silence
@@ -161,7 +163,7 @@ class DarkWizardsProjectileSmoke : Projectile() {
         val hitPlayerData = hitEntityData as? PlayerData
         if (hitPlayerData != null && hitSet.add(hitPlayerData)) {
             val abyss = hitPlayerData.getOrCreateStatus { Abyss() }
-            abyss.applyStatus(duration = 3, durationMode = StatusDurationMode.Refresh)
+            abyss.applyStatus(duration = 3)
             hitPlayerData.damage(5.0, DamageType.Normal, playerData)
             return
         }
@@ -197,13 +199,13 @@ class DarkWizardsYellowSkill : Skill() {
         enemies.filterIsInstance<PlayerData>().forEach { enemy ->
             if (abyssPlayers.contains(enemy)) {
                 val silence = enemy.getOrCreateStatus { Silence() }
-                silence.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh)
+                silence.applyStatus(duration = 5)
             }
         }
 
         allPlayers.filterIsInstance<PlayerData>().forEach { playerTarget ->
             val abyss = playerTarget.getOrCreateStatus { Abyss() }
-            abyss.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh)
+            abyss.applyStatus(duration = 5)
         }
 
         abyssPlayers.addAll(allPlayers.filterIsInstance<PlayerData>())

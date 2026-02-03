@@ -8,11 +8,17 @@ class Silence : StatusAbnormality() {
         get() = Keyword.Silence.string
     override val description: List<String>
         get() = listOf(
-            Keyword.Silence.description ?: ""
+            Keyword.Silence.description!!,
+            "",
+            "<gray>수치 없음",
+            "<gray>지속시간 연장 적용",
+            "<gray>지속시간 종료 시 소멸"
         )
-    override val canRemove: Boolean = false
+    override val canRemove: Boolean = true
     override var maxPower: Int? = 1
     override var power: Int = 1
+    override val showMaxPower: Boolean = false
+    override val showPower: Boolean = false
     override var duration: Int? = null
 
     override fun onDurationChanged() {

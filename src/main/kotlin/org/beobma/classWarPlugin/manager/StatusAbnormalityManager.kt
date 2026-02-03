@@ -11,15 +11,9 @@ import org.beobma.classWarPlugin.util.DamageType
 import org.bukkit.attribute.Attribute
 import org.bukkit.entity.LivingEntity
 import net.kyori.adventure.text.Component
+import org.beobma.classWarPlugin.status.StatusDurationMode
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
-
-
-// 갱신, 연장
-enum class StatusDurationMode {
-    Refresh,
-    Extend
-}
 
 object StatusAbnormalityManager {
     private val tickingStatuses: MutableSet<StatusAbnormality> = HashSet()
@@ -32,7 +26,6 @@ object StatusAbnormalityManager {
 
     fun StatusAbnormality.applyStatus(
         duration: Int? = null,
-        durationMode: StatusDurationMode = StatusDurationMode.Refresh,
         powerDelta: Int? = null,
         powerSet: Int? = null
     ) {
@@ -42,6 +35,7 @@ object StatusAbnormalityManager {
             when (durationMode) {
                 StatusDurationMode.Refresh -> updateDuration(duration)
                 StatusDurationMode.Extend -> increaseDuration(duration)
+                StatusDurationMode.Ignore -> return
             }
         }
     }
@@ -53,7 +47,6 @@ object StatusAbnormalityManager {
         damage(vibration.power.toDouble(), DamageType.StatusAbnormality, damager)
         vibration.remove()
     }
-
 
 
     inline fun <reified T : StatusAbnormality> EntityData.getStatus(): T? {
@@ -198,7 +191,9 @@ object StatusAbnormalityManager {
             .joinToString(" <dark_gray> | </dark_gray> ") { status ->
                 val durationLabel = status.duration?.let { "<dark_gray>|</dark_gray><yellow>${it}s</yellow>" } ?: ""
                 val powerLabel = if (status.showPower) "<gold>${status.power}</gold>" else ""
-                val maxPowerLabel = if (status.showMaxPower) status.maxPower?.let { "<dark_gray>/</dark_gray><gold>${it}</gold>" } ?: "" else ""
+                val maxPowerLabel =
+                    if (status.showMaxPower) status.maxPower?.let { "<dark_gray>/</dark_gray><gold>${it}</gold>" }
+                        ?: "" else ""
                 "${status.name}: ${powerLabel}${maxPowerLabel}${durationLabel}"
             }
     }

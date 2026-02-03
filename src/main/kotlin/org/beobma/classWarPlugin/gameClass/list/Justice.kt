@@ -9,7 +9,6 @@ import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
-import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
@@ -92,7 +91,7 @@ class JusticeOrangeSkill : Skill() {
             TeamStatus.Advantage, TeamStatus.Balance -> 6
             TeamStatus.Inferiority -> 8
         }
-        shield.applyStatus(duration = 5, durationMode = StatusDurationMode.Extend, powerDelta = power)
+        shield.applyStatus(duration = 5, powerDelta = power)
         return true
     }
 }

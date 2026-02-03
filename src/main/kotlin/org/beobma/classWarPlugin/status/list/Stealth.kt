@@ -26,7 +26,7 @@ class Stealth : StatusAbnormality() {
             val effectDurationSeconds = duration ?: 1
             val effectDurationTicks = (effectDurationSeconds * 20).coerceAtLeast(1)
             entity.addPotionEffect(
-                PotionEffect(PotionEffectType.INVISIBILITY, effectDurationTicks, 0, false, false, true)
+                PotionEffect(PotionEffectType.INVISIBILITY, effectDurationTicks, 0, false, false, false)
             )
             super.onDurationChanged()
         }

@@ -11,7 +11,6 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.vibrationExplosion
-import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
@@ -82,7 +81,7 @@ class LandWizardsRedSkill : Skill() {
         val targets = playerData.radius(player.location, TargetType.Enemy, 4.0, false)
         targets.forEach {
             val vibration = it.getOrCreateStatus { Vibration() }
-            vibration.applyStatus(duration = 10, durationMode = StatusDurationMode.Refresh, powerDelta = 2)
+            vibration.applyStatus(duration = 10, powerDelta = 2)
             it.damage(2.0, DamageType.Normal, playerData)
         }
         return true
@@ -109,7 +108,7 @@ class LandWizardsOrangeSkill : Skill() {
         }
         val shield = playerData.addStatus(Shield())
         mana.decreasePower(100)
-        shield.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh, powerDelta = 8)
+        shield.applyStatus(duration = 5, powerDelta = 8)
 
         val targets = playerData.radius(player.location, TargetType.Enemy, 4.0, false)
         targets.forEach {

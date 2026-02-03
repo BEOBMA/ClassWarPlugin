@@ -9,7 +9,6 @@ import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.hasStatus
-import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Projectile
@@ -17,9 +16,7 @@ import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.Stealth
 import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.TargetType
-import org.bukkit.Location
-import org.bukkit.Material
-import org.bukkit.Particle
+import org.bukkit.*
 import org.bukkit.block.Block
 import org.bukkit.entity.ItemDisplay
 import org.bukkit.inventory.ItemStack
@@ -157,10 +154,6 @@ class AssassinsDaggerProjectile : Projectile() {
     override val isPlayerHitRemove: Boolean = true
     override val itemDisplayItem: ItemStack = ItemStack(Material.IRON_SWORD)
 
-    override fun onProjectileMove(location: Location) {
-        location.world.spawnParticle(Particle.END_ROD, location, 1, 0.0, 0.0, 0.0, 0.0)
-    }
-
     override fun onItemDisplaySpawn(display: ItemDisplay, location: Location) {
         display.setRotation(location.yaw, location.pitch)
     }
@@ -170,11 +163,15 @@ class AssassinsDaggerProjectile : Projectile() {
         val hitEntityLocation = hitEntity.location
         val behind = hitEntityLocation.clone().add(hitEntityLocation.direction.normalize().multiply(-1.5))
         hitEntityData.damage(5.0, DamageType.Normal, playerData)
+        player.world.spawnParticle(Particle.SMOKE, player.location, 10, 0.0, 0.0, 0.0, 0.0)
+        behind.world.spawnParticle(Particle.SMOKE, behind, 10, 0.0, 0.0, 0.0, 0.0)
         player.teleport(behind)
+        player.world.playSound(player.location, Sound.ITEM_TRIDENT_RETURN, SoundCategory.PLAYERS, 1f, 1f)
     }
 
     override fun onProjectileBlockHit(hitBlock: Block, location: Location) {
         val hitPoint = location.clone()
+        hitPoint.world.playSound(player.location, Sound.ITEM_TRIDENT_RETURN, SoundCategory.PLAYERS, 1f, 1f)
 
         val toHit = hitPoint.toVector().subtract(player.location.toVector())
         if (toHit.lengthSquared() < 1.0E-6) return
@@ -185,7 +182,6 @@ class AssassinsDaggerProjectile : Projectile() {
         val stealth = playerData.getOrCreateStatus { Stealth() }
         stealth.applyStatus(
             duration = 4,
-            durationMode = StatusDurationMode.Extend,
             powerDelta = 1
         )
 

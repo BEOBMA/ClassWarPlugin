@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.entity.player.TeamType
 import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.OnHitHandler
@@ -8,13 +10,10 @@ import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
-import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
-import org.beobma.classWarPlugin.manager.StatusDurationMode
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
-import org.beobma.classWarPlugin.entity.player.PlayerData
-import org.beobma.classWarPlugin.entity.player.TeamType
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.Exile
@@ -97,7 +96,7 @@ class JudgesOrangeSkill : Skill() {
             TeamStatus.Advantage, TeamStatus.Balance -> 6
             TeamStatus.Inferiority -> 8
         }
-        shield.applyStatus(duration = 5, durationMode = StatusDurationMode.Extend, powerDelta = power)
+        shield.applyStatus(duration = 5, powerDelta = power)
         return true
     }
 }
@@ -125,7 +124,7 @@ class JudgesYellowSkill : Skill() {
                 .filter { it.team != playerData.team && !it.entityStatus.isDead && it.getStatus<Exile>() == null }
             val enemy = enemies.randomOrNull() ?: break
             val exile = enemy.getOrCreateStatus { Exile() }
-            exile.applyStatus(duration = 5, durationMode = StatusDurationMode.Extend)
+            exile.applyStatus(duration = 5)
         }
         return true
     }

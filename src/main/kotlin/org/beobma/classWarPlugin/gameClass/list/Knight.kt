@@ -1,6 +1,7 @@
 package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.ClassWarPlugin
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.OnHitHandler
@@ -10,11 +11,9 @@ import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.getConeTargets
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
-import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
-import org.beobma.classWarPlugin.manager.StatusDurationMode
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
-import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.Bleeding
@@ -70,7 +69,7 @@ class KnightsRedSkill : Skill() {
         val targetPlayer = target as? PlayerData
         if (targetPlayer != null) {
             val status = targetPlayer.getOrCreateStatus { Bleeding() }
-            status.applyStatus(duration = 3, durationMode = StatusDurationMode.Refresh)
+            status.applyStatus(duration = 3, 3)
         }
         return true
     }
@@ -94,7 +93,7 @@ class KnightsOrangeSkill : Skill() {
             val targetPlayer = it as? PlayerData
             if (targetPlayer != null) {
                 val status = targetPlayer.getOrCreateStatus { Bleeding() }
-                status.applyStatus(duration = 3, durationMode = StatusDurationMode.Refresh)
+                status.applyStatus(duration = 3, powerSet = 5)
             }
         }
         return true
@@ -167,7 +166,7 @@ class KnightsPassive : Passive(), OnHitHandler {
         val entityData = game.playerDatas.filterIsInstance<PlayerData>()
             .find { it.player == entity } ?: return
         val status = entityData.getOrCreateStatus { Bleeding() }
-        status.applyStatus(duration = 3, durationMode = StatusDurationMode.Refresh)
+        status.applyStatus(duration = 3, powerSet = 1)
 
         entityData.damage(status.power.toDouble(), DamageType.StatusAbnormality, playerData)
         status.updatePower(status.power / 2)
