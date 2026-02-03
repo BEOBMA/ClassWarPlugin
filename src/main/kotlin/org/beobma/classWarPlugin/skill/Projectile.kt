@@ -195,7 +195,7 @@ abstract class Projectile {
     private fun spawnItemDisplay(startLocation: Location) {
         val item = itemDisplayItem?.clone() ?: return
         val display = startLocation.world.spawn(startLocation, ItemDisplay::class.java)
-        display.itemStack = item
+        display.setItemStack(item)
         itemDisplay = display
         onItemDisplaySpawn(display, startLocation)
     }

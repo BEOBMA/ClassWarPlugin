@@ -81,6 +81,6 @@ enum class Keyword(val string: String, val description: String? = null) {
     ),
     DimensionMarker(
         "<blue><bold>차원 표식</bold><gray>",
-        "{keyword:DimensionMarker}: "
+        "{keyword:DimensionMarker}: 최대 수치는 4이며, 지속 시간이 연장되지 않는다."
     )
 }
