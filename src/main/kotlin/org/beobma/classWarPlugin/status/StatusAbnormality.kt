@@ -10,6 +10,7 @@ import org.bukkit.entity.Entity
 
 abstract class StatusAbnormality {
     protected lateinit var entityData: EntityData
+    protected lateinit var casterData: PlayerData
     protected lateinit var entity: Entity
     protected lateinit var entityStatus: EntityStatus
     protected lateinit var game: Game
@@ -26,11 +27,12 @@ abstract class StatusAbnormality {
     open val durationMode: StatusDurationMode = StatusDurationMode.Refresh
     open var continueWhile: (() -> Boolean)? = null
 
-    fun inject(entityData: EntityData) {
+    fun inject(entityData: EntityData, victimData: PlayerData) {
         this.entityData = entityData
         this.entity = entityData.entity
         this.entityStatus = entityData.entityStatus
         this.game = entityData.game
+        this.casterData = victimData
     }
 
     open fun increasePower(amount: Int) {

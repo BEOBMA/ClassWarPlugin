@@ -74,7 +74,7 @@ class AssassinsRedSkill : Skill() {
             targetData.damage(3.0, DamageType.Normal, playerData)
         }
         if (playerData.hasStatus<Stealth>()) {
-            val stealth = playerData.getOrCreateStatus { Stealth() }
+            val stealth = playerData.getOrCreateStatus(playerData) { Stealth() }
             stealth.increaseDuration(2)
             player.setCooldown(Material.RED_DYE, (player.getCooldown(Material.RED_DYE) * 0.5).toInt())
         }
@@ -98,7 +98,7 @@ class AssassinsOrangeSkill : Skill() {
         assassinsDaggerProjectile.location = player.eyeLocation.clone()
         assassinsDaggerProjectile.spawnProjectile(playerData)
         if (playerData.hasStatus<Stealth>()) {
-            val stealth = playerData.getOrCreateStatus { Stealth() }
+            val stealth = playerData.getOrCreateStatus(playerData) { Stealth() }
             stealth.increaseDuration(2)
             player.setCooldown(Material.ORANGE_DYE, (player.getCooldown(Material.YELLOW_DYE) * 0.5).toInt())
         }
@@ -124,7 +124,7 @@ class AssassinsYellowSkill : Skill() {
         }
         targetData.damage(10.0, DamageType.Normal, playerData)
         if (playerData.hasStatus<Stealth>()) {
-            val stealth = playerData.getOrCreateStatus { Stealth() }
+            val stealth = playerData.getOrCreateStatus(playerData) { Stealth() }
             stealth.increaseDuration(2)
             targetData.damage(5.0, DamageType.Normal, playerData)
             player.setCooldown(Material.YELLOW_DYE, (player.getCooldown(Material.YELLOW_DYE) * 0.5).toInt())
@@ -179,7 +179,7 @@ class AssassinsDaggerProjectile : Projectile() {
         val dir = toHit.clone().normalize()
         val target = hitPoint.clone().add(dir.clone().multiply(-0.35))
 
-        val stealth = playerData.getOrCreateStatus { Stealth() }
+        val stealth = playerData.getOrCreateStatus(playerData) { Stealth() }
         stealth.applyStatus(
             duration = 4,
             powerDelta = 1

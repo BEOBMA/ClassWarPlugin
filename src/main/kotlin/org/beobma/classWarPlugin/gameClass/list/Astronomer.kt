@@ -45,12 +45,12 @@ class Astronomer : GameClass(), GameStatusHandler {
     )
 
     override fun onBattleStart() {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.updatePower(100)
     }
 
     override fun onGameTimePasses() {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.increasePower(5)
     }
 }
@@ -152,8 +152,8 @@ class AstronomersEnemyField : Flooring() {
         val hitPlayerData = hitEntityData as? PlayerData ?: return
         hitPlayerData.damage(2.0, DamageType.Normal, playerData, false)
         if (affected.add(hitPlayerData)) {
-            val moveSpeedDecrease = hitPlayerData.addStatus(MoveSpeedDecrease())
-            val whenDamageIncrease = hitPlayerData.addStatus(WhenDamageIncreased())
+            val moveSpeedDecrease = hitPlayerData.addStatus(MoveSpeedDecrease(), playerData)
+            val whenDamageIncrease = hitPlayerData.addStatus(WhenDamageIncreased(), playerData)
             moveSpeedDecrease.increasePower(20)
             whenDamageIncrease.increasePower(15)
             moveSpeedDecrease.setContinueWhileIf { affected.contains(hitPlayerData) }
@@ -182,8 +182,8 @@ class AstronomersTeamField : Flooring() {
         val hitPlayerData = hitEntityData as? PlayerData ?: return
         hitPlayerData.heal(2.0, DamageType.Normal, playerData)
         if (affected.add(hitPlayerData)) {
-            val moveSpeedIncrease = hitPlayerData.addStatus(MoveSpeedIncrease())
-            val whenDamageReduction = hitPlayerData.addStatus(WhenDamageReduction())
+            val moveSpeedIncrease = hitPlayerData.addStatus(MoveSpeedIncrease(), playerData)
+            val whenDamageReduction = hitPlayerData.addStatus(WhenDamageReduction(), playerData)
             moveSpeedIncrease.increasePower(20)
             whenDamageReduction.increasePower(15)
             moveSpeedIncrease.setContinueWhileIf { affected.contains(hitPlayerData) }
@@ -216,7 +216,7 @@ class AstronomersPassive : Passive(), OnHitHandler {
 
     override fun onSkillAttackHit(event: PlayerSkillDamageByPlayerEvent) {
         if (event.damageType == DamageType.True) return
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         val count = (mana.power / 20).coerceIn(1, 5)
         val targetLoc = event.entity.entity.location.add(0.0, 5.0, 0.0)
         repeat(count) {

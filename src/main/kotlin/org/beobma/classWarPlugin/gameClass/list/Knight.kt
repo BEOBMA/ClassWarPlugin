@@ -68,7 +68,7 @@ class KnightsRedSkill : Skill() {
         target.damage(6.0, DamageType.Normal, playerData)
         val targetPlayer = target as? PlayerData
         if (targetPlayer != null) {
-            val status = targetPlayer.getOrCreateStatus { Bleeding() }
+            val status = targetPlayer.getOrCreateStatus(playerData) { Bleeding() }
             status.applyStatus(duration = 3, 3)
         }
         return true
@@ -92,7 +92,7 @@ class KnightsOrangeSkill : Skill() {
             it.damage(5.0, DamageType.Normal, playerData)
             val targetPlayer = it as? PlayerData
             if (targetPlayer != null) {
-                val status = targetPlayer.getOrCreateStatus { Bleeding() }
+                val status = targetPlayer.getOrCreateStatus(playerData) { Bleeding() }
                 status.applyStatus(duration = 3, powerSet = 5)
             }
         }
@@ -165,7 +165,7 @@ class KnightsPassive : Passive(), OnHitHandler {
         val entity = event.entity
         val entityData = game.playerDatas.filterIsInstance<PlayerData>()
             .find { it.player == entity } ?: return
-        val status = entityData.getOrCreateStatus { Bleeding() }
+        val status = entityData.getOrCreateStatus(playerData) { Bleeding() }
         status.applyStatus(duration = 3, powerSet = 1)
 
         entityData.damage(status.power.toDouble(), DamageType.StatusAbnormality, playerData)

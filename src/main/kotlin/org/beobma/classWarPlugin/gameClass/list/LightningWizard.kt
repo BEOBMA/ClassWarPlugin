@@ -59,7 +59,7 @@ class LightningWizardsRedSkill : Skill() {
     override val cooldown = 1
 
     override fun use(): Boolean {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
 
         if (mana.power < 20) {
             player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
@@ -98,7 +98,7 @@ class LightningWizardsOrangeSkill : Skill() {
     override val cooldown = 10
 
     override fun use(): Boolean {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         val gameClass = playerData.gameClass
         if (mana.power < 40) {
             player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
@@ -128,7 +128,7 @@ class LightningWizardsYellowSkill : Skill() {
     override val cooldown = 20
 
     override fun use(): Boolean {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         val gameClass = playerData.gameClass
         if (mana.power < 100) {
             player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")

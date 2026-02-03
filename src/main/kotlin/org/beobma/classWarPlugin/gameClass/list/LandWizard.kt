@@ -10,13 +10,13 @@ import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
-import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.vibrationExplosion
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.Mana
 import org.beobma.classWarPlugin.status.list.Shield
 import org.beobma.classWarPlugin.status.list.Vibration
+import org.beobma.classWarPlugin.status.list.VibrationExplosion
 import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.TargetType
 import org.beobma.classWarPlugin.util.addDamageDealtMultiplier
@@ -43,12 +43,12 @@ class LandWizard : GameClass(), GameStatusHandler {
     )
 
     override fun onBattleStart() {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.increasePower(100)
     }
 
     override fun onGameTimePasses() {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.increasePower(10)
     }
 }
@@ -72,7 +72,7 @@ class LandWizardsRedSkill : Skill() {
     override val cooldown = 2
 
     override fun use(): Boolean {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         if (mana.power < 20) {
             player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
             return false
@@ -80,7 +80,7 @@ class LandWizardsRedSkill : Skill() {
         mana.decreasePower(20)
         val targets = playerData.radius(player.location, TargetType.Enemy, 4.0, false)
         targets.forEach {
-            val vibration = it.getOrCreateStatus { Vibration() }
+            val vibration = it.getOrCreateStatus(playerData) { Vibration() }
             vibration.applyStatus(duration = 10, powerDelta = 2)
             it.damage(2.0, DamageType.Normal, playerData)
         }
@@ -101,18 +101,20 @@ class LandWizardsOrangeSkill : Skill() {
     override val cooldown = 10
 
     override fun use(): Boolean {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         if (mana.power < 100) {
             player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
             return false
         }
-        val shield = playerData.addStatus(Shield())
+        val shield = playerData.addStatus(Shield(), playerData)
+
         mana.decreasePower(100)
         shield.applyStatus(duration = 5, powerDelta = 8)
 
         val targets = playerData.radius(player.location, TargetType.Enemy, 4.0, false)
         targets.forEach {
-            it.vibrationExplosion(playerData)
+            val vibrationExplosion = it.addStatus(VibrationExplosion(), playerData)
+            vibrationExplosion.applyStatus(duration = 1, powerDelta = 1)
         }
         return true
     }

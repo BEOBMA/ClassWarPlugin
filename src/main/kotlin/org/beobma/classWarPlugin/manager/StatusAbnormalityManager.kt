@@ -61,18 +61,18 @@ object StatusAbnormalityManager {
         return statusAbnormalitys.any { it is T }
     }
 
-    fun EntityData.addStatus(status: StatusAbnormality): StatusAbnormality {
-        status.inject(this)
+    fun EntityData.addStatus(status: StatusAbnormality, victimData: PlayerData): StatusAbnormality {
+        status.inject(this, victimData)
         statusAbnormalitys.add(status)
         return status
     }
 
-    inline fun <reified T : StatusAbnormality> EntityData.getOrCreateStatus(creator: () -> T): T {
+    inline fun <reified T : StatusAbnormality> EntityData.getOrCreateStatus(victimData: PlayerData, creator: () -> T): T {
         val existing = statusAbnormalitys.firstOrNull { it is T } as? T
         if (existing != null) return existing
 
         val newStatus = creator()
-        newStatus.inject(this)
+        newStatus.inject(this, victimData)
         statusAbnormalitys.add(newStatus)
         return newStatus
     }
