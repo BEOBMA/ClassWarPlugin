@@ -55,26 +55,22 @@ object SkillManager {
             Int.MAX_VALUE -> 999999
             else -> cooldown
         }
-        if (cooldownSeconds != null) {
-            playerData.player.setCooldown(clickedItem.type, cooldownSeconds * 20)
-        }
 
         val playerSkillUseEvent = PlayerSkillUseEvent(playerData, skill, clickedItem)
         Bukkit.getServer().pluginManager.callEvent(playerSkillUseEvent)
-        if (!playerSkillUseEvent.isCancelled) {
-            if (cooldownSeconds != null) {
-                playerData.player.setCooldown(clickedItem.type, 0)
-            }
+        if (playerSkillUseEvent.isCancelled) {
             return false
         }
 
         val isUse = skill.use()
         if (!isUse) {
-            if (cooldownSeconds != null) {
-                playerData.player.setCooldown(clickedItem.type, 0)
-            }
             return false
         }
+
+        if (cooldownSeconds != null) {
+            playerData.player.setCooldown(clickedItem.type, cooldownSeconds * 20)
+        }
+
 
 
         return true

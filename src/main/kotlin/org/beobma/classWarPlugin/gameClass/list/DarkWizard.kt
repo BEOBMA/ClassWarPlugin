@@ -43,12 +43,12 @@ class DarkWizard : GameClass(), GameStatusHandler {
     override var passives: List<Passive> = listOf()
 
     override fun onBattleStart() {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.updatePower(100)
     }
 
     override fun onGameTimePasses() {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.increasePower(10)
     }
 }
@@ -71,7 +71,7 @@ class DarkWizardsRedSkill : Skill() {
     override val cooldown = 10
 
     override fun use(): Boolean {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         if (mana.power < 40) {
             player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
             return false
@@ -134,7 +134,7 @@ class DarkWizardsOrangeSkill : Skill() {
     override val cooldown = 10
 
     override fun use(): Boolean {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         if (mana.power < 60) {
             player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
             return false
@@ -162,7 +162,7 @@ class DarkWizardsProjectileSmoke : Projectile() {
     override fun onProjectileEntityHit(hitEntityData: EntityData, location: Location) {
         val hitPlayerData = hitEntityData as? PlayerData
         if (hitPlayerData != null && hitSet.add(hitPlayerData)) {
-            val abyss = hitPlayerData.getOrCreateStatus { Abyss() }
+            val abyss = hitPlayerData.getOrCreateStatus(playerData) { Abyss() }
             abyss.applyStatus(duration = 3)
             hitPlayerData.damage(5.0, DamageType.Normal, playerData)
             return
@@ -187,7 +187,7 @@ class DarkWizardsYellowSkill : Skill() {
     override val cooldown = Int.MAX_VALUE
 
     override fun use(): Boolean {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         if (mana.power < 100) {
             player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
             return false
@@ -198,13 +198,13 @@ class DarkWizardsYellowSkill : Skill() {
 
         enemies.filterIsInstance<PlayerData>().forEach { enemy ->
             if (abyssPlayers.contains(enemy)) {
-                val silence = enemy.getOrCreateStatus { Silence() }
+                val silence = enemy.getOrCreateStatus(playerData) { Silence() }
                 silence.applyStatus(duration = 5)
             }
         }
 
         allPlayers.filterIsInstance<PlayerData>().forEach { playerTarget ->
-            val abyss = playerTarget.getOrCreateStatus { Abyss() }
+            val abyss = playerTarget.getOrCreateStatus(playerData) { Abyss() }
             abyss.applyStatus(duration = 5)
         }
 

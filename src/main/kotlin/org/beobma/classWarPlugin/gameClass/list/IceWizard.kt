@@ -49,12 +49,12 @@ class IceWizard : GameClass(), GameStatusHandler {
     )
 
     override fun onBattleStart() {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.increasePower(100)
     }
 
     override fun onGameTimePasses() {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.increasePower(10)
     }
 }
@@ -83,7 +83,7 @@ class IceWizardsRedSkill : Skill() {
     override val cooldown = 1
 
     override fun use(): Boolean {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
 
         if (bukkitTask != null) {
             bukkitTask?.cancel()
@@ -106,7 +106,7 @@ class IceWizardsRedSkill : Skill() {
                     applyDamagePlayerDatas[it] = applyDamagePlayerDatas.getOrDefault(it, 20) - 1
                     it.damage(3.0, DamageType.Normal, playerData)
                     if (frostbiteTarget != null) {
-                        val frostbite = frostbiteTarget.getOrCreateStatus { Frostbite() }
+                        val frostbite = frostbiteTarget.getOrCreateStatus(playerData) { Frostbite() }
                         frostbite.applyStatus(duration = 5, powerDelta = 2)
                     }
                 }
@@ -133,7 +133,7 @@ class IceWizardsOrangeSkill : Skill() {
     override val cooldown = 10
 
     override fun use(): Boolean {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         if (mana.power < 40) {
             player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
             return false
@@ -161,8 +161,8 @@ class IceWizardsIcicleProjectile : Projectile() {
             hitEntityData.damage(8.0, DamageType.Normal, playerData)
             return
         }
-        val frostbite = hitPlayerData.getOrCreateStatus { Frostbite() }
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val frostbite = hitPlayerData.getOrCreateStatus(playerData) { Frostbite() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         hitPlayerData.damage(8.0, DamageType.Normal, playerData)
         frostbite.applyStatus(duration = 5, powerDelta = 4)
         mana.increasePower(20)
@@ -186,7 +186,7 @@ class IceWizardsYellowSkill : Skill() {
     override val cooldown = 30
 
     override fun use(): Boolean {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         if (mana.power < 100) {
             player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
             return false
@@ -217,10 +217,10 @@ class IceWizardsIceSpear : Meteor() {
     override var targetType: TargetType = TargetType.Enemy
 
     override fun onMeteorEntityHit(hitEntityData: EntityData, location: Location) {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         val hitPlayerData = hitEntityData as? PlayerData
         if (hitPlayerData != null) {
-            val frostbite = hitPlayerData.getOrCreateStatus { Frostbite() }
+            val frostbite = hitPlayerData.getOrCreateStatus(playerData) { Frostbite() }
             hitPlayerData.damage(15.0, DamageType.Normal, playerData)
             frostbite.applyStatus(duration = 5, powerDelta = 7)
         } else {
@@ -285,8 +285,8 @@ class IceWizardsFrostZone(override var location: Location) : Flooring() {
     override fun onFlooringEntityHit(hitEntityData: EntityData, location: Location) {
         val hitPlayerData = hitEntityData as? PlayerData ?: return
         if (hitPlayerData in hitPlayerDatas) return
-        val moveSpeedDecrease = hitPlayerData.addStatus(MoveSpeedDecrease())
-        val frostbite = hitPlayerData.getOrCreateStatus { Frostbite() }
+        val moveSpeedDecrease = hitPlayerData.addStatus(MoveSpeedDecrease(), playerData)
+        val frostbite = hitPlayerData.getOrCreateStatus(playerData) { Frostbite() }
         moveSpeedDecrease.increasePower(25)
         frostbite.applyStatus(duration = 5, powerDelta = 2)
         moveSpeedDecrease.setContinueWhileIf { hitPlayerDatas.contains(hitPlayerData) }

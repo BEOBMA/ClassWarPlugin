@@ -2,8 +2,8 @@ package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.GameClass
-import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.Weapon
+import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
@@ -86,7 +86,7 @@ class JusticeOrangeSkill : Skill() {
     override val cooldown = 10
 
     override fun use(): Boolean {
-        val shield = playerData.addStatus(Shield())
+        val shield = playerData.addStatus(Shield(), playerData)
         val power = when (judgesUtils.getTeamStatus(playerData)) {
             TeamStatus.Advantage, TeamStatus.Balance -> 6
             TeamStatus.Inferiority -> 8
