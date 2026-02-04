@@ -58,18 +58,13 @@ class LightningWizardsRedSkill : Skill() {
     )
     override val cooldown = 1
 
-    override fun use(): Boolean {
+    override fun use() {
         val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-
-        if (mana.power < 20) {
-            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return false
-        }
 
         val location = if (player.isSneaking) {
             playerData.shotLaserGetBlock(4.0)?.location?.add(0.0, 1.0, 0.0) ?: run {
                 player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                return false
+                return
             }
         }
         else {
@@ -78,13 +73,28 @@ class LightningWizardsRedSkill : Skill() {
 
         val gameClass = playerData.gameClass
 
-        if (gameClass !is LightningWizard) return false
+        if (gameClass !is LightningWizard) return
         val markerList = gameClass.markers
         if (markerList.size >= 3) {
             markerList.removeFirstOrNull()
         }
         markerList.add(Marker(location))
         mana.decreasePower(20)
+        return
+    }
+
+    override fun isUseSuccess(): Boolean {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+        if (mana.power < 20) {
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            return false
+        }
+        if (player.isSneaking) {
+            playerData.shotLaserGetBlock(4.0)?.location?.add(0.0, 1.0, 0.0) ?: run {
+                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+                return false
+            }
+        }
         return true
     }
 }
@@ -97,24 +107,35 @@ class LightningWizardsOrangeSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         val gameClass = playerData.gameClass
-        if (mana.power < 40) {
-            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return false
-        }
-        if (gameClass !is LightningWizard) return false
+        if (gameClass !is LightningWizard) return
         val markerList = gameClass.markers
         if (markerList.isEmpty()) {
             player.sendMiniMessage("<red><bold>[!] 생성된 표식이 존재하지 않습니다.")
-            return false
+            return
         }
 
         markerList.forEach { it.isOn = false }
         markerList.minByOrNull { it.location.distanceSquared(player.location) }?.isOn = true
 
         mana.decreasePower(40)
+    }
+
+    override fun isUseSuccess(): Boolean {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+        if (mana.power < 40) {
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            return false
+        }
+        val gameClass = playerData.gameClass
+        if (gameClass !is LightningWizard) return false
+        val markerList = gameClass.markers
+        if (markerList.isEmpty()) {
+            player.sendMiniMessage("<red><bold>[!] 생성된 표식이 존재하지 않습니다.")
+            return false
+        }
         return true
     }
 }
@@ -127,19 +148,19 @@ class LightningWizardsYellowSkill : Skill() {
     )
     override val cooldown = 20
 
-    override fun use(): Boolean {
+    override fun use() {
         val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-        val gameClass = playerData.gameClass
         if (mana.power < 100) {
             player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return false
+            return
         }
+        val gameClass = playerData.gameClass
 
-        if (gameClass !is LightningWizard) return false
+        if (gameClass !is LightningWizard) return
         val markerList = gameClass.markers
         if (markerList.isEmpty()) {
             player.sendMiniMessage("<red><bold>[!] 생성된 표식이 존재하지 않습니다.")
-            return false
+            return
         }
 
         mana.decreasePower(100)
@@ -151,6 +172,21 @@ class LightningWizardsYellowSkill : Skill() {
             }
         }.runTaskLater(ClassWarPlugin.instance, 200L)
         playerData.trackTask(task)
+    }
+
+    override fun isUseSuccess(): Boolean {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+        if (mana.power < 100) {
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            return false
+        }
+        val gameClass = playerData.gameClass
+        if (gameClass !is LightningWizard) return false
+        val markerList = gameClass.markers
+        if (markerList.isEmpty()) {
+            player.sendMiniMessage("<red><bold>[!] 생성된 표식이 존재하지 않습니다.")
+            return false
+        }
         return true
     }
 }

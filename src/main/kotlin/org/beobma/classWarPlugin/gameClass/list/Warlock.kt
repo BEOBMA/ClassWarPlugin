@@ -43,9 +43,8 @@ class WarlocksRedSkill : Skill() {
     )
     override val cooldown = 14
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 체력 5 소모 + 대상에게 상태이상 부여
-        return true
     }
 }
 
@@ -59,9 +58,8 @@ class WarlocksOrangeSkill : Skill() {
     )
     override val cooldown = 20
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 블럭 주위 범위 데미지 + 지속 시간
-        return true
     }
 }
 
@@ -79,9 +77,8 @@ class WarlocksYellowSkill : Skill() {
     )
     override val cooldown = Int.MAX_VALUE
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 타겟 중심 파동 범위 증가 및 피해 + 회복
-        return true
     }
 }
 

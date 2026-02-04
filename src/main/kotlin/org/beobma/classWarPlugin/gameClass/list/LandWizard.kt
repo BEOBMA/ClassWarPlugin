@@ -71,18 +71,22 @@ class LandWizardsRedSkill : Skill() {
     )
     override val cooldown = 2
 
-    override fun use(): Boolean {
+    override fun use() {
         val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-        if (mana.power < 20) {
-            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return false
-        }
         mana.decreasePower(20)
         val targets = playerData.radius(player.location, TargetType.Enemy, 4.0, false)
         targets.forEach {
             val vibration = it.getOrCreateStatus(playerData) { Vibration() }
             vibration.applyStatus(duration = 10, powerDelta = 2)
             it.damage(2.0, DamageType.Normal, playerData)
+        }
+    }
+
+    override fun isUseSuccess(): Boolean {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+        if (mana.power < 20) {
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            return false
         }
         return true
     }
@@ -100,12 +104,8 @@ class LandWizardsOrangeSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-        if (mana.power < 100) {
-            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return false
-        }
         val shield = playerData.addStatus(Shield(), playerData)
 
         mana.decreasePower(100)
@@ -115,6 +115,14 @@ class LandWizardsOrangeSkill : Skill() {
         targets.forEach {
             val vibrationExplosion = it.addStatus(VibrationExplosion(), playerData)
             vibrationExplosion.applyStatus(duration = 1, powerDelta = 1)
+        }
+    }
+
+    override fun isUseSuccess(): Boolean {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+        if (mana.power < 100) {
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            return false
         }
         return true
     }

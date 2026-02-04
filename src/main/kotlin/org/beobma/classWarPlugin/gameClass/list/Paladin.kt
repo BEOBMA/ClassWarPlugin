@@ -45,9 +45,8 @@ class PaladinsRedSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 5초간 기본 공격 피해 +2, 적중 시 밝기 1 적용
-        return true
     }
 }
 
@@ -60,9 +59,8 @@ class PaladinsOrangeSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 대상에게 피해 및 밝기 3 부여
-        return true
     }
 }
 
@@ -77,9 +75,8 @@ class PaladinsYellowSkill : Skill() {
     )
     override val cooldown = Int.MAX_VALUE
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 10초간 3회 데미지 반감 + 조건부 반사 밝기
-        return true
     }
 }
 

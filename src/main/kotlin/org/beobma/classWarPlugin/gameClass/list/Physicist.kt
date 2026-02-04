@@ -47,9 +47,8 @@ class PhysicistsRedSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 상태에 따라 광전 효과 처리
-        return true
     }
 }
 
@@ -61,9 +60,8 @@ class PhysicistsOrangeSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 동시 상태 진입 및 쿨타임 감소 로직
-        return true
     }
 }
 
@@ -74,9 +72,8 @@ class PhysicistsYellowSkill : Skill() {
     )
     override val cooldown = Int.MAX_VALUE
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 대상에게 무작위 피해 적용
-        return true
     }
 }
 
@@ -85,7 +82,6 @@ class PhysicistsPassive : Passive() {
     override val description = listOf(
         "<gray>패시브",
         "",
-        "<gray>모든 스킬 계수가 무작위 숫자로 설정된다.",
-        "<gray>최대치는 '?'의 개수에 따라 다르다."
+        "<gray>모든 스킬 계수가 무작위 숫자로 설정된다."
     )
 }

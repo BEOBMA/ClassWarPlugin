@@ -41,8 +41,8 @@ class TimeManiqulatorsRedSkill : Skill() {
     )
     override val cooldown = 0
 
-    override fun use(): Boolean {
-        return true
+    override fun use() {
+        //TODO()
     }
 }
 
@@ -59,8 +59,8 @@ class TimeManiqulatorsOrangeSkill : Skill() {
     )
     override val cooldown = 0
 
-    override fun use(): Boolean {
-        return true
+    override fun use() {
+        //TODO()
     }
 }
 

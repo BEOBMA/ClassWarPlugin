@@ -44,9 +44,8 @@ class RuneWizardsRedSkill : Skill() {
     )
     override val cooldown = 5
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 마나 소모 및 범위 피해 후 50% 마나 회복
-        return true
     }
 }
 
@@ -59,9 +58,8 @@ class RuneWizardsOrangeSkill : Skill() {
     )
     override val cooldown = 5
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 4칸 내 대상에게 피해
-        return true
     }
 }
 
@@ -75,9 +73,8 @@ class RuneWizardsYellowSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 10초간 마나 무제한, 회복 불가
-        return true
     }
 }
 

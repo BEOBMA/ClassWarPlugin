@@ -42,9 +42,8 @@ class SpaceOperatorsRedSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 방향 검 휘두르기 / 강화 여부에 따라 피해량 변경
-        return true
     }
 }
 
@@ -58,9 +57,8 @@ class SpaceOperatorsOrangeSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 이동 및 도약 구간 적 피해 적용
-        return true
     }
 }
 
@@ -74,9 +72,8 @@ class SpaceOperatorsYellowSkill : Skill() {
     )
     override val cooldown = Int.MAX_VALUE
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 플레이어 및 대상 엑자일 처리
-        return true
     }
 }
 

@@ -43,8 +43,8 @@ class WindWizardsRedSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
-        return true
+    override fun use() {
+        //TODO()
     }
 }
 
@@ -58,8 +58,8 @@ class WindWizardsOrangeSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
-        return true
+    override fun use() {
+        //TODO()
     }
 }
 
@@ -72,9 +72,8 @@ class WindWizardsYellowSkill : Skill() {
     )
     override val cooldown = Int.MAX_VALUE
 
-    override fun use(): Boolean {
-
-        return true
+    override fun use() {
+        //TODO()
     }
 }
 

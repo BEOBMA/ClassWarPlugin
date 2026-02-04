@@ -44,9 +44,8 @@ class LightWizardsRedSkill : Skill() {
     )
     override val cooldown = 1
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 프리즘 설치 로직 구현
-        return true
     }
 }
 
@@ -66,9 +65,8 @@ class LightWizardsOrangeSkill : Skill() {
     )
     override val cooldown = 6
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 광선 발사 및 반사 처리 구현
-        return true
     }
 }
 

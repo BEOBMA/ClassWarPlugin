@@ -49,9 +49,8 @@ class SnipersRedSkill : Skill() {
     )
     override val cooldown = 1
 
-    override fun use(): Boolean {
-        //
-        return true
+    override fun use() {
+        //TODO()
     }
 }
 
@@ -75,9 +74,8 @@ class SnipersOrangeSkill : Skill() {
     )
     override val cooldown = 20
 
-    override fun use(): Boolean {
-        //
-        return true
+    override fun use() {
+        //TODO()
     }
 }
 
