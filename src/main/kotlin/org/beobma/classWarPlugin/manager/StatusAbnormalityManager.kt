@@ -40,14 +40,6 @@ object StatusAbnormalityManager {
         }
     }
 
-    fun EntityData.vibrationExplosion(damager: PlayerData) {
-        val vibration = getStatus<Vibration>()
-
-        if (vibration == null || vibration.power <= 0) return
-        damage(vibration.power.toDouble(), DamageType.StatusAbnormality, damager)
-        vibration.remove()
-    }
-
 
     inline fun <reified T : StatusAbnormality> EntityData.getStatus(): T? {
         return statusAbnormalitys.firstOrNull { it is T } as? T
