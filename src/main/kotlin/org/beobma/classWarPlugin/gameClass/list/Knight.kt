@@ -60,16 +60,23 @@ class KnightsRedSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         val target = playerData.shotLaserGetEntityData(2.0, TargetType.Enemy, false) ?: run {
             player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-            return false
+            return
         }
         target.damage(6.0, DamageType.Normal, playerData)
         val targetPlayer = target as? PlayerData
         if (targetPlayer != null) {
             val status = targetPlayer.getOrCreateStatus(playerData) { Bleeding() }
             status.applyStatus(duration = 3, 3)
+        }
+    }
+
+    override fun isUseSuccess(): Boolean {
+        playerData.shotLaserGetEntityData(2.0, TargetType.Enemy, false) ?: run {
+            player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+            return false
         }
         return true
     }
@@ -86,7 +93,7 @@ class KnightsOrangeSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         val targets = playerData.getConeTargets(5.0, 100.0, TargetType.Enemy, false)
         targets.forEach {
             it.damage(5.0, DamageType.Normal, playerData)
@@ -96,7 +103,6 @@ class KnightsOrangeSkill : Skill() {
                 status.applyStatus(duration = 3, powerSet = 5)
             }
         }
-        return true
     }
 }
 
@@ -108,18 +114,11 @@ class KnightsYellowSkill : Skill(), WhenHitHandler {
     )
     override val cooldown = 30
 
-    override fun use(): Boolean {
+    override fun use() {
         activateParry()
-        return true
     }
 
     private var isParry = false
-    override fun whenHit(
-        skillDamageEvent: PlayerSkillDamageByPlayerEvent?,
-        attackDamageEvent: EntityDamageByEntityEvent?
-    ) {
-        return
-    }
 
     override fun whenAttackHit(event: EntityDamageByEntityEvent) {
         if (isParry) {
@@ -127,10 +126,6 @@ class KnightsYellowSkill : Skill(), WhenHitHandler {
             event.isCancelled = true
             player.setCooldown(Material.YELLOW_DYE, 0)
         }
-    }
-
-    override fun whenSkillAttackHit(event: PlayerSkillDamageByPlayerEvent) {
-        return
     }
 
     fun activateParry() {

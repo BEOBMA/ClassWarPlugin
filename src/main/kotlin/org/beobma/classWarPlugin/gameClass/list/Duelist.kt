@@ -42,9 +42,8 @@ class DuelistsRedSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 구현 예정
-        return true
     }
 }
 
@@ -55,9 +54,8 @@ class DuelistsOrangeSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 구현 예정
-        return true
     }
 }
 
@@ -71,9 +69,8 @@ class DuelistsYellowSkill : Skill() {
     )
     override val cooldown = Int.MAX_VALUE
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 구현 예정
-        return true
     }
 }
 

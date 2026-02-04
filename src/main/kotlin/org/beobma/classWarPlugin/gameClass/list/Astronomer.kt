@@ -66,12 +66,19 @@ class AstronomersRedSkill : Skill() {
     override val description = listOf("<gray>8칸 내의 바라보는 적에게 5의 피해를 입힌다.")
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         val target = playerData.shotLaserGetEntityData(8.0, TargetType.Enemy, false) ?: run {
+            player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+            return
+        }
+        target.damage(5.0, DamageType.Normal, playerData)
+    }
+
+    override fun isUseSuccess(): Boolean {
+        playerData.shotLaserGetEntityData(8.0, TargetType.Enemy, false) ?: run {
             player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
             return false
         }
-        target.damage(5.0, DamageType.Normal, playerData)
         return true
     }
 }
@@ -85,7 +92,7 @@ class AstronomersOrangeSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         val origin = player.location
         val blackHole = AstronomersBlackHole()
         blackHole.location = if (player.isSneaking) {
@@ -93,11 +100,21 @@ class AstronomersOrangeSkill : Skill() {
         } else {
             val block = playerData.shotLaserGetBlock(8.0) ?: run {
                 player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                return false
+                return
             }
             block.location.add(0.5, 1.0, 0.5)
         }
         blackHole.spawnFlooring(playerData)
+    }
+
+    override fun isUseSuccess(): Boolean {
+        if (!player.isSneaking) {
+            playerData.shotLaserGetBlock(8.0) ?: run {
+                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+                return false
+            }
+        }
+
         return true
     }
 }
@@ -128,7 +145,7 @@ class AstronomersYellowSkill : Skill() {
     )
     override val cooldown = Int.MAX_VALUE
 
-    override fun use(): Boolean {
+    override fun use() {
         val enemyField = AstronomersEnemyField()
         val teamField = AstronomersTeamField()
         val currentLocation = player.location.clone()
@@ -136,7 +153,6 @@ class AstronomersYellowSkill : Skill() {
         teamField.location = currentLocation
         enemyField.spawnFlooring(playerData)
         teamField.spawnFlooring(playerData)
-        return true
     }
 }
 

@@ -82,14 +82,16 @@ class IceWizardsRedSkill : Skill() {
     )
     override val cooldown = 1
 
-    override fun use(): Boolean {
+    override val isOnOffSKill: Boolean = true
+
+    override fun use() {
         val mana = playerData.getOrCreateStatus(playerData) { Mana() }
 
         if (bukkitTask != null) {
             bukkitTask?.cancel()
             bukkitTask = null
             applyDamagePlayerDatas.clear()
-            return true
+            return
         }
 
         bukkitTask = playerData.trackTask(object : BukkitRunnable() {
@@ -113,7 +115,6 @@ class IceWizardsRedSkill : Skill() {
                 mana.decreasePower(10)
             }
         }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
-        return true
     }
 }
 
@@ -132,17 +133,21 @@ class IceWizardsOrangeSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-        if (mana.power < 40) {
-            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return false
-        }
 
         mana.decreasePower(40)
         val projectile = IceWizardsIcicleProjectile()
         projectile.location = player.location.clone()
         projectile.spawnProjectile(playerData)
+    }
+
+    override fun isUseSuccess(): Boolean {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+        if (mana.power < 40) {
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            return false
+        }
         return true
     }
 }
@@ -185,12 +190,8 @@ class IceWizardsYellowSkill : Skill() {
     )
     override val cooldown = 30
 
-    override fun use(): Boolean {
+    override fun use() {
         val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-        if (mana.power < 100) {
-            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return false
-        }
         val meteor = IceWizardsIceSpear()
 
 
@@ -199,13 +200,27 @@ class IceWizardsYellowSkill : Skill() {
         } else {
             playerData.shotLaserGetBlock(8.0)?.location?.add(0.0, 5.0, 0.0) ?: run {
                 player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                return false
+                return
             }
         }
         meteor.location = location
 
         mana.decreasePower(100)
         meteor.spawnMeteor(playerData)
+    }
+
+    override fun isUseSuccess(): Boolean {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+        if (mana.power < 100) {
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            return false
+        }
+        if (!player.isSneaking) {
+            playerData.shotLaserGetBlock(8.0)?.location?.add(0.0, 5.0, 0.0) ?: run {
+                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+                return false
+            }
+        }
         return true
     }
 }

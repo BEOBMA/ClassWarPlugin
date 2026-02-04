@@ -2,13 +2,14 @@ package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.EntityData
-import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.event.PlayerSkillUseEvent
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Weapon
 import org.beobma.classWarPlugin.gameClass.handler.OnSkillUseHandler
 import org.beobma.classWarPlugin.manager.GameManager.gameWorld
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
+import org.beobma.classWarPlugin.manager.SkillManager.skillCooltimeDown
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.hasStatus
@@ -65,10 +66,10 @@ class AssassinsRedSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         val targetData = playerData.shotLaserGetEntityData(2.0, TargetType.Enemy, false) ?: run {
             player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-            return false
+            return
         }
         val viewCheck = targetData.shotLaserGetEntityData(5.0, TargetType.All, false)
 
@@ -82,6 +83,13 @@ class AssassinsRedSkill : Skill() {
             stealth.increaseDuration(2)
             player.world.spawnParticle(Particle.SMOKE, player.location, 10, 0.0, 0.0, 0.0, 0.3)
             player.setCooldown(Material.RED_DYE, (player.getCooldown(Material.RED_DYE) * 0.5).toInt())
+        }
+    }
+
+    override fun isUseSuccess(): Boolean {
+        playerData.shotLaserGetEntityData(2.0, TargetType.Enemy, false) ?: run {
+            player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+            return false
         }
         return true
     }
@@ -98,7 +106,7 @@ class AssassinsOrangeSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         val assassinsDaggerProjectile = AssassinsDaggerProjectile()
         assassinsDaggerProjectile.location = player.eyeLocation.clone()
         assassinsDaggerProjectile.spawnProjectile(playerData)
@@ -109,7 +117,6 @@ class AssassinsOrangeSkill : Skill() {
             gameWorld.spawnParticle(Particle.SMOKE, player.location, 10, 0.0, 0.0, 0.0, 0.3)
             player.setCooldown(Material.ORANGE_DYE, (player.getCooldown(Material.YELLOW_DYE) * 0.5).toInt())
         }
-        return true
     }
 }
 
@@ -124,10 +131,10 @@ class AssassinsYellowSkill : Skill() {
     )
     override val cooldown = 60
 
-    override fun use(): Boolean {
+    override fun use() {
         val targetData = playerData.shotLaserGetEntityData(2.0, TargetType.Enemy, false) ?: run {
             player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-            return false
+            return
         }
         targetData.damage(10.0, DamageType.Normal, playerData)
         gameWorld.playSound(player.location, Sound.ENTITY_PLAYER_ATTACK_CRIT, SoundCategory.PLAYERS, 1f, 1f)
@@ -143,6 +150,14 @@ class AssassinsYellowSkill : Skill() {
             //TODO(X표시)
             gameWorld.playSound(targetData.entity.location, Sound.ITEM_TRIDENT_RETURN, 1f, 1.5f)
         }
+    }
+
+    override fun isUseSuccess(): Boolean {
+        playerData.shotLaserGetEntityData(2.0, TargetType.Enemy, false) ?: run {
+            player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+            return false
+        }
+
         return true
     }
 }
@@ -156,15 +171,13 @@ class AssassinsPassive : Passive(), OnSkillUseHandler {
     )
 
     override fun onSkillUse(
-        playerData: PlayerData,
-        skill: Skill,
-        clickedItem: ItemStack
+        event: PlayerSkillUseEvent
     ) {
         if (playerData.hasStatus<Stealth>()) {
             val stealth = playerData.getOrCreateStatus(playerData) { Stealth() }
             stealth.increaseDuration(2)
             gameWorld.spawnParticle(Particle.SMOKE, player.location, 10, 0.0, 0.0, 0.0, 0.3)
-            player.setCooldown(clickedItem.type, (player.getCooldown(clickedItem.type) * 0.5).toInt())
+            playerData.skillCooltimeDown(0.5, event.skill, event.clickedItem.type)
         }
     }
 }

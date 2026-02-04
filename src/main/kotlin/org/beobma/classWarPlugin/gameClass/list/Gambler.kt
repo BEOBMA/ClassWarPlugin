@@ -44,9 +44,8 @@ class GamblersRedSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 구현 예정
-        return true
     }
 }
 
@@ -60,9 +59,8 @@ class GamblersOrangeSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 구현 예정
-        return true
     }
 }
 
@@ -74,9 +72,8 @@ class GamblersYellowSkill : Skill() {
     )
     override val cooldown = Int.MAX_VALUE
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 구현 예정
-        return true
     }
 }
 

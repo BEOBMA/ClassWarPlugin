@@ -64,18 +64,22 @@ class FireWizardsRedSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-        if (mana.power < 40) {
-            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return false
-        }
         mana.decreasePower(40)
 
         val targets = playerData.radius(player.location, TargetType.Enemy, 5.0, false)
         targets.forEach {
             it.damage(8.0, DamageType.Normal, playerData)
             it.entity.fireTicks += 80
+        }
+    }
+
+    override fun isUseSuccess(): Boolean {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+        if (mana.power < 40) {
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            return false
         }
         return true
     }
@@ -92,18 +96,14 @@ class FireWizardsOrangeSkill : Skill() {
     )
     override val cooldown = Int.MAX_VALUE
 
-    override fun use(): Boolean {
+    override fun use() {
         val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-        if (mana.power < 100) {
-            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return false
-        }
         mana.decreasePower(100)
 
         val location = if (player.isSneaking) {
             playerData.shotLaserGetBlock(4.0)?.location?.add(0.5, 1.0, 0.5) ?: run {
                 player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                return false
+                return
             }
         } else {
             player.location.clone()
@@ -120,6 +120,20 @@ class FireWizardsOrangeSkill : Skill() {
                 }
             }.runTaskLater(ClassWarPlugin.instance, 60L)
         )
+    }
+
+    override fun isUseSuccess(): Boolean {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+        if (mana.power < 100) {
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            return false
+        }
+        if (player.isSneaking) {
+            playerData.shotLaserGetBlock(4.0)?.location?.add(0.5, 1.0, 0.5) ?: run {
+                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+                return false
+            }
+        }
         return true
     }
 }

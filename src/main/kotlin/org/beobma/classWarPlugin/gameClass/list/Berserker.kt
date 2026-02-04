@@ -47,14 +47,13 @@ class BerserkersRedSkill : Skill() {
     override val cooldown: Int
         get() = 10
 
-    override fun use(): Boolean {
+    override fun use(){
         val attackSpeedIncrease = AttackSpeedIncrease()
         val playerAttackSpeedIncrease = playerData.addStatus(attackSpeedIncrease, playerData)
         playerAttackSpeedIncrease.applyStatus(
             duration = 5,
             powerDelta = 30
         )
-        return true
     }
 }
 
@@ -69,7 +68,7 @@ class BerserkersOrangeSkill : Skill() {
     override val cooldown: Int
         get() = 40
 
-    override fun use(): Boolean {
+    override fun use() {
         val playerMoveSpeedIncrease = playerData.addStatus(MoveSpeedIncrease(), playerData)
         val playerWhenDamageReduction = playerData.addStatus(WhenDamageReduction(), playerData)
 
@@ -81,7 +80,6 @@ class BerserkersOrangeSkill : Skill() {
             duration = 10,
             powerDelta = 40
         )
-        return true
     }
 }
 

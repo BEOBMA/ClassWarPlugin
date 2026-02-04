@@ -64,15 +64,22 @@ class JudgesRedSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         val targetData = playerData.shotLaserGetEntityData(3.0, TargetType.Enemy, false) ?: run {
             player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-            return false
+            return
         }
         when (judgesUtils.getTeamStatus(playerData)) {
             TeamStatus.Advantage -> targetData.damage(6.0, DamageType.Normal, playerData)
             TeamStatus.Balance -> targetData.damage(8.0, DamageType.Normal, playerData)
             TeamStatus.Inferiority -> targetData.damage(10.0, DamageType.Normal, playerData)
+        }
+    }
+
+    override fun isUseSuccess(): Boolean {
+        playerData.shotLaserGetEntityData(3.0, TargetType.Enemy, false) ?: run {
+            player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+            return false
         }
         return true
     }
@@ -90,14 +97,13 @@ class JudgesOrangeSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         val shield = playerData.addStatus(Shield(), playerData)
         val power = when (judgesUtils.getTeamStatus(playerData)) {
             TeamStatus.Advantage, TeamStatus.Balance -> 6
             TeamStatus.Inferiority -> 8
         }
         shield.applyStatus(duration = 5, powerDelta = power)
-        return true
     }
 }
 
@@ -114,10 +120,10 @@ class JudgesYellowSkill : Skill() {
     )
     override val cooldown = Int.MAX_VALUE
 
-    override fun use(): Boolean {
+    override fun use() {
         if (judgesUtils.getTeamStatus(playerData) != TeamStatus.Inferiority) {
             player.sendMiniMessage("<red><bold>[!] 수적 열세 상황에서만 사용할 수 있습니다.")
-            return false
+            return
         }
         while (judgesUtils.getTeamStatus(playerData) != TeamStatus.Balance) {
             val enemies = game.playerDatas.filterIsInstance<PlayerData>()
@@ -125,6 +131,13 @@ class JudgesYellowSkill : Skill() {
             val enemy = enemies.randomOrNull() ?: break
             val exile = enemy.getOrCreateStatus(playerData) { Exile() }
             exile.applyStatus(duration = 5)
+        }
+    }
+
+    override fun isUseSuccess(): Boolean {
+        if (judgesUtils.getTeamStatus(playerData) != TeamStatus.Inferiority) {
+            player.sendMiniMessage("<red><bold>[!] 수적 열세 상황에서만 사용할 수 있습니다.")
+            return false
         }
         return true
     }

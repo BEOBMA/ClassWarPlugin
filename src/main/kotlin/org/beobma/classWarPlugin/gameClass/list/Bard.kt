@@ -46,9 +46,8 @@ class BardsRedSkill : Skill() {
     )
     override val cooldown = 20
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 구현 예정
-        return true
     }
 }
 
@@ -63,9 +62,8 @@ class BardsOrangeSkill : Skill() {
     )
     override val cooldown = 20
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 구현 예정
-        return true
     }
 }
 
@@ -83,9 +81,8 @@ class BardsYellowSkill : Skill() {
     )
     override val cooldown = 20
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 구현 예정
-        return true
     }
 }
 

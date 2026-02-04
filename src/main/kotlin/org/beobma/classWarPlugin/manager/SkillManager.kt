@@ -8,11 +8,13 @@ import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.event.PlayerSkillUseEvent
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.hasStatus
 import org.beobma.classWarPlugin.skill.Skill
+import org.beobma.classWarPlugin.status.list.Silence
 import org.beobma.classWarPlugin.status.list.Stealth
 import org.beobma.classWarPlugin.util.TargetType
 import org.beobma.classWarPlugin.util.TargetType.*
 import org.bukkit.Bukkit
 import org.bukkit.Location
+import org.bukkit.Material
 import org.bukkit.block.Block
 import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
@@ -45,6 +47,10 @@ object SkillManager {
             playerData.player.sendMiniMessage("<red><bold>[!] 현재 스킬을 사용할 수 없는 상태입니다.")
             return false
         }
+        if (playerData.hasStatus<Silence>()) {
+            playerData.player.sendMiniMessage("<red><bold>[!] 침묵 상태에서는 스킬을 사용할 수 없습니다.")
+            return false
+        }
         if (playerData.player.hasCooldown(clickedItem.type)) {
             playerData.player.sendMiniMessage("<red><bold>[!] 재사용 대기 중입니다.")
             return false
@@ -56,17 +62,19 @@ object SkillManager {
             else -> cooldown
         }
 
-        val playerSkillUseEvent = PlayerSkillUseEvent(playerData, skill, clickedItem)
-        Bukkit.getServer().pluginManager.callEvent(playerSkillUseEvent)
-        if (playerSkillUseEvent.isCancelled) {
+        if (!skill.isUseSuccess()) {
             return false
         }
 
-        val isUse = skill.use()
-        if (!isUse) {
-            return false
+        if (!skill.isOnOffSKill) {
+            val playerSkillUseEvent = PlayerSkillUseEvent(playerData, skill, clickedItem)
+            Bukkit.getServer().pluginManager.callEvent(playerSkillUseEvent)
+            if (playerSkillUseEvent.isCancelled) {
+                return false
+            }
         }
 
+        skill.use()
         if (cooldownSeconds != null) {
             playerData.player.setCooldown(clickedItem.type, cooldownSeconds * 20)
         }
@@ -207,5 +215,10 @@ object SkillManager {
             val dotProduct = playerDirection.dot(directionToTarget)
             dotProduct >= cos(Math.toRadians(angle / 2))
         }
+    }
+
+    // 소수점 퍼센트
+    fun PlayerData.skillCooltimeDown(per: Double, skill: Skill, material: Material) {
+        player.setCooldown(material, (player.getCooldown(material) * per).toInt())
     }
 }

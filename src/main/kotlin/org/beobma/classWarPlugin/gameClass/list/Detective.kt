@@ -41,9 +41,8 @@ class DetectivesRedSkill : Skill() {
     )
     override val cooldown = 18
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 스킬 효과 구현 예정
-        return true
     }
 }
 
@@ -55,9 +54,8 @@ class DetectivesOrangeSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 스킬 효과 구현 예정
-        return true
     }
 }
 
@@ -70,9 +68,8 @@ class DetectivesYellowSkill : Skill() {
     )
     override val cooldown = 40
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 스킬 효과 구현 예정
-        return true
     }
 }
 

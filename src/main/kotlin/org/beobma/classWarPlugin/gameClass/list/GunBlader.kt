@@ -47,9 +47,8 @@ class GunBladersRedSkill : Skill() {
     )
     override val cooldown = 4
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 스킬 효과 구현 예정
-        return true
     }
 }
 
@@ -61,9 +60,8 @@ class GunBladersOrangeSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 스킬 효과 구현 예정
-        return true
     }
 }
 
@@ -77,9 +75,8 @@ class GunBladersYellowSkill : Skill() {
     )
     override val cooldown = Int.MAX_VALUE
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 스킬 효과 구현 예정
-        return true
     }
 }
 

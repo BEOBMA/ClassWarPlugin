@@ -1,9 +1,7 @@
 package org.beobma.classWarPlugin.gameClass.handler
 
-import org.beobma.classWarPlugin.entity.player.PlayerData
-import org.beobma.classWarPlugin.skill.Skill
-import org.bukkit.inventory.ItemStack
+import org.beobma.classWarPlugin.event.PlayerSkillUseEvent
 
 interface OnSkillUseHandler {
-    fun onSkillUse(playerData: PlayerData, skill: Skill, clickedItem: ItemStack)
+    fun onSkillUse(event: PlayerSkillUseEvent)
 }

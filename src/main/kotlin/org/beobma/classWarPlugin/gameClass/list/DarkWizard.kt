@@ -70,26 +70,114 @@ class DarkWizardsRedSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-        if (mana.power < 40) {
-            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return false
-        }
-
         val smoke = DarkWizardsSmoke()
         smoke.inject(playerData)
 
         smoke.location = if (player.isSneaking) {
             playerData.shotLaserGetBlock(4.0)?.location?.add(0.5, 1.0, 0.5) ?: run {
                 player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                return false
+                return
             }
         } else {
             player.location.clone()
         }
         smoke.spawnFlooring(playerData)
         mana.decreasePower(40)
+    }
+
+    override fun isUseSuccess(): Boolean {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+        if (mana.power < 40) {
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            return false
+        }
+        if (player.isSneaking) {
+            playerData.shotLaserGetBlock(4.0)?.location?.add(0.5, 1.0, 0.5) ?: run {
+                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+                return false
+            }
+        }
+
+        return true
+    }
+}
+
+class DarkWizardsOrangeSkill : Skill() {
+    override val name = "<bold>잠식"
+    override val description = listOf(
+        "{keyword:Mana}를 60 소모하고 사용할 수 있다.",
+        "",
+        "<gray>바라보는 방향으로 잠식된 연기를 발사한다.",
+        "<gray>적중한 모든 적에게 5의 피해를 입히고 3초간 {keyword:Abyss} 상태를 적용한다.",
+        "",
+        Keyword.Abyss.description ?: ""
+    )
+    override val cooldown = 10
+
+    override fun use() {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+
+        val projectile = DarkWizardsProjectileSmoke()
+        projectile.location = player.location.clone()
+
+        projectile.spawnProjectile(playerData)
+        mana.decreasePower(60)
+    }
+
+    override fun isUseSuccess(): Boolean {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+        if (mana.power < 60) {
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            return false
+        }
+        return true
+    }
+}
+
+class DarkWizardsYellowSkill : Skill() {
+    private val abyssPlayers = mutableSetOf<PlayerData>()
+
+    override val name = "<bold>심연의 공포"
+    override val description = listOf(
+        "{keyword:Mana}를 100 소모하고 사용할 수 있다.",
+        "",
+        "<gray>5초간 전장을 연기로 가득 채워 모든 대상을 {keyword:Abyss} 상태로 만든다.",
+        "<gray>이 효과 발동 전을 기준으로 한 번이라도 {keyword:Abyss} 상태였던 적은 추가로 지속 시간동안 {keyword:Silence} 상태가 된다.",
+        "",
+        Keyword.Abyss.description ?: "",
+        Keyword.Silence.description ?: ""
+    )
+    override val cooldown = Int.MAX_VALUE
+
+    override fun use() {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+        val allPlayers = playerData.radius(player.location, TargetType.All, 1000.0, true)
+        val enemies = playerData.radius(player.location, TargetType.Enemy, 1000.0, false)
+
+        enemies.filterIsInstance<PlayerData>().forEach { enemy ->
+            if (abyssPlayers.contains(enemy)) {
+                val silence = enemy.getOrCreateStatus(playerData) { Silence() }
+                silence.applyStatus(duration = 5)
+            }
+        }
+
+        allPlayers.filterIsInstance<PlayerData>().forEach { playerTarget ->
+            val abyss = playerTarget.getOrCreateStatus(playerData) { Abyss() }
+            abyss.applyStatus(duration = 5)
+        }
+
+        abyssPlayers.addAll(allPlayers.filterIsInstance<PlayerData>())
+        mana.decreasePower(100)
+    }
+
+    override fun isUseSuccess(): Boolean {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+        if (mana.power < 100) {
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            return false
+        }
         return true
     }
 }
@@ -121,34 +209,6 @@ class DarkWizardsSmoke : Flooring() {
     }
 }
 
-class DarkWizardsOrangeSkill : Skill() {
-    override val name = "<bold>잠식"
-    override val description = listOf(
-        "{keyword:Mana}를 60 소모하고 사용할 수 있다.",
-        "",
-        "<gray>바라보는 방향으로 잠식된 연기를 발사한다.",
-        "<gray>적중한 모든 적에게 5의 피해를 입히고 3초간 {keyword:Abyss} 상태를 적용한다.",
-        "",
-        Keyword.Abyss.description ?: ""
-    )
-    override val cooldown = 10
-
-    override fun use(): Boolean {
-        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-        if (mana.power < 60) {
-            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return false
-        }
-
-        val projectile = DarkWizardsProjectileSmoke()
-        projectile.location = player.location.clone()
-
-        projectile.spawnProjectile(playerData)
-        mana.decreasePower(60)
-        return true
-    }
-}
-
 class DarkWizardsProjectileSmoke : Projectile() {
     override lateinit var location: Location
     override var targetType: TargetType = TargetType.Enemy
@@ -168,48 +228,5 @@ class DarkWizardsProjectileSmoke : Projectile() {
             return
         }
         hitEntityData.damage(5.0, DamageType.Normal, playerData)
-    }
-}
-
-class DarkWizardsYellowSkill : Skill() {
-    private val abyssPlayers = mutableSetOf<PlayerData>()
-
-    override val name = "<bold>심연의 공포"
-    override val description = listOf(
-        "{keyword:Mana}를 100 소모하고 사용할 수 있다.",
-        "",
-        "<gray>5초간 전장을 연기로 가득 채워 모든 대상을 {keyword:Abyss} 상태로 만든다.",
-        "<gray>이 효과 발동 전을 기준으로 한 번이라도 {keyword:Abyss} 상태였던 적은 추가로 지속 시간동안 {keyword:Silence} 상태가 된다.",
-        "",
-        Keyword.Abyss.description ?: "",
-        Keyword.Silence.description ?: ""
-    )
-    override val cooldown = Int.MAX_VALUE
-
-    override fun use(): Boolean {
-        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-        if (mana.power < 100) {
-            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return false
-        }
-
-        val allPlayers = playerData.radius(player.location, TargetType.All, 1000.0, true)
-        val enemies = playerData.radius(player.location, TargetType.Enemy, 1000.0, false)
-
-        enemies.filterIsInstance<PlayerData>().forEach { enemy ->
-            if (abyssPlayers.contains(enemy)) {
-                val silence = enemy.getOrCreateStatus(playerData) { Silence() }
-                silence.applyStatus(duration = 5)
-            }
-        }
-
-        allPlayers.filterIsInstance<PlayerData>().forEach { playerTarget ->
-            val abyss = playerTarget.getOrCreateStatus(playerData) { Abyss() }
-            abyss.applyStatus(duration = 5)
-        }
-
-        abyssPlayers.addAll(allPlayers.filterIsInstance<PlayerData>())
-        mana.updatePower(mana.power - 100)
-        return true
     }
 }
