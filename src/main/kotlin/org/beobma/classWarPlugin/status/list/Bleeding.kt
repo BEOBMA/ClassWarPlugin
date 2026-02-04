@@ -5,7 +5,7 @@ import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.beobma.classWarPlugin.status.StatusDurationMode
-import org.beobma.classWarPlugin.status.StatusOnHitHandler
+import org.beobma.classWarPlugin.status.handler.StatusOnHitHandler
 import org.beobma.classWarPlugin.util.DamageType
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 

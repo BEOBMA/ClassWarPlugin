@@ -1,4 +1,4 @@
-package org.beobma.classWarPlugin.gameClass
+package org.beobma.classWarPlugin.gameClass.handler
 
 interface GameStatusHandler {
     fun onBattleStart()

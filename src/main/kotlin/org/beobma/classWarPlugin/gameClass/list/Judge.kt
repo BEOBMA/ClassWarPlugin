@@ -4,7 +4,7 @@ import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.entity.player.TeamType
 import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.GameClass
-import org.beobma.classWarPlugin.gameClass.OnHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.Weapon
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage

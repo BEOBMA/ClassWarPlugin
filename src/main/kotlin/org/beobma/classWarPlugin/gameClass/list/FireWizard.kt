@@ -2,9 +2,9 @@ package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.gameClass.GameClass
-import org.beobma.classWarPlugin.gameClass.GameStatusHandler
+import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.Weapon
-import org.beobma.classWarPlugin.gameClass.WhenHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock

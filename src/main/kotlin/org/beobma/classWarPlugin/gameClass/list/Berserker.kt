@@ -2,12 +2,11 @@ package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.GameClass
-import org.beobma.classWarPlugin.gameClass.OnHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.Weapon
 import org.beobma.classWarPlugin.manager.PlayerManager.heal
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
-import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.UtilManager.getPlayerMaxHealth
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill

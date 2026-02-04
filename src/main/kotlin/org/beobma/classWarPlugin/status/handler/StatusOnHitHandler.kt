@@ -1,4 +1,4 @@
-package org.beobma.classWarPlugin.status
+package org.beobma.classWarPlugin.status.handler
 
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.bukkit.event.entity.EntityDamageByEntityEvent

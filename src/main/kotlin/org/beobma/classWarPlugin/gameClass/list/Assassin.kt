@@ -2,8 +2,11 @@ package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.EntityData
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Weapon
+import org.beobma.classWarPlugin.gameClass.handler.OnSkillUseHandler
+import org.beobma.classWarPlugin.manager.GameManager.gameWorld
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
@@ -70,12 +73,14 @@ class AssassinsRedSkill : Skill() {
         val viewCheck = targetData.shotLaserGetEntityData(5.0, TargetType.All, false)
 
         targetData.damage(6.0, DamageType.Normal, playerData)
+        player.world.playSound(player.location, Sound.ENTITY_PLAYER_ATTACK_WEAK, SoundCategory.PLAYERS, 1f, 1.5f)
         if (viewCheck != playerData) {
             targetData.damage(3.0, DamageType.Normal, playerData)
         }
         if (playerData.hasStatus<Stealth>()) {
             val stealth = playerData.getOrCreateStatus(playerData) { Stealth() }
             stealth.increaseDuration(2)
+            player.world.spawnParticle(Particle.SMOKE, player.location, 10, 0.0, 0.0, 0.0, 0.3)
             player.setCooldown(Material.RED_DYE, (player.getCooldown(Material.RED_DYE) * 0.5).toInt())
         }
         return true
@@ -97,9 +102,11 @@ class AssassinsOrangeSkill : Skill() {
         val assassinsDaggerProjectile = AssassinsDaggerProjectile()
         assassinsDaggerProjectile.location = player.eyeLocation.clone()
         assassinsDaggerProjectile.spawnProjectile(playerData)
+        gameWorld.playSound(player.location, Sound.ENTITY_SKELETON_SHOOT, SoundCategory.PLAYERS, 1f, 2f)
         if (playerData.hasStatus<Stealth>()) {
             val stealth = playerData.getOrCreateStatus(playerData) { Stealth() }
             stealth.increaseDuration(2)
+            gameWorld.spawnParticle(Particle.SMOKE, player.location, 10, 0.0, 0.0, 0.0, 0.3)
             player.setCooldown(Material.ORANGE_DYE, (player.getCooldown(Material.YELLOW_DYE) * 0.5).toInt())
         }
         return true
@@ -123,26 +130,43 @@ class AssassinsYellowSkill : Skill() {
             return false
         }
         targetData.damage(10.0, DamageType.Normal, playerData)
+        gameWorld.playSound(player.location, Sound.ENTITY_PLAYER_ATTACK_CRIT, SoundCategory.PLAYERS, 1f, 1f)
         if (playerData.hasStatus<Stealth>()) {
             val stealth = playerData.getOrCreateStatus(playerData) { Stealth() }
             stealth.increaseDuration(2)
             targetData.damage(5.0, DamageType.Normal, playerData)
+            gameWorld.spawnParticle(Particle.SMOKE, player.location, 10, 0.0, 0.0, 0.0, 0.3)
             player.setCooldown(Material.YELLOW_DYE, (player.getCooldown(Material.YELLOW_DYE) * 0.5).toInt())
         }
         if (targetData.entityStatus.isDead) {
             player.setCooldown(Material.YELLOW_DYE, (player.getCooldown(Material.YELLOW_DYE) * 0.25).toInt())
+            //TODO(X표시)
+            gameWorld.playSound(targetData.entity.location, Sound.ITEM_TRIDENT_RETURN, 1f, 1.5f)
         }
         return true
     }
 }
 
-class AssassinsPassive : Passive() {
+class AssassinsPassive : Passive(), OnSkillUseHandler {
     override val name = "<bold>암살자의 각오"
     override val description = listOf(
         "<gray>패시브",
         "",
         "<gray>{keyword:Stealth} 상태에서 스킬을 사용하면 {keyword:Stealth} 시간이 2초 연장되고, 사용한 스킬의 재사용 대기 시간이 50% 감소한다."
     )
+
+    override fun onSkillUse(
+        playerData: PlayerData,
+        skill: Skill,
+        clickedItem: ItemStack
+    ) {
+        if (playerData.hasStatus<Stealth>()) {
+            val stealth = playerData.getOrCreateStatus(playerData) { Stealth() }
+            stealth.increaseDuration(2)
+            gameWorld.spawnParticle(Particle.SMOKE, player.location, 10, 0.0, 0.0, 0.0, 0.3)
+            player.setCooldown(clickedItem.type, (player.getCooldown(clickedItem.type) * 0.5).toInt())
+        }
+    }
 }
 
 class AssassinsDaggerProjectile : Projectile() {
@@ -163,15 +187,15 @@ class AssassinsDaggerProjectile : Projectile() {
         val hitEntityLocation = hitEntity.location
         val behind = hitEntityLocation.clone().add(hitEntityLocation.direction.normalize().multiply(-1.5))
         hitEntityData.damage(5.0, DamageType.Normal, playerData)
-        player.world.spawnParticle(Particle.SMOKE, player.location, 10, 0.0, 0.0, 0.0, 0.0)
-        behind.world.spawnParticle(Particle.SMOKE, behind, 10, 0.0, 0.0, 0.0, 0.0)
+        gameWorld.spawnParticle(Particle.SMOKE, player.location, 10, 0.0, 0.0, 0.0, 0.0)
+        gameWorld.spawnParticle(Particle.SMOKE, behind, 10, 0.0, 0.0, 0.0, 0.0)
         player.teleport(behind)
-        player.world.playSound(player.location, Sound.ITEM_TRIDENT_RETURN, SoundCategory.PLAYERS, 1f, 1f)
+        gameWorld.playSound(player.location, Sound.ITEM_TRIDENT_RETURN, SoundCategory.PLAYERS, 1f, 1f)
     }
 
     override fun onProjectileBlockHit(hitBlock: Block, location: Location) {
         val hitPoint = location.clone()
-        hitPoint.world.playSound(player.location, Sound.ITEM_TRIDENT_RETURN, SoundCategory.PLAYERS, 1f, 1f)
+        gameWorld.playSound(hitPoint, Sound.ITEM_TRIDENT_RETURN, SoundCategory.PLAYERS, 1f, 1f)
 
         val toHit = hitPoint.toVector().subtract(player.location.toVector())
         if (toHit.lengthSquared() < 1.0E-6) return

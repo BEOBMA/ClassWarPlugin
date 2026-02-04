@@ -5,6 +5,9 @@ import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.*
+import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
+import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.radius

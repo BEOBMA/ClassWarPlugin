@@ -6,7 +6,7 @@ import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.event.PlayerStatusEffectDamageByPlayerEvent
-import org.beobma.classWarPlugin.gameClass.GameStatusHandler
+import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.manager.GameClassManager.toItemStack
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.util.DamageCalculator

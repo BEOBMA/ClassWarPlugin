@@ -1,7 +1,7 @@
 package org.beobma.classWarPlugin.listener
 
-import org.beobma.classWarPlugin.gameClass.OnHitHandler
-import org.beobma.classWarPlugin.gameClass.WhenHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
 import org.beobma.classWarPlugin.manager.MannequinStatusManager
@@ -9,11 +9,11 @@ import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getDamageTakenModifier
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
-import org.beobma.classWarPlugin.status.StatusOnHitHandler
+import org.beobma.classWarPlugin.status.handler.StatusOnHitHandler
 import org.beobma.classWarPlugin.util.addDamageTakenMultiplier
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.game.Game
-import org.beobma.classWarPlugin.status.StatusWhenHitHandler
+import org.beobma.classWarPlugin.status.handler.StatusWhenHitHandler
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener

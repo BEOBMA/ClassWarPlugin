@@ -3,15 +3,14 @@ package org.beobma.classWarPlugin.manager
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
-import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.UtilManager.miniMessage
 import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.beobma.classWarPlugin.status.list.*
-import org.beobma.classWarPlugin.util.DamageType
 import org.bukkit.attribute.Attribute
 import org.bukkit.entity.LivingEntity
 import net.kyori.adventure.text.Component
 import org.beobma.classWarPlugin.status.StatusDurationMode
+import org.beobma.classWarPlugin.status.handler.WhenDamageHandler
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 
@@ -112,6 +111,7 @@ object StatusAbnormalityManager {
         var reductionFactor = 1.0
         var increaseFactor = 1.0
         for (status in statusAbnormalitys) {
+            if (status !is WhenDamageHandler) continue
             when (status) {
                 is WhenDamageReduction -> reductionFactor *= (1 - status.power / 100.0)
                 is WhenDamageIncreased -> increaseFactor *= (1 + status.power / 100.0)

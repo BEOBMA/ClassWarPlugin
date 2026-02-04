@@ -1,6 +1,6 @@
 package org.beobma.classWarPlugin.status.list
 
-import org.beobma.classWarPlugin.status.AttackSpeedHandler
+import org.beobma.classWarPlugin.status.handler.AttackSpeedHandler
 
 class AttackSpeedIncrease : AttackSpeedHandler() {
     override val name: String

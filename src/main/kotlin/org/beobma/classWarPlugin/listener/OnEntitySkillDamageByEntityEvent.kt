@@ -1,8 +1,8 @@
 package org.beobma.classWarPlugin.listener
 
 import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
-import org.beobma.classWarPlugin.gameClass.OnHitHandler
-import org.beobma.classWarPlugin.gameClass.WhenHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getDamageTakenModifier

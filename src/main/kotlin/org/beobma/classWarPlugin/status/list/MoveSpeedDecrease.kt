@@ -1,6 +1,6 @@
 package org.beobma.classWarPlugin.status.list
 
-import org.beobma.classWarPlugin.status.MoveSpeedHandler
+import org.beobma.classWarPlugin.status.handler.MoveSpeedHandler
 
 class MoveSpeedDecrease : MoveSpeedHandler() {
     override val name: String

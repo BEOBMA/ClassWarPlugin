@@ -1,6 +1,6 @@
 package org.beobma.classWarPlugin.status.list
 
-import org.beobma.classWarPlugin.status.WhenDamageHandler
+import org.beobma.classWarPlugin.status.handler.WhenDamageHandler
 
 class WhenDamageIncreased : WhenDamageHandler() {
     override val name: String

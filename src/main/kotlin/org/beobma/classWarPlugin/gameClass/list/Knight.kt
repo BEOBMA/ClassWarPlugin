@@ -4,9 +4,9 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.GameClass
-import org.beobma.classWarPlugin.gameClass.OnHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.Weapon
-import org.beobma.classWarPlugin.gameClass.WhenHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.getConeTargets
