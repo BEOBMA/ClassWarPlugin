@@ -3,23 +3,16 @@ package org.beobma.classWarPlugin.manager
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
-import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.UtilManager.miniMessage
 import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.beobma.classWarPlugin.status.list.*
-import org.beobma.classWarPlugin.util.DamageType
 import org.bukkit.attribute.Attribute
 import org.bukkit.entity.LivingEntity
 import net.kyori.adventure.text.Component
+import org.beobma.classWarPlugin.status.StatusDurationMode
+import org.beobma.classWarPlugin.status.handler.WhenDamageHandler
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
-
-
-// 갱신, 연장
-enum class StatusDurationMode {
-    Refresh,
-    Extend
-}
 
 object StatusAbnormalityManager {
     private val tickingStatuses: MutableSet<StatusAbnormality> = HashSet()
@@ -30,31 +23,22 @@ object StatusAbnormalityManager {
             get() = reductionMultiplier * increaseMultiplier
     }
 
-    fun StatusAbnormality.applyStatus(
-        duration: Int? = null,
-        durationMode: StatusDurationMode = StatusDurationMode.Refresh,
-        powerDelta: Int? = null,
-        powerSet: Int? = null
-    ) {
+    /**
+     * @param duration 지속 시간
+     * @param powerDelta 상태이상의 기본 수치 값에 더할 값
+     * @param powerSet 상태이상의 기본 수치 값에 덮어 씌울 값
+     */
+    fun StatusAbnormality.applyStatus(duration: Int? = null, powerDelta: Int? = null, powerSet: Int? = null) {
         powerSet?.let { updatePower(it) }
         powerDelta?.let { increasePower(it) }
         if (duration != null) {
             when (durationMode) {
                 StatusDurationMode.Refresh -> updateDuration(duration)
                 StatusDurationMode.Extend -> increaseDuration(duration)
+                StatusDurationMode.Ignore -> return
             }
         }
     }
-
-    fun EntityData.vibrationExplosion(damager: PlayerData) {
-        val vibration = getStatus<Vibration>()
-
-        if (vibration == null || vibration.power <= 0) return
-        damage(vibration.power.toDouble(), DamageType.StatusAbnormality, damager)
-        vibration.remove()
-    }
-
-
 
     inline fun <reified T : StatusAbnormality> EntityData.getStatus(): T? {
         return statusAbnormalitys.firstOrNull { it is T } as? T
@@ -68,18 +52,18 @@ object StatusAbnormalityManager {
         return statusAbnormalitys.any { it is T }
     }
 
-    fun EntityData.addStatus(status: StatusAbnormality): StatusAbnormality {
-        status.inject(this)
+    fun EntityData.addStatus(status: StatusAbnormality, victimData: PlayerData): StatusAbnormality {
+        status.inject(this, victimData)
         statusAbnormalitys.add(status)
         return status
     }
 
-    inline fun <reified T : StatusAbnormality> EntityData.getOrCreateStatus(creator: () -> T): T {
+    inline fun <reified T : StatusAbnormality> EntityData.getOrCreateStatus(victimData: PlayerData, creator: () -> T): T {
         val existing = statusAbnormalitys.firstOrNull { it is T } as? T
         if (existing != null) return existing
 
         val newStatus = creator()
-        newStatus.inject(this)
+        newStatus.inject(this, victimData)
         statusAbnormalitys.add(newStatus)
         return newStatus
     }
@@ -127,6 +111,7 @@ object StatusAbnormalityManager {
         var reductionFactor = 1.0
         var increaseFactor = 1.0
         for (status in statusAbnormalitys) {
+            if (status !is WhenDamageHandler) continue
             when (status) {
                 is WhenDamageReduction -> reductionFactor *= (1 - status.power / 100.0)
                 is WhenDamageIncreased -> increaseFactor *= (1 + status.power / 100.0)
@@ -197,8 +182,11 @@ object StatusAbnormalityManager {
             .sortedBy { it.name }
             .joinToString(" <dark_gray> | </dark_gray> ") { status ->
                 val durationLabel = status.duration?.let { "<dark_gray>|</dark_gray><yellow>${it}s</yellow>" } ?: ""
-                val maxPowerLabel = status.maxPower?.let { "<dark_gray>/</dark_gray><gold>${it}</gold>" } ?: ""
-                "${status.name}: <gold>${status.power}${maxPowerLabel}${durationLabel}"
+                val powerLabel = if (status.showPower) "<gold>${status.power}</gold>" else ""
+                val maxPowerLabel =
+                    if (status.showMaxPower) status.maxPower?.let { "<dark_gray>/</dark_gray><gold>${it}</gold>" }
+                        ?: "" else ""
+                "${status.name}: ${powerLabel}${maxPowerLabel}${durationLabel}"
             }
     }
 }

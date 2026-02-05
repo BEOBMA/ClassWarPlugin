@@ -1,21 +1,19 @@
 package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.ClassWarPlugin
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.GameClass
-import org.beobma.classWarPlugin.gameClass.OnHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.Weapon
-import org.beobma.classWarPlugin.gameClass.WhenHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.getConeTargets
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
-import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
-import org.beobma.classWarPlugin.manager.StatusDurationMode
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
-import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.Bleeding
@@ -57,21 +55,28 @@ class KnightsRedSkill : Skill() {
     override val description = listOf(
         "<gray>2칸 내의 바라보는 적에게 6의 피해를 입히고 3초간 {keyword:Bleeding}을 3 부여한다.",
         "",
-        dictionary[Keyword.Bleeding]!!,
-        dictionary[Keyword.AbnormalStatusDamage]!!
+        Keyword.Bleeding.description!!,
+        Keyword.AbnormalStatusDamage.description!!
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         val target = playerData.shotLaserGetEntityData(2.0, TargetType.Enemy, false) ?: run {
             player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-            return false
+            return
         }
         target.damage(6.0, DamageType.Normal, playerData)
         val targetPlayer = target as? PlayerData
         if (targetPlayer != null) {
-            val status = targetPlayer.getOrCreateStatus { Bleeding() }
-            status.applyStatus(duration = 3, durationMode = StatusDurationMode.Refresh)
+            val status = targetPlayer.getOrCreateStatus(playerData) { Bleeding() }
+            status.applyStatus(duration = 3, 3)
+        }
+    }
+
+    override fun isUseSuccess(): Boolean {
+        playerData.shotLaserGetEntityData(2.0, TargetType.Enemy, false) ?: run {
+            player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+            return false
         }
         return true
     }
@@ -83,22 +88,21 @@ class KnightsOrangeSkill : Skill() {
         "<gray>바라보는 방향으로 검을 휘두른다.",
         "<gray>적중한 모든 적에게 5의 피해를 입히고 3초간 {keyword:Bleeding}을 5 부여한다.",
         "",
-        dictionary[Keyword.Bleeding]!!,
-        dictionary[Keyword.AbnormalStatusDamage]!!
+        Keyword.Bleeding.description!!,
+        Keyword.AbnormalStatusDamage.description!!
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         val targets = playerData.getConeTargets(5.0, 100.0, TargetType.Enemy, false)
         targets.forEach {
             it.damage(5.0, DamageType.Normal, playerData)
             val targetPlayer = it as? PlayerData
             if (targetPlayer != null) {
-                val status = targetPlayer.getOrCreateStatus { Bleeding() }
-                status.applyStatus(duration = 3, durationMode = StatusDurationMode.Refresh)
+                val status = targetPlayer.getOrCreateStatus(playerData) { Bleeding() }
+                status.applyStatus(duration = 3, powerSet = 5)
             }
         }
-        return true
     }
 }
 
@@ -110,18 +114,11 @@ class KnightsYellowSkill : Skill(), WhenHitHandler {
     )
     override val cooldown = 30
 
-    override fun use(): Boolean {
+    override fun use() {
         activateParry()
-        return true
     }
 
     private var isParry = false
-    override fun whenHit(
-        skillDamageEvent: PlayerSkillDamageByPlayerEvent?,
-        attackDamageEvent: EntityDamageByEntityEvent?
-    ) {
-        return
-    }
 
     override fun whenAttackHit(event: EntityDamageByEntityEvent) {
         if (isParry) {
@@ -129,10 +126,6 @@ class KnightsYellowSkill : Skill(), WhenHitHandler {
             event.isCancelled = true
             player.setCooldown(Material.YELLOW_DYE, 0)
         }
-    }
-
-    override fun whenSkillAttackHit(event: PlayerSkillDamageByPlayerEvent) {
-        return
     }
 
     fun activateParry() {
@@ -152,8 +145,8 @@ class KnightsPassive : Passive(), OnHitHandler {
         "<gray>기본 공격 적중 시 3초간 적에게 {keyword:Bleeding}을 1 부여한다.",
         "<gray>그리고 즉시 {keyword:Bleeding}을 발동한다.",
         "",
-        dictionary[Keyword.Bleeding]!!,
-        dictionary[Keyword.AbnormalStatusDamage]!!
+        Keyword.Bleeding.description!!,
+        Keyword.AbnormalStatusDamage.description!!
     )
 
     override fun onHit(
@@ -167,8 +160,8 @@ class KnightsPassive : Passive(), OnHitHandler {
         val entity = event.entity
         val entityData = game.playerDatas.filterIsInstance<PlayerData>()
             .find { it.player == entity } ?: return
-        val status = entityData.getOrCreateStatus { Bleeding() }
-        status.applyStatus(duration = 3, durationMode = StatusDurationMode.Refresh)
+        val status = entityData.getOrCreateStatus(playerData) { Bleeding() }
+        status.applyStatus(duration = 3, powerSet = 1)
 
         entityData.damage(status.power.toDouble(), DamageType.StatusAbnormality, playerData)
         status.updatePower(status.power / 2)

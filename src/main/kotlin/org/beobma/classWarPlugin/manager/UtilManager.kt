@@ -2,7 +2,6 @@ package org.beobma.classWarPlugin.manager
 
 import net.kyori.adventure.text.minimessage.MiniMessage
 import org.beobma.classWarPlugin.keyword.Keyword
-import org.beobma.classWarPlugin.keyword.Dictionary
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.attribute.Attribute
@@ -11,7 +10,6 @@ import org.bukkit.entity.Player
 import org.bukkit.entity.EntityType
 
 object UtilManager {
-    val dictionary = Dictionary().dictionary
     val miniMessage = MiniMessage.miniMessage()
     private val keywordTokenRegex = "\\{keyword:([A-Za-z]+)}".toRegex()
     private val keywordTokens = enumValues<Keyword>().associateBy { it.name }

@@ -2,13 +2,11 @@ package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.GameClass
-import org.beobma.classWarPlugin.gameClass.OnHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.Weapon
 import org.beobma.classWarPlugin.manager.PlayerManager.heal
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
-import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
-import org.beobma.classWarPlugin.manager.StatusDurationMode
 import org.beobma.classWarPlugin.manager.UtilManager.getPlayerMaxHealth
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
@@ -49,14 +47,13 @@ class BerserkersRedSkill : Skill() {
     override val cooldown: Int
         get() = 10
 
-    override fun use(): Boolean {
-        val playerAttackSpeedIncrease = playerData.getOrCreateStatus { AttackSpeedIncrease() }
+    override fun use(){
+        val attackSpeedIncrease = AttackSpeedIncrease()
+        val playerAttackSpeedIncrease = playerData.addStatus(attackSpeedIncrease, playerData)
         playerAttackSpeedIncrease.applyStatus(
             duration = 5,
-            durationMode = StatusDurationMode.Extend,
             powerDelta = 30
         )
-        return true
     }
 }
 
@@ -71,21 +68,18 @@ class BerserkersOrangeSkill : Skill() {
     override val cooldown: Int
         get() = 40
 
-    override fun use(): Boolean {
-        val playerMoveSpeedIncrease = playerData.addStatus(MoveSpeedIncrease())
-        val playerWhenDamageReduction = playerData.addStatus(WhenDamageReduction())
+    override fun use() {
+        val playerMoveSpeedIncrease = playerData.addStatus(MoveSpeedIncrease(), playerData)
+        val playerWhenDamageReduction = playerData.addStatus(WhenDamageReduction(), playerData)
 
         playerMoveSpeedIncrease.applyStatus(
             duration = 10,
-            durationMode = StatusDurationMode.Extend,
             powerDelta = 30
         )
         playerWhenDamageReduction.applyStatus(
             duration = 10,
-            durationMode = StatusDurationMode.Extend,
             powerDelta = 40
         )
-        return true
     }
 }
 

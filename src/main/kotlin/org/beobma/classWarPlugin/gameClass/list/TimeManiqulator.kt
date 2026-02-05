@@ -41,8 +41,8 @@ class TimeManiqulatorsRedSkill : Skill() {
     )
     override val cooldown = 0
 
-    override fun use(): Boolean {
-        return true
+    override fun use() {
+        //TODO()
     }
 }
 
@@ -54,13 +54,13 @@ class TimeManiqulatorsOrangeSkill : Skill() {
         "<gray>체크포인트를 불러온다.",
         "<gray>불러온 후 체크포인트 저장 시점과의 차이에 비례하여 <dark_red><bold>최대 체력이 감소</bold><gray>한다.",
         "",
-        "<dark_gray>위치 차이 1칸 당 최대 체력이 0.1 감소하고.",
+        "<dark_gray>위치 차이 1칸 당 최대 체력이 0.1 감소한다.",
         "<dark_gray>체력 차이 1 당 0.5 감소한다."
     )
     override val cooldown = 0
 
-    override fun use(): Boolean {
-        return true
+    override fun use() {
+        //TODO()
     }
 }
 

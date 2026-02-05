@@ -1,21 +1,19 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.entity.player.TeamType
 import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.GameClass
-import org.beobma.classWarPlugin.gameClass.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.Weapon
+import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
-import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
-import org.beobma.classWarPlugin.manager.StatusDurationMode
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
-import org.beobma.classWarPlugin.entity.player.PlayerData
-import org.beobma.classWarPlugin.entity.player.TeamType
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.Exile
@@ -66,15 +64,22 @@ class JudgesRedSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         val targetData = playerData.shotLaserGetEntityData(3.0, TargetType.Enemy, false) ?: run {
             player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-            return false
+            return
         }
         when (judgesUtils.getTeamStatus(playerData)) {
             TeamStatus.Advantage -> targetData.damage(6.0, DamageType.Normal, playerData)
             TeamStatus.Balance -> targetData.damage(8.0, DamageType.Normal, playerData)
             TeamStatus.Inferiority -> targetData.damage(10.0, DamageType.Normal, playerData)
+        }
+    }
+
+    override fun isUseSuccess(): Boolean {
+        playerData.shotLaserGetEntityData(3.0, TargetType.Enemy, false) ?: run {
+            player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+            return false
         }
         return true
     }
@@ -92,14 +97,13 @@ class JudgesOrangeSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
-        val shield = playerData.addStatus(Shield())
+    override fun use() {
+        val shield = playerData.addStatus(Shield(), playerData)
         val power = when (judgesUtils.getTeamStatus(playerData)) {
             TeamStatus.Advantage, TeamStatus.Balance -> 6
             TeamStatus.Inferiority -> 8
         }
-        shield.applyStatus(duration = 5, durationMode = StatusDurationMode.Extend, powerDelta = power)
-        return true
+        shield.applyStatus(duration = 5, powerDelta = power)
     }
 }
 
@@ -112,21 +116,28 @@ class JudgesYellowSkill : Skill() {
         "",
         "<gray>아군과 적군의 수가 동일해질 때까지 무작위 적을 전장에서 5초간 {keyword:Exile}한다.",
         "",
-        dictionary[Keyword.Exile]!!
+        Keyword.Exile.description!!
     )
     override val cooldown = Int.MAX_VALUE
 
-    override fun use(): Boolean {
+    override fun use() {
         if (judgesUtils.getTeamStatus(playerData) != TeamStatus.Inferiority) {
             player.sendMiniMessage("<red><bold>[!] 수적 열세 상황에서만 사용할 수 있습니다.")
-            return false
+            return
         }
         while (judgesUtils.getTeamStatus(playerData) != TeamStatus.Balance) {
             val enemies = game.playerDatas.filterIsInstance<PlayerData>()
                 .filter { it.team != playerData.team && !it.entityStatus.isDead && it.getStatus<Exile>() == null }
             val enemy = enemies.randomOrNull() ?: break
-            val exile = enemy.getOrCreateStatus { Exile() }
-            exile.applyStatus(duration = 5, durationMode = StatusDurationMode.Extend)
+            val exile = enemy.getOrCreateStatus(playerData) { Exile() }
+            exile.applyStatus(duration = 5)
+        }
+    }
+
+    override fun isUseSuccess(): Boolean {
+        if (judgesUtils.getTeamStatus(playerData) != TeamStatus.Inferiority) {
+            player.sendMiniMessage("<red><bold>[!] 수적 열세 상황에서만 사용할 수 있습니다.")
+            return false
         }
         return true
     }

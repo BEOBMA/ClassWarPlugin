@@ -16,8 +16,10 @@ abstract class Skill {
     abstract val cooldown: Int?
 
     open val nextSkill: Skill? = null
+    open val isOnOffSKill: Boolean = false
 
-    abstract fun use(): Boolean
+    abstract fun use()
+    open fun isUseSuccess(): Boolean = true
 
     fun inject(playerData: PlayerData) {
         if (playerData.entityStatus !is PlayerStatus) return

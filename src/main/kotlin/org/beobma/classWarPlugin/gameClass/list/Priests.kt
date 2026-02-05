@@ -42,9 +42,8 @@ class PriestsRedSkill : Skill() {
     )
     override val cooldown = 7
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 대상 아군 체력 5 회복. 없으면 자신에게
-        return true
     }
 }
 
@@ -57,9 +56,8 @@ class PriestsOrangeSkill : Skill() {
     )
     override val cooldown = 20
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 바라보는 아군의 해로운 상태 이상 제거
-        return true
     }
 }
 
@@ -72,9 +70,8 @@ class PriestsYellowSkill : Skill() {
     )
     override val cooldown = Int.MAX_VALUE
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 대상 아군에게 5초간 죽음 방지 효과
-        return true
     }
 }
 

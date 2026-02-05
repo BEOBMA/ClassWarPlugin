@@ -6,14 +6,12 @@ import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.event.PlayerStatusEffectDamageByPlayerEvent
-import org.beobma.classWarPlugin.gameClass.GameStatusHandler
+import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.manager.GameClassManager.toItemStack
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.util.DamageCalculator
 import org.beobma.classWarPlugin.util.DamageType
-import org.beobma.classWarPlugin.util.DamageType.Normal
 import org.beobma.classWarPlugin.util.DamageType.StatusAbnormality
-import org.beobma.classWarPlugin.util.DamageType.True
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.entity.Player
@@ -86,7 +84,12 @@ object PlayerManager {
         }
     }
 
-    fun PlayerData.damage(damage: Double, damageType: DamageType, damager: PlayerData, isInvincibilityTimeIgnore: Boolean = true) {
+    fun PlayerData.damage(
+        damage: Double,
+        damageType: DamageType,
+        damager: PlayerData,
+        isInvincibilityTimeIgnore: Boolean = true
+    ) {
         if (damage <= 0.0) {
             return
         }
@@ -146,7 +149,7 @@ object PlayerManager {
         if (finalDamage < 0) {
             return
         }
-        player.heal(finalDamage.toDouble())
+        player.heal(finalDamage)
     }
 
     fun EntityData.damage(

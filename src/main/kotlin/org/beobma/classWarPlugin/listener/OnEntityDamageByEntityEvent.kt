@@ -1,7 +1,7 @@
 package org.beobma.classWarPlugin.listener
 
-import org.beobma.classWarPlugin.gameClass.OnHitHandler
-import org.beobma.classWarPlugin.gameClass.WhenHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
 import org.beobma.classWarPlugin.manager.MannequinStatusManager
@@ -9,13 +9,18 @@ import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getDamageTakenModifier
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
-import org.beobma.classWarPlugin.status.StatusOnHitHandler
+import org.beobma.classWarPlugin.status.handler.StatusOnHitHandler
 import org.beobma.classWarPlugin.util.addDamageTakenMultiplier
 import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.game.Game
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
+import org.beobma.classWarPlugin.status.handler.StatusWhenHitHandler
+import org.beobma.classWarPlugin.status.list.Shield
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDamageByEntityEvent
+import kotlin.math.roundToInt
 
 class OnEntityDamageByEntityEvent : Listener {
 
@@ -125,15 +130,40 @@ class OnEntityDamageByEntityEvent : Listener {
         }
 
         // 상태이상 적용
-        for (status in entityData.statusAbnormalitys) {
+        for (status in damagerData.statusAbnormalitys) {
             if (status is StatusOnHitHandler) {
                 status.onAttackHit(event, damagerData, entityData)
+            }
+        }
+        for (status in entityData.statusAbnormalitys) {
+            if (status is StatusWhenHitHandler) {
+                status.whenAttackHit(event, damagerData, entityData)
             }
         }
 
         // 받피증감
         val damageTakenModifier = entityData.getDamageTakenModifier()
         event.addDamageTakenMultiplier(damageTakenModifier.combinedMultiplier)
+
+        val shield = entityData.getStatus<Shield>()
+        if (shield != null) {
+            val damage = event.damage.roundToInt()
+            val remainDamage = (damage - shield.power).coerceAtLeast(0)
+            val remainShield = (shield.power - damage).coerceAtLeast(0)
+
+            event.damage = remainDamage.toDouble()
+
+            if (remainShield == 0) {
+                shield.remove()
+            } else {
+                shield.updatePower(remainShield)
+            }
+        }
+
+        if (event.damage <= 0.0) {
+            event.isCancelled = true
+            return
+        }
 
         if (entityPlayer.isMannequin()) {
             event.isCancelled = true
@@ -142,16 +172,11 @@ class OnEntityDamageByEntityEvent : Listener {
             return
         }
 
-        if (event.damage <= 0.0) {
-            event.isCancelled = true
-            return
-        }
-
         // 무적 시간 제거
         entity.noDamageTicks = 0
     }
 
-    private fun org.beobma.classWarPlugin.game.Game.findPlayerData(player: Player): PlayerData? {
+    private fun Game.findPlayerData(player: Player): PlayerData? {
         for (data in playerDatas) {
             if (data is PlayerData && data.player == player) {
                 return data

@@ -1,28 +1,16 @@
 package org.beobma.classWarPlugin.status.list
 
-import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.attackSpeedChanged
-import org.beobma.classWarPlugin.status.StatusAbnormality
+import org.beobma.classWarPlugin.status.handler.AttackSpeedHandler
 
-class AttackSpeedIncrease : StatusAbnormality() {
+class AttackSpeedIncrease : AttackSpeedHandler() {
     override val name: String
         get() = "<green><bold>공격 속도 증가<gray>"
     override val description: List<String>
         get() = listOf(
             "<gray>공격 속도가 수치에 따라 증가한다.",
             "",
-            "<dark_gray>최대치 없음."
+            "<gray>수치 개별 합산 적용",
+            "<gray>지속시간 개별 적용",
+            "<gray>지속시간 종료 시 개별 소멸"
         )
-    override var maxPower: Int? = null
-    override var duration: Int? = null
-    override val canRemove: Boolean = true
-
-    override fun onPowerChanged() {
-        entityData.attackSpeedChanged()
-        super.onPowerChanged()
-    }
-
-    override fun onRemoveStatusAbnormality() {
-        entityData.attackSpeedChanged()
-        super.onRemoveStatusAbnormality()
-    }
 }

@@ -13,6 +13,7 @@ import org.beobma.classWarPlugin.listener.OnInventoryCloseEvent
 import org.beobma.classWarPlugin.listener.OnPlayerDeathEvent
 import org.beobma.classWarPlugin.listener.OnPlayerItemHeldEvent
 import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.listener.OnPlayerSkillUseEvent
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.scheduler.BukkitRunnable
@@ -53,6 +54,7 @@ class ClassWarPlugin : JavaPlugin() {
         server.pluginManager.registerEvents(OnEntityStatusEffectDamageByEntityEvent(), this)
         server.pluginManager.registerEvents(OnPlayerItemHeldEvent(), this)
         server.pluginManager.registerEvents(OnFoodChangeEvent(), this)
+        server.pluginManager.registerEvents(OnPlayerSkillUseEvent(), this)
     }
 
     private fun startStatusActionBarTask() {

@@ -43,9 +43,8 @@ class MathematiciansRedSkill : Skill() {
     )
     override val cooldown = 0
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 좌표축 위치 저장 및 제한 로직
-        return true
     }
 }
 
@@ -58,9 +57,8 @@ class MathematiciansOrangeSkill : Skill() {
     )
     override val cooldown = 5
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 좌표축 2개로 박스 생성 및 내부 적 타격
-        return true
     }
 }
 
@@ -72,9 +70,8 @@ class MathematiciansYellowSkill : Skill() {
     )
     override val cooldown = 20
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 생성된 직육면체 삭제 및 피해 적용
-        return true
     }
 }
 

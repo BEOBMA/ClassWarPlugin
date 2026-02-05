@@ -5,7 +5,6 @@ import org.bukkit.Bukkit
 
 object Info {
     var game: Game? = null
-    val world = Bukkit.getWorlds().first()
 
     fun isGaming(): Boolean {
         return game != null

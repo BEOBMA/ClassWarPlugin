@@ -1,6 +1,7 @@
-package org.beobma.classWarPlugin.status
+package org.beobma.classWarPlugin.status.handler
 
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.moveSpeedChanged
+import org.beobma.classWarPlugin.status.StatusAbnormality
 
 abstract class MoveSpeedHandler : StatusAbnormality() {
     override var maxPower: Int? = null

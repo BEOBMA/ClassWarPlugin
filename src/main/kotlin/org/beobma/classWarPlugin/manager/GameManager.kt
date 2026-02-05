@@ -9,7 +9,7 @@ import org.beobma.classWarPlugin.game.GameSetDetailType
 import org.beobma.classWarPlugin.game.GameSetType
 import org.beobma.classWarPlugin.game.GameSetType.*
 import org.beobma.classWarPlugin.gameClass.GameClass
-import org.beobma.classWarPlugin.gameClass.GameStatusHandler
+import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.list.Sniper
 import org.beobma.classWarPlugin.gameClass.list.Assassin
 import org.beobma.classWarPlugin.gameClass.list.Astronomer
@@ -51,6 +51,7 @@ import org.bukkit.Bukkit
 import org.bukkit.GameMode
 import org.bukkit.Location
 import org.bukkit.Sound
+import org.bukkit.World
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
@@ -60,6 +61,8 @@ object GameManager{
     private val gameMapList: List<Map> = listOf(
         Forest()
     )
+
+    val gameWorld: World = Bukkit.getWorlds().first()
 
     val gameClassList: List<GameClass> = listOf(
         Berserker(), Sniper(), FireWizard(), WaterWizard(), TimeManiqulator(), LandWizard(), WindWizard(),

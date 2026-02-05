@@ -38,9 +38,8 @@ class DummysRedSkill : Skill() {
     override val description = listOf("<gray>스킬 1 설명")
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use()  {
         // TODO: 스킬 효과 구현 예정
-        return true
     }
 }
 
@@ -49,9 +48,8 @@ class DummysOrangeSkill : Skill() {
     override val description = listOf("<gray>스킬 2 설명")
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 스킬 효과 구현 예정
-        return true
     }
 }
 
@@ -60,9 +58,8 @@ class DummysYellowSkill : Skill() {
     override val description = listOf("<gray>스킬 3 설명")
     override val cooldown = Int.MAX_VALUE
 
-    override fun use(): Boolean {
+    override fun use() {
         // TODO: 스킬 효과 구현 예정
-        return true
     }
 }
 

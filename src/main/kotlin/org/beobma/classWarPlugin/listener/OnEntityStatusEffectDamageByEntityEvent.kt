@@ -2,8 +2,8 @@ package org.beobma.classWarPlugin.listener
 
 import org.beobma.classWarPlugin.event.PlayerStatusEffectDamageByPlayerEvent
 import org.beobma.classWarPlugin.entity.player.PlayerData
-import org.beobma.classWarPlugin.gameClass.OnHitHandler
-import org.beobma.classWarPlugin.gameClass.WhenHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getDamageTakenModifier
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin

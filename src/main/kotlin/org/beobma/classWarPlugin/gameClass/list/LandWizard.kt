@@ -1,24 +1,22 @@
 package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.gameClass.GameClass
-import org.beobma.classWarPlugin.gameClass.GameStatusHandler
+import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.Weapon
-import org.beobma.classWarPlugin.gameClass.WhenHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
-import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.vibrationExplosion
-import org.beobma.classWarPlugin.manager.StatusDurationMode
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Passive
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.Mana
 import org.beobma.classWarPlugin.status.list.Shield
 import org.beobma.classWarPlugin.status.list.Vibration
+import org.beobma.classWarPlugin.status.list.VibrationExplosion
 import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.TargetType
 import org.beobma.classWarPlugin.util.addDamageDealtMultiplier
@@ -45,12 +43,12 @@ class LandWizard : GameClass(), GameStatusHandler {
     )
 
     override fun onBattleStart() {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.increasePower(100)
     }
 
     override fun onGameTimePasses() {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.increasePower(10)
     }
 }
@@ -68,23 +66,27 @@ class LandWizardsRedSkill : Skill() {
         "",
         "<gray>사용 시 주위 모든 적에게 2의 피해를 입히고 10초간 {keyword:Vibration}을 2 부여한다.",
         "",
-        dictionary[Keyword.Vibration]!!,
-        dictionary[Keyword.AbnormalStatusDamage]!!
+        Keyword.Vibration.description!!,
+        Keyword.AbnormalStatusDamage.description!!
     )
     override val cooldown = 2
 
-    override fun use(): Boolean {
-        val mana = playerData.getOrCreateStatus { Mana() }
-        if (mana.power < 20) {
-            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return false
-        }
+    override fun use() {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.decreasePower(20)
         val targets = playerData.radius(player.location, TargetType.Enemy, 4.0, false)
         targets.forEach {
-            val vibration = it.getOrCreateStatus { Vibration() }
-            vibration.applyStatus(duration = 10, durationMode = StatusDurationMode.Refresh, powerDelta = 2)
+            val vibration = it.getOrCreateStatus(playerData) { Vibration() }
+            vibration.applyStatus(duration = 10, powerDelta = 2)
             it.damage(2.0, DamageType.Normal, playerData)
+        }
+    }
+
+    override fun isUseSuccess(): Boolean {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+        if (mana.power < 20) {
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            return false
         }
         return true
     }
@@ -97,24 +99,30 @@ class LandWizardsOrangeSkill : Skill() {
         "",
         "<gray>사용 시 5초간 <aqua><bold>8의 피해를 막는 보호막</bold><gray>을 얻고 주위 모든 적에게 {keyword:VibrationExplosion}을 적용한다.",
         "",
-        dictionary[Keyword.VibrationExplosion]!!,
-        dictionary[Keyword.AbnormalStatusDamage]!!
+        Keyword.VibrationExplosion.description!!,
+        Keyword.AbnormalStatusDamage.description!!
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
-        val mana = playerData.getOrCreateStatus { Mana() }
-        if (mana.power < 100) {
-            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return false
-        }
-        val shield = playerData.addStatus(Shield())
+    override fun use() {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+        val shield = playerData.addStatus(Shield(), playerData)
+
         mana.decreasePower(100)
-        shield.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh, powerDelta = 8)
+        shield.applyStatus(duration = 5, powerDelta = 8)
 
         val targets = playerData.radius(player.location, TargetType.Enemy, 4.0, false)
         targets.forEach {
-            it.vibrationExplosion(playerData)
+            val vibrationExplosion = it.addStatus(VibrationExplosion(), playerData)
+            vibrationExplosion.applyStatus(duration = 1, powerDelta = 1)
+        }
+    }
+
+    override fun isUseSuccess(): Boolean {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+        if (mana.power < 100) {
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            return false
         }
         return true
     }

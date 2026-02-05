@@ -2,8 +2,8 @@ package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.GameClass
-import org.beobma.classWarPlugin.gameClass.GameStatusHandler
-import org.beobma.classWarPlugin.gameClass.OnHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
+import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.Weapon
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
@@ -12,7 +12,6 @@ import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
@@ -46,12 +45,12 @@ class Astronomer : GameClass(), GameStatusHandler {
     )
 
     override fun onBattleStart() {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.updatePower(100)
     }
 
     override fun onGameTimePasses() {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.increasePower(5)
     }
 }
@@ -67,12 +66,19 @@ class AstronomersRedSkill : Skill() {
     override val description = listOf("<gray>8칸 내의 바라보는 적에게 5의 피해를 입힌다.")
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         val target = playerData.shotLaserGetEntityData(8.0, TargetType.Enemy, false) ?: run {
+            player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+            return
+        }
+        target.damage(5.0, DamageType.Normal, playerData)
+    }
+
+    override fun isUseSuccess(): Boolean {
+        playerData.shotLaserGetEntityData(8.0, TargetType.Enemy, false) ?: run {
             player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
             return false
         }
-        target.damage(5.0, DamageType.Normal, playerData)
         return true
     }
 }
@@ -86,7 +92,7 @@ class AstronomersOrangeSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
+    override fun use() {
         val origin = player.location
         val blackHole = AstronomersBlackHole()
         blackHole.location = if (player.isSneaking) {
@@ -94,11 +100,21 @@ class AstronomersOrangeSkill : Skill() {
         } else {
             val block = playerData.shotLaserGetBlock(8.0) ?: run {
                 player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                return false
+                return
             }
             block.location.add(0.5, 1.0, 0.5)
         }
         blackHole.spawnFlooring(playerData)
+    }
+
+    override fun isUseSuccess(): Boolean {
+        if (!player.isSneaking) {
+            playerData.shotLaserGetBlock(8.0) ?: run {
+                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+                return false
+            }
+        }
+
         return true
     }
 }
@@ -129,7 +145,7 @@ class AstronomersYellowSkill : Skill() {
     )
     override val cooldown = Int.MAX_VALUE
 
-    override fun use(): Boolean {
+    override fun use() {
         val enemyField = AstronomersEnemyField()
         val teamField = AstronomersTeamField()
         val currentLocation = player.location.clone()
@@ -137,7 +153,6 @@ class AstronomersYellowSkill : Skill() {
         teamField.location = currentLocation
         enemyField.spawnFlooring(playerData)
         teamField.spawnFlooring(playerData)
-        return true
     }
 }
 
@@ -153,8 +168,8 @@ class AstronomersEnemyField : Flooring() {
         val hitPlayerData = hitEntityData as? PlayerData ?: return
         hitPlayerData.damage(2.0, DamageType.Normal, playerData, false)
         if (affected.add(hitPlayerData)) {
-            val moveSpeedDecrease = hitPlayerData.addStatus(MoveSpeedDecrease())
-            val whenDamageIncrease = hitPlayerData.addStatus(WhenDamageIncreased())
+            val moveSpeedDecrease = hitPlayerData.addStatus(MoveSpeedDecrease(), playerData)
+            val whenDamageIncrease = hitPlayerData.addStatus(WhenDamageIncreased(), playerData)
             moveSpeedDecrease.increasePower(20)
             whenDamageIncrease.increasePower(15)
             moveSpeedDecrease.setContinueWhileIf { affected.contains(hitPlayerData) }
@@ -183,8 +198,8 @@ class AstronomersTeamField : Flooring() {
         val hitPlayerData = hitEntityData as? PlayerData ?: return
         hitPlayerData.heal(2.0, DamageType.Normal, playerData)
         if (affected.add(hitPlayerData)) {
-            val moveSpeedIncrease = hitPlayerData.addStatus(MoveSpeedIncrease())
-            val whenDamageReduction = hitPlayerData.addStatus(WhenDamageReduction())
+            val moveSpeedIncrease = hitPlayerData.addStatus(MoveSpeedIncrease(), playerData)
+            val whenDamageReduction = hitPlayerData.addStatus(WhenDamageReduction(), playerData)
             moveSpeedIncrease.increasePower(20)
             whenDamageReduction.increasePower(15)
             moveSpeedIncrease.setContinueWhileIf { affected.contains(hitPlayerData) }
@@ -212,12 +227,12 @@ class AstronomersPassive : Passive(), OnHitHandler {
         "<gray>떨어트리는 별의 수는 소모한 {keyword:Mana} 양에 비례하여 증가한다. (20당 1개, 최대 5개)",
         "<gray>별은 적중한 적에게 1의 {keyword:TrueDamage}를 입힌다.",
         "",
-        dictionary[Keyword.TrueDamage] ?: ""
+        Keyword.TrueDamage.description ?: ""
     )
 
     override fun onSkillAttackHit(event: PlayerSkillDamageByPlayerEvent) {
         if (event.damageType == DamageType.True) return
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         val count = (mana.power / 20).coerceIn(1, 5)
         val targetLoc = event.entity.entity.location.add(0.0, 5.0, 0.0)
         repeat(count) {

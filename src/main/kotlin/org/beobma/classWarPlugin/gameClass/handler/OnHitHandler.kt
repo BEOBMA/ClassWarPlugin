@@ -1,4 +1,4 @@
-package org.beobma.classWarPlugin.gameClass
+package org.beobma.classWarPlugin.gameClass.handler
 
 import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.event.PlayerStatusEffectDamageByPlayerEvent

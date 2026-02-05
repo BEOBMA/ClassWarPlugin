@@ -1,24 +1,21 @@
 package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.ClassWarPlugin
+import org.beobma.classWarPlugin.entity.EntityData
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
-import org.beobma.classWarPlugin.gameClass.GameClass
-import org.beobma.classWarPlugin.gameClass.GameStatusHandler
-import org.beobma.classWarPlugin.gameClass.OnHitHandler
-import org.beobma.classWarPlugin.gameClass.Weapon
-import org.beobma.classWarPlugin.gameClass.WhenHitHandler
+import org.beobma.classWarPlugin.gameClass.*
+import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
+import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
-import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
-import org.beobma.classWarPlugin.manager.StatusDurationMode
-import org.beobma.classWarPlugin.manager.UtilManager.dictionary
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
-import org.beobma.classWarPlugin.entity.EntityData
-import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.skill.*
 import org.beobma.classWarPlugin.status.list.Frostbite
 import org.beobma.classWarPlugin.status.list.Mana
@@ -52,12 +49,12 @@ class IceWizard : GameClass(), GameStatusHandler {
     )
 
     override fun onBattleStart() {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.increasePower(100)
     }
 
     override fun onGameTimePasses() {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.increasePower(10)
     }
 }
@@ -79,20 +76,22 @@ class IceWizardsRedSkill : Skill() {
         "",
         "<gray>활성화 시 자신 주위 모든 적에게 초당 3의 피해를 입히고 {keyword:Frostbite}을 2 부여한다.",
         "",
-        dictionary[Keyword.Frostbite] ?: "",
-        dictionary[Keyword.Freezing] ?: "",
-        dictionary[Keyword.AbnormalStatusDamage] ?: ""
+        Keyword.Frostbite.description ?: "",
+        Keyword.Freezing.description ?: "",
+        Keyword.AbnormalStatusDamage.description ?: ""
     )
     override val cooldown = 1
 
-    override fun use(): Boolean {
-        val mana = playerData.getOrCreateStatus { Mana() }
+    override val isOnOffSKill: Boolean = true
+
+    override fun use() {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
 
         if (bukkitTask != null) {
             bukkitTask?.cancel()
             bukkitTask = null
             applyDamagePlayerDatas.clear()
-            return true
+            return
         }
 
         bukkitTask = playerData.trackTask(object : BukkitRunnable() {
@@ -109,14 +108,13 @@ class IceWizardsRedSkill : Skill() {
                     applyDamagePlayerDatas[it] = applyDamagePlayerDatas.getOrDefault(it, 20) - 1
                     it.damage(3.0, DamageType.Normal, playerData)
                     if (frostbiteTarget != null) {
-                        val frostbite = frostbiteTarget.getOrCreateStatus { Frostbite() }
-                        frostbite.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh, powerDelta = 2)
+                        val frostbite = frostbiteTarget.getOrCreateStatus(playerData) { Frostbite() }
+                        frostbite.applyStatus(duration = 5, powerDelta = 2)
                     }
                 }
                 mana.decreasePower(10)
             }
         }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
-        return true
     }
 }
 
@@ -129,23 +127,27 @@ class IceWizardsOrangeSkill : Skill() {
         "<gray>적중한 적에게 8의 피해를 입히고 {keyword:Frostbite}을 4 부여한다.",
         "<gray>스킬 적중 시 소모한 {keyword:Mana}의 50%를 돌려받는다.",
         "",
-        dictionary[Keyword.Frostbite] ?: "",
-        dictionary[Keyword.Freezing] ?: "",
-        dictionary[Keyword.AbnormalStatusDamage] ?: ""
+        Keyword.Frostbite.description ?: "",
+        Keyword.Freezing.description ?: "",
+        Keyword.AbnormalStatusDamage.description ?: ""
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
-        val mana = playerData.getOrCreateStatus { Mana() }
-        if (mana.power < 40) {
-            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return false
-        }
+    override fun use() {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
 
         mana.decreasePower(40)
         val projectile = IceWizardsIcicleProjectile()
         projectile.location = player.location.clone()
         projectile.spawnProjectile(playerData)
+    }
+
+    override fun isUseSuccess(): Boolean {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+        if (mana.power < 40) {
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            return false
+        }
         return true
     }
 }
@@ -164,10 +166,10 @@ class IceWizardsIcicleProjectile : Projectile() {
             hitEntityData.damage(8.0, DamageType.Normal, playerData)
             return
         }
-        val frostbite = hitPlayerData.getOrCreateStatus { Frostbite() }
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val frostbite = hitPlayerData.getOrCreateStatus(playerData) { Frostbite() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         hitPlayerData.damage(8.0, DamageType.Normal, playerData)
-        frostbite.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh, powerDelta = 4)
+        frostbite.applyStatus(duration = 5, powerDelta = 4)
         mana.increasePower(20)
     }
 }
@@ -182,18 +184,14 @@ class IceWizardsYellowSkill : Skill() {
         "<gray>스킬 적중 시 소모한 {keyword:Mana}를 돌려받는다.",
         "<dark_gray>웅크린 상태에서 사용하면 자신의 위치에 창을 떨어트릴 수도 있다.",
         "",
-        dictionary[Keyword.Frostbite] ?: "",
-        dictionary[Keyword.Freezing] ?: "",
-        dictionary[Keyword.AbnormalStatusDamage] ?: ""
+        Keyword.Frostbite.description ?: "",
+        Keyword.Freezing.description ?: "",
+        Keyword.AbnormalStatusDamage.description ?: ""
     )
     override val cooldown = 30
 
-    override fun use(): Boolean {
-        val mana = playerData.getOrCreateStatus { Mana() }
-        if (mana.power < 100) {
-            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return false
-        }
+    override fun use() {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         val meteor = IceWizardsIceSpear()
 
 
@@ -202,13 +200,27 @@ class IceWizardsYellowSkill : Skill() {
         } else {
             playerData.shotLaserGetBlock(8.0)?.location?.add(0.0, 5.0, 0.0) ?: run {
                 player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                return false
+                return
             }
         }
         meteor.location = location
 
         mana.decreasePower(100)
         meteor.spawnMeteor(playerData)
+    }
+
+    override fun isUseSuccess(): Boolean {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+        if (mana.power < 100) {
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            return false
+        }
+        if (!player.isSneaking) {
+            playerData.shotLaserGetBlock(8.0)?.location?.add(0.0, 5.0, 0.0) ?: run {
+                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+                return false
+            }
+        }
         return true
     }
 }
@@ -220,12 +232,12 @@ class IceWizardsIceSpear : Meteor() {
     override var targetType: TargetType = TargetType.Enemy
 
     override fun onMeteorEntityHit(hitEntityData: EntityData, location: Location) {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         val hitPlayerData = hitEntityData as? PlayerData
         if (hitPlayerData != null) {
-            val frostbite = hitPlayerData.getOrCreateStatus { Frostbite() }
+            val frostbite = hitPlayerData.getOrCreateStatus(playerData) { Frostbite() }
             hitPlayerData.damage(15.0, DamageType.Normal, playerData)
-            frostbite.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh, powerDelta = 7)
+            frostbite.applyStatus(duration = 5, powerDelta = 7)
         } else {
             hitEntityData.damage(15.0, DamageType.Normal, playerData)
         }
@@ -242,9 +254,9 @@ class IceWizardsPassive : Passive(), OnHitHandler, WhenHitHandler {
         "<gray>영역의 영향을 받은 적에게 {keyword:Frostbite}을 2 부여한다.",
         "<gray>이 효과는 영역 당 같은 대상에게 1번만 발동할 수 있다.",
         "",
-        dictionary[Keyword.Frostbite] ?: "",
-        dictionary[Keyword.Freezing] ?: "",
-        dictionary[Keyword.AbnormalStatusDamage] ?: ""
+        Keyword.Frostbite.description ?: "",
+        Keyword.Freezing.description ?: "",
+        Keyword.AbnormalStatusDamage.description ?: ""
     )
 
     override fun onHit(
@@ -272,6 +284,7 @@ class IceWizardsPassive : Passive(), OnHitHandler, WhenHitHandler {
     override fun whenAttackHit(event: EntityDamageByEntityEvent) {
         return
     }
+
     override fun whenSkillAttackHit(event: PlayerSkillDamageByPlayerEvent) {
         return
     }
@@ -287,10 +300,10 @@ class IceWizardsFrostZone(override var location: Location) : Flooring() {
     override fun onFlooringEntityHit(hitEntityData: EntityData, location: Location) {
         val hitPlayerData = hitEntityData as? PlayerData ?: return
         if (hitPlayerData in hitPlayerDatas) return
-        val moveSpeedDecrease = hitPlayerData.addStatus(MoveSpeedDecrease())
-        val frostbite = hitPlayerData.getOrCreateStatus { Frostbite() }
+        val moveSpeedDecrease = hitPlayerData.addStatus(MoveSpeedDecrease(), playerData)
+        val frostbite = hitPlayerData.getOrCreateStatus(playerData) { Frostbite() }
         moveSpeedDecrease.increasePower(25)
-        frostbite.applyStatus(duration = 5, durationMode = StatusDurationMode.Refresh, powerDelta = 2)
+        frostbite.applyStatus(duration = 5, powerDelta = 2)
         moveSpeedDecrease.setContinueWhileIf { hitPlayerDatas.contains(hitPlayerData) }
         hitPlayerDatas.add(hitPlayerData)
     }

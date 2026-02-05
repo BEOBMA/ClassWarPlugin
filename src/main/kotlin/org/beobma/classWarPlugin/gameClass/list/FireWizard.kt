@@ -2,9 +2,9 @@ package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.gameClass.GameClass
-import org.beobma.classWarPlugin.gameClass.GameStatusHandler
+import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.Weapon
-import org.beobma.classWarPlugin.gameClass.WhenHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
@@ -39,12 +39,12 @@ class FireWizard : GameClass(), GameStatusHandler {
     )
 
     override fun onBattleStart() {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.increasePower(100)
     }
 
     override fun onGameTimePasses() {
-        val mana = playerData.getOrCreateStatus { Mana() }
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.increasePower(10)
     }
 }
@@ -64,18 +64,22 @@ class FireWizardsRedSkill : Skill() {
     )
     override val cooldown = 10
 
-    override fun use(): Boolean {
-        val mana = playerData.getOrCreateStatus { Mana() }
-        if (mana.power < 40) {
-            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return false
-        }
+    override fun use() {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.decreasePower(40)
 
         val targets = playerData.radius(player.location, TargetType.Enemy, 5.0, false)
         targets.forEach {
             it.damage(8.0, DamageType.Normal, playerData)
             it.entity.fireTicks += 80
+        }
+    }
+
+    override fun isUseSuccess(): Boolean {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+        if (mana.power < 40) {
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            return false
         }
         return true
     }
@@ -92,18 +96,14 @@ class FireWizardsOrangeSkill : Skill() {
     )
     override val cooldown = Int.MAX_VALUE
 
-    override fun use(): Boolean {
-        val mana = playerData.getOrCreateStatus { Mana() }
-        if (mana.power < 100) {
-            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return false
-        }
+    override fun use() {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.decreasePower(100)
 
         val location = if (player.isSneaking) {
             playerData.shotLaserGetBlock(4.0)?.location?.add(0.5, 1.0, 0.5) ?: run {
                 player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                return false
+                return
             }
         } else {
             player.location.clone()
@@ -120,6 +120,20 @@ class FireWizardsOrangeSkill : Skill() {
                 }
             }.runTaskLater(ClassWarPlugin.instance, 60L)
         )
+    }
+
+    override fun isUseSuccess(): Boolean {
+        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+        if (mana.power < 100) {
+            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
+            return false
+        }
+        if (player.isSneaking) {
+            playerData.shotLaserGetBlock(4.0)?.location?.add(0.5, 1.0, 0.5) ?: run {
+                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+                return false
+            }
+        }
         return true
     }
 }
