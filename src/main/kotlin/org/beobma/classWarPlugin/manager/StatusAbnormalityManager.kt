@@ -23,11 +23,12 @@ object StatusAbnormalityManager {
             get() = reductionMultiplier * increaseMultiplier
     }
 
-    fun StatusAbnormality.applyStatus(
-        duration: Int? = null,
-        powerDelta: Int? = null,
-        powerSet: Int? = null
-    ) {
+    /**
+     * @param duration 지속 시간
+     * @param powerDelta 상태이상의 기본 수치 값에 더할 값
+     * @param powerSet 상태이상의 기본 수치 값에 덮어 씌울 값
+     */
+    fun StatusAbnormality.applyStatus(duration: Int? = null, powerDelta: Int? = null, powerSet: Int? = null) {
         powerSet?.let { updatePower(it) }
         powerDelta?.let { increasePower(it) }
         if (duration != null) {
@@ -38,7 +39,6 @@ object StatusAbnormalityManager {
             }
         }
     }
-
 
     inline fun <reified T : StatusAbnormality> EntityData.getStatus(): T? {
         return statusAbnormalitys.firstOrNull { it is T } as? T

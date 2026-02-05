@@ -13,11 +13,14 @@ import org.beobma.classWarPlugin.status.handler.StatusOnHitHandler
 import org.beobma.classWarPlugin.util.addDamageTakenMultiplier
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.game.Game
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
 import org.beobma.classWarPlugin.status.handler.StatusWhenHitHandler
+import org.beobma.classWarPlugin.status.list.Shield
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDamageByEntityEvent
+import kotlin.math.roundToInt
 
 class OnEntityDamageByEntityEvent : Listener {
 
@@ -142,15 +145,30 @@ class OnEntityDamageByEntityEvent : Listener {
         val damageTakenModifier = entityData.getDamageTakenModifier()
         event.addDamageTakenMultiplier(damageTakenModifier.combinedMultiplier)
 
-        if (entityPlayer.isMannequin()) {
-            event.isCancelled = true
-            val formattedDamage = String.format("%.2f", event.damage)
-            damager.sendMiniMessage("<gray>가한 피해 정보 - 피해 경로: <yellow><bold>기본 공격</bold></yellow> <gray>피해량: <gold><bold>$formattedDamage</bold></gold>")
-            return
+        val shield = entityData.getStatus<Shield>()
+        if (shield != null) {
+            val damage = event.damage.roundToInt()
+            val remainDamage = (damage - shield.power).coerceAtLeast(0)
+            val remainShield = (shield.power - damage).coerceAtLeast(0)
+
+            event.damage = remainDamage.toDouble()
+
+            if (remainShield == 0) {
+                shield.remove()
+            } else {
+                shield.updatePower(remainShield)
+            }
         }
 
         if (event.damage <= 0.0) {
             event.isCancelled = true
+            return
+        }
+
+        if (entityPlayer.isMannequin()) {
+            event.isCancelled = true
+            val formattedDamage = String.format("%.2f", event.damage)
+            damager.sendMiniMessage("<gray>가한 피해 정보 - 피해 경로: <yellow><bold>기본 공격</bold></yellow> <gray>피해량: <gold><bold>$formattedDamage</bold></gold>")
             return
         }
 

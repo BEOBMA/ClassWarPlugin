@@ -1,8 +1,10 @@
 package org.beobma.classWarPlugin.status.list
 
 import org.beobma.classWarPlugin.keyword.Keyword
+import org.beobma.classWarPlugin.manager.GameManager.gameWorld
 import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.beobma.classWarPlugin.status.StatusDurationMode
+import org.bukkit.Location
 
 class Exile : StatusAbnormality() {
     override val name: String
@@ -25,7 +27,9 @@ class Exile : StatusAbnormality() {
     private val location = entity.location.clone()
 
     override fun onDurationChanged() {
-        // 텔레포트 로직
+        val testLocation = Location(gameWorld, 0.0, 0.0, 0.0)
+        entity.teleport(testLocation)
+        //TODO()
         super.onDurationChanged()
     }
 

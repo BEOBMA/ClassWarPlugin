@@ -217,7 +217,9 @@ object SkillManager {
         }
     }
 
-    // 소수점 퍼센트
+    /**
+     * @param per 감소시킬 퍼센트
+     */
     fun PlayerData.skillCooltimeDown(per: Double, skill: Skill, material: Material) {
         player.setCooldown(material, (player.getCooldown(material) * per).toInt())
     }

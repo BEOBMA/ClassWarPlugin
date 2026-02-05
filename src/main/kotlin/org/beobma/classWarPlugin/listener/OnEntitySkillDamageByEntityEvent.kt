@@ -10,9 +10,12 @@ import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.manager.forEachIs
 import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
+import org.beobma.classWarPlugin.status.list.Shield
 import org.beobma.classWarPlugin.util.DamageType.*
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
+import kotlin.math.roundToInt
 
 class OnEntitySkillDamageByEntityEvent : Listener {
 
@@ -63,9 +66,25 @@ class OnEntitySkillDamageByEntityEvent : Listener {
         val damageTakenModifier = entityData.getDamageTakenModifier()
         event.addDamageTakenMultiplier(damageTakenModifier.combinedMultiplier)
 
+        var finalDamage = event.damage
+        val shield = entityData.getStatus<Shield>()
+        if (shield != null) {
+            val damage = event.damage.roundToInt()
+            val remainDamage = (damage - shield.power).coerceAtLeast(0)
+            val remainShield = (shield.power - damage).coerceAtLeast(0)
+
+            finalDamage = remainDamage.toDouble()
+
+            if (remainShield == 0) {
+                shield.remove()
+            } else {
+                shield.updatePower(remainShield)
+            }
+        }
+
         if (entityData.entity.isMannequin()) {
             event.isCancelled = true
-            val formattedDamage = String.format("%.2f", event.damage)
+            val formattedDamage = String.format("%.2f", finalDamage)
             val damageText = when (event.damageType) {
                 Normal -> "<gray>일반 피해</gray>"
                 True -> "<white>고정 피해</white>"
@@ -75,7 +94,7 @@ class OnEntitySkillDamageByEntityEvent : Listener {
             return
         }
 
-        if (event.damage <= 0.0) {
+        if (finalDamage <= 0.0) {
             event.isCancelled = true
             return
         }
