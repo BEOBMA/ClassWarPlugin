@@ -9,7 +9,7 @@ import org.beobma.classWarPlugin.gameClass.handler.OnSkillUseHandler
 import org.beobma.classWarPlugin.manager.GameManager.gameWorld
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
-import org.beobma.classWarPlugin.manager.SkillManager.skillCooltimeDown
+import org.beobma.classWarPlugin.manager.SkillManager.skillCoolDownPer
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.hasStatus
@@ -177,7 +177,7 @@ class AssassinsPassive : Passive(), OnSkillUseHandler {
             val stealth = playerData.getOrCreateStatus(playerData) { Stealth() }
             stealth.increaseDuration(2)
             gameWorld.spawnParticle(Particle.SMOKE, player.location, 10, 0.0, 0.0, 0.0, 0.3)
-            playerData.skillCooltimeDown(0.5, event.skill, event.clickedItem.type)
+            playerData.skillCoolDownPer(0.5, event.skill, event.clickedItem.type)
         }
     }
 }

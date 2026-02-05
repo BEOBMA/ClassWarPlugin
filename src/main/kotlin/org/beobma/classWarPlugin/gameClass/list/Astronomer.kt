@@ -178,6 +178,7 @@ class AstronomersBlackHole : Flooring() {
     override var targetType: TargetType = TargetType.Enemy
     override var time: Int? = 4
 
+    //TODO(이펙트)
     override fun onFlooringEntityHit(hitEntityData: EntityData, location: Location) {
         val hitEntity = hitEntityData.entity
         val dir = location.clone().subtract(hitEntity.location).toVector().normalize().multiply(0.1)
@@ -253,6 +254,7 @@ class AstronomersStarMeteor : Meteor() {
     override var isWallHit: Boolean = false
     override var targetType: TargetType = TargetType.Enemy
 
+    //TODO()
     override fun onMeteorEntityHit(hitEntityData: EntityData, location: Location) {
         hitEntityData.damage(1.0, DamageType.True, playerData)
     }

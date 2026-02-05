@@ -1,9 +1,8 @@
 package org.beobma.classWarPlugin.gameClass.list
 
-import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
 import org.beobma.classWarPlugin.gameClass.GameClass
-import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.Weapon
+import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.manager.PlayerManager.heal
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
@@ -95,13 +94,6 @@ class BerserkersPassive : Passive(), OnHitHandler {
             "<dark_gray>잃은 체력 1당 0.2씩, 최대 4까지 피해량이 증가한다."
         )
 
-    override fun onHit(
-        skillDamageEvent: PlayerSkillDamageByPlayerEvent?,
-        attackDamageEvent: EntityDamageByEntityEvent?
-    ) {
-        return
-    }
-
     override fun onAttackHit(event: EntityDamageByEntityEvent) {
         val missingHealth = player.getPlayerMaxHealth() - player.health
         val damageBoost = (missingHealth * 0.2).coerceAtMost(4.0)
@@ -110,9 +102,5 @@ class BerserkersPassive : Passive(), OnHitHandler {
         if (player.getPlayerMaxHealth() / 2 > player.health) {
             playerData.heal(event.damage / 10, DamageType.Normal, playerData)
         }
-    }
-
-    override fun onSkillAttackHit(event: PlayerSkillDamageByPlayerEvent) {
-        return
     }
 }

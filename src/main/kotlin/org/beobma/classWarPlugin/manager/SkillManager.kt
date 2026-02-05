@@ -10,6 +10,7 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.hasStatus
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.Silence
 import org.beobma.classWarPlugin.status.list.Stealth
+import org.beobma.classWarPlugin.status.list.Stun
 import org.beobma.classWarPlugin.util.TargetType
 import org.beobma.classWarPlugin.util.TargetType.*
 import org.bukkit.Bukkit
@@ -45,6 +46,10 @@ object SkillManager {
         val playerData = this as? PlayerData ?: return false
         if (!entityStatus.canSkillUse) {
             playerData.player.sendMiniMessage("<red><bold>[!] 현재 스킬을 사용할 수 없는 상태입니다.")
+            return false
+        }
+        if (playerData.hasStatus<Stun>()) {
+            playerData.player.sendMiniMessage("<red><bold>[!] 기절 상태에서는 스킬을 사용할 수 없습니다.")
             return false
         }
         if (playerData.hasStatus<Silence>()) {
@@ -220,7 +225,16 @@ object SkillManager {
     /**
      * @param per 감소시킬 퍼센트
      */
-    fun PlayerData.skillCooltimeDown(per: Double, skill: Skill, material: Material) {
+    fun PlayerData.skillCoolDownPer(per: Double, skill: Skill, material: Material) {
         player.setCooldown(material, (player.getCooldown(material) * per).toInt())
+    }
+
+    /**
+     * @param tick 감소시킬 틱
+     */
+    fun PlayerData.skillCoolDown(tick: Int, skill: Skill, material: Material) {
+        val finalCool = player.getCooldown(material) - tick
+        if (finalCool < 0) player.setCooldown(material, 0)
+        player.setCooldown(material, finalCool)
     }
 }
