@@ -460,6 +460,7 @@ object GameManager{
     }
 
 
+    // API화 예정
     private fun sendNotification(msg: String) {
         val players = Bukkit.getOnlinePlayers()
         players.forEach { player ->
@@ -467,6 +468,8 @@ object GameManager{
         }
         Bukkit.broadcast(miniMessage.deserialize("[!] $msg"))
     }
+
+    // API화 예정
     private fun List<Player>.sendTitleNotification(msg: Component, msg2: Component = Component.text("")) {
         forEach {
             it.showTitle(Title.title(msg, msg2))
