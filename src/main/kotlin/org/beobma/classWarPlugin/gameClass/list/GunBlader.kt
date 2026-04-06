@@ -25,7 +25,8 @@ class GunBlader : GameClass() {
 
     override var passives: List<Passive> = listOf(
         GunBladersPassive1(),
-        GunBladersPassive2()
+        GunBladersPassive2(),
+        GunBladersPassive3()
     )
 }
 
@@ -42,7 +43,7 @@ class GunBladersSword : Weapon() {
 class GunBladersRedSkill : Skill() {
     override val name = "<bold>연격"
     override val description = listOf(
-        "<gray>2칸 내의 바라보는 적에게 5의 피해를 입힌다.",
+        "<gray>2칸 내의 바라보는 적에게 3의 피해를 2번 입힌다.",
         "<gray>탄환을 소모하면 추가로 10초간 {keyword:Vibration}을 5 부여한다."
     )
     override val cooldown = 4
@@ -105,5 +106,14 @@ class GunBladersPassive2 : Passive() {
         "<red><bold>격진탄</bold><gray>: 이 탄환을 소모한 공격 적중 시 피해량이 50% 증가하고 {keyword:TrueDamage}로 전환된다.",
         "<gray>이 효과는 {keyword:VibrationExplosion}에도 적용된다.",
         Keyword.TrueDamage.description ?: ""
+    )
+}
+
+class GunBladersPassive3 : Passive() {
+    override val name = "<bold>총검술"
+    override val description = listOf(
+        "<gray>패시브",
+        "",
+        "<gray>스킬 적중 시 탄환이 있다면 탄환을 소모하고 탄환의 효과를 스킬에 적용한다."
     )
 }
