@@ -19,7 +19,14 @@ import org.bukkit.inventory.ItemStack
 
 object PlayerManager {
     private val miniMessage = MiniMessage.miniMessage()
-    private val lastDamageTicks: MutableMap<PlayerData, Long> = mutableMapOf()
+    private const val invincibilityTicks: Long = 20
+    private val lastDamageTicks: MutableMap<DamageInvincibilityKey, Long> = mutableMapOf()
+
+    private data class DamageInvincibilityKey(
+        val targetId: java.util.UUID,
+        val damagerId: java.util.UUID,
+        val damageType: DamageType,
+    )
 
     fun PlayerData.classSet() {
         val gameClass = gameClass ?: return
@@ -94,21 +101,17 @@ object PlayerManager {
             return
         }
 
-        if (!isInvincibilityTimeIgnore && player.noDamageTicks > 0) {
-            return
-        }
-        if (isInvincibilityTimeIgnore) {
-            player.noDamageTicks = 0
-        }
-
         val currentTick = player.world.fullTime
 
-        lastDamageTicks[damager]?.let { lastTick ->
-            if (currentTick - lastTick < 20) {
-                return
+        if (!isInvincibilityTimeIgnore) {
+            val key = DamageInvincibilityKey(player.uniqueId, damager.player.uniqueId, damageType)
+            lastDamageTicks[key]?.let { lastTick ->
+                if (currentTick - lastTick < invincibilityTicks) {
+                    return
+                }
             }
+            lastDamageTicks[key] = currentTick
         }
-        lastDamageTicks[damager] = currentTick
 
         val finalDamage = if (damageType == StatusAbnormality) {
             val event = PlayerStatusEffectDamageByPlayerEvent(damage, damageType, this, damager)
@@ -166,11 +169,15 @@ object PlayerManager {
                 }
 
                 val targetPlayer = entity as? Player
-                if (!isInvincibilityTimeIgnore && (targetPlayer?.noDamageTicks ?: 0) > 0) {
-                    return
-                }
-                if (isInvincibilityTimeIgnore) {
-                    targetPlayer?.noDamageTicks = 0
+                val currentTick = targetPlayer?.world?.fullTime ?: return
+                if (!isInvincibilityTimeIgnore) {
+                    val key = DamageInvincibilityKey(entity.uniqueId, damager.player.uniqueId, damageType)
+                    lastDamageTicks[key]?.let { lastTick ->
+                        if (currentTick - lastTick < invincibilityTicks) {
+                            return
+                        }
+                    }
+                    lastDamageTicks[key] = currentTick
                 }
 
                 val finalDamage = if (damageType == StatusAbnormality) {

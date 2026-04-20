@@ -65,7 +65,13 @@ class SpaceOperatorsOrangeSkill : Skill() {
 class SpaceOperatorsYellowSkill : Skill() {
     override val name = "<blue><bold>차원 균열"
     override val description = listOf(
-        "{keyword:DimensionMarker} 수치가 최대인 적이 존재할 때에만 사용할 수 있다.",
+        "<gray>사용 시 모든 적의 {keyword:DimensionMarker}를 전부 소모하고 뒤집힌 세계로 이동한다.",
+        "<gray>뒤집힌 세계에서는 적에게 피해를 입힐 수 없으며, 자신은 적을 볼 수 없게 된다.",
+        "<gray>소모한 {keyword:DimensionMarker} 수치에 따라 스킬이 강화된다.",
+        "<gray>1 - 뒤집힌 세계에서 어떠한 피해도 받지 않는다.",
+        "<gray>2 - 뒤집힌 세계에서 적에게 기본 공격으로 피해를 입히면 원래 세계로 돌아올 때 피해가 정산된다.",
+        "<gray>3 - 뒤집힌 세계에서 적에게 스킬로 피해를 입히면 원래 세계로 돌아올 때 피해가 정산된다.",
+        "<gray>4 - 원래 세계로 돌아올 때, 정산된 피해량이 적의 현재 체력을 초과하면 남은 피해량은 모든 적에게 균등하게 정산된다.",
         "",
         "<dark_gray>뒤집힌 세계에서는 적의 영향을 받지 않으며, 적이 보이지 않는다.",
         "<dark_gray>뒤집힌 세계에서 적에게 입힌 피해는 원래 세계로 돌아올 때 정산된다."

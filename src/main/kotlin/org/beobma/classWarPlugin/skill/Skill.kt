@@ -15,7 +15,6 @@ abstract class Skill {
     abstract val description: List<String>
     abstract val cooldown: Int?
 
-    open val nextSkill: Skill? = null
     open val isOnOffSKill: Boolean = false
 
     abstract fun use()

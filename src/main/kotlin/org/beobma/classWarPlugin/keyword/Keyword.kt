@@ -77,7 +77,7 @@ enum class Keyword(val string: String, val description: String? = null) {
     ),
     Freezing(
         "<white><bold>빙결</bold><gray>",
-        "{keyword:Freezing}: 3초간 {keyword:Stun}과 동일한 효과를 적용하며, 지속 시간동안 기본 공격 피격 시 {keyword:Freezing} 상태가 해제되고 피해량의 50% 만큼 {keyword:AbnormalStatusDamage}를 입는다."
+        "{keyword:Freezing}: 3초간 {keyword:Stun}과 동일한 효과를 적용하며, 지속 시간동안 기본 공격 피격 시 {keyword:Freezing} 상태가 해제되고 피해량의 50% 만큼 추가 {keyword:AbnormalStatusDamage}를 입는다."
     ),
     DimensionMarker(
         "<blue><bold>차원 표식</bold><gray>",

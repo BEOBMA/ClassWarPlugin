@@ -38,14 +38,17 @@ object UtilManager {
         }
     }
 
+    // API화 예정
     fun Player.getPlayerMaxHealth(): Double {
         return this.getAttribute(Attribute.MAX_HEALTH)!!.baseValue
     }
 
+    // API화 예정
     fun Player.setPlayerMaxHealth(value: Double) {
         this.getAttribute(Attribute.MAX_HEALTH)!!.baseValue = value
     }
 
+    // API화 예정
     fun Player.isInArea(loc1: Location, loc2: Location): Boolean {
         val xMin = minOf(loc1.x, loc2.x)
         val xMax = maxOf(loc1.x, loc2.x)

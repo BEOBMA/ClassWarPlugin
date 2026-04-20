@@ -15,7 +15,7 @@ class VibrationExplosion : StatusAbnormality() {
             "",
             "<gray>수치 없음",
             "<gray>지속시간 없음",
-            "<gray>상태이상 적용 후 소멸"
+            "<gray>효과 발동 후 소멸"
         )
     override val canRemove: Boolean = true
     override var maxPower: Int? = 1
