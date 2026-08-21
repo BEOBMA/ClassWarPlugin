@@ -8,8 +8,8 @@ version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
-    maven("https://repo.papermc.io/repository/maven-public/") {
-        name = "papermc-repo"
+    maven {
+        url = uri("https://repo.papermc.io/repository/maven-public/")
     }
     maven("https://oss.sonatype.org/content/groups/public/") {
         name = "sonatype"
@@ -17,11 +17,11 @@ repositories {
 }
 
 dependencies {
-    compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:26.2.build.+")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
 }
 
-val targetJavaVersion = 21
+val targetJavaVersion = 25
 kotlin {
     jvmToolchain(targetJavaVersion)
 }
