@@ -1,0 +1,40 @@
+selection:
+  refresh-chances: 3
+  countdown-seconds: 5
+
+rank-chances:
+  special: 1
+  l: 4
+  s: 10
+  a: 20
+  b: 30
+  c: 35
+
+combat:
+  damage-indicators:
+    enabled: true
+
+map:
+  center-x: 704.5
+  center-z: -615.5
+
+training:
+  spawn:
+    world: world
+    x: 33.5
+    y: -60.0
+    z: -27.5
+    yaw: -135.0
+    pitch: 0.0
+
+scatter:
+  minimum-radius: 45.0
+  maximum-radius: 140.0
+  minimum-player-distance: 24.0
+
+border:
+  enabled: true
+  initial-size: 320.0
+  delay-seconds: 300
+  shrink-seconds: 600
+  minimum-size: 40.0
