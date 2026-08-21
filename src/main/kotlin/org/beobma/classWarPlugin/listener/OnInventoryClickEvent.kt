@@ -1,21 +1,22 @@
 package org.beobma.classWarPlugin.listener
 
 import net.kyori.adventure.text.minimessage.MiniMessage
-import org.beobma.classWarPlugin.game.Game
+import org.beobma.classWarPlugin.game.GameSettings
 import org.beobma.classWarPlugin.info.Info.game
-import org.beobma.classWarPlugin.info.Info.isGaming
-import org.beobma.classWarPlugin.manager.GameManager.classPick
+import org.beobma.classWarPlugin.manager.GameManager.confirmAssignedClass
 import org.beobma.classWarPlugin.manager.GameManager.gameClassList
-import org.beobma.classWarPlugin.manager.GameManager.ready
+import org.beobma.classWarPlugin.manager.GameManager.refreshAssignedClass
 import org.beobma.classWarPlugin.manager.GameManager.startTraining
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
-import org.beobma.classWarPlugin.manager.InventoryManager.openClassPickInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassStatusInventory
+import org.beobma.classWarPlugin.manager.InventoryManager.openConfigInventory
+import org.beobma.classWarPlugin.manager.InventoryManager.openConfigCategoryInventory
+import org.beobma.classWarPlugin.manager.InventoryManager.getOpenConfigCategory
 import org.beobma.classWarPlugin.manager.InventoryManager.openTrainingClassListInventory
+import org.beobma.classWarPlugin.manager.ConfigCategory
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.bukkit.Material
-import org.bukkit.Sound
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -44,18 +45,57 @@ class OnInventoryClickEvent : Listener {
 
     @EventHandler
     fun onClickItem(event: InventoryClickEvent) {
-        val player = event.whoClicked
+        val player = event.whoClicked as? Player ?: return
         val inventory = event.view
-        val clickItem = event.currentItem ?: return
-
-        if (player !is Player) return
-
-        if (PlayerTagManager.hasTag(player, "openClassPickInventory")) {
-            val game = game ?: return
-            classPickHandler(player, game, clickItem, inventory)
+        if (PlayerTagManager.hasTag(player, "openConfigInventory")) {
             event.isCancelled = true
+            if (event.rawSlot !in 0 until inventory.topInventory.size) return
+            val category = getOpenConfigCategory(player)
+            if (category == null) {
+                val selectedCategory = when (event.rawSlot) {
+                    10 -> ConfigCategory.GAME
+                    12 -> ConfigCategory.RANK
+                    14 -> ConfigCategory.SCATTER
+                    16 -> ConfigCategory.BORDER
+                    20 -> ConfigCategory.COMBAT
+                    24 -> ConfigCategory.TRAINING
+                    else -> null
+                } ?: return
+                player.openConfigCategoryInventory(selectedCategory)
+                return
+            }
+
+            if (event.rawSlot == 18) {
+                player.openConfigInventory()
+                return
+            }
+            if (category == ConfigCategory.TRAINING && event.rawSlot == 13) {
+                GameSettings.setTrainingSpawn(player.location)
+                player.sendMessage(miniMessage.deserialize("<green><bold>[!] 현재 위치를 훈련장 시작 위치로 저장했습니다."))
+                player.openConfigCategoryInventory(category)
+                return
+            }
+
+            val settingSlot = configSettingSlot(category, event.rawSlot) ?: return
+            GameSettings.adjust(settingSlot, event.isLeftClick, if (event.isShiftClick) 10 else 1)
+            player.openConfigCategoryInventory(category)
             return
         }
+
+        if (PlayerTagManager.hasTag(player, "openAssignedClassInventory")) {
+            event.isCancelled = true
+            if (event.rawSlot !in 0 until inventory.topInventory.size) return
+            val currentGame = game ?: return
+            val playerData = currentGame.playerDatas.filterIsInstance<PlayerData>()
+                .find { it.player == player } ?: return
+            when (event.rawSlot) {
+                45 -> playerData.refreshAssignedClass()
+                53 -> playerData.confirmAssignedClass()
+            }
+            return
+        }
+
+        val clickItem = event.currentItem ?: return
 
         if (PlayerTagManager.hasTag(player, "openClassListInventory")) {
             classListHandler(player, clickItem, inventory)
@@ -74,60 +114,6 @@ class OnInventoryClickEvent : Listener {
             return
         }
 
-        if (!isGaming() && !PlayerTagManager.hasTag(player, "isTraining")) return
-
-        event.isCancelled = true
-        return
-    }
-
-    private fun classPickHandler(player: Player, game: Game, clickItem: ItemStack, inventory: InventoryView) {
-        val itemMeta = clickItem.itemMeta ?: return
-        val playerData = game.playerDatas.filterIsInstance<PlayerData>()
-            .find { it.player == player } ?: return
-        when (itemMeta) {
-            previousPage -> {
-                player.closeInventory()
-                val currentPage = getCurrentPageFromTitle(inventory.title().toString())
-                playerData.openClassPickInventory(currentPage - 1)
-                return
-            }
-
-            nextPage -> {
-                player.closeInventory()
-                val currentPage = getCurrentPageFromTitle(inventory.title().toString())
-                playerData.openClassPickInventory(currentPage + 1)
-                return
-            }
-
-            nullItem -> return
-
-            else -> {
-                val gameClass = game.classList.find { it?.classItemMaterial == clickItem.type } ?: return
-                val index = game.classList.indexOf(gameClass)
-                gameClass.inject(playerData)
-                gameClass.skills.forEach { skill ->
-                    skill.inject(playerData)
-                }
-                gameClass.passives.forEach { passive ->
-                    passive.inject(playerData)
-                }
-                playerData.gameClass = gameClass
-                game.classList[index] = null
-                player.closeInventory()
-                player.playSound(player, Sound.BLOCK_NOTE_BLOCK_GUITAR, 1.0F, 2.0F)
-                PlayerTagManager.removeTag(player, "openClassPickInventory")
-                player.playerListName(
-                    player.playerListName().append(miniMessage.deserialize(" [ ${gameClass.name} ]"))
-                )
-                game.classPickOrder.remove(playerData)
-                val pickPlayer = game.classPickOrder.firstOrNull() ?: run {
-                    game.ready()
-                    return
-                }
-                pickPlayer.classPick()
-                return
-            }
-        }
     }
 
     private fun classListHandler(player: Player, clickItem: ItemStack, inventory: InventoryView) {
@@ -195,5 +181,46 @@ class OnInventoryClickEvent : Listener {
     private fun getCurrentPageFromTitle(title: String): Int {
         val matchResult = pageRegex.find(title) ?: return 0
         return matchResult.groupValues[1].toInt() - 1
+    }
+
+    private fun configSettingSlot(category: ConfigCategory, inventorySlot: Int): Int? = when (category) {
+        ConfigCategory.GAME -> when (inventorySlot) {
+            11 -> 10
+            15 -> 12
+            else -> null
+        }
+
+        ConfigCategory.RANK -> when (inventorySlot) {
+            10 -> 37
+            11 -> 38
+            12 -> 39
+            14 -> 41
+            15 -> 42
+            16 -> 43
+            else -> null
+        }
+
+        ConfigCategory.SCATTER -> when (inventorySlot) {
+            10 -> 14
+            13 -> 16
+            16 -> 28
+            else -> null
+        }
+
+        ConfigCategory.BORDER -> when (inventorySlot) {
+            10 -> 22
+            11 -> 30
+            12 -> 32
+            13 -> 34
+            14 -> 40
+            else -> null
+        }
+
+        ConfigCategory.COMBAT -> when (inventorySlot) {
+            13 -> 24
+            else -> null
+        }
+
+        ConfigCategory.TRAINING -> null
     }
 }

@@ -4,15 +4,15 @@ import net.kyori.adventure.text.minimessage.MiniMessage
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
-import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
-import org.beobma.classWarPlugin.event.PlayerStatusEffectDamageByPlayerEvent
+import org.beobma.classWarPlugin.damage.DamageContext
+import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.manager.GameClassManager.toItemStack
+import org.beobma.classWarPlugin.manager.SkillManager.markSkillItem
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.util.DamageCalculator
 import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.DamageType.StatusAbnormality
-import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
@@ -28,6 +28,11 @@ object PlayerManager {
         val damageType: DamageType,
     )
 
+    fun clearDamageInvincibility(playerIds: Collection<java.util.UUID>) {
+        if (playerIds.isEmpty()) return
+        lastDamageTicks.keys.removeIf { it.targetId in playerIds || it.damagerId in playerIds }
+    }
+
     fun PlayerData.classSet() {
         val gameClass = gameClass ?: return
         gameClass.inject(this)
@@ -40,7 +45,7 @@ object PlayerManager {
 
         player.inventory.setItem(0, gameClass.weapon.toItemStack())
         gameClass.skills.forEachIndexed { index, skill ->
-            if (index + 1 > (8 - gameClass.passives.size)) return
+            if (index + 1 > 8) return@forEachIndexed
             val name = UtilManager.applyKeywords(skill.name)
             val lore = skill.description.map { miniMessage.deserialize(UtilManager.applyKeywords(it)) }
             val type = when (index) {
@@ -49,12 +54,12 @@ object PlayerManager {
                 2 -> Material.YELLOW_DYE
                 else -> Material.RED_DYE
             }
-            val item = ItemStack(type, 1).apply {
+            val item = markSkillItem(ItemStack(type, 1).apply {
                 itemMeta = itemMeta.apply {
                     displayName(miniMessage.deserialize(name))
                     lore(lore)
                 }
-            }
+            }, skill, player.uniqueId)
 
 
             player.inventory.setItem(index + 1, item)
@@ -71,13 +76,13 @@ object PlayerManager {
                 }
             }
 
-            if (index + 9 > 26) return
+            if (index + 9 > 26) return@forEachIndexed
             player.inventory.setItem(9 + index, item)
         }
 
         gameClass.extraItemMaterials.forEachIndexed { index, item ->
-            if (index + 27 > 35) return
-            player.inventory.setItem(index + 9, item)
+            if (index + 27 > 35) return@forEachIndexed
+            player.inventory.setItem(index + 27, item)
         }
 
         gameClass.passives.forEach { passive ->
@@ -95,7 +100,8 @@ object PlayerManager {
         damage: Double,
         damageType: DamageType,
         damager: PlayerData,
-        isInvincibilityTimeIgnore: Boolean = true
+        isInvincibilityTimeIgnore: Boolean = true,
+        bypassShield: Boolean = false,
     ) {
         if (damage <= 0.0) {
             return
@@ -113,35 +119,22 @@ object PlayerManager {
             lastDamageTicks[key] = currentTick
         }
 
-        val finalDamage = if (damageType == StatusAbnormality) {
-            val event = PlayerStatusEffectDamageByPlayerEvent(damage, damageType, this, damager)
-            Bukkit.getServer().pluginManager.callEvent(event)
-            if (event.isCancelled) {
-                return
-            }
-            event.damage
-        } else {
-            val event = PlayerSkillDamageByPlayerEvent(damage, damageType, this, damager)
-            Bukkit.getServer().pluginManager.callEvent(event)
-            if (event.isCancelled) {
-                return
-            }
-            event.damage
-        }
-        if (finalDamage <= 0.0) {
-            return
-        }
+        val path = if (damageType == StatusAbnormality) DamagePath.STATUS_EFFECT else DamagePath.SKILL
+        val context = DamageContext(damager, this, path, damageType, damage, bypassShield)
+        if (!DamageManager.process(context)) return
 
-        val damageResult = DamageCalculator.calculate(finalDamage, player, damageType)
+        val damageResult = DamageCalculator.calculate(context.damage, player, damageType)
         if (damageResult.finalDamage <= 0.0) {
             return
         }
+        DamageIndicatorManager.show(player, damageResult.finalDamage, initGame.settings.damageIndicatorsEnabled)
         if (PlayerTagManager.hasTag(player, "isTraining")) {
             val formattedDamage = String.format("%.2f", damageResult.finalDamage)
             player.sendMiniMessage("<red>받은 피해 정보 - <gray>피해량: <gold><bold>$formattedDamage</bold></gold>")
             return
         }
 
+        DamageManager.recordSuccessfulDamage(context)
         val newHealth = (player.health - damageResult.finalDamage).coerceAtLeast(0.0)
         player.health = newHealth
     }
@@ -159,17 +152,18 @@ object PlayerManager {
         damage: Double,
         damageType: DamageType,
         damager: PlayerData,
-        isInvincibilityTimeIgnore: Boolean = true
+        isInvincibilityTimeIgnore: Boolean = true,
+        bypassShield: Boolean = false,
     ) {
         when (this) {
-            is PlayerData -> this.damage(damage, damageType, damager, isInvincibilityTimeIgnore)
+            is PlayerData -> this.damage(damage, damageType, damager, isInvincibilityTimeIgnore, bypassShield)
             is DummyEntityData -> {
                 if (damage <= 0.0) {
                     return
                 }
 
                 val targetPlayer = entity as? Player
-                val currentTick = targetPlayer?.world?.fullTime ?: return
+                val currentTick = entity.world.fullTime
                 if (!isInvincibilityTimeIgnore) {
                     val key = DamageInvincibilityKey(entity.uniqueId, damager.player.uniqueId, damageType)
                     lastDamageTicks[key]?.let { lastTick ->
@@ -180,29 +174,18 @@ object PlayerManager {
                     lastDamageTicks[key] = currentTick
                 }
 
-                val finalDamage = if (damageType == StatusAbnormality) {
-                    val event = PlayerStatusEffectDamageByPlayerEvent(damage, damageType, damager, this)
-                    Bukkit.getServer().pluginManager.callEvent(event)
-                    if (event.isCancelled) {
-                        0.0
-                    } else {
-                        event.damage
-                    }
-                } else {
-                    val event = PlayerSkillDamageByPlayerEvent(damage, damageType, damager, this)
-                    Bukkit.getServer().pluginManager.callEvent(event)
-                    if (event.isCancelled) {
-                        0.0
-                    } else {
-                        event.damage
-                    }
-                }
-
-                val damageResult = targetPlayer?.let { DamageCalculator.calculate(finalDamage, it, damageType) }
-                    ?: DamageCalculator.Result(finalDamage, 0.0)
+                val path = if (damageType == StatusAbnormality) DamagePath.STATUS_EFFECT else DamagePath.SKILL
+                val context = DamageContext(damager, this, path, damageType, damage, bypassShield)
+                if (!DamageManager.process(context)) return
+                val damageResult = targetPlayer?.let { DamageCalculator.calculate(context.damage, it, damageType) }
+                    ?: DamageCalculator.Result(context.damage, 0.0)
                 if (damageResult.finalDamage <= 0.0) {
                     return
                 }
+                val formattedDamage = String.format("%.2f", damageResult.finalDamage)
+                damager.player.sendMiniMessage(
+                    "<gray>피해 경로: ${path.displayName} <gray>피해량: <gold><bold>$formattedDamage</bold></gold>"
+                )
             }
         }
     }

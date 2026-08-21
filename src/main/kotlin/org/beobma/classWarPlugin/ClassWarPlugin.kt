@@ -5,16 +5,20 @@ import org.beobma.classWarPlugin.info.Info
 import org.beobma.classWarPlugin.manager.GameManager
 import org.beobma.classWarPlugin.listener.OnEntityDamageByEntityEvent
 import org.beobma.classWarPlugin.listener.OnEntityDamageEvent
-import org.beobma.classWarPlugin.listener.OnEntitySkillDamageByEntityEvent
-import org.beobma.classWarPlugin.listener.OnEntityStatusEffectDamageByEntityEvent
+import org.beobma.classWarPlugin.listener.OnDamageIndicatorEvent
 import org.beobma.classWarPlugin.listener.OnFoodChangeEvent
 import org.beobma.classWarPlugin.listener.OnInventoryClickEvent
 import org.beobma.classWarPlugin.listener.OnInventoryCloseEvent
 import org.beobma.classWarPlugin.listener.OnPlayerDeathEvent
-import org.beobma.classWarPlugin.listener.OnPlayerItemHeldEvent
+import org.beobma.classWarPlugin.listener.OnPlayerInteractEvent
+import org.beobma.classWarPlugin.listener.OnSkillItemProtectionEvent
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.listener.OnPlayerSkillUseEvent
+import org.beobma.classWarPlugin.listener.OnPlayerMoveEvent
+import org.beobma.classWarPlugin.listener.OnPlayerConnectionEvent
+import org.beobma.classWarPlugin.game.GameSettings
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager
+import org.beobma.classWarPlugin.manager.DamageIndicatorManager
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
@@ -29,6 +33,9 @@ class ClassWarPlugin : JavaPlugin() {
 
     override fun onEnable() {
         instance = this
+        saveDefaultConfig()
+        GameSettings.load(config)
+        DamageIndicatorManager.start()
 
         registerEvents()
         startStatusActionBarTask()
@@ -37,6 +44,11 @@ class ClassWarPlugin : JavaPlugin() {
 
     override fun onDisable() {
         statusActionBarTask?.cancel()
+        GameManager.run {
+            Info.game?.stop()
+            stopAllTraining()
+        }
+        DamageIndicatorManager.shutdown()
         loggerInfo("플러그인이 정상적으로 비활성화되었습니다.")
     }
 
@@ -50,11 +62,13 @@ class ClassWarPlugin : JavaPlugin() {
         server.pluginManager.registerEvents(OnPlayerDeathEvent(), this)
         server.pluginManager.registerEvents(OnEntityDamageByEntityEvent(), this)
         server.pluginManager.registerEvents(OnEntityDamageEvent(), this)
-        server.pluginManager.registerEvents(OnEntitySkillDamageByEntityEvent(), this)
-        server.pluginManager.registerEvents(OnEntityStatusEffectDamageByEntityEvent(), this)
-        server.pluginManager.registerEvents(OnPlayerItemHeldEvent(), this)
+        server.pluginManager.registerEvents(OnDamageIndicatorEvent(), this)
+        server.pluginManager.registerEvents(OnPlayerInteractEvent(), this)
+        server.pluginManager.registerEvents(OnSkillItemProtectionEvent(), this)
         server.pluginManager.registerEvents(OnFoodChangeEvent(), this)
         server.pluginManager.registerEvents(OnPlayerSkillUseEvent(), this)
+        server.pluginManager.registerEvents(OnPlayerMoveEvent(), this)
+        server.pluginManager.registerEvents(OnPlayerConnectionEvent(), this)
     }
 
     private fun startStatusActionBarTask() {
@@ -70,6 +84,7 @@ class ClassWarPlugin : JavaPlugin() {
                     games.flatMap { it.playerDatas }
                         .filterIsInstance<PlayerData>()
                         .distinctBy { it.player.uniqueId }
+                        .filter { it.player.isOnline }
                         .forEach { playerData -> playerData.updateStatusActionBar() }
                 }
             }

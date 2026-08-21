@@ -2,6 +2,7 @@ package org.beobma.classWarPlugin.skill
 
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.EntityData
+import org.beobma.classWarPlugin.effect.EffectApiAccess
 import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
 import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.manager.PlayerTagManager
@@ -15,7 +16,7 @@ import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import java.util.UUID
 
-abstract class Flooring {
+abstract class Flooring : EffectApiAccess {
     protected lateinit var playerData: PlayerData
     protected lateinit var player: Player
     protected lateinit var playerStatus: PlayerStatus
@@ -104,13 +105,13 @@ abstract class Flooring {
                 currentTargets.clear()
                 val radiusSquared = radius * radius
                 for (targetData in targetCandidates) {
-                    if (targetData == playerData || !targetData.entityStatus.isSkillTargeting) continue
+                    if (targetType != TargetType.Self && targetData == playerData) continue
+                    if (!targetData.entityStatus.isSkillTargeting) continue
                     if (targetData.entity.location.distanceSquared(currentLocation) > radiusSquared) continue
                     val isValidTarget = when (targetType) {
-                        TargetType.Team -> targetData.entity.isMannequin() && isTraining ||
-                            (targetData is PlayerData && targetData.team == playerData.team)
+                        TargetType.Self -> targetData == playerData
                         TargetType.Enemy -> targetData.entity.isMannequin() && isTraining ||
-                            (targetData is PlayerData && targetData.team != playerData.team)
+                            (targetData is PlayerData && playerData.isEnemyOf(targetData))
                         TargetType.All -> true
                     }
                     if (isValidTarget) {

@@ -122,10 +122,6 @@ object StatusAbnormalityManager {
         return DamageTakenModifier(reductionFactor, increaseFactor)
     }
 
-    fun EntityData.getWhenDamage(): Double {
-        return getDamageTakenModifier().combinedMultiplier
-    }
-
     internal fun registerTickingStatus(status: StatusAbnormality) {
         if (!tickingStatuses.add(status)) return
         ensureTickingTask()

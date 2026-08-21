@@ -1,6 +1,7 @@
 package org.beobma.classWarPlugin.gameClass
 
 import org.beobma.classWarPlugin.game.Game
+import org.beobma.classWarPlugin.effect.EffectApiAccess
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.entity.player.PlayerStatus
 import org.beobma.classWarPlugin.skill.Passive
@@ -9,14 +10,14 @@ import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 
-abstract class GameClass() {
+abstract class GameClass : EffectApiAccess {
     protected lateinit var playerData: PlayerData
     protected lateinit var player: Player
     protected lateinit var playerStatus: PlayerStatus
     protected lateinit var game: Game
 
     abstract val name: String
-    abstract val description: List<String>
+    abstract val rank: Rank
     abstract val classItemMaterial: Material
     abstract val weapon: Weapon
     abstract val skills: List<Skill>

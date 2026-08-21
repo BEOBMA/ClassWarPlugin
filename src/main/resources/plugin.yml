@@ -1,7 +1,7 @@
 name: ClassWarPlugin
 version: '1.0-SNAPSHOT'
 main: org.beobma.classWarPlugin.ClassWarPlugin
-api-version: '1.21'
+api-version: '26.2'
 
 commands:
   classwar:

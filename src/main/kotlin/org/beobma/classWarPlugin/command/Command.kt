@@ -9,6 +9,7 @@ import org.beobma.classWarPlugin.manager.GameManager.stop
 import org.beobma.classWarPlugin.manager.GameManager.stopTraining
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openTrainingClassListInventory
+import org.beobma.classWarPlugin.manager.InventoryManager.openConfigInventory
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.bukkit.Bukkit
@@ -31,6 +32,15 @@ class Command : Listener, CommandExecutor, TabCompleter {
             }
 
             when (args[0].lowercase(Locale.getDefault())) {
+                "config" -> {
+                    if (!sender.isOp) {
+                        sender.sendWaringMessage("이 명령어는 관리자만 사용할 수 있습니다.")
+                        return false
+                    }
+                    sender.openConfigInventory()
+                    return true
+                }
+
                 "start" -> {
                     if (isGaming()) {
                         sender.sendWaringMessage("이미 진행중인 게임이 있습니다.")
@@ -119,7 +129,7 @@ class Command : Listener, CommandExecutor, TabCompleter {
     ): List<String> {
         if (command.name.equals("classwar", ignoreCase = true)) {
             return when (args.size) {
-                1 -> listOf("start", "stop", "classlist", "training", "exit")
+                1 -> listOf("start", "stop", "config", "classlist", "training", "exit")
 
                 else -> emptyList()
             }

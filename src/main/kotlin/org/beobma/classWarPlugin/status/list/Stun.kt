@@ -1,12 +1,12 @@
 package org.beobma.classWarPlugin.status.list
 
+import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.beobma.classWarPlugin.status.StatusDurationMode
 import org.beobma.classWarPlugin.status.handler.StatusOnHitHandler
 import org.beobma.classWarPlugin.status.handler.StatusPlayerMoveHandler
-import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.player.PlayerMoveEvent
 
 class Stun : StatusAbnormality(), StatusOnHitHandler, StatusPlayerMoveHandler {
@@ -27,11 +27,7 @@ class Stun : StatusAbnormality(), StatusOnHitHandler, StatusPlayerMoveHandler {
     override val showMaxPower: Boolean = false
     override val showPower: Boolean = false
 
-    override fun onAttackHit(
-        event: EntityDamageByEntityEvent,
-        damagerData: PlayerData,
-        entityData: PlayerData
-    ) {
+    override fun onAttackHit(event: DamageContext) {
         event.isCancelled = true
     }
 

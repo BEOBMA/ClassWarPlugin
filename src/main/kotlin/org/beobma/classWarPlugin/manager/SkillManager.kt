@@ -1,5 +1,6 @@
 package org.beobma.classWarPlugin.manager
 
+import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
@@ -8,6 +9,7 @@ import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.event.PlayerSkillUseEvent
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.hasStatus
 import org.beobma.classWarPlugin.skill.Skill
+import org.beobma.classWarPlugin.skill.SkillContext
 import org.beobma.classWarPlugin.status.list.Silence
 import org.beobma.classWarPlugin.status.list.Stealth
 import org.beobma.classWarPlugin.status.list.Stun
@@ -15,15 +17,38 @@ import org.beobma.classWarPlugin.util.TargetType
 import org.beobma.classWarPlugin.util.TargetType.*
 import org.bukkit.Bukkit
 import org.bukkit.Location
-import org.bukkit.Material
+import org.bukkit.NamespacedKey
 import org.bukkit.block.Block
 import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
+import org.bukkit.persistence.PersistentDataType
+import java.util.UUID
 import kotlin.math.cos
 
 
 object SkillManager {
+    private val skillIdKey: NamespacedKey
+        get() = NamespacedKey(ClassWarPlugin.instance, "skill-id")
+    private val skillOwnerKey: NamespacedKey
+        get() = NamespacedKey(ClassWarPlugin.instance, "skill-owner")
+
+    fun markSkillItem(item: ItemStack, skill: Skill, ownerId: UUID): ItemStack = item.apply {
+        itemMeta = itemMeta.apply {
+            persistentDataContainer.set(skillIdKey, PersistentDataType.STRING, skill.id)
+            persistentDataContainer.set(skillOwnerKey, PersistentDataType.STRING, ownerId.toString())
+        }
+    }
+
+    fun getSkillId(item: ItemStack, ownerId: UUID): String? {
+        val container = item.itemMeta.persistentDataContainer
+        if (container.get(skillOwnerKey, PersistentDataType.STRING) != ownerId.toString()) return null
+        return container.get(skillIdKey, PersistentDataType.STRING)
+    }
+
+    fun isBoundSkillItem(item: ItemStack?): Boolean =
+        item?.itemMeta?.persistentDataContainer?.has(skillIdKey, PersistentDataType.STRING) == true
+
     private fun EntityData.isTraining(): Boolean = when (this) {
         is PlayerData -> PlayerTagManager.hasTag(player, "isTraining")
         else -> false
@@ -56,32 +81,31 @@ object SkillManager {
             playerData.player.sendMiniMessage("<red><bold>[!] 침묵 상태에서는 스킬을 사용할 수 없습니다.")
             return false
         }
-        if (playerData.player.hasCooldown(clickedItem.type)) {
+        if (CooldownManager.hasCooldown(playerData.player, skill)) {
             playerData.player.sendMiniMessage("<red><bold>[!] 재사용 대기 중입니다.")
             return false
         }
 
-        val cooldownSeconds = when (val cooldown = skill.cooldown) {
-            null -> null
-            Int.MAX_VALUE -> 999999
-            else -> cooldown
+        val baseCooldownTicks = when (val cooldown = skill.cooldown) {
+            null -> 0
+            Int.MAX_VALUE -> 999999 * 20
+            else -> cooldown.coerceAtLeast(0) * 20
         }
 
         if (!skill.isUseSuccess()) {
             return false
         }
 
-        if (!skill.isOnOffSKill) {
-            val playerSkillUseEvent = PlayerSkillUseEvent(playerData, skill, clickedItem)
-            Bukkit.getServer().pluginManager.callEvent(playerSkillUseEvent)
-            if (playerSkillUseEvent.isCancelled) {
-                return false
-            }
+        val context = SkillContext(playerData, skill, clickedItem, baseCooldownTicks)
+        val playerSkillUseEvent = PlayerSkillUseEvent(context)
+        Bukkit.getServer().pluginManager.callEvent(playerSkillUseEvent)
+        if (playerSkillUseEvent.isCancelled) {
+            return false
         }
 
-        skill.use()
-        if (cooldownSeconds != null) {
-            playerData.player.setCooldown(clickedItem.type, cooldownSeconds * 20)
+        skill.execute(context)
+        if (context.cooldownTicks > 0) {
+            CooldownManager.setCooldown(playerData.player, skill, clickedItem, context.cooldownTicks)
         }
 
 
@@ -103,27 +127,12 @@ object SkillManager {
         }
 
         return when (targetType) {
-            Team -> {
-                val team = sourcePlayer?.team
-                if (oneself) {
-                    nearbyEntityData.filter {
-                        it.entity.isMannequin() && isTraining ||
-                            (team != null && it is PlayerData && it.team == team)
-                    }
-                } else {
-                    nearbyEntityData.filter { candidate ->
-                        candidate != this &&
-                            (candidate.entity.isMannequin() && isTraining ||
-                                (team != null && candidate is PlayerData && candidate.team == team))
-                    }
-                }
-            }
+            Self -> if (oneself) nearbyEntityData.filter { it == this } else emptyList()
 
             Enemy -> {
-                val team = sourcePlayer?.team
                 nearbyEntityData.filter { candidate ->
                     candidate.entity.isMannequin() && isTraining ||
-                        (team != null && candidate is PlayerData && candidate.team != team)
+                        (sourcePlayer != null && candidate is PlayerData && sourcePlayer.isEnemyOf(candidate))
                 }
             }
 
@@ -133,6 +142,7 @@ object SkillManager {
         }
     }
     fun EntityData.shotLaserGetEntityData(maxRange: Double, targetType: TargetType, wallShot: Boolean): EntityData? {
+        val sourcePlayer = this as? PlayerData ?: return null
         val isTraining = isTraining()
         val world = this.entity.world
         val playerDatas = getTargetCandidates().filter { entityData ->
@@ -146,21 +156,22 @@ object SkillManager {
 
         val maxDistance: Double = maxRange
 
-        val blockRayTraceResult = world.rayTraceBlocks(startLocation, direction, maxDistance)
-
-        if (wallShot) {
-            if (blockRayTraceResult?.hitBlock != null) {
-                if (blockRayTraceResult.hitBlock!!.isSolid) {
-                    return null
-                }
-            }
-        }
-
         val entityRayTraceResult = world.rayTraceEntities(startLocation, direction, maxDistance, 1.0) { entity ->
             entity !== this.entity
         }
 
         val hitEntity = entityRayTraceResult?.hitEntity ?: return null
+        if (!wallShot) {
+            val blockRayTraceResult = world.rayTraceBlocks(startLocation, direction, maxDistance)
+            val blockPosition = blockRayTraceResult?.hitPosition
+            val entityPosition = entityRayTraceResult.hitPosition
+            if (blockPosition != null &&
+                blockPosition.distanceSquared(startLocation.toVector()) <=
+                entityPosition.distanceSquared(startLocation.toVector())
+            ) {
+                return null
+            }
+        }
         if (hitEntity !is Player && !hitEntity.isMannequin()) return null
         val hitEntityData = playerDatas.find { it.entity == hitEntity } ?: return null
         if (hitEntityData.entityStatus.isSkillTargeting) {
@@ -168,8 +179,8 @@ object SkillManager {
                 return hitEntityData
             }
             val isValidTarget = when (targetType) {
-                Team -> hitEntityData is PlayerData && hitEntityData.team == this.team
-                Enemy -> hitEntityData is PlayerData && hitEntityData.team != this.team
+                Self -> false
+                Enemy -> hitEntityData is PlayerData && sourcePlayer.isEnemyOf(hitEntityData)
                 All -> hitEntityData is PlayerData
             }
             if (!isValidTarget) {
@@ -205,8 +216,8 @@ object SkillManager {
 
             if (!(isTraining && targetPlayerData.entity.isMannequin())) {
                 when (targetType) {
-                    Team -> if (targetPlayerData !is PlayerData || targetPlayerData.team != sourcePlayer.team) return@filter false
-                    Enemy -> if (targetPlayerData !is PlayerData || targetPlayerData.team == sourcePlayer.team) return@filter false
+                    Self -> if (targetPlayerData != sourcePlayer) return@filter false
+                    Enemy -> if (targetPlayerData !is PlayerData || !sourcePlayer.isEnemyOf(targetPlayerData)) return@filter false
                     All -> if (targetPlayerData !is PlayerData) return@filter false
                 }
             }
@@ -222,19 +233,4 @@ object SkillManager {
         }
     }
 
-    /**
-     * @param per 감소시킬 퍼센트
-     */
-    fun PlayerData.skillCoolDownPer(per: Double, skill: Skill, material: Material) {
-        player.setCooldown(material, (player.getCooldown(material) * per).toInt())
-    }
-
-    /**
-     * @param tick 감소시킬 틱
-     */
-    fun PlayerData.skillCoolDown(tick: Int, skill: Skill, material: Material) {
-        val finalCool = player.getCooldown(material) - tick
-        if (finalCool < 0) player.setCooldown(material, 0)
-        player.setCooldown(material, finalCool)
-    }
 }

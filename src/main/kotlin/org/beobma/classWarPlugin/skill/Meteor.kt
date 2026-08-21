@@ -2,6 +2,7 @@ package org.beobma.classWarPlugin.skill
 
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.EntityData
+import org.beobma.classWarPlugin.effect.EffectApiAccess
 import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
@@ -10,7 +11,7 @@ import org.beobma.classWarPlugin.entity.player.PlayerStatus
 import org.beobma.classWarPlugin.util.TargetType
 import org.beobma.classWarPlugin.util.TargetType.All
 import org.beobma.classWarPlugin.util.TargetType.Enemy
-import org.beobma.classWarPlugin.util.TargetType.Team
+import org.beobma.classWarPlugin.util.TargetType.Self
 import org.bukkit.Location
 import org.bukkit.block.Block
 import org.bukkit.entity.Player
@@ -19,7 +20,7 @@ import org.bukkit.scheduler.BukkitTask
 
 abstract class Meteor(
 
-) {
+) : EffectApiAccess {
     protected lateinit var playerData: PlayerData
     protected lateinit var player: Player
     protected lateinit var playerStatus: PlayerStatus
@@ -79,10 +80,9 @@ abstract class Meteor(
                     if (targetData == playerData || !targetData.entityStatus.isSkillTargeting) continue
                     if (targetData.entity.location.distanceSquared(currentLocation) > 1.0) continue
                     val isValidTarget = when (targetType) {
-                        Team -> targetData.entity.isMannequin() && isTraining ||
-                            (targetData is PlayerData && targetData.team == playerData.team)
+                        Self -> targetData == playerData
                         Enemy -> targetData.entity.isMannequin() && isTraining ||
-                            (targetData is PlayerData && targetData.team != playerData.team)
+                            (targetData is PlayerData && playerData.isEnemyOf(targetData))
                         All -> true
                     }
                     if (isValidTarget) {

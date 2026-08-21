@@ -1,6 +1,7 @@
 package org.beobma.classWarPlugin.skill
 
 import org.beobma.classWarPlugin.ClassWarPlugin
+import org.beobma.classWarPlugin.effect.EffectApiAccess
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
 import org.beobma.classWarPlugin.game.Game
@@ -11,7 +12,7 @@ import org.beobma.classWarPlugin.entity.player.PlayerStatus
 import org.beobma.classWarPlugin.util.TargetType
 import org.beobma.classWarPlugin.util.TargetType.All
 import org.beobma.classWarPlugin.util.TargetType.Enemy
-import org.beobma.classWarPlugin.util.TargetType.Team
+import org.beobma.classWarPlugin.util.TargetType.Self
 import org.bukkit.Location
 import org.bukkit.block.Block
 import org.bukkit.entity.ItemDisplay
@@ -23,7 +24,7 @@ import org.bukkit.util.BoundingBox
 import java.util.UUID
 import kotlin.math.abs
 
-abstract class Projectile {
+abstract class Projectile : EffectApiAccess {
     protected lateinit var playerData: PlayerData
     protected lateinit var player: Player
     protected lateinit var playerStatus: PlayerStatus
@@ -157,10 +158,9 @@ abstract class Projectile {
                         val bb = targetData.entity.boundingBox.expand(xSize, ySize, zSize)
                         if (!bb.contains(currentLocation.x, currentLocation.y, currentLocation.z)) continue
                         val isValidTarget = when (targetType) {
-                            Team -> targetData.entity.isMannequin() && isTraining ||
-                                (targetData is PlayerData && targetData.team == playerData.team)
+                            Self -> targetData == playerData
                             Enemy -> targetData.entity.isMannequin() && isTraining ||
-                                (targetData is PlayerData && targetData.team != playerData.team)
+                                (targetData is PlayerData && playerData.isEnemyOf(targetData))
                             All -> true
                         }
                         if (isValidTarget) {

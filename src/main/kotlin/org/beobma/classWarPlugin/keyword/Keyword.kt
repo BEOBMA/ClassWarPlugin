@@ -40,10 +40,6 @@ enum class Keyword(val string: String, val description: String? = null) {
         "<dark_gray><bold>침묵</bold><gray>",
         "{keyword:Silence}: 스킬을 사용할 수 없다."
     ),
-    Exile(
-        "<dark_gray><bold>추방</bold><gray>",
-        "{keyword:Exile}: 전장과 단절된 공간으로 이동한다. 이 공간은 추방된 대상끼리 공유한다."
-    ),
     Bleeding(
         "<dark_red><bold>출혈</bold><gray>",
         "{keyword:Bleeding}: 기본 공격 시 수치 만큼 {keyword:AbnormalStatusDamage}를 입고 수치를 절반으로 만든다."

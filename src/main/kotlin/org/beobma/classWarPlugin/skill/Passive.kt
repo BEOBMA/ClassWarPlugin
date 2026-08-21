@@ -1,11 +1,12 @@
 package org.beobma.classWarPlugin.skill
 
 import org.beobma.classWarPlugin.game.Game
+import org.beobma.classWarPlugin.effect.EffectApiAccess
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.entity.player.PlayerStatus
 import org.bukkit.entity.Player
 
-abstract class Passive {
+abstract class Passive : EffectApiAccess {
     protected lateinit var playerData: PlayerData
     protected lateinit var player: Player
     protected lateinit var playerStatus: PlayerStatus

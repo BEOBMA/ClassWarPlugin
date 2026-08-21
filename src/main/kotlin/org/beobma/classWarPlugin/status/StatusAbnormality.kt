@@ -35,6 +35,13 @@ abstract class StatusAbnormality {
         this.casterData = victimData
     }
 
+    fun rebindEntity(entityData: EntityData) {
+        this.entityData = entityData
+        this.entity = entityData.entity
+        this.entityStatus = entityData.entityStatus
+        this.game = entityData.game
+    }
+
     open fun increasePower(amount: Int) {
         val maxPower = maxPower
         power += amount

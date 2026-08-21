@@ -27,8 +27,6 @@ object PlayerTagManager {
     fun findTag(player: Player, predicate: (String) -> Boolean): String? =
         tagsByPlayer[player.uniqueId]?.firstOrNull(predicate)
 
-    fun allTags(player: Player): Set<String> = tagsByPlayer[player.uniqueId]?.toSet() ?: emptySet()
-
     fun clear(player: Player) {
         tagsByPlayer.remove(player.uniqueId)
     }

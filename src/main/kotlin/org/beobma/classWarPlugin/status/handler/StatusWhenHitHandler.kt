@@ -1,8 +1,7 @@
 package org.beobma.classWarPlugin.status.handler
 
-import org.beobma.classWarPlugin.entity.player.PlayerData
-import org.bukkit.event.entity.EntityDamageByEntityEvent
+import org.beobma.classWarPlugin.damage.DamageContext
 
 interface StatusWhenHitHandler {
-    fun whenAttackHit(event: EntityDamageByEntityEvent, damagerData: PlayerData, entityData: PlayerData)
+    fun whenAttackHit(context: DamageContext)
 }

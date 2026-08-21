@@ -2,8 +2,9 @@ package org.beobma.classWarPlugin.listener
 
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.info.Info.game
+import org.beobma.classWarPlugin.game.GamePhase
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
-import org.beobma.classWarPlugin.manager.InventoryManager.openClassPickInventory
+import org.beobma.classWarPlugin.manager.InventoryManager.openAssignedClassInventory
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.bukkit.entity.Player
@@ -18,11 +19,24 @@ class OnInventoryCloseEvent : Listener {
     fun onInventoryClose(event: InventoryCloseEvent) {
         val player = event.player as? Player ?: return
 
-        if (PlayerTagManager.hasTag(player, "openClassPickInventory")) {
-            reopenClassPickInventoryLater(
-                player,
-                "openClassPickInventory"
-            )
+        if (PlayerTagManager.hasTag(player, "openingAssignedClassInventory")) {
+            PlayerTagManager.removeTag(player, "openingAssignedClassInventory")
+            return
+        }
+
+        if (PlayerTagManager.hasTag(player, "openAssignedClassInventory")) {
+            reopenAssignedClassInventoryLater(player)
+            return
+        }
+
+        if (PlayerTagManager.hasTag(player, "openingConfigInventory")) {
+            PlayerTagManager.removeTag(player, "openingConfigInventory")
+            return
+        }
+
+        if (PlayerTagManager.hasTag(player, "openConfigInventory")) {
+            PlayerTagManager.removeTag(player, "openConfigInventory")
+            PlayerTagManager.removeIf(player) { it.startsWith("configCategory:") }
             return
         }
 
@@ -57,16 +71,18 @@ class OnInventoryCloseEvent : Listener {
         }
     }
 
-    private fun reopenClassPickInventoryLater(player: Player, tag: String) {
+    private fun reopenAssignedClassInventoryLater(player: Player) {
         val task = object : BukkitRunnable() {
             override fun run() {
-                if (PlayerTagManager.hasTag(player, tag)) {
-                    val playerData = game?.playerDatas?.filterIsInstance<PlayerData>()?.find { it.player == player } ?: return
-
-                    playerData.openClassPickInventory(1)
-                }
+                val currentGame = game ?: return
+                if (currentGame.phase != GamePhase.CLASS_SELECTION) return
+                if (!PlayerTagManager.hasTag(player, "openAssignedClassInventory")) return
+                if (currentGame.confirmedPlayers.contains(player.uniqueId)) return
+                val playerData = currentGame.playerDatas.filterIsInstance<PlayerData>()
+                    .find { it.player == player } ?: return
+                playerData.openAssignedClassInventory()
             }
-        }.runTaskLater(ClassWarPlugin.instance, 10L)
+        }.runTaskLater(ClassWarPlugin.instance, 2L)
         game?.playerDatas?.filterIsInstance<PlayerData>()?.find { it.player == player }?.trackTask(task)
     }
 

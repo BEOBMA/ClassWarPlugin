@@ -1,15 +1,13 @@
 package org.beobma.classWarPlugin.gameClass.handler
 
-import org.beobma.classWarPlugin.event.PlayerSkillDamageByPlayerEvent
-import org.beobma.classWarPlugin.event.PlayerStatusEffectDamageByPlayerEvent
-import org.bukkit.event.entity.EntityDamageByEntityEvent
+import org.beobma.classWarPlugin.damage.DamageContext
 
 interface WhenHitHandler {
-    fun whenHit(skillDamageEvent: PlayerSkillDamageByPlayerEvent?, attackDamageEvent: EntityDamageByEntityEvent?) {}
+    fun whenHit(context: DamageContext) {}
 
-    fun whenAttackHit(event: EntityDamageByEntityEvent) {}
+    fun whenAttackHit(context: DamageContext) {}
 
-    fun whenSkillAttackHit(event: PlayerSkillDamageByPlayerEvent) {}
+    fun whenSkillAttackHit(context: DamageContext) {}
 
-    fun whenStatusEffectAttackHit(event: PlayerStatusEffectDamageByPlayerEvent) {}
+    fun whenStatusEffectAttackHit(context: DamageContext) {}
 }

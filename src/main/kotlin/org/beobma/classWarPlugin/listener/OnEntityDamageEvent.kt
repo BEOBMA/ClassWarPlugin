@@ -1,7 +1,11 @@
 package org.beobma.classWarPlugin.listener
 
 import org.beobma.classWarPlugin.manager.GameManager.trainingInstance
+import org.beobma.classWarPlugin.info.Info.game
+import org.beobma.classWarPlugin.game.GamePhase
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.manager.PlayerTagManager
+import org.beobma.classWarPlugin.manager.DamageIndicatorManager
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
@@ -20,6 +24,15 @@ class OnEntityDamageEvent : Listener {
             event.isCancelled = true
         }
         val player = event.entity as? Player ?: return
+        val activeGame = game
+        if (activeGame != null) {
+            val playerData = activeGame.playerDatas.filterIsInstance<PlayerData>()
+                .find { it.player == player }
+            if (playerData != null && (activeGame.phase != GamePhase.RUNNING || !playerData.entityStatus.isAttackable)) {
+                event.isCancelled = true
+                return
+            }
+        }
         if (!PlayerTagManager.hasTag(player, "isTraining")) {
             return
         }
@@ -40,8 +53,9 @@ class OnEntityDamageEvent : Listener {
             }
         }
 
-        val finalDamage = event.damage
+        val finalDamage = event.finalDamage
         if (finalDamage > 0.0) {
+            DamageIndicatorManager.show(player, finalDamage, game.settings.damageIndicatorsEnabled)
             val formattedDamage = String.format("%.2f", finalDamage)
             player.sendMiniMessage("<red>받은 피해 정보 - <gray>피해량: <gold><bold>$formattedDamage</bold></gold>")
         }

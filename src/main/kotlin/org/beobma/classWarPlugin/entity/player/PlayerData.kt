@@ -8,15 +8,18 @@ import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.bukkit.entity.Entity
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitTask
+import java.util.UUID
 
 class PlayerData(
-    val player: Player,
+    var player: Player,
     val initGame: Game,
     var gameClass: GameClass? = null,
 ) : EntityData() {
-    override val entity: Entity = player
+    val uniqueId: UUID = player.uniqueId
+    override val entity: Entity
+        get() = player
     override val game: Game = initGame
-    override val entityStatus: EntityStatus = PlayerStatus(player)
+    override val entityStatus: EntityStatus = PlayerStatus()
     override val bukkitTasks: MutableList<BukkitTask> = mutableListOf()
     override val statusAbnormalitys: MutableList<StatusAbnormality> = mutableListOf()
 
@@ -26,14 +29,16 @@ class PlayerData(
         return task
     }
 
+    fun isEnemyOf(other: PlayerData): Boolean = this != other
+
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
         if (other !is PlayerData) return false
 
-        return player.uniqueId == other.player.uniqueId
+        return uniqueId == other.uniqueId
     }
 
     override fun hashCode(): Int {
-        return player.uniqueId.hashCode()
+        return uniqueId.hashCode()
     }
 }
