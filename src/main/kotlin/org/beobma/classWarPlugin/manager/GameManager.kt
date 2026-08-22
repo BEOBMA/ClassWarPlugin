@@ -41,7 +41,7 @@ import kotlin.random.Random
 
 object GameManager {
     private val miniMessage = MiniMessage.miniMessage()
-    private const val reconnectGraceTicks = 5L * 60L * 20L
+    private const val RECONNECT_GRACE_TICKS = 5L * 60L * 20L
     private val pendingPostGameCleanup: MutableMap<UUID, PlayerSnapshot> = mutableMapOf()
 
     private val gameClassFactories: List<() -> GameClass> = listOf(
@@ -442,7 +442,7 @@ object GameManager {
                 if (playerData.entityStatus.isDead) return
                 currentGame.permanentlyEliminateDisconnectedPlayer(playerData)
             }
-        }.runTaskLater(ClassWarPlugin.instance, reconnectGraceTicks)
+        }.runTaskLater(ClassWarPlugin.instance, RECONNECT_GRACE_TICKS)
         currentGame.disconnectTasks[player.uniqueId] = task
         currentGame.tasks.add(task)
     }
