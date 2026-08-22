@@ -99,7 +99,7 @@ class Mathematician : GameClass(), GameStatusHandler {
         1 -> {
             val a = Random.nextInt(8, 31)
             val b = Random.nextInt(3, 18)
-            if (Random.nextBoolean()) "$a + $b = ?" to a + b else "$a - $b = ?" to a - b
+            if (Random.nextBoolean()) "$a + $b = ?" to a + b else "$a − $b = ?" to a - b
         }
         2 -> {
             val a = Random.nextInt(3, 14)
@@ -122,7 +122,7 @@ class Mathematician : GameClass(), GameStatusHandler {
             val x = Random.nextInt(4, 18)
             val a = Random.nextInt(3, 10)
             val b = Random.nextInt(8, 40)
-            "${a}x + $b = ${a * x + b}, x = ?" to x
+            "$a·x + $b = ${a * x + b}, x = ?" to x
         }
         6 -> generateQuadraticProblem()
         7 -> generateSequenceProblem()
@@ -136,7 +136,7 @@ class Mathematician : GameClass(), GameStatusHandler {
         val largerRoot = Random.nextInt(smallerRoot + 1, 13)
         val rootSum = smallerRoot + largerRoot
         val rootProduct = smallerRoot * largerRoot
-        return "x² - ${rootSum}x + $rootProduct = 0일 때, 큰 근 x = ?" to largerRoot
+        return "x² − $rootSum·x + $rootProduct = 0, 큰 근 x = ?" to largerRoot
     }
 
     private fun generateSequenceProblem(): Pair<String, Int> {
@@ -146,7 +146,7 @@ class Mathematician : GameClass(), GameStatusHandler {
             val termCount = Random.nextInt(7, 13)
             val lastTerm = firstTerm + (termCount - 1) * difference
             val sum = termCount * (firstTerm + lastTerm) / 2
-            return "첫째항이 $firstTerm, 공차가 ${difference}인 등차수열의 첫 ${termCount}개 항의 합은?" to sum
+            return "a₁ = $firstTerm, d = $difference, n = $termCount ⇒ Sₙ = ?" to sum
         }
 
         val firstTerm = Random.nextInt(1, 5)
@@ -158,7 +158,7 @@ class Mathematician : GameClass(), GameStatusHandler {
             sum += term
             term *= ratio
         }
-        return "첫째항이 $firstTerm, 공비가 ${ratio}인 등비수열의 첫 ${termCount}개 항의 합은?" to sum
+        return "a₁ = $firstTerm, r = $ratio, n = $termCount ⇒ Sₙ = ?" to sum
     }
 
     private fun generateLogarithmProblem(): Pair<String, Int> {
@@ -168,7 +168,8 @@ class Mathematician : GameClass(), GameStatusHandler {
         val rightSide = knownExponent + answerExponent
         val knownValue = intPower(base, knownExponent)
         val answer = intPower(base, answerExponent)
-        return "log_${base}(x) + log_${base}($knownValue) = ${rightSide}일 때, x = ?" to answer
+        val baseSubscript = toSubscript(base)
+        return "log$baseSubscript(x) + log$baseSubscript($knownValue) = $rightSide, x = ?" to answer
     }
 
     private fun generateCalculusProblem(): Pair<String, Int> {
@@ -177,13 +178,13 @@ class Mathematician : GameClass(), GameStatusHandler {
             val linear = Random.nextInt(1, 8)
             val point = Random.nextInt(1, 6)
             val answer = 2 * coefficient * point + linear
-            return "f(x) = ${coefficient}x² + ${linear}x + 1일 때, f'($point) = ?" to answer
+            return "f(x) = ${coefficient}x² + ${linear}x + 1, f′($point) = ?" to answer
         }
 
         val coefficient = Random.nextInt(1, 5)
         val point = Random.nextInt(2, 8)
         val answer = 2 * coefficient * point
-        return "lim[h→0] {${coefficient}(($point + h)² - ${point * point}) / h} = ?" to answer
+        return "limₕ→₀ [${coefficient}(($point + h)² − ${point * point}) ÷ h] = ?" to answer
     }
 
     private fun generateSeniorProblem(): Pair<String, Int> = when (Random.nextInt(3)) {
@@ -194,7 +195,7 @@ class Mathematician : GameClass(), GameStatusHandler {
             val upperBound = Random.nextInt(2, 6)
             val answer = cubicCoefficient * intPower(upperBound, 3) +
                 quadraticCoefficient * intPower(upperBound, 2) + linearCoefficient * upperBound
-            "∫[0→$upperBound] (${3 * cubicCoefficient}x² + ${2 * quadraticCoefficient}x + $linearCoefficient) dx = ?" to answer
+            "∫₀${toSuperscript(upperBound)} (${3 * cubicCoefficient}x² + ${2 * quadraticCoefficient}x + $linearCoefficient) dx = ?" to answer
         }
         1 -> {
             val outerPower = 3
@@ -203,7 +204,7 @@ class Mathematician : GameClass(), GameStatusHandler {
             val point = Random.nextInt(1, 5)
             val innerValue = coefficient * point + constant
             val answer = outerPower * coefficient * intPower(innerValue, outerPower - 1)
-            "f(x) = (${coefficient}x + $constant)³일 때, f'($point) = ?" to answer
+            "f(x) = ($coefficient·x + $constant)³, f′($point) = ?" to answer
         }
         else -> {
             val denominatorCoefficient = Random.nextInt(2, 7)
@@ -211,10 +212,44 @@ class Mathematician : GameClass(), GameStatusHandler {
             val numeratorCoefficient = denominatorCoefficient * answer
             val numeratorConstant = Random.nextInt(1, 10)
             val denominatorConstant = Random.nextInt(1, 10)
-            "lim[n→∞] (${numeratorCoefficient}n² + $numeratorConstant) / " +
+            "limₙ→∞ (${numeratorCoefficient}n² + $numeratorConstant) ÷ " +
                 "(${denominatorCoefficient}n² + $denominatorConstant) = ?" to answer
         }
     }
+
+    private fun toSubscript(value: Int): String = value.toString().map { digit ->
+        when (digit) {
+            '0' -> '₀'
+            '1' -> '₁'
+            '2' -> '₂'
+            '3' -> '₃'
+            '4' -> '₄'
+            '5' -> '₅'
+            '6' -> '₆'
+            '7' -> '₇'
+            '8' -> '₈'
+            '9' -> '₉'
+            '-' -> '₋'
+            else -> digit
+        }
+    }.joinToString("")
+
+    private fun toSuperscript(value: Int): String = value.toString().map { digit ->
+        when (digit) {
+            '0' -> '⁰'
+            '1' -> '¹'
+            '2' -> '²'
+            '3' -> '³'
+            '4' -> '⁴'
+            '5' -> '⁵'
+            '6' -> '⁶'
+            '7' -> '⁷'
+            '8' -> '⁸'
+            '9' -> '⁹'
+            '-' -> '⁻'
+            else -> digit
+        }
+    }.joinToString("")
 
     private fun intPower(base: Int, exponent: Int): Int {
         var result = 1

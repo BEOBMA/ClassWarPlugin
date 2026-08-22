@@ -4,6 +4,8 @@ import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.gameClass.GameClass
 import net.kyori.adventure.bossbar.BossBar
 import org.bukkit.Location
+import org.bukkit.map.MapRenderer
+import org.bukkit.map.MapView
 import org.bukkit.scheduler.BukkitTask
 import java.util.UUID
 
@@ -25,4 +27,9 @@ data class Game(
     var borderBossBar: BossBar? = null,
     var originalBorderCenter: Location? = null,
     var originalBorderSize: Double? = null,
-)
+) {
+    var roundCenterX: Double = settings.centerX
+    var roundCenterZ: Double = settings.centerZ
+    var battleMapView: MapView? = null
+    var battleMapRenderer: MapRenderer? = null
+}

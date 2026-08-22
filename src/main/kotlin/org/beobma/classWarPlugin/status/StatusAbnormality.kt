@@ -135,7 +135,8 @@ abstract class StatusAbnormality {
     open fun onRemoveStatusAbnormality() {}
 
     open fun actionBarText(): String {
-        val durationLabel = duration?.let { "<dark_gray>|</dark_gray><yellow>${it}s</yellow>" } ?: ""
+        val durationText = duration?.let { "${it}s" } ?: "∞"
+        val durationLabel = "<dark_gray>|</dark_gray><yellow>$durationText</yellow>"
         val powerLabel = if (showPower) "<gold>${power}</gold>" else ""
         val maxPowerLabel =
             if (showMaxPower) maxPower?.let { "<dark_gray>/</dark_gray><gold>${it}</gold>" } ?: "" else ""

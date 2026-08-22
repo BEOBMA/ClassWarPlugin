@@ -21,6 +21,8 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+private const val HACK_INPUT_TIME_LIMIT_SECONDS = 35
+
 class Hacker : GameClass() {
     override val name = "<gray>해커"
     override val rank = Rank.A
@@ -63,7 +65,10 @@ class Hacker : GameClass() {
             selectedTarget = null
             sounds.play(player, Sound.BLOCK_BEACON_ACTIVATE, volume = 0.65f, pitch = 1.8f)
             particles.spawn(player, Particle.ENCHANT, count = 24, spread = 0.5, speed = 0.08)
-            player.sendMiniMessage("<aqua><bold>[해킹]</bold> <gray>${target.player.name}님을 해킹합니다. 각 코드를 25초 안에 입력하세요.")
+            player.sendMiniMessage(
+                "<aqua><bold>[해킹]</bold> <gray>${target.player.name}님을 해킹합니다. " +
+                    "각 코드를 ${HACK_INPUT_TIME_LIMIT_SECONDS}초 안에 입력하세요."
+            )
             issuePrompt(target.uniqueId, 0)
         }
 
@@ -76,11 +81,12 @@ class Hacker : GameClass() {
                     if (current.token != token) return
                     failSession("입력 제한시간을 초과했습니다.")
                 }
-            }.runTaskLater(ClassWarPlugin.instance, 500L))
+            }.runTaskLater(ClassWarPlugin.instance, HACK_INPUT_TIME_LIMIT_SECONDS * 20L))
             activeSessions.put(player.uniqueId, HackSession(this, targetId, expected, successes, token, timeout))
                 ?.timeoutTask?.cancel()
             player.sendMiniMessage(
-                "<aqua><bold>[해킹 ${successes + 1}/3]</bold> <gray>25초 내 직접 입력: <white>$expected"
+                "<aqua><bold>[해킹 ${successes + 1}/3]</bold> " +
+                    "<gray>${HACK_INPUT_TIME_LIMIT_SECONDS}초 내 직접 입력: <white>$expected"
             )
             sounds.playTo(player, Sound.BLOCK_NOTE_BLOCK_BIT, volume = 0.8f, pitch = 1.2f + successes * 0.2f)
         }
@@ -91,11 +97,11 @@ class Hacker : GameClass() {
                 repeat(length) { append(alphabet[Random.nextInt(alphabet.length)]) }
             }
 
-            val node = token(6)
-            val decryptionKey = token(24 + stage * 2)
-            val route = token(8)
-            val checksum = token(10)
-            return "root.auth[node_$node]::decrypt(key=0x$decryptionKey);route=/sys/cache/$route;crc=$checksum"
+            val node = token(4)
+            val decryptionKey = token(12 + stage * 2)
+            val route = token(5)
+            val checksum = token(6)
+            return "auth[$node]::key=0x$decryptionKey;route=$route;crc=$checksum"
         }
 
         fun acceptInput(session: HackSession, input: String) {

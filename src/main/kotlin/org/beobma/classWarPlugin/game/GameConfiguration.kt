@@ -25,6 +25,8 @@ data class GameConfiguration(
     val minimumPlayerDistance: Double = 24.0,
     val borderEnabled: Boolean = true,
     val borderInitialSize: Double = 320.0,
+    val borderCenterMinimumDistance: Double = 0.0,
+    val borderCenterMaximumDistance: Double = 140.0,
     val borderDelaySeconds: Int = 300,
     val borderShrinkSeconds: Int = 600,
     val borderMinimumSize: Double = 40.0,
@@ -44,13 +46,15 @@ object GameSettings {
             centerX = config.getDouble("map.center-x", 704.5),
             centerZ = config.getDouble("map.center-z", -615.5),
             scatterMinRadius = config.getDouble("scatter.minimum-radius", 45.0).coerceAtLeast(0.0),
-            scatterMaxRadius = config.getDouble("scatter.maximum-radius", 140.0).coerceAtLeast(5.0),
-            minimumPlayerDistance = config.getDouble("scatter.minimum-player-distance", 24.0).coerceAtLeast(2.0),
+            scatterMaxRadius = config.getDouble("scatter.maximum-radius", 140.0).coerceAtLeast(0.0),
+            minimumPlayerDistance = config.getDouble("scatter.minimum-player-distance", 24.0).coerceAtLeast(0.0),
             borderEnabled = config.getBoolean("border.enabled", true),
-            borderInitialSize = config.getDouble("border.initial-size", 320.0).coerceAtLeast(20.0),
+            borderInitialSize = config.getDouble("border.initial-size", 320.0).coerceAtLeast(0.0),
+            borderCenterMinimumDistance = config.getDouble("border.random-center.minimum-distance", 0.0),
+            borderCenterMaximumDistance = config.getDouble("border.random-center.maximum-distance", 140.0),
             borderDelaySeconds = config.getInt("border.delay-seconds", 300).coerceAtLeast(0),
-            borderShrinkSeconds = config.getInt("border.shrink-seconds", 600).coerceAtLeast(1),
-            borderMinimumSize = config.getDouble("border.minimum-size", 40.0).coerceAtLeast(10.0),
+            borderShrinkSeconds = config.getInt("border.shrink-seconds", 600).coerceAtLeast(0),
+            borderMinimumSize = config.getDouble("border.minimum-size", 40.0).coerceAtLeast(0.0),
         ).normalized()
 
         if (config.contains("training")) {
@@ -75,6 +79,8 @@ object GameSettings {
             32 -> current.copy(borderDelaySeconds = current.borderDelaySeconds + direction * 30 * multiplier)
             34 -> current.copy(borderShrinkSeconds = current.borderShrinkSeconds + direction * 30 * multiplier)
             40 -> current.copy(borderMinimumSize = current.borderMinimumSize + direction * 5.0 * multiplier)
+            44 -> current.copy(borderCenterMinimumDistance = current.borderCenterMinimumDistance + direction * 5.0 * multiplier)
+            46 -> current.copy(borderCenterMaximumDistance = current.borderCenterMaximumDistance + direction * 10.0 * multiplier)
             37 -> current.withRankWeight(Rank.SPECIAL, direction * multiplier)
             38 -> current.withRankWeight(Rank.L, direction * multiplier)
             39 -> current.withRankWeight(Rank.S, direction * multiplier)
@@ -87,29 +93,26 @@ object GameSettings {
     }
 
     private fun GameConfiguration.normalized(): GameConfiguration {
-        val maximumRadius = scatterMaxRadius.coerceAtLeast(5.0)
-        val minimumRadius = scatterMinRadius.coerceIn(0.0, maximumRadius - 1.0)
-        val initialBorder = borderInitialSize.coerceAtLeast(maximumRadius * 2.0 + 10.0)
-        val minimumBorder = borderMinimumSize.coerceIn(10.0, initialBorder - 1.0)
         return copy(
             refreshChances = refreshChances.coerceIn(0, 20),
             countdownSeconds = countdownSeconds.coerceIn(0, 60),
-            scatterMinRadius = minimumRadius,
-            scatterMaxRadius = maximumRadius,
-            minimumPlayerDistance = minimumPlayerDistance.coerceIn(2.0, maximumRadius * 2.0),
-            borderInitialSize = initialBorder,
+            scatterMinRadius = scatterMinRadius.coerceAtLeast(0.0),
+            scatterMaxRadius = scatterMaxRadius.coerceAtLeast(0.0),
+            minimumPlayerDistance = minimumPlayerDistance.coerceAtLeast(0.0),
+            borderInitialSize = borderInitialSize.coerceAtLeast(0.0),
+            borderCenterMinimumDistance = borderCenterMinimumDistance.coerceAtLeast(0.0),
+            borderCenterMaximumDistance = borderCenterMaximumDistance.coerceAtLeast(0.0),
             borderDelaySeconds = borderDelaySeconds.coerceAtLeast(0),
-            borderShrinkSeconds = borderShrinkSeconds.coerceAtLeast(1),
-            borderMinimumSize = minimumBorder,
-            rankWeights = rankWeights.mapValues { (_, weight) -> weight.coerceIn(0, 10_000) }
-                .let { weights -> if (weights.values.sum() > 0) weights else defaultRankWeights },
+            borderShrinkSeconds = borderShrinkSeconds.coerceAtLeast(0),
+            borderMinimumSize = borderMinimumSize.coerceAtLeast(0.0),
+            rankWeights = rankWeights.mapValues { (_, weight) -> weight.coerceIn(0, 10_000) },
         )
     }
 
     private fun GameConfiguration.withRankWeight(rank: Rank, delta: Int): GameConfiguration {
         val updated = rankWeights.toMutableMap()
         updated[rank] = ((updated[rank] ?: 0) + delta).coerceIn(0, 10_000)
-        return if (updated.values.sum() > 0) copy(rankWeights = updated) else this
+        return copy(rankWeights = updated)
     }
 
     private fun save() {
@@ -127,6 +130,8 @@ object GameSettings {
         plugin.config.set("scatter.minimum-player-distance", current.minimumPlayerDistance)
         plugin.config.set("border.enabled", current.borderEnabled)
         plugin.config.set("border.initial-size", current.borderInitialSize)
+        plugin.config.set("border.random-center.minimum-distance", current.borderCenterMinimumDistance)
+        plugin.config.set("border.random-center.maximum-distance", current.borderCenterMaximumDistance)
         plugin.config.set("border.delay-seconds", current.borderDelaySeconds)
         plugin.config.set("border.shrink-seconds", current.borderShrinkSeconds)
         plugin.config.set("border.minimum-size", current.borderMinimumSize)

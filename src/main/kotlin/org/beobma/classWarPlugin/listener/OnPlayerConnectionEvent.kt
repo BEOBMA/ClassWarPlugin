@@ -2,6 +2,7 @@ package org.beobma.classWarPlugin.listener
 
 import org.beobma.classWarPlugin.manager.GameManager.handleReconnect
 import org.beobma.classWarPlugin.manager.GameManager.handleTemporaryDisconnect
+import org.beobma.classWarPlugin.manager.GameManager.refreshPlayerListVisibility
 import org.beobma.classWarPlugin.manager.GameManager.stopTraining
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.StealthVisibilityManager
@@ -23,6 +24,7 @@ class OnPlayerConnectionEvent : Listener {
     @EventHandler
     fun onPlayerJoin(event: PlayerJoinEvent) {
         handleReconnect(event.player)
+        refreshPlayerListVisibility()
         StealthVisibilityManager.refreshAll()
     }
 }

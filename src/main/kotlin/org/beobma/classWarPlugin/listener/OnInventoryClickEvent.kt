@@ -16,6 +16,7 @@ import org.beobma.classWarPlugin.manager.InventoryManager.openTrainingClassListI
 import org.beobma.classWarPlugin.manager.ConfigCategory
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.gameClass.list.Contractor
 import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -47,6 +48,13 @@ class OnInventoryClickEvent : Listener {
     fun onClickItem(event: InventoryClickEvent) {
         val player = event.whoClicked as? Player ?: return
         val inventory = event.view
+        if (Contractor.isGuessInventoryOpen(player)) {
+            event.isCancelled = true
+            if (event.rawSlot !in 0 until inventory.topInventory.size) return
+            Contractor.handleInventoryClick(player, event.rawSlot)
+            return
+        }
+
         if (PlayerTagManager.hasTag(player, "openConfigInventory")) {
             event.isCancelled = true
             if (event.rawSlot !in 0 until inventory.topInventory.size) return
@@ -211,6 +219,8 @@ class OnInventoryClickEvent : Listener {
             12 -> 32
             13 -> 34
             14 -> 40
+            15 -> 44
+            16 -> 46
             else -> null
         }
 

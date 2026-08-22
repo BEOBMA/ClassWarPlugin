@@ -65,16 +65,11 @@ object InventoryManager {
         inventory.setItem(4, createClassItem(gameClass))
         inventory.setItem(19, gameClass.weapon.toItemStack())
 
+        val skillSlots = listOf(20, 21, 22, 23, 24, 25, 26, 27)
         gameClass.skills.forEachIndexed { index, skill ->
-            if (index >= 4) return@forEachIndexed
-            val material = when (index) {
-                0 -> Material.RED_DYE
-                1 -> Material.ORANGE_DYE
-                2 -> Material.YELLOW_DYE
-                else -> Material.GREEN_DYE
-            }
-            inventory.setItem(21 + index, createFullDescriptionItem(
-                material,
+            val slot = skillSlots.getOrNull(index) ?: return@forEachIndexed
+            inventory.setItem(slot, createFullDescriptionItem(
+                skillDyeMaterial(index),
                 skill.name,
                 skill.description,
                 ItemDescriptionManager.cooldownLines(skill.cooldown),
@@ -182,6 +177,8 @@ object InventoryManager {
                 inventory.setItem(12, createSettingItem(Material.REPEATER, "월드보더 대기 시간", settings.borderDelaySeconds, "초"))
                 inventory.setItem(13, createSettingItem(Material.REDSTONE, "월드보더 축소 시간", settings.borderShrinkSeconds, "초"))
                 inventory.setItem(14, createSettingItem(Material.IRON_BARS, "월드보더 최소 크기", settings.borderMinimumSize, "블록"))
+                inventory.setItem(15, createSettingItem(Material.COMPASS, "중심 최소 이동 거리", settings.borderCenterMinimumDistance, "블록"))
+                inventory.setItem(16, createSettingItem(Material.RECOVERY_COMPASS, "중심 최대 이동 거리", settings.borderCenterMaximumDistance, "블록"))
             }
 
             ConfigCategory.COMBAT -> {
@@ -224,15 +221,8 @@ object InventoryManager {
         inventory.setItem(0, gameClass.weapon.toItemStack())
         for (i in 0..gameClass.skills.size) {
             val skill = gameClass.skills.getOrNull(i) ?: break
-            val material = when (i) {
-                0 -> Material.RED_DYE
-                1 -> Material.ORANGE_DYE
-                2 -> Material.YELLOW_DYE
-                3 -> Material.GREEN_DYE
-                else -> Material.RED_DYE
-            }
             inventory.setItem(i + 1, createFullDescriptionItem(
-                material,
+                skillDyeMaterial(i),
                 skill.name,
                 skill.description,
                 ItemDescriptionManager.cooldownLines(skill.cooldown),
@@ -293,6 +283,18 @@ object InventoryManager {
                 lore(lines.map(ItemDescriptionManager::renderLoreLine))
             }
         }
+
+    fun skillDyeMaterial(index: Int): Material = when (index) {
+        0 -> Material.RED_DYE
+        1 -> Material.ORANGE_DYE
+        2 -> Material.YELLOW_DYE
+        3 -> Material.GREEN_DYE
+        4 -> Material.BLUE_DYE
+        5 -> Material.PURPLE_DYE
+        6 -> Material.PINK_DYE
+        7 -> Material.BLACK_DYE
+        else -> Material.WHITE_DYE
+    }
 
     private fun createFullDescriptionItem(
         material: Material,

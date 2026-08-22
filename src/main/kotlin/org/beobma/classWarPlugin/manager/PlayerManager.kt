@@ -7,9 +7,11 @@ import org.beobma.classWarPlugin.entity.mob.MobEntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
+import org.beobma.classWarPlugin.game.GamePhase
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.manager.GameClassManager.toItemStack
 import org.beobma.classWarPlugin.manager.SkillManager.markSkillItem
+import org.beobma.classWarPlugin.manager.InventoryManager.skillDyeMaterial
 import org.beobma.classWarPlugin.manager.ItemDescriptionManager
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.util.DamageCalculator
@@ -46,16 +48,15 @@ object PlayerManager {
             passive.inject(this)
         }
 
+        player.inventory.setHelmet(ItemStack(Material.IRON_HELMET))
+        player.inventory.setChestplate(ItemStack(Material.IRON_CHESTPLATE))
+        player.inventory.setLeggings(ItemStack(Material.IRON_LEGGINGS))
+        player.inventory.setBoots(ItemStack(Material.IRON_BOOTS))
         player.inventory.setItem(0, gameClass.weapon.toItemStack())
         gameClass.skills.forEachIndexed { index, skill ->
             if (index + 1 > 8) return@forEachIndexed
             val name = UtilManager.applyKeywords(skill.name)
-            val type = when (index) {
-                0 -> Material.RED_DYE
-                1 -> Material.ORANGE_DYE
-                2 -> Material.YELLOW_DYE
-                else -> Material.RED_DYE
-            }
+            val type = skillDyeMaterial(index)
             val displayItem = ItemStack(type, 1).apply {
                 itemMeta = itemMeta.apply {
                     displayName(miniMessage.deserialize(name))
@@ -103,6 +104,10 @@ object PlayerManager {
             if (gameClass is GameStatusHandler) {
                 gameClass.onBattleStart()
             }
+        }
+
+        if (initGame.phase == GamePhase.SCATTERING || initGame.phase == GamePhase.RUNNING) {
+            BattleMapManager.giveTo(this)
         }
     }
 

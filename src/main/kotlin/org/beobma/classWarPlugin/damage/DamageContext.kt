@@ -20,6 +20,7 @@ class DamageContext(
     private var flatDamageBonus: Double = 0.0
     private var damageDealtMultiplier: Double = 1.0
     private var damageTakenMultiplier: Double = 1.0
+    private var maximumDamage: Double? = null
 
     fun addBaseDamage(amount: Double) {
         if (damageType.isFixed) return
@@ -40,14 +41,18 @@ class DamageContext(
     }
 
     internal fun applyShieldedDamage(remainingDamage: Double) {
-        damage = remainingDamage.coerceAtLeast(0.0)
+        damage = remainingDamage.coerceAtLeast(0.0).coerceAtMost(maximumDamage ?: Double.MAX_VALUE)
     }
 
     fun capDamage(maximum: Double) {
-        damage = damage.coerceAtMost(maximum.coerceAtLeast(0.0))
+        val cappedMaximum = maximum.coerceAtLeast(0.0)
+        val effectiveMaximum = minOf(maximumDamage ?: cappedMaximum, cappedMaximum)
+        maximumDamage = effectiveMaximum
+        damage = damage.coerceAtMost(effectiveMaximum)
     }
 
     private fun recalculateDamage() {
-        damage = (originalDamage + flatDamageBonus) * damageDealtMultiplier * damageTakenMultiplier
+        damage = ((originalDamage + flatDamageBonus) * damageDealtMultiplier * damageTakenMultiplier)
+            .coerceAtMost(maximumDamage ?: Double.MAX_VALUE)
     }
 }

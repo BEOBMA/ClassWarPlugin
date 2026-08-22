@@ -1,5 +1,6 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.GameClass
@@ -17,8 +18,18 @@ import org.beobma.classWarPlugin.util.DamageType
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
+import org.bukkit.FluidCollisionMode
+import org.bukkit.entity.Player
 import org.bukkit.event.entity.EntityDamageEvent
+import org.bukkit.scheduler.BukkitRunnable
+import org.bukkit.scheduler.BukkitTask
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
+import kotlin.math.cos
+import kotlin.math.sin
+
+private const val THIRD_PERSON_FOLLOW_DISTANCE = 3.0
+private const val THIRD_PERSON_MINIMUM_DISTANCE = 0.45
+private const val THIRD_PERSON_WALL_PADDING = 0.35
 
 class Parasite : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
     override val name = "<gray>기생충"
@@ -30,8 +41,9 @@ class Parasite : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
 
     private var host: PlayerData? = null
     private var parasiteStealth: Stealth? = null
+    private var followTask: BukkitTask? = null
 
-    private fun isParasitic(): Boolean = host != null
+    fun isParasitizing(): Boolean = host != null
 
     override fun onBattleStart() {
         host = game.playerDatas.filterIsInstance<PlayerData>()
@@ -43,9 +55,8 @@ class Parasite : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
             return
         }
         applyParasiteStealth()
+        startFollowingHost()
         player.sendMiniMessage("<dark_red><bold>[기생]</bold> <gray>${selectedHost.player.name}님의 몸에 기생했습니다.")
-        particles.spawn(selectedHost.player, Particle.INFESTED, count = 18, spread = 0.45, speed = 0.05)
-        sounds.play(selectedHost.player, Sound.ENTITY_SILVERFISH_AMBIENT, volume = 0.65f, pitch = 0.7f)
     }
 
     override fun onGameTimePasses() {
@@ -62,11 +73,10 @@ class Parasite : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
             hatchSkill.hatch(automatic = true)
             return
         }
-        particles.spawn(currentHost.player, Particle.INFESTED, count = 3, spread = 0.28, speed = 0.015)
     }
 
     override fun onEnvironmentalDamage(event: EntityDamageEvent) {
-        if (!isParasitic()) return
+        if (!isParasitizing()) return
         event.isCancelled = true
         player.fallDistance = 0f
     }
@@ -79,6 +89,53 @@ class Parasite : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
         }
     }
 
+    private fun startFollowingHost() {
+        followTask?.cancel()
+        followTask = playerData.trackTask(object : BukkitRunnable() {
+            override fun run() {
+                val currentHost = host
+                if (currentHost == null) {
+                    followTask = null
+                    cancel()
+                    return
+                }
+                if (!player.isOnline || !currentHost.player.isOnline) return
+                followBehind(currentHost.player)
+            }
+        }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
+    }
+
+    private fun followBehind(hostPlayer: Player) {
+        val hostLocation = hostPlayer.location
+        val forward = hostLocation.direction.setY(0.0)
+        if (forward.lengthSquared() < 1.0E-6) {
+            val yaw = Math.toRadians(hostLocation.yaw.toDouble())
+            forward.setX(-sin(yaw)).setZ(cos(yaw))
+        }
+        val backward = forward.normalize().multiply(-1.0)
+        val hostEyeLocation = hostPlayer.eyeLocation
+        val wallHit = hostPlayer.world.rayTraceBlocks(
+            hostEyeLocation,
+            backward,
+            THIRD_PERSON_FOLLOW_DISTANCE,
+            FluidCollisionMode.NEVER,
+            true,
+        )
+        val followDistance = wallHit?.hitPosition
+            ?.distance(hostEyeLocation.toVector())
+            ?.minus(THIRD_PERSON_WALL_PADDING)
+            ?.coerceIn(THIRD_PERSON_MINIMUM_DISTANCE, THIRD_PERSON_FOLLOW_DISTANCE)
+            ?: THIRD_PERSON_FOLLOW_DISTANCE
+        val destination = hostLocation.clone().add(backward.multiply(followDistance)).apply {
+            yaw = hostLocation.yaw
+            pitch = hostLocation.pitch
+        }
+
+        player.teleport(destination)
+        player.velocity = hostPlayer.velocity
+        player.fallDistance = 0f
+    }
+
     private inner class RedSkill : Skill() {
         override val name = "<bold>부화"
         override val description = listOf(
@@ -89,7 +146,7 @@ class Parasite : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
         override val cooldown = 360
 
         override fun isUseSuccess(): Boolean {
-            if (isParasitic()) return true
+            if (isParasitizing()) return true
             player.sendMiniMessage("<red><bold>[!] 현재 기생 중인 숙주가 없습니다.")
             return false
         }
@@ -100,6 +157,8 @@ class Parasite : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
             val currentHost = host ?: return
             val hostWasAlive = !currentHost.entityStatus.isDead && currentHost.player.isOnline
             host = null
+            followTask?.cancel()
+            followTask = null
             parasiteStealth?.remove()
             parasiteStealth = null
 
@@ -144,14 +203,16 @@ class Parasite : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
         override val description = listOf(
             "<gray>패시브", "",
             "<gray>게임 시작 시 생존한 무작위 플레이어 한 명에게 기생한다.",
-            "<gray>기생 상태에서는 피해를 입지 않고, {keyword:Stealth} 상태가 된다.",
+            "<gray>기생 중 숙주의 뒤를 3인칭 시점처럼 따라다닌다.",
+            "<gray>벽에 끼이거나 다른 플레이어에게 공격받아도 피해를 받지 않으며,",
+            "<gray>피해를 입힐 수 없고 {keyword:Stealth} 상태가 된다.",
             "<gray>아래 조건 중 하나라도 만족하면 부화가 자동으로 사용된다.",
             "<gray>  - 기생한 플레이어가 사망한 경우",
             "<gray>  - 생존한 플레이어가 기생한 플레이어와 자신 뿐인 경우"
         )
 
         override fun whenHit(context: org.beobma.classWarPlugin.damage.DamageContext) {
-            if (isParasitic()) context.isCancelled = true
+            if (isParasitizing()) context.isCancelled = true
         }
     }
 }

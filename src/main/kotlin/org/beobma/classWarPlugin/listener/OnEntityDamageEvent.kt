@@ -6,6 +6,7 @@ import org.beobma.classWarPlugin.game.GamePhase
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.DamageIndicatorManager
+import org.beobma.classWarPlugin.manager.CombatManager
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
@@ -42,10 +43,14 @@ class OnEntityDamageEvent : Listener {
             }
         }
         if (!PlayerTagManager.hasTag(player, "isTraining")) {
+            if (handlerData != null && event.finalDamage > 0.0) {
+                CombatManager.recordDamageTaken(handlerData)
+            }
             return
         }
         val game = trainingInstance.find { game -> game.playerDatas.any { playerData -> playerData.entity == player} } ?: return
-        val playerData = game.playerDatas.find { playerData -> playerData.entity == player } ?: return
+        val playerData = game.playerDatas.filterIsInstance<PlayerData>()
+            .find { playerData -> playerData.entity == player } ?: return
         val shield = playerData.getStatus<Shield>()
         if (shield != null) {
             val damage = event.damage.roundToInt()
@@ -63,6 +68,7 @@ class OnEntityDamageEvent : Listener {
 
         val finalDamage = event.finalDamage
         if (finalDamage > 0.0) {
+            CombatManager.recordDamageTaken(playerData)
             player.playHurtAnimation(0.0f)
             DamageIndicatorManager.show(player, finalDamage, game.settings.damageIndicatorsEnabled)
             val formattedDamage = String.format("%.2f", finalDamage)

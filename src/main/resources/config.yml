@@ -26,6 +26,9 @@ scatter:
 border:
   enabled: true
   initial-size: 320.0
+  random-center:
+    minimum-distance: 0.0
+    maximum-distance: 140.0
   delay-seconds: 300
   shrink-seconds: 600
   minimum-size: 40.0

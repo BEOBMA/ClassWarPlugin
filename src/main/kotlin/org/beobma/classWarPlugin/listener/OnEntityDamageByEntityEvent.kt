@@ -7,6 +7,7 @@ import org.beobma.classWarPlugin.entity.mob.MobEntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.manager.DamageManager
+import org.beobma.classWarPlugin.manager.DamageIndicatorManager
 import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
@@ -89,6 +90,7 @@ class OnEntityDamageByEntityEvent : Listener {
         if (isMannequin) {
             event.isCancelled = true
             targetEntity.playHurtAnimation(0.0f)
+            DamageIndicatorManager.show(targetEntity, context.damage, attackerGame.settings.damageIndicatorsEnabled)
             val formattedDamage = String.format("%.2f", context.damage)
             attacker.sendMiniMessage(
                 "<gray>피해 경로: ${path.displayName} <gray>피해량: <gold><bold>$formattedDamage</bold></gold>"
@@ -97,6 +99,9 @@ class OnEntityDamageByEntityEvent : Listener {
         }
 
         event.damage = context.damage
+        if (targetPlayer == null) {
+            DamageIndicatorManager.show(targetEntity, event.finalDamage, attackerGame.settings.damageIndicatorsEnabled)
+        }
         DamageManager.recordSuccessfulDamage(context)
         targetPlayer?.noDamageTicks = 0
     }

@@ -1,6 +1,6 @@
 plugins {
     kotlin("jvm") version "2.4.20-RC"
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("com.gradleup.shadow") version "8.3.11"
 }
 
 group = "org.beobma"
@@ -28,6 +28,10 @@ kotlin {
 
 tasks.build {
     dependsOn("shadowJar")
+}
+
+tasks.shadowJar {
+    relocate("kotlin", "org.beobma.classWarPlugin.libs.kotlin")
 }
 
 tasks.processResources {

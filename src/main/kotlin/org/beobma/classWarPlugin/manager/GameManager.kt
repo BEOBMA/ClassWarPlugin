@@ -55,6 +55,7 @@ object GameManager {
         ::GraveRobber, ::Hacker, ::SpiderMan, ::Trapper,
         ::Mathematician, ::PortalGun, ::Tour, ::Pacifist, ::Roulette,
         ::AreaDevelopment, ::Parasite, ::Chubby, ::Vampire,
+        ::Contractor, ::Levatain, ::WeaponMaster,
     )
 
     private val miniMessageTagPattern = Regex("<[^>]+>")
@@ -81,6 +82,8 @@ object GameManager {
 
         game = this
         phase = GamePhase.CLASS_SELECTION
+        PlayerListManager.hideAll()
+        NameTagManager.hideAll(participants.map { it.player.name })
         availableClasses.clear()
         availableClasses.addAll(gameClassFactories.map { it() })
         confirmedPlayers.clear()
@@ -147,8 +150,8 @@ object GameManager {
 
         PlayerTagManager.removeTag(player, "openAssignedClassInventory")
         player.closeInventory()
-        val assignedClass = gameClass ?: return
-        player.playerListName(miniMessage.deserialize("${player.name} <gray>[ ${assignedClass.name} <gray>]"))
+        if (gameClass == null) return
+        player.playerListName(miniMessage.deserialize(player.name))
         currentGame.sendNotification("${player.name}님이 클래스를 확정했습니다. (${currentGame.confirmedPlayers.size}/${currentGame.contenders().size})")
 
         if (currentGame.contenders().all { currentGame.confirmedPlayers.contains(it.player.uniqueId) }) {
@@ -189,6 +192,7 @@ object GameManager {
             it.entityStatus.canMove = false
         }
 
+        selectRandomRoundCenter()
         val spawnPoints = findSpawnLocations(gameWorld, participants.size)
         if (spawnPoints == null) {
             sendNotification("설정된 범위에서 안전한 시작 지점을 충분히 찾지 못했습니다. 산개 설정을 확인해 주세요.")
@@ -264,7 +268,7 @@ object GameManager {
             status.canMove = true
             status.isAttackable = true
             status.isSkillTargeting = true
-            playerData.player.gameMode = GameMode.SURVIVAL
+            playerData.player.gameMode = GameMode.ADVENTURE
             playerData.player.showTitle(
                 Title.title(
                     miniMessage.deserialize("<red><bold>Fight!"),
@@ -300,8 +304,10 @@ object GameManager {
         val border = gameWorld.worldBorder
         originalBorderCenter = border.center.clone()
         originalBorderSize = border.size
-        border.setCenter(settings.centerX, settings.centerZ)
-        border.size = settings.borderInitialSize
+        border.setCenter(roundCenterX, roundCenterZ)
+        val initialBorderSize = settings.borderInitialSize.coerceAtLeast(1.0)
+        val targetBorderSize = settings.borderMinimumSize.coerceAtLeast(1.0)
+        border.size = initialBorderSize
 
         val bossBar = BossBar.bossBar(
             miniMessage.deserialize("<aqua><bold>월드보더 축소 준비"),
@@ -316,10 +322,10 @@ object GameManager {
         val shrinkTicks = settings.borderShrinkSeconds.toLong() * 20L
         var elapsedTicks = 0L
         var shrinking = false
-        var shrinkStartX = settings.centerX
-        var shrinkStartZ = settings.centerZ
-        var shrinkTargetX = settings.centerX
-        var shrinkTargetZ = settings.centerZ
+        var shrinkStartX = roundCenterX
+        var shrinkStartZ = roundCenterZ
+        var shrinkTargetX = roundCenterX
+        var shrinkTargetZ = roundCenterZ
         val task = object : BukkitRunnable() {
             override fun run() {
                 if (phase != GamePhase.RUNNING) {
@@ -332,10 +338,20 @@ object GameManager {
                     elapsedTicks = 0L
                     shrinkStartX = border.center.x
                     shrinkStartZ = border.center.z
-                    val maximumOffset = ((border.size - settings.borderMinimumSize) / 2.0).coerceAtLeast(0.0)
-                    shrinkTargetX = shrinkStartX + Random.nextDouble(-maximumOffset, maximumOffset)
-                    shrinkTargetZ = shrinkStartZ + Random.nextDouble(-maximumOffset, maximumOffset)
-                    border.changeSize(settings.borderMinimumSize, settings.borderShrinkSeconds.toLong() * 20L)
+                    val maximumOffset = ((border.size - targetBorderSize) / 2.0).coerceAtLeast(0.0)
+                    val offsetX = if (maximumOffset > 0.0) Random.nextDouble(-maximumOffset, maximumOffset) else 0.0
+                    val offsetZ = if (maximumOffset > 0.0) Random.nextDouble(-maximumOffset, maximumOffset) else 0.0
+                    shrinkTargetX = shrinkStartX + offsetX
+                    shrinkTargetZ = shrinkStartZ + offsetZ
+                    if (shrinkTicks <= 0L) {
+                        border.size = targetBorderSize
+                        border.setCenter(shrinkTargetX, shrinkTargetZ)
+                        activePlayers().filter { it.player.isOnline }.forEach { it.player.hideBossBar(bossBar) }
+                        borderBossBar = null
+                        cancel()
+                        return
+                    }
+                    border.changeSize(targetBorderSize, shrinkTicks)
                     bossBar.color(BossBar.Color.RED)
                 }
 
@@ -369,6 +385,25 @@ object GameManager {
         track(task)
     }
 
+    private fun Game.selectRandomRoundCenter() {
+        roundCenterX = settings.centerX
+        roundCenterZ = settings.centerZ
+        if (!settings.borderEnabled) return
+
+        val minimumOffset = minOf(settings.borderCenterMinimumDistance, settings.borderCenterMaximumDistance)
+        val maximumOffset = maxOf(settings.borderCenterMinimumDistance, settings.borderCenterMaximumDistance)
+        if (maximumOffset == 0.0) return
+
+        val angle = Random.nextDouble(0.0, PI * 2.0)
+        val radius = if (minimumOffset < maximumOffset) {
+            sqrt(Random.nextDouble(minimumOffset * minimumOffset, maximumOffset * maximumOffset))
+        } else {
+            minimumOffset
+        }
+        roundCenterX += cos(angle) * radius
+        roundCenterZ += sin(angle) * radius
+    }
+
     private fun Game.findSpawnLocations(world: World, count: Int): List<Location>? {
         val result = mutableListOf<Location>()
         repeat(count) {
@@ -376,11 +411,15 @@ object GameManager {
             repeat(750) {
                 if (selected != null) return@repeat
                 val angle = Random.nextDouble(0.0, PI * 2.0)
-                val minSquared = settings.scatterMinRadius * settings.scatterMinRadius
-                val maxSquared = settings.scatterMaxRadius * settings.scatterMaxRadius
-                val radius = sqrt(Random.nextDouble(minSquared, maxSquared))
-                val x = floor(settings.centerX + cos(angle) * radius).toInt()
-                val z = floor(settings.centerZ + sin(angle) * radius).toInt()
+                val minimumRadius = minOf(settings.scatterMinRadius, settings.scatterMaxRadius)
+                val maximumRadius = maxOf(settings.scatterMinRadius, settings.scatterMaxRadius)
+                val radius = if (minimumRadius == maximumRadius) {
+                    minimumRadius
+                } else {
+                    sqrt(Random.nextDouble(minimumRadius * minimumRadius, maximumRadius * maximumRadius))
+                }
+                val x = floor(roundCenterX + cos(angle) * radius).toInt()
+                val z = floor(roundCenterZ + sin(angle) * radius).toInt()
                 val candidate = safeSurfaceLocation(world, x, z) ?: return@repeat
                 if (result.any { it.distanceSquared(candidate) < settings.minimumPlayerDistance * settings.minimumPlayerDistance }) {
                     return@repeat
@@ -447,6 +486,7 @@ object GameManager {
         val currentGame = game ?: return
         if (currentGame.phase == GamePhase.WAITING || currentGame.phase == GamePhase.FINISHED) return
         val playerData = currentGame.findParticipant(player.uniqueId) ?: return
+        Contractor.clearSessions(listOf(player.uniqueId))
         Hacker.clearSessions(listOf(player.uniqueId))
         Mathematician.clearSessions(listOf(player.uniqueId))
         Vampire.clearForms(listOf(player.uniqueId))
@@ -505,10 +545,7 @@ object GameManager {
             return
         }
 
-        val assignedClass = playerData.gameClass
-        if (assignedClass != null) {
-            player.playerListName(miniMessage.deserialize("${player.name} <gray>[ ${assignedClass.name} <gray>]"))
-        }
+        player.playerListName(miniMessage.deserialize(player.name))
 
         if (playerData.entityStatus.isDead) {
             player.gameMode = GameMode.SPECTATOR
@@ -558,13 +595,19 @@ object GameManager {
                 playerData.entityStatus.canMove = true
                 playerData.entityStatus.isAttackable = true
                 playerData.entityStatus.isSkillTargeting = true
-                player.gameMode = GameMode.SURVIVAL
+                player.gameMode = GameMode.ADVENTURE
                 currentGame.borderBossBar?.let { player.showBossBar(it) }
                 player.sendMessage(miniMessage.deserialize("<green><bold>[!] 게임에 정상적으로 복귀했습니다."))
             }
 
             GamePhase.WAITING, GamePhase.FINISHED -> Unit
         }
+    }
+
+    fun refreshPlayerListVisibility() {
+        val currentGame = game ?: return
+        PlayerListManager.hideAll()
+        NameTagManager.hideAll(currentGame.activePlayers().map { it.player.name })
     }
 
     private fun Game.permanentlyEliminateDisconnectedPlayer(playerData: PlayerData) {
@@ -609,6 +652,7 @@ object GameManager {
                 )
             )
         }
+        broadcastClassSummary()
         val task = object : BukkitRunnable() {
             override fun run() = stop()
         }.runTaskLater(ClassWarPlugin.instance, 100L)
@@ -616,26 +660,30 @@ object GameManager {
     }
 
     fun Game.stop() {
+        val wasRunning = phase == GamePhase.RUNNING
         phase = GamePhase.FINISHED
+        if (wasRunning) broadcastClassSummary()
         val participantIds = activePlayers().map { it.uniqueId }
         GraveRobber.clearDeathRecords(this)
+        Contractor.clearSessions(participantIds)
         Hacker.clearSessions(participantIds)
         Mathematician.clearSessions(participantIds)
         Vampire.clearForms(participantIds)
         PortalGun.clearForPlayers(participantIds)
         AreaDevelopment.clearDomains(participantIds)
         DamageManager.clearAttributions(participantIds)
+        CombatManager.clear(participantIds)
         clearDamageInvincibility(participantIds)
         CooldownManager.clear(participantIds)
         DamageIndicatorManager.clearForPlayers(participantIds)
+        BattleMapManager.cleanup(this)
         disconnectTasks.values.forEach { it.cancel() }
         disconnectTasks.clear()
         tasks.toList().forEach { it.cancel() }
         tasks.clear()
         borderBossBar?.let { bar -> activePlayers().filter { it.player.isOnline }.forEach { it.player.hideBossBar(bar) } }
         borderBossBar = null
-        originalBorderCenter?.let { gameWorld.worldBorder.setCenter(it.x, it.z) }
-        originalBorderSize?.let { gameWorld.worldBorder.size = it }
+        gameWorld.worldBorder.reset()
 
         activePlayers().forEach { playerData ->
             StealthVisibilityManager.reveal(playerData)
@@ -652,6 +700,8 @@ object GameManager {
                 pendingPostGameCleanup[player.uniqueId] = snapshot
             }
         }
+        PlayerListManager.restoreAll()
+        NameTagManager.restoreAll()
         playerDatas.filterNot { it is PlayerData }.forEach { entityData ->
             unregisterAllTickingStatuses(entityData.statusAbnormalitys)
             entityData.statusAbnormalitys.clear()
@@ -667,6 +717,8 @@ object GameManager {
         refreshesRemaining.clear()
         confirmedPlayers.clear()
         spawnLocations.clear()
+        roundCenterX = settings.centerX
+        roundCenterZ = settings.centerZ
         originalBorderCenter = null
         originalBorderSize = null
         if (game === this) game = null
@@ -706,6 +758,7 @@ object GameManager {
 
     fun Player.stopTraining() {
         val trainingGame = trainingInstance.find { it.activePlayers().any { data -> data.player == this } } ?: return
+        Contractor.clearSessions(listOf(uniqueId))
         Hacker.clearSessions(listOf(uniqueId))
         Mathematician.clearSessions(listOf(uniqueId))
         Vampire.clearForms(listOf(uniqueId))
@@ -721,6 +774,7 @@ object GameManager {
             entityData.bukkitTasks.clear()
         }
         clearDamageInvincibility(listOf(uniqueId))
+        CombatManager.clear(listOf(uniqueId))
         DamageManager.clearAttributions(trainingGame.playerDatas.map { it.entity.uniqueId })
         CooldownManager.clear(listOf(uniqueId))
         DamageIndicatorManager.clearForPlayers(listOf(uniqueId))
@@ -730,6 +784,8 @@ object GameManager {
 
     fun stopAllTraining() {
         val trainingPlayerIds = trainingInstance.flatMap { it.activePlayers() }.map { it.uniqueId }
+        Contractor.clearSessions(trainingPlayerIds)
+        CombatManager.clear(trainingPlayerIds)
         CooldownManager.clear(trainingPlayerIds)
         DamageIndicatorManager.clearForPlayers(trainingPlayerIds)
         trainingInstance.toList().forEach { trainingGame ->
@@ -843,6 +899,19 @@ object GameManager {
             )
             playerData.player.sendMessage(miniMessage.deserialize("<gray>[!] $message"))
         }
+    }
+
+    private fun Game.broadcastClassSummary() {
+        val classLines = activePlayers()
+            .sortedBy { it.player.name.lowercase(Locale.ROOT) }
+            .joinToString("\n") { playerData ->
+                val className = playerData.gameClass?.name ?: "<red>배정되지 않음"
+                "<gray>- <white>${playerData.player.name}<dark_gray>: $className"
+            }
+        val summary = miniMessage.deserialize(
+            "<gold><bold>[게임 종료 - 클래스 공개]</bold>\n$classLines"
+        )
+        Bukkit.getOnlinePlayers().forEach { it.sendMessage(summary) }
     }
 
     private fun formatTime(seconds: Int): String =

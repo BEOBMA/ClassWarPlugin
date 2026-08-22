@@ -3,6 +3,7 @@ package org.beobma.classWarPlugin.manager
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.gameClass.list.Parasite
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getDamageTakenModifier
@@ -15,6 +16,8 @@ import java.util.UUID
 import kotlin.math.roundToInt
 
 object DamageManager {
+    private const val BASIC_ATTACK_DAMAGE_MULTIPLIER = 0.6
+
     data class Attribution(
         val attackerId: UUID,
         val attackerName: String,
@@ -26,6 +29,8 @@ object DamageManager {
 
     fun process(context: DamageContext): Boolean {
         if (context.damage <= 0.0) return false
+        if ((context.attacker.gameClass as? Parasite)?.isParasitizing() == true) return false
+        if (((context.target as? PlayerData)?.gameClass as? Parasite)?.isParasitizing() == true) return false
 
         val attackerStatus = context.attacker.entityStatus
         val targetStatus = context.target.entityStatus
@@ -39,6 +44,9 @@ object DamageManager {
         dispatchHandlers(context)
         if (context.isCancelled) return false
 
+        if (context.path.isBasicAttack) {
+            context.addDamageDealtMultiplier(BASIC_ATTACK_DAMAGE_MULTIPLIER)
+        }
         context.addDamageTakenMultiplier(context.target.getDamageTakenModifier().combinedMultiplier)
         applyShield(context)
         return !context.isCancelled && context.damage > 0.0
@@ -46,6 +54,7 @@ object DamageManager {
 
     fun recordSuccessfulDamage(context: DamageContext) {
         val target = context.target.entity
+        CombatManager.recordSuccessfulDamage(context)
         lastDamageByTarget[target.uniqueId] = Attribution(
             context.attacker.uniqueId,
             context.attacker.player.name,

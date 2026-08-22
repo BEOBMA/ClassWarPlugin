@@ -78,7 +78,7 @@ class Chubby : GameClass(), GameStatusHandler, EnvironmentalDamageHandler, Statu
     private fun triggerImpact(fallHeight: Double) {
         if (fallHeight < 3.0) return
         val currentTick = player.world.fullTime
-        if (currentTick - lastImpactTick <= 1L) return
+        if (lastImpactTick != Long.MIN_VALUE && currentTick - lastImpactTick <= 1L) return
         lastImpactTick = currentTick
         val radius = min(5.0, 2.8 + fallHeight * 0.14)
         val damage = ((fallHeight - 2.0) * 1.4).coerceIn(2.0, 18.0)
