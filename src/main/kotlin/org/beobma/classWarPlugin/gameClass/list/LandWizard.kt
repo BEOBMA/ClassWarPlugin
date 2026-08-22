@@ -24,10 +24,9 @@ import org.beobma.classWarPlugin.damage.DamageContext
 import org.bukkit.Material
 
 class LandWizard : GameClass(), GameStatusHandler {
-    override val name = "<gray>대지 마법사"
-    override val rank = Rank.C
+    override val name = "<gray>지맥술사"
+    override val rank = Rank.B
     override val classItemMaterial = Material.SANDSTONE
-    override val weapon: BaseWeapon = Weapon()
 
     override var skills: List<Skill> = listOf(
         RedSkill(),
@@ -48,24 +47,14 @@ class LandWizard : GameClass(), GameStatusHandler {
         mana.increasePower(10)
     }
 
-
-    private class Weapon : BaseWeapon() {
-        override val name = "<gray>대인용 지팡이"
-        override val description = listOf("<gray>검처럼 사용할 수 있는 지팡이.")
-        override val material = Material.WOODEN_SWORD
-    }
-
     private class RedSkill : Skill() {
-        override val name = "<gold><bold>지진"
+        override val name = "<bold>지진"
         override val description = listOf(
             "{keyword:Mana}를 20 소모하고 사용할 수 있다.",
             "",
-            "<gray>사용 시 주위 모든 적에게 2의 피해를 입히고 10초간 {keyword:Vibration}을 2 부여한다.",
-            "",
-            Keyword.Vibration.description!!,
-            Keyword.AbnormalStatusDamage.description!!
+            "<gray>사용 시 주위 모든 적에게 2의 피해를 입히고 10초간 {keyword:Vibration}을 2 부여한다."
         )
-        override val cooldown = 2
+        override val cooldown = 3
 
         override fun use() {
             val mana = playerData.getOrCreateStatus(playerData) { Mana() }
@@ -89,16 +78,13 @@ class LandWizard : GameClass(), GameStatusHandler {
     }
 
     private class OrangeSkill : Skill() {
-        override val name = "<gold><bold>탄성 반발"
+        override val name = "<bold>공진"
         override val description = listOf(
-            "{keyword:Mana}를 100 소모하고 사용할 수 있다.",
+            "{keyword:Mana}를 60 소모하고 사용할 수 있다.",
             "",
-            "<gray>사용 시 5초간 <aqua><bold>8의 피해를 막는 보호막</bold><gray>을 얻고 주위 모든 적에게 {keyword:VibrationExplosion}을 적용한다.",
-            "",
-            Keyword.VibrationExplosion.description!!,
-            Keyword.AbnormalStatusDamage.description!!
+            "<gray>사용 시 5초간 <aqua><bold>8의 피해를 막는 {keyword:Shield}을 얻고 주위 모든 적에게 {keyword:VibrationExplosion}을 적용한다."
         )
-        override val cooldown = 10
+        override val cooldown = 18
 
         override fun use() {
             val mana = playerData.getOrCreateStatus(playerData) { Mana() }
@@ -125,9 +111,9 @@ class LandWizard : GameClass(), GameStatusHandler {
     }
 
     private class Passive : BasePassive(), WhenHitHandler {
-        override val name = "<gold><bold>암석화"
+        override val name = "<bold>암석화"
         override val description = listOf(
-            "<gray>기본 공격 피격 시 <gold><bold>받는 피해가 30% 감소</bold><gray>한다."
+            "{keyword:Shield}을 보유한 동안 <gold><bold>기본 공격으로 받는 피해가 30% 감소</bold><gray>한다."
         )
 
         override fun whenAttackHit(event: DamageContext) {

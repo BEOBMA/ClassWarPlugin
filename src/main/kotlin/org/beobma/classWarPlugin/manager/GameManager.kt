@@ -45,11 +45,11 @@ object GameManager {
     private val pendingPostGameCleanup: MutableMap<UUID, PlayerSnapshot> = mutableMapOf()
 
     private val gameClassFactories: List<() -> GameClass> = listOf(
-        ::Berserker, ::Sniper, ::FireWizard, ::WaterWizard, ::TimeManiqulator, ::LandWizard,
-        ::WindWizard, ::Gambler, ::Knight, ::LightningWizard, ::LightWizard,
-        ::DarkWizard, ::Priests, ::Warlock, ::Mathematician, ::Physicist, ::Paladin, ::Bard,
-        ::Duelist, ::Astronomer, ::Assassin, ::IceWizard, ::RuneWizard, ::Detective,
-        ::GunBlader, ::Hitman, ::Watchmaker,
+        ::Berserker, ::Sniper, ::Meteor, ::TimeManiqulator, ::LandWizard,
+        ::Gambler, ::Knight, ::LightningWizard, ::LightWizard,
+        ::AbyssalVeil, ::Warlock, ::Mathematician,
+        ::Duelist, ::Astronomer, ::Assassin, ::IceWizard,
+        ::GunBlader, ::Watchmaker,
     )
 
     private val miniMessageTagPattern = Regex("<[^>]+>")
@@ -324,7 +324,7 @@ object GameManager {
                 if (!shrinking && elapsed >= settings.borderDelaySeconds) {
                     shrinking = true
                     elapsed = 0
-                    border.setSize(settings.borderMinimumSize, settings.borderShrinkSeconds.toLong())
+                    border.changeSize(settings.borderMinimumSize, settings.borderShrinkSeconds.toLong() * 20L)
                     bossBar.color(BossBar.Color.RED)
                 }
 
@@ -411,6 +411,8 @@ object GameManager {
         playerData.entityStatus.canSkillUse = false
         playerData.entityStatus.isAttackable = false
         playerData.entityStatus.isSkillTargeting = false
+        StealthVisibilityManager.reveal(playerData)
+        StealthVisibilityManager.revealTo(playerData.player)
         playerData.bukkitTasks.forEach { it.cancel() }
         playerData.bukkitTasks.clear()
         playerData.player.gameMode = GameMode.SPECTATOR
@@ -540,6 +542,7 @@ object GameManager {
 
     private fun Game.permanentlyEliminateDisconnectedPlayer(playerData: PlayerData) {
         playerData.entityStatus.isDead = true
+        StealthVisibilityManager.reveal(playerData)
         expiredReconnectPlayers.add(playerData.uniqueId)
         disablePlayerInteraction(playerData)
         playerData.bukkitTasks.toList().forEach { it.cancel() }
@@ -602,6 +605,7 @@ object GameManager {
         originalBorderSize?.let { gameWorld.worldBorder.size = it }
 
         activePlayers().forEach { playerData ->
+            StealthVisibilityManager.reveal(playerData)
             unregisterAllTickingStatuses(playerData.statusAbnormalitys)
             playerData.statusAbnormalitys.clear()
             playerData.bukkitTasks.toList().forEach { it.cancel() }
@@ -665,6 +669,7 @@ object GameManager {
         val trainingGame = trainingInstance.find { it.activePlayers().any { data -> data.player == this } } ?: return
         trainingGame.tasks.forEach { it.cancel() }
         trainingGame.activePlayers().forEach { playerData ->
+            StealthVisibilityManager.reveal(playerData)
             unregisterAllTickingStatuses(playerData.statusAbnormalitys)
             playerData.statusAbnormalitys.clear()
             playerData.bukkitTasks.toList().forEach { it.cancel() }
@@ -687,6 +692,7 @@ object GameManager {
                 if (playerData.player.isOnline) {
                     playerData.player.stopTraining()
                 } else {
+                    StealthVisibilityManager.reveal(playerData)
                     unregisterAllTickingStatuses(playerData.statusAbnormalitys)
                     playerData.statusAbnormalitys.clear()
                     playerData.bukkitTasks.toList().forEach { it.cancel() }
@@ -725,6 +731,7 @@ object GameManager {
             gameClass.passives.forEach { it.inject(playerData) }
         }
         playerData.statusAbnormalitys.forEach { it.rebindEntity(playerData) }
+        StealthVisibilityManager.refreshAll()
     }
 
     private fun Game.initializeBattlePlayer(playerData: PlayerData) {

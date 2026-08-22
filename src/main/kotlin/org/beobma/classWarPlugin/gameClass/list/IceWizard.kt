@@ -1,24 +1,22 @@
 package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.ClassWarPlugin
+import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
-import org.beobma.classWarPlugin.damage.DamageContext
-import org.beobma.classWarPlugin.gameClass.*
-import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
+import org.beobma.classWarPlugin.gameClass.GameClass
+import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.radius
-import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
-import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
-import org.beobma.classWarPlugin.skill.*
-import org.beobma.classWarPlugin.skill.Passive as BasePassive
+import org.beobma.classWarPlugin.skill.Flooring
+import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.Frostbite
 import org.beobma.classWarPlugin.status.list.Mana
 import org.beobma.classWarPlugin.status.list.MoveSpeedDecrease
@@ -28,17 +26,17 @@ import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
+import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
+import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
 class IceWizard : GameClass(), GameStatusHandler {
-    override val name = "<gray>얼음 마법사"
-    override val rank = Rank.C
+    override val name = "<gray>블리자드"
+    override val rank = Rank.A
     override val classItemMaterial = Material.BLUE_ICE
     override val weapon: BaseWeapon = Weapon()
 
     override var skills: List<Skill> = listOf(
-        RedSkill(),
-        OrangeSkill(),
-        YellowSkill()
+        RedSkill()
     )
 
     override var passives: List<BasePassive> = listOf(
@@ -66,16 +64,13 @@ class IceWizard : GameClass(), GameStatusHandler {
         private var bukkitTask: BukkitTask? = null
         private val applyDamagePlayerDatas: MutableMap<EntityData, Int> = mutableMapOf()
 
-        override val name = "<dark_blue><bold>눈폭풍"
+        override val name = "<bold>눈폭풍"
         override val description = listOf(
             "<gray>사용 시 활성화되고 다시 사용 시 비활성화되는 스킬.",
-            "<gray>초당 {keyword:Mana}를 10 소모하고 활성화할 수 있다.",
+            "<gray>활성화 시 초당 {keyword:Mana}를 10 소모힌다.",
             "",
-            "<gray>활성화 시 자신 주위 모든 적에게 초당 3의 피해를 입히고 {keyword:Frostbite}을 2 부여한다.",
-            "",
-            Keyword.Frostbite.description ?: "",
-            Keyword.Freezing.description ?: "",
-            Keyword.AbnormalStatusDamage.description ?: ""
+            "<gray>자신 주위 모든 적에게 초당 2의 피해를 입히고 {keyword:Frostbite}을 2 부여한다.",
+            "{keyword:Mana}가 0이 되면 스킬이 강제로 비활성화되며, 자신은 2초간 {keyword:Freezing} 상태가 된다."
         )
         override val cooldown = 1
 
@@ -115,145 +110,14 @@ class IceWizard : GameClass(), GameStatusHandler {
         }
     }
 
-    private class OrangeSkill : Skill() {
-        override val name = "<dark_blue><bold>고드름"
-        override val description = listOf(
-            "{keyword:Mana}를 40 소모하고 사용할 수 있다.",
-            "",
-            "<gray>사용 시 바라보는 방향으로 고드름을 발사한다.",
-            "<gray>적중한 적에게 8의 피해를 입히고 {keyword:Frostbite}을 4 부여한다.",
-            "<gray>스킬 적중 시 소모한 {keyword:Mana}의 50%를 돌려받는다.",
-            "",
-            Keyword.Frostbite.description ?: "",
-            Keyword.Freezing.description ?: "",
-            Keyword.AbnormalStatusDamage.description ?: ""
-        )
-        override val cooldown = 10
-
-        override fun use() {
-            val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-
-            mana.decreasePower(40)
-            val projectile = IcicleProjectile()
-            projectile.location = player.location.clone()
-            projectile.spawnProjectile(playerData)
-        }
-
-        override fun isUseSuccess(): Boolean {
-            val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-            if (mana.power < 40) {
-                player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-                return false
-            }
-            return true
-        }
-    }
-
-    private class IcicleProjectile : Projectile() {
-        override lateinit var location: Location
-        override var targetType: TargetType = TargetType.Enemy
-        override var speed: Double = 1.0
-        override var isWallHit: Boolean = true
-        override var isPlayerHit: Boolean = true
-        override val isPlayerHitRemove: Boolean = true
-
-        override fun onProjectileEntityHit(hitEntityData: EntityData, location: Location) {
-            val hitPlayerData = hitEntityData as? PlayerData
-            if (hitPlayerData == null) {
-                hitEntityData.damage(8.0, DamageType.Normal, playerData)
-                return
-            }
-            val frostbite = hitPlayerData.getOrCreateStatus(playerData) { Frostbite() }
-            val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-            hitPlayerData.damage(8.0, DamageType.Normal, playerData)
-            frostbite.applyStatus(duration = 5, powerDelta = 4)
-            mana.increasePower(20)
-        }
-    }
-
-    private class YellowSkill : Skill() {
-        override val name = "<dark_blue><bold>얼음의 창"
-        override val description = listOf(
-            "{keyword:Mana}를 100 소모하고 사용할 수 있다.",
-            "",
-            "<gray>사용 시 8칸 내의 바라보는 블럭 주위에 얼음으로 만들어진 창을 생성해 떨어트린다.",
-            "<gray>적중한 적에게 15의 피해를 입히고 {keyword:Frostbite}을 7 부여한다.",
-            "<gray>스킬 적중 시 소모한 {keyword:Mana}를 돌려받는다.",
-            "<dark_gray>웅크린 상태에서 사용하면 자신의 위치에 창을 떨어트릴 수도 있다.",
-            "",
-            Keyword.Frostbite.description ?: "",
-            Keyword.Freezing.description ?: "",
-            Keyword.AbnormalStatusDamage.description ?: ""
-        )
-        override val cooldown = 30
-
-        override fun use() {
-            val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-            val meteor = IceSpear()
-
-
-            val location = if (player.isSneaking) {
-                player.location.add(0.0, 5.0, 0.0)
-            } else {
-                playerData.shotLaserGetBlock(8.0)?.location?.add(0.0, 5.0, 0.0) ?: run {
-                    player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                    return
-                }
-            }
-            meteor.location = location
-
-            mana.decreasePower(100)
-            meteor.spawnMeteor(playerData)
-        }
-
-        override fun isUseSuccess(): Boolean {
-            val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-            if (mana.power < 100) {
-                player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-                return false
-            }
-            if (!player.isSneaking) {
-                playerData.shotLaserGetBlock(8.0)?.location?.add(0.0, 5.0, 0.0) ?: run {
-                    player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                    return false
-                }
-            }
-            return true
-        }
-    }
-
-    private class IceSpear : Meteor() {
-        override lateinit var location: Location
-        override var speed: Double = 1.0
-        override var isWallHit: Boolean = true
-        override var targetType: TargetType = TargetType.Enemy
-
-        override fun onMeteorEntityHit(hitEntityData: EntityData, location: Location) {
-            val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-            val hitPlayerData = hitEntityData as? PlayerData
-            if (hitPlayerData != null) {
-                val frostbite = hitPlayerData.getOrCreateStatus(playerData) { Frostbite() }
-                hitPlayerData.damage(15.0, DamageType.Normal, playerData)
-                frostbite.applyStatus(duration = 5, powerDelta = 7)
-            } else {
-                hitEntityData.damage(15.0, DamageType.Normal, playerData)
-            }
-            mana.increasePower(100)
-        }
-    }
-
     private class Passive : BasePassive(), OnHitHandler, WhenHitHandler {
-        override val name = "<dark_blue><bold>극저온"
+        override val name = "<bold>극저온"
         override val description = listOf(
             "<gray>패시브",
             "",
             "<gray>스킬 적중 시 5초간 적중한 적 주위에 접근 시 <gold><bold>이동 속도가 25% 감소</bold><gray>하는 영역을 생성한다.",
             "<gray>영역의 영향을 받은 적에게 {keyword:Frostbite}을 2 부여한다.",
-            "<gray>이 효과는 영역 당 같은 대상에게 1번만 발동할 수 있다.",
-            "",
-            Keyword.Frostbite.description ?: "",
-            Keyword.Freezing.description ?: "",
-            Keyword.AbnormalStatusDamage.description ?: ""
+            "<gray>이 효과는 영역 당 같은 대상에게 1번만 발동할 수 있다."
         )
 
         override fun onSkillAttackHit(event: DamageContext) {

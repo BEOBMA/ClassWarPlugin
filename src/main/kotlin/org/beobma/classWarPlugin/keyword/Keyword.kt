@@ -3,7 +3,10 @@ package org.beobma.classWarPlugin.keyword
 enum class Keyword(val string: String, val description: String? = null) {
     Arrow("<gold><bold>화살</bold><gray>"),
     Invalidity("<dark_gray><bold>무효</bold><gray>"),
-    Stealth("<light_purple><bold>은신</bold><gray>"),
+    Stealth(
+        "<light_purple><bold>은신</bold><gray>",
+        "{keyword:Stealth}: 살아있는 적 플레이어에게 자신의 모습과 장비가 보이지 않으며 대상 지정 스킬의 대상이 되지 않는다."
+    ),
     Mana("<blue><bold>마나</bold><gray>"),
     Burn("<red><bold>화상</bold><gray>"),
     Shield("<aqua><bold>보호막</bold><gray>"),
@@ -24,9 +27,9 @@ enum class Keyword(val string: String, val description: String? = null) {
         "{keyword:AbnormalStatusDamage}: 각종 피격 시 상호작용이 일어나지 않는다."
     ),
     Gravity("<gold><bold>중력</bold>gray>"),
-    SpecialVictoryCard(
-        "<yellow><bold>특수승리 카드</bold><gray>",
-        "{keyword:SpecialVictoryCard}: 패에 이 카드가 5장 있으면 특수승리한다. 4장 있는 경우 자신의 위치를 모든 대상이 볼 수 있게된다."
+    Card(
+        "<yellow><bold>카드</bold><gray>",
+        "{keyword:Card}: 1~10까지의 숫자 카드가 존재한다."
     ),
     Untargetability(
         "<dark_gray><bold>대상 지정 불가</bold><gray>",
@@ -78,5 +81,22 @@ enum class Keyword(val string: String, val description: String? = null) {
     DimensionMarker(
         "<blue><bold>차원 표식</bold><gray>",
         "{keyword:DimensionMarker}: 최대 수치는 4이며, 지속 시간이 연장되지 않는다."
-    )
+    ),
+    Erosion(
+        "<blue><bold>잠식</bold><gray>",
+        "{keyword:Erosion}: 8초간 지속되며, 특정 스킬로 소모된다."
+    ),
+    Bullet(
+        "<gold><bold>탄환</bold><gray>",
+        "{keyword:Bullet}: 특정 스킬이나 공격으로 소모된다."
+    );
+
+    companion object {
+        private val explanationPrefix = "^\\s*\\{keyword:[A-Za-z]+}:".toRegex()
+        private val registeredExplanations by lazy { entries.mapNotNull { it.description }.toSet() }
+
+        /** 짧은 키워드 사용 문장이 아니라, 키워드 사전에서 덧붙인 해설 줄인지 판별한다. */
+        fun isExplanation(line: String): Boolean =
+            line in registeredExplanations || explanationPrefix.containsMatchIn(line)
+    }
 }

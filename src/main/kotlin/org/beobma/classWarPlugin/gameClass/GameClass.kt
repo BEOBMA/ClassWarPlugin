@@ -19,7 +19,7 @@ abstract class GameClass : EffectApiAccess {
     abstract val name: String
     abstract val rank: Rank
     abstract val classItemMaterial: Material
-    abstract val weapon: Weapon
+    open val weapon: Weapon = DefaultWeapon
     abstract val skills: List<Skill>
     abstract var passives: List<Passive>
     open val extraItemMaterials: List<ItemStack> = listOf()

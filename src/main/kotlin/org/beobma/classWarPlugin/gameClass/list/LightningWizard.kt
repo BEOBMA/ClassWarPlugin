@@ -3,6 +3,7 @@ package org.beobma.classWarPlugin.gameClass.list
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
+import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
@@ -16,27 +17,19 @@ import org.bukkit.scheduler.BukkitRunnable
 
 class LightningWizard : GameClass() {
     private val markers: MutableList<Marker> = mutableListOf()
-    override val name = "<gray>번개 마법사"
-    override val rank = Rank.C
+    override val name = "<gray>뇌운술사"
+    override val rank = Rank.B
     override val classItemMaterial = Material.LIGHTNING_ROD
-    override val weapon: BaseWeapon = Weapon()
 
     override var skills: List<Skill> = listOf(
         RedSkill(),
-        OrangeSkill(),
-        YellowSkill()
+        OrangeSkill()
     )
 
     override var passives: List<BasePassive> = listOf(
         Passive()
     )
 
-
-    private class Weapon : BaseWeapon() {
-        override val name = "<gray>지팡이 대용 검"
-        override val description = listOf("<gray>무기 설명")
-        override val material = Material.WOODEN_SWORD
-    }
 
     private data class Marker(
         val location: Location,
@@ -46,14 +39,14 @@ class LightningWizard : GameClass() {
     )
 
     private class RedSkill : Skill() {
-        override val name = "<light_purple><bold>적란운"
+        override val name = "<bold>적란운"
         override val description = listOf(
-            "{keyword:Mana}를 20 소모하고 사용할 수 있다.",
+            "<gray>10칸 내의 바라보는 블럭에 적란운을 생성한다.",
+            "<gray>이미 적란운이 존재한다면 기존 적란운을 제거하고 생성한다.",
             "",
-            "<gray>자신의 위치 또는 바라보는 블럭 위에 표식을 남긴다. 최대 3개.",
-            "<dark_gray>웅크리면 4칸 내 지정 설치 가능."
+            "<dark_gray>웅크린 상태에서 사용하면 자신의 위치에 적란운을 생성할 수도 있다."
         )
-        override val cooldown = 1
+        override val cooldown = 8
 
         override fun use() {
             val mana = playerData.getOrCreateStatus(playerData) { Mana() }
@@ -95,55 +88,13 @@ class LightningWizard : GameClass() {
             return true
         }
     }
-
     private class OrangeSkill : Skill() {
-        override val name = "<light_purple><bold>낙뢰 충전"
+        override val name = "<bold>과부하"
         override val description = listOf(
-            "<gray>표식이 1개 이상 존재할 때만 사용할 수 있다.",
-            "{keyword:Mana}를 40 소모하고 가장 가까운 표식을 활성화한다."
+            "<gray>적란운을 5초간 과부하시킨다.",
+            "<gray>과부하된 적란운은 매초 낙뢰를 발생시키며, 지속시간 종료 후 적란운은 소멸한다."
         )
-        override val cooldown = 10
-
-        override fun use() {
-            val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-            val gameClass = playerData.gameClass
-            if (gameClass !is LightningWizard) return
-            val markerList = gameClass.markers
-            if (markerList.isEmpty()) {
-                player.sendMiniMessage("<red><bold>[!] 생성된 표식이 존재하지 않습니다.")
-                return
-            }
-
-            markerList.forEach { it.isOn = false }
-            markerList.minByOrNull { it.location.distanceSquared(player.location) }?.isOn = true
-
-            mana.decreasePower(40)
-        }
-
-        override fun isUseSuccess(): Boolean {
-            val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-            if (mana.power < 40) {
-                player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-                return false
-            }
-            val gameClass = playerData.gameClass
-            if (gameClass !is LightningWizard) return false
-            val markerList = gameClass.markers
-            if (markerList.isEmpty()) {
-                player.sendMiniMessage("<red><bold>[!] 생성된 표식이 존재하지 않습니다.")
-                return false
-            }
-            return true
-        }
-    }
-
-    private class YellowSkill : Skill() {
-        override val name = "<yellow><bold>과부하"
-        override val description = listOf(
-            "{keyword:Mana}를 100 소모하고 사용할 수 있다.",
-            "<gray>10초간 모든 표식을 과부하 상태로 만든다. 이후 모든 표식 제거."
-        )
-        override val cooldown = 20
+        override val cooldown = 50
 
         override fun use() {
             val mana = playerData.getOrCreateStatus(playerData) { Mana() }
@@ -189,9 +140,10 @@ class LightningWizard : GameClass() {
     }
 
     private class Passive : BasePassive() {
-        override val name = "<light_purple><bold>암페어"
+        override val name = "<bold>낙뢰"
         override val description = listOf(
-            "<gray>공격 스킬 적중 시 재사용 대기 시간을 5% 돌려받는다."
+            "<gray>적란운은 5초마다 주변에 낙뢰를 발생시킨다.",
+            "<gray>낙뢰는 주변 3칸 이내의 모든 적에게 4의 피해를 입힌다."
         )
     }
 }

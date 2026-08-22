@@ -26,14 +26,13 @@ import org.bukkit.scheduler.BukkitRunnable
 
 class Knight : GameClass() {
     override val name = "<gray>기사"
-    override val rank = Rank.C
+    override val rank = Rank.B
     override val classItemMaterial = Material.IRON_SWORD
     override val weapon: BaseWeapon = Weapon()
 
     override var skills: List<Skill> = listOf(
         RedSkill(),
-        OrangeSkill(),
-        YellowSkill()
+        OrangeSkill()
     )
 
     override var passives: List<BasePassive> = listOf(
@@ -43,52 +42,22 @@ class Knight : GameClass() {
 
     private class Weapon : BaseWeapon() {
         override val name = "<gray>장검"
-        override val description = listOf("<gray>무기 설명")
+        override val description = listOf(
+            "<gray>기본 공격 피격 직전 우클릭하면 해당 피해를 무효로 한다.",
+            "<gray>패링에 성공하면 가로베기의 재사용 대기 시간이 초기화된다.",
+            "",
+            "<dark_gray>재사용 대기 시간: 24초"
+        )
         override val material = Material.IRON_SWORD
     }
 
     private class RedSkill : Skill() {
-        override val name = "<red><bold>내려베기"
-        override val description = listOf(
-            "<gray>2칸 내의 바라보는 적에게 6의 피해를 입히고 3초간 {keyword:Bleeding}을 3 부여한다.",
-            "",
-            Keyword.Bleeding.description!!,
-            Keyword.AbnormalStatusDamage.description!!
-        )
-        override val cooldown = 10
-
-        override fun use() {
-            val target = playerData.shotLaserGetEntityData(2.0, TargetType.Enemy, false) ?: run {
-                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                return
-            }
-            target.damage(6.0, DamageType.Normal, playerData)
-            val targetPlayer = target as? PlayerData
-            if (targetPlayer != null) {
-                val status = targetPlayer.getOrCreateStatus(playerData) { Bleeding() }
-                status.applyStatus(duration = 3, 3)
-            }
-        }
-
-        override fun isUseSuccess(): Boolean {
-            playerData.shotLaserGetEntityData(2.0, TargetType.Enemy, false) ?: run {
-                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                return false
-            }
-            return true
-        }
-    }
-
-    private class OrangeSkill : Skill() {
-        override val name = "<red><bold>가로베기"
+        override val name = "<bold>가로베기"
         override val description = listOf(
             "<gray>바라보는 방향으로 검을 휘두른다.",
-            "<gray>적중한 모든 적에게 5의 피해를 입히고 3초간 {keyword:Bleeding}을 5 부여한다.",
-            "",
-            Keyword.Bleeding.description!!,
-            Keyword.AbnormalStatusDamage.description!!
+            "<gray>적중한 모든 적에게 4의 피해를 입히고 4초간 {keyword:Bleeding}을 4 부여한다."
         )
-        override val cooldown = 10
+        override val cooldown = 12
 
         override fun use() {
             val targets = playerData.getConeTargets(5.0, 100.0, TargetType.Enemy, false)
@@ -103,11 +72,11 @@ class Knight : GameClass() {
         }
     }
 
-    private class YellowSkill : Skill(), WhenHitHandler {
-        override val name = "<yellow><bold>패링"
+    private class OrangeSkill : Skill(), WhenHitHandler {
+        override val name = "<bold>패링"
         override val description = listOf(
-            "<gray>기본 공격 피격 직전 사용 시 해당 피해를 무효로 한다.",
-            "<gray>성공 시 재사용 대기 시간이 초기화된다."
+            "<gray>기본 공격 피격 직전 사용 시 해당 피해를 {keyword:Invalidity}로 한다.",
+            "<gray>패링에 성공하면 가로베기의 재사용 대기 시간이 초기화된다."
         )
         override val cooldown = 30
 
@@ -137,13 +106,10 @@ class Knight : GameClass() {
     }
 
     private class Passive : BasePassive(), OnHitHandler {
-        override val name = "<dark_red><bold>피로 벼려낸 검"
+        override val name = "<bold>피로 벼려낸 검"
         override val description = listOf(
-            "<gray>기본 공격 적중 시 3초간 적에게 {keyword:Bleeding}을 1 부여한다.",
-            "<gray>그리고 즉시 {keyword:Bleeding}을 발동한다.",
-            "",
-            Keyword.Bleeding.description!!,
-            Keyword.AbnormalStatusDamage.description!!
+            "<gray>기본 공격 적중 시 3초간 적에게 {keyword:Bleeding}을 1 부여하고 {keyword:Bleeding}을 발동시킨다.",
+            "<gray>이후 대상의 {keyword:Bleeding} 수치가 절반으로 감소한다."
         )
 
         override fun onAttackHit(event: DamageContext) {

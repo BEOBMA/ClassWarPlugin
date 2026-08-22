@@ -69,12 +69,20 @@ object InventoryManager {
                 2 -> Material.YELLOW_DYE
                 else -> Material.GREEN_DYE
             }
-            inventory.setItem(21 + index, createDescriptionItem(material, skill.name, skill.description))
+            inventory.setItem(21 + index, createExpandableDescriptionItem(
+                material,
+                skill.name,
+                skill.summary,
+                skill.description,
+                ItemDescriptionManager.cooldownLines(skill.cooldown),
+            ))
         }
 
         gameClass.passives.forEachIndexed { index, passive ->
             if (index >= 7) return@forEachIndexed
-            inventory.setItem(30 + index, createDescriptionItem(Material.WHITE_DYE, passive.name, passive.description))
+            inventory.setItem(30 + index, createExpandableDescriptionItem(
+                Material.WHITE_DYE, passive.name, passive.summary, passive.description
+            ))
         }
 
         inventory.setItem(45, ItemStack(Material.NETHER_STAR).apply {
@@ -234,28 +242,20 @@ object InventoryManager {
                 3 -> Material.GREEN_DYE
                 else -> Material.RED_DYE
             }
-            val name = miniMessage.deserialize(UtilManager.applyKeywords(skill.name))
-            val description = skill.description.map { miniMessage.deserialize(UtilManager.applyKeywords(it)) }
-            val itemStack = ItemStack(material, 1).apply {
-                itemMeta = itemMeta.apply {
-                    displayName(name)
-                    lore(description)
-                }
-            }
-            inventory.setItem(i + 1, itemStack)
+            inventory.setItem(i + 1, createExpandableDescriptionItem(
+                material,
+                skill.name,
+                skill.summary,
+                skill.description,
+                ItemDescriptionManager.cooldownLines(skill.cooldown),
+            ))
         }
         for (i in gameClass.skills.size + 1..gameClass.passives.size + gameClass.skills.size + 1) {
             val passive = gameClass.passives.getOrNull(i - gameClass.skills.size - 1) ?: break
             val material = Material.WHITE_DYE
-            val name = miniMessage.deserialize(UtilManager.applyKeywords(passive.name))
-            val description = passive.description.map { miniMessage.deserialize(UtilManager.applyKeywords(it)) }
-            val itemStack = ItemStack(material, 1).apply {
-                itemMeta = itemMeta.apply {
-                    displayName(name)
-                    lore(description)
-                }
-            }
-            inventory.setItem(i, itemStack)
+            inventory.setItem(i, createExpandableDescriptionItem(
+                material, passive.name, passive.summary, passive.description
+            ))
         }
         openInventory(inventory)
     }
@@ -305,6 +305,23 @@ object InventoryManager {
                 lore(lines.map { miniMessage.deserialize(UtilManager.applyKeywords(it)) })
             }
         }
+
+    private fun createExpandableDescriptionItem(
+        material: Material,
+        name: String,
+        summary: List<String>,
+        details: List<String>,
+        alwaysVisibleLines: List<String> = emptyList(),
+    ): ItemStack = ItemDescriptionManager.apply(
+        ItemStack(material).apply {
+            itemMeta = itemMeta.apply {
+                displayName(miniMessage.deserialize(UtilManager.applyKeywords(name)))
+            }
+        },
+        summary,
+        details,
+        alwaysVisibleLines,
+    )
 
     private fun createSettingItem(material: Material, name: String, value: Number, unit: String): ItemStack =
         ItemStack(material).apply {

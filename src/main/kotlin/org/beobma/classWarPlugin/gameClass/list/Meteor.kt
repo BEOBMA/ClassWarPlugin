@@ -3,8 +3,6 @@ package org.beobma.classWarPlugin.gameClass.list
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
-import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
-import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
 import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.radius
@@ -20,78 +18,27 @@ import org.bukkit.Material
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.bukkit.scheduler.BukkitRunnable
 
-class FireWizard : GameClass(), GameStatusHandler {
-    override val name = "<gray>불마법사"
-    override val rank = Rank.C
+class Meteor : GameClass() {
+    override val name = "<gray>메테오"
+    override val rank = Rank.B
     override val classItemMaterial = Material.FIRE_CHARGE
-    override val weapon: BaseWeapon = Weapon()
-
     override var skills: List<Skill> = listOf(
-        RedSkill(),
-        OrangeSkill()
+        RedSkill()
     )
 
     override var passives: List<BasePassive> = listOf(
         Passive()
     )
-
-    override fun onBattleStart() {
-        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-        mana.increasePower(100)
-    }
-
-    override fun onGameTimePasses() {
-        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-        mana.increasePower(10)
-    }
-
-
-    private class Weapon : BaseWeapon() {
-        override val name = "<gray>대인용 지팡이"
-        override val description = listOf("<gray>검처럼 사용할 수 있는 지팡이.")
-        override val material = Material.WOODEN_SWORD
-    }
-
     private class RedSkill : Skill() {
-        override val name = "<red><bold>발화"
+        override val name = "<bold>유성 낙하"
         override val description = listOf(
-            "{keyword:Mana}를 40 소모하고 사용할 수 있다.",
+            "<gray>18칸 내의 바라보는 위치에 2.5초 후 운석을 떨어트린다.",
+            "<gray>적중한 모든 대상에게 중심부는 10, 외각은 거리에 비례하여 최소 5의 피해를 입히고 5초간 {keyword:Burn} 상태로 만든다.",
+            "<gray>운석이 떨어진 위치에는 10초간 불타는 지형이 남으며, 지형 위의 적은 초당 1의 피해를 받고 {keyword:Burn} 지속 시간이 감소하지 않는다",
             "",
-            "<gray>사용 시 주위 모든 적에게 8의 피해를 입히고 4초간 {keyword:Burn} 상태로 만든다."
+            "<dark_gray>웅크린 상태에서 사용하면 자신의 위치에 시전할 수도 있다."
         )
-        override val cooldown = 10
-
-        override fun use() {
-            val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-            mana.decreasePower(40)
-
-            val targets = playerData.radius(player.location, TargetType.Enemy, 5.0, false)
-            targets.forEach {
-                it.damage(8.0, DamageType.Normal, playerData)
-                it.entity.fireTicks += 80
-            }
-        }
-
-        override fun isUseSuccess(): Boolean {
-            val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-            if (mana.power < 40) {
-                player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-                return false
-            }
-            return true
-        }
-    }
-
-    private class OrangeSkill : Skill() {
-        override val name = "<red><bold>불기둥"
-        override val description = listOf(
-            "{keyword:Mana}를 100 소모하고 사용할 수 있다.",
-            "",
-            "<gray>사용 시 자신 위치에 마법진을 만든다.",
-            "<gray>3초 후 마법진에 불기둥이 떨어지며, 적중한 모든 대상에게 25의 피해를 입히고 5초간 {keyword:Burn} 상태로 만든다.",
-            "<dark_gray>웅크린 상태에서 사용하면 4칸 내의 바라보는 블럭에 마법진을 만들 수도 있다."
-        )
-        override val cooldown = Int.MAX_VALUE
+        override val cooldown = 40
 
         override fun use() {
             val mana = playerData.getOrCreateStatus(playerData) { Mana() }
@@ -136,7 +83,7 @@ class FireWizard : GameClass(), GameStatusHandler {
     }
 
     private class Passive : BasePassive(), WhenHitHandler {
-        override val name = "<red><bold>화염 장막"
+        override val name = "<bold>화염 장막"
         override val description = listOf(
             "<gray>패시브",
             "",

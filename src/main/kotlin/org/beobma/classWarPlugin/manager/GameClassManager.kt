@@ -11,11 +11,10 @@ object GameClassManager {
     fun Weapon.toItemStack(): ItemStack {
         if (material == Material.AIR) return ItemStack(Material.AIR)
         val itemStack = ItemStack(material, 1).apply {
-            itemMeta.apply {
+            itemMeta = itemMeta.apply {
                 displayName(miniMessage.deserialize(UtilManager.applyKeywords(name)))
-                lore(description.map { miniMessage.deserialize(UtilManager.applyKeywords(it)) })
             }
         }
-        return itemStack
+        return ItemDescriptionManager.apply(itemStack, summary, description)
     }
 }

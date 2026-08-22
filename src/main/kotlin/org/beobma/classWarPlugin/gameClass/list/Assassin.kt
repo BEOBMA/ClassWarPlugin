@@ -30,14 +30,12 @@ import kotlin.math.min
 
 class Assassin : GameClass() {
     override val name = "<gray>암살자"
-    override val rank = Rank.C
+    override val rank = Rank.B
     override val classItemMaterial = Material.NETHERITE_HELMET
     override val weapon: BaseWeapon = Weapon()
 
     override var skills: List<Skill> = listOf(
-        RedSkill(),
-        OrangeSkill(),
-        YellowSkill()
+        RedSkill()
     )
 
     override var passives: List<BasePassive> = listOf(
@@ -46,54 +44,22 @@ class Assassin : GameClass() {
 
 
     private class Weapon : BaseWeapon() {
-        override val name = ""
+        override val name = "단검"
         override val description = listOf("")
-        override val material = Material.AIR
+        override val material = Material.IRON_SWORD
     }
 
     private class RedSkill : Skill() {
-        override val name = "<gray><bold>찌르기"
-        override val description = listOf(
-            "<gray>2칸 내의 바라보는 적에게 6의 피해를 입힌다.",
-            "<gray>대상이 자신을 바라보고 있지 않았다면 3의 피해를 추가로 입힌다.",
-            "",
-            "<dark_gray>재사용 대기 시간: 10초"
-        )
-        override val cooldown = 10
-
-        override fun use() {
-            val targetData = playerData.shotLaserGetEntityData(2.0, TargetType.Enemy, false) ?: run {
-                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                return
-            }
-            val viewCheck = targetData.shotLaserGetEntityData(5.0, TargetType.All, false)
-
-            targetData.damage(6.0, DamageType.Normal, playerData)
-            sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_WEAK, pitch = 1.5f)
-            if (viewCheck != playerData) {
-                targetData.damage(3.0, DamageType.Normal, playerData)
-            }
-        }
-
-        override fun isUseSuccess(): Boolean {
-            playerData.shotLaserGetEntityData(2.0, TargetType.Enemy, false) ?: run {
-                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                return false
-            }
-            return true
-        }
-    }
-
-    private class OrangeSkill : Skill() {
-        override val name = "<gray><bold>단검 투척"
+        override val name = "<bold>단검 투척"
         override val description = listOf(
             "<gray>바라보는 방향으로 단검을 투척한다.",
             "<gray>단검이 적에게 적중하면 5의 피해를 입히고 해당 적의 뒤로 즉시 이동한다.",
-            "<gray>단검이 블록에 적중하면 4초간 {keyword:Stealth}하고 해당 방향으로 빠르게 이동한다.",
+            "<gray>단검이 블록에 적중하면 {keyword:Stealth} 상태가 되고, 해당 블록으로 날아가 벽에 붙는다.",
+            "<gray>벽에 붙은 상태에서 행동하면 벽에서 떨어진다.",
             "",
-            "<dark_gray>재사용 대기 시간: 10초"
+            "<dark_gray>이 스킬을 사용한 후, 최초 1회의 낙하 피해는 무효화되며, 벽에서 떨어진 후 6초간 {keyword:Stealth} 상태가 유지된다.",
         )
-        override val cooldown = 10
+        override val cooldown = 30
 
         override fun use() {
             val assassinsDaggerProjectile = DaggerProjectile()
@@ -103,62 +69,13 @@ class Assassin : GameClass() {
         }
     }
 
-    private class YellowSkill : Skill() {
+    private class Passive : BasePassive() {
         override val name = "<bold>암살"
-        override val description = listOf(
-            "<gray>2칸 내의 바라보는 적에게 10의 피해를 입힌다.",
-            "<gray>자신이 {keyword:Stealth} 중이었다면 5의 피해를 추가로 입힌다.",
-            "<gray>이 스킬로 적을 처치했다면 재사용 대기시간이 75% 감소한다.",
-            "",
-            "<dark_gray>재사용 대기 시간: 60초"
-        )
-        override val cooldown = 60
-
-        override fun use() {
-            val targetData = playerData.shotLaserGetEntityData(2.0, TargetType.Enemy, false) ?: run {
-                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                return
-            }
-            targetData.damage(10.0, DamageType.Normal, playerData)
-            sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_CRIT)
-            if (playerData.hasStatus<Stealth>()) {
-                targetData.damage(5.0, DamageType.Normal, playerData)
-            }
-            if (targetData.entityStatus.isDead) {
-                multiplyCurrentCooldown(0.25)
-                //TODO(X표시)
-                sounds.play(targetData.entity, Sound.ITEM_TRIDENT_RETURN, pitch = 1.5f)
-            }
-        }
-
-        override fun isUseSuccess(): Boolean {
-            playerData.shotLaserGetEntityData(2.0, TargetType.Enemy, false) ?: run {
-                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                return false
-            }
-
-            return true
-        }
-    }
-
-    private class Passive : BasePassive(), OnSkillUseHandler {
-        override val name = "<bold>암살자의 각오"
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>{keyword:Stealth} 상태에서 스킬을 사용하면 {keyword:Stealth} 시간이 2초 연장되고, 사용한 스킬의 재사용 대기 시간이 50% 감소한다."
+            "<gray>기본 공격 적중 시, 대상이 자신을 바라보고 있지 않았다면 피해량이 2 증가한다."
         )
-
-        override fun onSkillUse(
-            event: PlayerSkillUseEvent
-        ) {
-            if (playerData.hasStatus<Stealth>()) {
-                val stealth = playerData.getOrCreateStatus(playerData) { Stealth() }
-                stealth.increaseDuration(2)
-                particles.spawn(player.location, Particle.SMOKE, count = 10, speed = 0.3)
-                event.context.multiplyCooldown(0.5)
-            }
-        }
     }
 
     private class DaggerProjectile : Projectile() {

@@ -5,7 +5,6 @@ import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
-import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.PlayerManager.heal
@@ -28,14 +27,10 @@ import org.bukkit.Material
 
 class Astronomer : GameClass(), GameStatusHandler {
     override val name = "<gray>천문학자"
-    override val rank = Rank.C
+    override val rank = Rank.B
     override val classItemMaterial = Material.NETHER_STAR
-    override val weapon: BaseWeapon = Weapon()
-
     override var skills: List<Skill> = listOf(
-        RedSkill(),
-        OrangeSkill(),
-        YellowSkill()
+        RedSkill()
     )
     override var passives: List<BasePassive> = listOf(
         Passive()
@@ -51,45 +46,16 @@ class Astronomer : GameClass(), GameStatusHandler {
         mana.increasePower(5)
     }
 
-
-    private class Weapon : BaseWeapon() {
-        override val name = "<gray>대인용 지팡이"
-        override val description = listOf("<gray>검처럼 사용할 수 있는 지팡이.")
-        override val material = Material.WOODEN_SWORD
-    }
-
     private class RedSkill : Skill() {
-        override val name = "<bold>별자리"
-        override val description = listOf(
-            "<gray>8칸 내의 바라보는 적에게 5의 피해를 입힌다."
-        )
-        override val cooldown = 10
-
-        override fun use() {
-            val target = playerData.shotLaserGetEntityData(8.0, TargetType.Enemy, false) ?: run {
-                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                return
-            }
-            target.damage(5.0, DamageType.Normal, playerData)
-        }
-
-        override fun isUseSuccess(): Boolean {
-            playerData.shotLaserGetEntityData(8.0, TargetType.Enemy, false) ?: run {
-                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                return false
-            }
-            return true
-        }
-    }
-
-    private class OrangeSkill : Skill() {
         override val name = "<bold>별의 죽음"
         override val description = listOf(
-            "<gray>8칸 내의 바라보는 블럭에 4초간 블랙홀을 만든다.",
+            "<gray>8칸 내의 바라보는 블럭에 6초간 블랙홀을 만든다.",
             "<gray>블랙홀에 근접한 적은 끌어당겨지고 초당 2의 피해를 입는다.",
+            "<gray>블랙홀의 영향을 받는 적에게서 초당 {keyword:Mana}를 2 강탈한다.",
+            "",
             "<dark_gray>웅크린 상태에서 사용하면 자신의 위치에 블랙홀을 만들 수도 있다."
         )
-        override val cooldown = 10
+        override val cooldown = 30
 
         override fun use() {
             val origin = player.location
@@ -118,29 +84,6 @@ class Astronomer : GameClass(), GameStatusHandler {
         }
     }
 
-    private class YellowSkill : Skill() {
-        override val name = "<bold>별이 빛나는 밤"
-        override val description = listOf(
-            "<gray>자신의 위치에 5초간 지속되는 넓은 범위의 결계를 생성한다.",
-            "<gray>결계 내부의 적과 자신은 각각 이하의 효과를 얻는다.",
-            "",
-            "<gold><bold>받는 피해 15% <red>증가<gray> | <gold>받는 피해 15% <green>감소",
-            "<gold><bold>이동 속도 20% <red>감소<gray> | <gold>이동 속도 20% <green>증가",
-            "<gray><bold>초당 2의 피해를 입음 | 초당 <green>체력을 2 회복"
-        )
-        override val cooldown = Int.MAX_VALUE
-
-        override fun use() {
-            val enemyField = EnemyField()
-            val selfField = SelfField()
-            val currentLocation = player.location.clone()
-            enemyField.location = currentLocation
-            selfField.location = currentLocation
-            enemyField.spawnFlooring(playerData)
-            selfField.spawnFlooring(playerData)
-        }
-    }
-
     private class Passive : BasePassive(), OnHitHandler {
         override val name = "<blue><bold>천문관측"
         override val description = listOf(
@@ -149,9 +92,7 @@ class Astronomer : GameClass(), GameStatusHandler {
             "<gray>{keyword:Mana} 회복 속도가 감소한다.",
             "<gray>스킬 적중 시 {keyword:Mana}를 전부 소모하고 적중한 적 주변에 별을 떨어트린다.",
             "<gray>떨어트리는 별의 수는 소모한 {keyword:Mana} 양에 비례하여 증가한다. (20당 1개, 최대 5개)",
-            "<gray>별은 적중한 적에게 1의 {keyword:TrueDamage}를 입힌다.",
-            "",
-            Keyword.TrueDamage.description ?: ""
+            "<gray>별은 적중한 적에게 1의 {keyword:TrueDamage}를 입힌다."
         )
 
         override fun onSkillAttackHit(event: DamageContext) {

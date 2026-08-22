@@ -15,6 +15,7 @@ import org.beobma.classWarPlugin.manager.InventoryManager.getOpenConfigCategory
 import org.beobma.classWarPlugin.manager.InventoryManager.openTrainingClassListInventory
 import org.beobma.classWarPlugin.manager.ConfigCategory
 import org.beobma.classWarPlugin.manager.PlayerTagManager
+import org.beobma.classWarPlugin.manager.ItemDescriptionManager
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.bukkit.Material
 import org.bukkit.entity.Player
@@ -85,6 +86,7 @@ class OnInventoryClickEvent : Listener {
         if (PlayerTagManager.hasTag(player, "openAssignedClassInventory")) {
             event.isCancelled = true
             if (event.rawSlot !in 0 until inventory.topInventory.size) return
+            if (isDescriptionToggleClick(event) && ItemDescriptionManager.toggle(event.currentItem)) return
             val currentGame = game ?: return
             val playerData = currentGame.playerDatas.filterIsInstance<PlayerData>()
                 .find { it.player == player } ?: return
@@ -95,25 +97,35 @@ class OnInventoryClickEvent : Listener {
             return
         }
 
-        val clickItem = event.currentItem ?: return
-
         if (PlayerTagManager.hasTag(player, "openClassListInventory")) {
-            classListHandler(player, clickItem, inventory)
             event.isCancelled = true
+            if (event.rawSlot !in 0 until inventory.topInventory.size) return
+            val clickItem = event.currentItem ?: return
+            classListHandler(player, clickItem, inventory)
             return
         }
 
         if (PlayerTagManager.hasTag(player, "openTrainingClassListInventory")) {
-            trainingClassListHandler(player, clickItem, inventory)
             event.isCancelled = true
+            if (event.rawSlot !in 0 until inventory.topInventory.size) return
+            val clickItem = event.currentItem ?: return
+            trainingClassListHandler(player, clickItem, inventory, isDescriptionToggleClick(event))
             return
         }
 
         if (PlayerTagManager.hasTag(player, "openClassStatusInventory")) {
             event.isCancelled = true
+            if (event.rawSlot in 0 until inventory.topInventory.size && isDescriptionToggleClick(event)) {
+                ItemDescriptionManager.toggle(event.currentItem)
+            }
             return
         }
 
+        if (event.clickedInventory == player.inventory && isDescriptionToggleClick(event) &&
+            ItemDescriptionManager.toggle(event.currentItem)
+        ) {
+            event.isCancelled = true
+        }
     }
 
     private fun classListHandler(player: Player, clickItem: ItemStack, inventory: InventoryView) {
@@ -141,6 +153,8 @@ class OnInventoryClickEvent : Listener {
                 val currentPage = getCurrentPageFromTitle(inventory.title().toString())
                 PlayerTagManager.removeIf(player) { it.startsWith("classListPage:") }
                 PlayerTagManager.addTag(player, "classListPage:$currentPage")
+                PlayerTagManager.removeIf(player) { it.startsWith("classStatusReturn:") }
+                PlayerTagManager.addTag(player, "classStatusReturn:list")
                 PlayerTagManager.addTag(player, "openingClassStatusInventory")
                 player.openClassStatusInventory(gameClass)
                 PlayerTagManager.addTag(player, "openClassStatusInventory")
@@ -149,7 +163,12 @@ class OnInventoryClickEvent : Listener {
         }
     }
 
-    private fun trainingClassListHandler(player: Player, clickItem: ItemStack, inventory: InventoryView) {
+    private fun trainingClassListHandler(
+        player: Player,
+        clickItem: ItemStack,
+        inventory: InventoryView,
+        showDetails: Boolean,
+    ) {
         val itemMeta = clickItem.itemMeta ?: return
         when (itemMeta) {
             previousPage -> {
@@ -170,6 +189,17 @@ class OnInventoryClickEvent : Listener {
 
             else -> {
                 val gameClass = gameClassList.find { it.classItemMaterial == clickItem.type } ?: return
+                if (showDetails) {
+                    val currentPage = getCurrentPageFromTitle(inventory.title().toString())
+                    PlayerTagManager.removeIf(player) { it.startsWith("classListPage:") }
+                    PlayerTagManager.addTag(player, "classListPage:$currentPage")
+                    PlayerTagManager.removeIf(player) { it.startsWith("classStatusReturn:") }
+                    PlayerTagManager.addTag(player, "classStatusReturn:training")
+                    PlayerTagManager.addTag(player, "openingClassStatusInventory")
+                    player.openClassStatusInventory(gameClass)
+                    PlayerTagManager.addTag(player, "openClassStatusInventory")
+                    return
+                }
                 player.closeInventory()
                 PlayerTagManager.removeTag(player, "openTrainingClassListInventory")
                 player.startTraining(gameClass)
@@ -182,6 +212,9 @@ class OnInventoryClickEvent : Listener {
         val matchResult = pageRegex.find(title) ?: return 0
         return matchResult.groupValues[1].toInt() - 1
     }
+
+    private fun isDescriptionToggleClick(event: InventoryClickEvent): Boolean =
+        event.isShiftClick && event.isRightClick
 
     private fun configSettingSlot(category: ConfigCategory, inventorySlot: Int): Int? = when (category) {
         ConfigCategory.GAME -> when (inventorySlot) {

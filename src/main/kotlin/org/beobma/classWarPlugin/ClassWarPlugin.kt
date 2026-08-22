@@ -19,6 +19,7 @@ import org.beobma.classWarPlugin.listener.OnPlayerConnectionEvent
 import org.beobma.classWarPlugin.game.GameSettings
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager
 import org.beobma.classWarPlugin.manager.DamageIndicatorManager
+import org.beobma.classWarPlugin.manager.StealthVisibilityManager
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
@@ -48,6 +49,7 @@ class ClassWarPlugin : JavaPlugin() {
             Info.game?.stop()
             stopAllTraining()
         }
+        StealthVisibilityManager.showAll()
         DamageIndicatorManager.shutdown()
         loggerInfo("플러그인이 정상적으로 비활성화되었습니다.")
     }

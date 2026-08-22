@@ -2,7 +2,6 @@ package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
-import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Skill
 import org.bukkit.Material
@@ -11,33 +10,24 @@ class Duelist : GameClass() {
     override val name = "<gray>결투가"
     override val rank = Rank.C
     override val classItemMaterial = Material.SPECTRAL_ARROW
-    override val weapon: BaseWeapon = Weapon()
-
     override var skills: List<Skill> = listOf(
         RedSkill(),
-        OrangeSkill(),
-        YellowSkill()
+        OrangeSkill()
     )
 
     override var passives: List<BasePassive> = listOf(
         Passive()
     )
 
-
-    private class Weapon : BaseWeapon() {
-        override val name = "<gray>무기 이름"
-        override val description = listOf("<gray>무기 설명")
-        override val material = Material.WOODEN_SWORD
-    }
-
     private class RedSkill : Skill() {
-        override val name = "<bold>Attaque"
+        override val name = "<bold>팡트"
         override val description = listOf(
-            "<gray>바라보는 방향으로 레이피어를 내지른다.",
-            "<gray>적중한 적에게 7의 피해를 입힌다.",
-            "<gray>적중 시 이 스킬을 'Composée'로 강화하여 재사용할 수 있다."
+            "<gray>바라보는 방향으로 짧게 도약한다.",
+            "<gray>이후 2칸 내의 가장 가까운 적에게 2의 피해를 입힌다.",
+            "",
+            "<dark_gray>결투 상대를 우선으로 공격한다."
         )
-        override val cooldown = 10
+        override val cooldown = 5
 
         override fun use() {
             // TODO: 구현 예정
@@ -45,26 +35,17 @@ class Duelist : GameClass() {
     }
 
     private class OrangeSkill : Skill() {
-        override val name = "<bold>Bond-en-avant"
+        override val name = "<bold>앙 가르드"
         override val description = listOf(
-            "<gray>바라보는 방향으로 짧게 도약한다."
+            "<gray>10칸 내의 바라보는 적에게 15초간 결투를 선포한다.",
+            "",
+            "<gray>자신과 적은 서로의 공격으로 받는 피해가 30% 증가하고,",
+            "<gray>다른 대상에게 받는 피해는 30% 감소한다.",
+            "",
+            "<gray>결투 상대에게 팡트를 3번 연속 적중시키면 추가로 6의 피해를 입힌다.",
+            "<gray>결투 중, 팡트를 적중시키는데 성공하면 재사용 대기 시간이 2초 감소한다."
         )
-        override val cooldown = 10
-
-        override fun use() {
-            // TODO: 구현 예정
-        }
-    }
-
-    private class YellowSkill : Skill() {
-        override val name = "<bold>결투 선포"
-        override val description = listOf(
-            "<gray>바라보는 적에게 15초간 결투를 선포한다.",
-            "<gray>자신과 적은 서로의 공격으로 <gold><bold>받는 피해가 50% 증가</bold><gray>한다.",
-            "<gray>서로 결투 진행중인 대상을 제외한 다른 대상에게 <gold><bold>받는 피해는 50% 감소</bold><gray>한다.",
-            "<gray>결투중인 대상에게 기본 스킬을 3번 연속 적중 성공 시 추가로 6의 피해를 입힌다."
-        )
-        override val cooldown = Int.MAX_VALUE
+        override val cooldown = 70
 
         override fun use() {
             // TODO: 구현 예정
@@ -76,7 +57,10 @@ class Duelist : GameClass() {
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>스킬 적중 실패 시 다음 공격으로 <gold><bold>받는 피해는 25% 증가</bold><gray>한다."
+            "<gray>결투 중 팡트 사용 후 적에게 피해를 입히지 못했다면 자세 흐트러짐 상태가 된다.",
+            "<gray>자세 흐트러짐 상태에서 결투 상대에게 받는 피해가 25% 증가한다.",
+            "",
+            "<gray>피해를 받거나, 결투가 종료되면 자세 흐트러짐이 제거된다."
         )
     }
 }

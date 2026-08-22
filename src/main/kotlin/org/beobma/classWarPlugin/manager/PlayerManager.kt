@@ -9,6 +9,7 @@ import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.manager.GameClassManager.toItemStack
 import org.beobma.classWarPlugin.manager.SkillManager.markSkillItem
+import org.beobma.classWarPlugin.manager.ItemDescriptionManager
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.util.DamageCalculator
 import org.beobma.classWarPlugin.util.DamageType
@@ -47,19 +48,27 @@ object PlayerManager {
         gameClass.skills.forEachIndexed { index, skill ->
             if (index + 1 > 8) return@forEachIndexed
             val name = UtilManager.applyKeywords(skill.name)
-            val lore = skill.description.map { miniMessage.deserialize(UtilManager.applyKeywords(it)) }
             val type = when (index) {
                 0 -> Material.RED_DYE
                 1 -> Material.ORANGE_DYE
                 2 -> Material.YELLOW_DYE
                 else -> Material.RED_DYE
             }
-            val item = markSkillItem(ItemStack(type, 1).apply {
+            val displayItem = ItemStack(type, 1).apply {
                 itemMeta = itemMeta.apply {
                     displayName(miniMessage.deserialize(name))
-                    lore(lore)
                 }
-            }, skill, player.uniqueId)
+            }
+            val item = markSkillItem(
+                ItemDescriptionManager.apply(
+                    displayItem,
+                    skill.summary,
+                    skill.description,
+                    ItemDescriptionManager.cooldownLines(skill.cooldown),
+                ),
+                skill,
+                player.uniqueId,
+            )
 
 
             player.inventory.setItem(index + 1, item)
@@ -67,14 +76,12 @@ object PlayerManager {
 
         gameClass.passives.forEachIndexed { index, skill ->
             val name = UtilManager.applyKeywords(skill.name)
-            val lore = skill.description.map { miniMessage.deserialize(UtilManager.applyKeywords(it)) }
             val type = Material.WHITE_DYE
-            val item = ItemStack(type, 1).apply {
+            val item = ItemDescriptionManager.apply(ItemStack(type, 1).apply {
                 itemMeta = itemMeta.apply {
                     displayName(miniMessage.deserialize(name))
-                    lore(lore)
                 }
-            }
+            }, skill.summary, skill.description)
 
             if (index + 9 > 26) return@forEachIndexed
             player.inventory.setItem(9 + index, item)

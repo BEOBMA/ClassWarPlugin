@@ -8,37 +8,31 @@ import org.beobma.classWarPlugin.skill.Skill
 import org.bukkit.Material
 
 class Mathematician : GameClass() {
-    override val name = "<gray>수학자"
-    override val rank = Rank.C
+    override val name = "<gray>기하학자"
+    override val rank = Rank.A
     override val classItemMaterial = Material.SHULKER_SHELL
-    override val weapon: BaseWeapon = Weapon()
 
     override var skills: List<Skill> = listOf(
         RedSkill(),
-        OrangeSkill(),
-        YellowSkill()
+        OrangeSkill()
     )
 
-    override var passives: List<BasePassive> = listOf(
-        Passive()
-    )
-
-
-    private class Weapon : BaseWeapon() {
-        override val name = "<gray>무기 이름"
-        override val description = listOf("<gray>무기 설명")
-        override val material = Material.WOODEN_SWORD
-    }
+    override var passives: List<BasePassive> = listOf()
 
     private class RedSkill : Skill() {
-        override val name = "<blue><bold>좌표축 설정"
+        override val name = "<bold>좌표 설정"
         override val description = listOf(
-            "<gray>바라보는 블럭에 좌표축을 설정한다.",
-            "<gray>좌표축은 최대 2개까지 존재할 수 있다.",
+            "<gray>10칸 내의 바라보는 블럭에 좌표를 지정한다.",
             "",
-            "<dark_gray>좌표축 설치 시 좌표축 사이를 선분으로 이어 직육면체로 만들었을 때, 부피가 125를 초과하게 설치할 수는 없다."
+            "<gray>첫 번째 좌표와 두 번째 좌표가 지정되면",
+            "<gray>두 좌표를 꼭짓점으로 하는 직육면체가 생성된다.",
+            "",
+            "<gray>직육면체의 부피는 최대 125이며",
+            "<gray>각 변의 길이는 8칸을 초과할 수 없다.",
+            "",
+            "<dark_gray>웅크린 상태에서 사용하면 모든 좌표를 제거한다."
         )
-        override val cooldown = 0
+        override val cooldown = 1
 
         override fun use() {
             // TODO: 좌표축 위치 저장 및 제한 로직
@@ -46,38 +40,23 @@ class Mathematician : GameClass() {
     }
 
     private class OrangeSkill : Skill() {
-        override val name = "<gold><bold>직육면체"
-        override val description = listOf(
-            "<gray>좌표축 사이를 이어 직육면체로 만든다.",
-            "<gray>직육면체 내부에 존재하는 모든 적에게 <gold><bold>(직육면체의 부피 / 5 만큼의 피해)</bold><gray>를 입힌다. (최대 25)",
-            "<gray>스킬 사용 후에도 직육면체는 잔존한다."
+        override val name = "<bold>압축"
+        override val summary: List<String> =  listOf(
+            "<gray>직육면체를 중심으로 압축한다.",
+            "<gray>내부의 모든 적에게 직육면체의 부피에 반비례하여 피해를 입힌다.",
+            "<gray>이후 직육면체와 좌표가 모두 제거된다."
         )
-        override val cooldown = 5
-
-        override fun use() {
-            // TODO: 좌표축 2개로 박스 생성 및 내부 적 타격
-        }
-    }
-
-    private class YellowSkill : Skill() {
-        override val name = "<yellow><bold>전개"
         override val description = listOf(
-            "<gray>모든 직육면체를 전개하고 제거한다.",
-            "<gray>직육면체 내부에 존재하던 적에게 <gold><bold>(모든 직육면체의 개수 x 3)</bold><gray>의 피해를 입힌다. (최대 30)"
-        )
-        override val cooldown = 20
-
-        override fun use() {
-            // TODO: 생성된 직육면체 삭제 및 피해 적용
-        }
-    }
-
-    private class Passive : BasePassive() {
-        override val name = "<bold>난제"
-        override val description = listOf(
-            "<gray>패시브",
+            "<gray>직육면체를 중심으로 압축한다.",
+            "<gray>내부의 모든 적에게 직육면체의 부피에 반비례하여 피해를 입힌다.",
+            "<gray>이후 직육면체와 좌표가 모두 제거된다.",
             "",
-            "<gray>생성된 직육면체가 겹쳐지면 모든 좌표축을 제거하고 그 두 직육면체를 제거한다."
+            "<dark_gray>피해량은 최대 (5)와 (16 - √부피) 중 큰 값으로 결정된다.",
+            "<dark_gray>"
         )
+        override val cooldown = 18
+
+        override fun use() {
+        }
     }
 }
