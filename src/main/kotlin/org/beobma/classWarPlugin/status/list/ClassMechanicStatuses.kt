@@ -118,3 +118,36 @@ class SniperAmmoStatus : StatusAbnormality() {
         return "$name: <red><bold>비어 있음</bold></red>"
     }
 }
+
+class SpiderWebChargeStatus : StatusAbnormality() {
+    private var rechargeTicksRemaining = 0
+    private var ropeState: String? = null
+
+    override val name = "<white><bold>거미줄</bold><gray>"
+    override val description = listOf("<gray>스파이더맨의 남은 거미줄 충전 수이다.")
+    override val canRemove = false
+    override val isClassMechanic = true
+    override var power = 5
+    override var maxPower: Int? = 5
+    override var duration: Int? = null
+
+    fun updateState(charges: Int, rechargeTicks: Int) {
+        rechargeTicksRemaining = rechargeTicks.coerceAtLeast(0)
+        updatePower(charges.coerceIn(0, maxPower ?: 5))
+    }
+
+    fun setRopeState(state: String?) {
+        ropeState = state
+    }
+
+    override fun actionBarText(): String {
+        val recharge = if (power < (maxPower ?: 5)) {
+            val seconds = String.format(java.util.Locale.US, "%.1f", rechargeTicksRemaining / 20.0)
+            " <dark_gray>|</dark_gray> <aqua>${seconds}s</aqua>"
+        } else {
+            ""
+        }
+        val rope = ropeState?.let { " <aqua><bold>| $it</bold></aqua>" } ?: ""
+        return "$name: <white>$power</white><dark_gray>/</dark_gray><white>${maxPower ?: 5}</white>$recharge$rope"
+    }
+}

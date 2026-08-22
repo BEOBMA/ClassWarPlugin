@@ -36,7 +36,7 @@ object PlayerManager {
         lastDamageTicks.keys.removeIf { it.targetId in playerIds || it.damagerId in playerIds }
     }
 
-    fun PlayerData.classSet() {
+    fun PlayerData.classSet(initializeHandlers: Boolean = true) {
         val gameClass = gameClass ?: return
         gameClass.inject(this)
         gameClass.skills.forEach { skill ->
@@ -93,14 +93,16 @@ object PlayerManager {
             player.inventory.setItem(index + 27, item)
         }
 
-        gameClass.passives.forEach { passive ->
-            if (passive is GameStatusHandler) {
-                passive.onBattleStart()
+        if (initializeHandlers) {
+            gameClass.passives.forEach { passive ->
+                if (passive is GameStatusHandler) {
+                    passive.onBattleStart()
+                }
             }
-        }
 
-        if (gameClass is GameStatusHandler) {
-            gameClass.onBattleStart()
+            if (gameClass is GameStatusHandler) {
+                gameClass.onBattleStart()
+            }
         }
     }
 

@@ -60,7 +60,10 @@ enum class Keyword(val string: String, val description: String? = null) {
         "{keyword:Electrocution}: 20초간 <gold><bold>이동 속도가 5% 감소</bold><gray>한다. 지속 시간 도중 {keyword:Electrocution}이 다시 적용되면 {keyword:Electrocution}을 제거하고 2초간 {keyword:Stun}한다."
     ),
     Stun("<yellow><bold>기절</bold><gray>"),
-    Snare("<dark_gray><bold>속박</bold><gray>"),
+    Snare(
+        "<dark_gray><bold>속박</bold><gray>",
+        "{keyword:Snare}: 위치를 이동할 수 없지만 시야 회전과 공격, 스킬 사용은 가능하다."
+    ),
     Brightness(
         "<white><bold>광휘</bold><gray>",
         "{keyword:Brightness}: 수치가 10이 되면 {keyword:Brightness}를 제거하고 2초간 {keyword:Snare}된다."

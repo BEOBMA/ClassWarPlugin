@@ -40,9 +40,14 @@ class Stealth : StatusAbnormality() {
     }
 
     override fun onRemoveStatusAbnormality() {
-        (entityData as? PlayerData)?.let(StealthVisibilityManager::reveal)
+        val hasOtherStealth = entityData.statusAbnormalitys.any {
+            it !== this && it is Stealth && it.power > 0
+        }
+        if (!hasOtherStealth) {
+            (entityData as? PlayerData)?.let(StealthVisibilityManager::reveal)
+        }
         val currentEntity = entity
-        if (currentEntity is LivingEntity) {
+        if (!hasOtherStealth && currentEntity is LivingEntity) {
             currentEntity.removePotionEffect(PotionEffectType.INVISIBILITY)
         }
         super.onRemoveStatusAbnormality()

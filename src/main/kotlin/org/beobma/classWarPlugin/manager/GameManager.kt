@@ -51,6 +51,8 @@ object GameManager {
         ::AbyssalVeil, ::Warlock, ::Geometer,
         ::Duelist, ::Astronomer, ::Assassin, ::IceWizard,
         ::GunBlader, ::Watchmaker,
+        ::Barrier, ::Darkness, ::Feather, ::GeneralPerson,
+        ::GraveRobber, ::Hacker, ::SpiderMan, ::Trapper,
     )
 
     private val miniMessageTagPattern = Regex("<[^>]+>")
@@ -443,6 +445,7 @@ object GameManager {
         val currentGame = game ?: return
         if (currentGame.phase == GamePhase.WAITING || currentGame.phase == GamePhase.FINISHED) return
         val playerData = currentGame.findParticipant(player.uniqueId) ?: return
+        Hacker.clearSessions(listOf(player.uniqueId))
         if (!currentGame.disconnectedPlayers.add(player.uniqueId)) return
 
         PlayerTagManager.clear(player)
@@ -609,6 +612,8 @@ object GameManager {
     fun Game.stop() {
         phase = GamePhase.FINISHED
         val participantIds = activePlayers().map { it.uniqueId }
+        GraveRobber.clearDeathRecords(this)
+        Hacker.clearSessions(participantIds)
         DamageManager.clearAttributions(participantIds)
         clearDamageInvincibility(participantIds)
         CooldownManager.clear(participantIds)
@@ -691,6 +696,7 @@ object GameManager {
 
     fun Player.stopTraining() {
         val trainingGame = trainingInstance.find { it.activePlayers().any { data -> data.player == this } } ?: return
+        Hacker.clearSessions(listOf(uniqueId))
         trainingGame.tasks.forEach { it.cancel() }
         TemporaryDisplayManager.clear(world, uniqueId)
         trainingGame.playerDatas.forEach { entityData ->
@@ -799,6 +805,7 @@ object GameManager {
         player.gameMode = snapshot.gameMode
         player.allowFlight = snapshot.allowFlight
         player.isFlying = snapshot.isFlying && snapshot.allowFlight
+        player.setGravity(snapshot.hasGravity)
         val maximumHealth = player.getAttribute(Attribute.MAX_HEALTH)?.value ?: player.getPlayerMaxHealth()
         player.health = snapshot.health.coerceIn(0.01, maximumHealth)
         player.teleport(snapshot.location)

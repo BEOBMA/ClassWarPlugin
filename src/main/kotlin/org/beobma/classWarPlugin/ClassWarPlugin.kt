@@ -18,6 +18,7 @@ import org.beobma.classWarPlugin.listener.OnPlayerConnectionEvent
 import org.beobma.classWarPlugin.listener.OnPlayerSwapHandItemsEvent
 import org.beobma.classWarPlugin.listener.OnPlayerToggleSneakEvent
 import org.beobma.classWarPlugin.listener.OnPlayerInputEvent
+import org.beobma.classWarPlugin.listener.OnAsyncChatEvent
 import org.beobma.classWarPlugin.game.GameSettings
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager
 import org.beobma.classWarPlugin.manager.DamageIndicatorManager
@@ -75,6 +76,7 @@ class ClassWarPlugin : JavaPlugin() {
         server.pluginManager.registerEvents(OnPlayerSwapHandItemsEvent(), this)
         server.pluginManager.registerEvents(OnPlayerToggleSneakEvent(), this)
         server.pluginManager.registerEvents(OnPlayerInputEvent(), this)
+        server.pluginManager.registerEvents(OnAsyncChatEvent(), this)
     }
 
     private fun startStatusActionBarTask() {

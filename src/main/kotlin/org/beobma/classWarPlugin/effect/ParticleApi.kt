@@ -115,6 +115,28 @@ object ParticleApi {
         }
     }
 
+    fun <T : Any> line(
+        from: Location,
+        to: Location,
+        particle: Particle,
+        data: T,
+        spacing: Double = 0.25,
+        options: ParticleOptions = ParticleOptions(),
+    ) {
+        require(from.world == to.world) { "Particle line locations must be in the same world." }
+        require(spacing > 0.0) { "Particle spacing must be positive." }
+
+        val difference = to.toVector().subtract(from.toVector())
+        val distance = difference.length()
+        val points = max(1, kotlin.math.ceil(distance / spacing).toInt())
+        val step = difference.multiply(1.0 / points)
+        val current = from.clone()
+        repeat(points + 1) {
+            spawn(current, particle, data, options)
+            current.add(step)
+        }
+    }
+
     fun circle(
         center: Location,
         particle: Particle,

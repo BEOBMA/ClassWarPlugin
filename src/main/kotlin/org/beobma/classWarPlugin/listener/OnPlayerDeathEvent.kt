@@ -9,6 +9,8 @@ import org.bukkit.GameMode
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.PlayerDeathEvent
+import org.beobma.classWarPlugin.gameClass.list.GraveRobber
+import org.beobma.classWarPlugin.gameClass.list.Hacker
 
 class OnPlayerDeathEvent : Listener{
     private val miniMessage = MiniMessage.miniMessage()
@@ -34,6 +36,8 @@ class OnPlayerDeathEvent : Listener{
         event.drops.clear()
         event.droppedExp = 0
         player.gameMode = GameMode.SPECTATOR
+        Hacker.clearSessions(listOf(player.uniqueId))
+        GraveRobber.recordDeath(playerData)
         handleDeath(playerData)
     }
 }
