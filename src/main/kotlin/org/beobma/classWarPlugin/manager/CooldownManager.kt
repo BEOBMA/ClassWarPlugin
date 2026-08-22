@@ -11,7 +11,11 @@ object CooldownManager {
     private const val NANOS_PER_TICK = 50_000_000L
 
     private data class CooldownKey(val playerId: UUID, val skillId: String)
-    private data class CooldownEntry(val expiresAtNanos: Long, val material: Material)
+    private data class CooldownEntry(
+        val expiresAtNanos: Long,
+        val material: Material,
+        val pausedAtNanos: Long? = null,
+    )
 
     private val cooldowns: MutableMap<CooldownKey, CooldownEntry> = mutableMapOf()
 
@@ -20,7 +24,7 @@ object CooldownManager {
     fun remainingTicks(player: Player, skill: Skill): Int {
         val key = CooldownKey(player.uniqueId, skill.id)
         val entry = cooldowns[key] ?: return 0
-        val remaining = ticksUntil(entry.expiresAtNanos)
+        val remaining = remainingTicks(entry)
         if (remaining <= 0) cooldowns.remove(key)
         return remaining
     }
@@ -42,6 +46,33 @@ object CooldownManager {
         refreshMaterialCooldown(player, material)
     }
 
+    fun reduceCooldown(player: Player, skill: Skill, ticks: Int) {
+        if (ticks <= 0) return
+        val key = CooldownKey(player.uniqueId, skill.id)
+        val entry = cooldowns[key] ?: return
+        cooldowns[key] = entry.copy(expiresAtNanos = entry.expiresAtNanos - ticks * NANOS_PER_TICK)
+        refreshMaterialCooldown(player, entry.material)
+    }
+
+    fun pauseCooldown(player: Player, skill: Skill) {
+        val key = CooldownKey(player.uniqueId, skill.id)
+        val entry = cooldowns[key] ?: return
+        if (entry.pausedAtNanos != null) return
+        cooldowns[key] = entry.copy(pausedAtNanos = System.nanoTime())
+        refreshMaterialCooldown(player, entry.material)
+    }
+
+    fun resumeCooldown(player: Player, skill: Skill) {
+        val key = CooldownKey(player.uniqueId, skill.id)
+        val entry = cooldowns[key] ?: return
+        val pausedAt = entry.pausedAtNanos ?: return
+        cooldowns[key] = entry.copy(
+            expiresAtNanos = entry.expiresAtNanos + (System.nanoTime() - pausedAt),
+            pausedAtNanos = null,
+        )
+        refreshMaterialCooldown(player, entry.material)
+    }
+
     fun clear(playerIds: Collection<UUID>) {
         if (playerIds.isEmpty()) return
         cooldowns.keys.removeIf { it.playerId in playerIds }
@@ -58,12 +89,14 @@ object CooldownManager {
     private fun refreshMaterialCooldown(player: Player, material: Material) {
         val maximumRemaining = cooldowns.asSequence()
             .filter { (key, entry) -> key.playerId == player.uniqueId && entry.material == material }
-            .maxOfOrNull { (_, entry) -> ticksUntil(entry.expiresAtNanos) }
+            .maxOfOrNull { (_, entry) -> remainingTicks(entry) }
             ?.coerceAtLeast(0)
             ?: 0
         player.setCooldown(material, maximumRemaining)
     }
 
-    private fun ticksUntil(expiresAtNanos: Long): Int =
-        ceil((expiresAtNanos - System.nanoTime()).toDouble() / NANOS_PER_TICK).toInt().coerceAtLeast(0)
+    private fun remainingTicks(entry: CooldownEntry): Int {
+        val now = entry.pausedAtNanos ?: System.nanoTime()
+        return ceil((entry.expiresAtNanos - now).toDouble() / NANOS_PER_TICK).toInt().coerceAtLeast(0)
+    }
 }

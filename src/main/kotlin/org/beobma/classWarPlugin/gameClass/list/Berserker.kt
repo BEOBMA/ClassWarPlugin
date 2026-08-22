@@ -4,6 +4,7 @@ import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.manager.PlayerManager.heal
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
@@ -19,12 +20,14 @@ import org.bukkit.Material
 
 class Berserker : GameClass() {
     override val name: String = "<gray>광전사"
-    override val rank = Rank.A
+    override val rank = Rank.B
     override val classItemMaterial = Material.IRON_AXE
     override val weapon: BaseWeapon = Weapon()
 
     override var skills: List<Skill> = listOf(RedSkill())
     override var passives: List<BasePassive> = listOf(Passive())
+
+    private var ragnarokUntil = 0L
 
 
     private class Weapon : BaseWeapon() {
@@ -34,7 +37,7 @@ class Berserker : GameClass() {
 
     }
 
-    private class RedSkill : Skill() {
+    private inner class RedSkill : Skill() {
         override val name: String
             get() = "<bold>라그나로크"
         override val description: List<String>
@@ -47,20 +50,23 @@ class Berserker : GameClass() {
 
         override fun use() {
             val playerMoveSpeedIncrease = playerData.addStatus(MoveSpeedIncrease(), playerData)
-            val playerWhenDamageReduction = playerData.addStatus(WhenDamageReduction(), playerData)
+            val playerAttackSpeedIncrease = playerData.addStatus(AttackSpeedIncrease(), playerData)
 
             playerMoveSpeedIncrease.applyStatus(
-                duration = 10,
-                powerDelta = 30
+                duration = 8,
+                powerDelta = 50
             )
-            playerWhenDamageReduction.applyStatus(
-                duration = 10,
-                powerDelta = 40
+            playerAttackSpeedIncrease.applyStatus(
+                duration = 8,
+                powerDelta = 50
             )
+            ragnarokUntil = player.world.fullTime + 160L
+            sounds.play(player, org.bukkit.Sound.ENTITY_RAVAGER_ROAR, volume = 1.1f, pitch = 0.75f)
+            particles.spawn(player, org.bukkit.Particle.ANGRY_VILLAGER, count = 18, spread = 0.6)
         }
     }
 
-    private class Passive : BasePassive(), OnHitHandler {
+    private inner class Passive : BasePassive(), OnHitHandler, WhenHitHandler {
         override val name: String
             get() = "<red><bold>광전사의 의지"
         override val description: List<String>
@@ -78,6 +84,10 @@ class Berserker : GameClass() {
             if (player.getPlayerMaxHealth() / 2 > player.health) {
                 playerData.heal(event.damage / 10, DamageType.Normal, playerData)
             }
+        }
+
+        override fun whenHit(context: DamageContext) {
+            if (player.world.fullTime < ragnarokUntil) context.capDamage(player.health - 1.0)
         }
     }
 }

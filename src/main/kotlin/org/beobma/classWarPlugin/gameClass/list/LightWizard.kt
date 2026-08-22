@@ -1,12 +1,29 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
-import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
-import org.beobma.classWarPlugin.keyword.Keyword
+import org.beobma.classWarPlugin.manager.PlayerManager.damage
+import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
+import org.beobma.classWarPlugin.manager.SkillManager.getTargetCandidates
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
+import org.beobma.classWarPlugin.manager.TemporaryDisplayManager
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Skill
-import org.bukkit.Material
+import org.beobma.classWarPlugin.status.list.Brightness
+import org.beobma.classWarPlugin.util.DamageType
+import org.beobma.classWarPlugin.util.HitboxUtil
+import org.bukkit.*
+import org.bukkit.util.Vector
+import org.bukkit.entity.BlockDisplay
+import org.bukkit.scheduler.BukkitRunnable
+import org.bukkit.util.Transformation
+import org.joml.Quaternionf
+import org.joml.Vector3f
+import java.util.ArrayDeque
+import kotlin.math.max
 
 class LightWizard : GameClass() {
     override val name = "<gray>프리즘"
@@ -22,7 +39,97 @@ class LightWizard : GameClass() {
         Passive()
     )
 
-    private class RedSkill : Skill() {
+    private data class Prism(val location: Location, val display: BlockDisplay)
+    private val prisms = ArrayDeque<Prism>()
+
+    private fun placePrism(): Boolean {
+        val trace = player.world.rayTraceBlocks(player.eyeLocation, player.eyeLocation.direction, 10.0) ?: return false
+        val hitPosition = trace.hitPosition
+        val hitFace = trace.hitBlockFace ?: return false
+        val surfaceNormal = hitFace.direction.normalize()
+        val scale = 0.72
+        val location = hitPosition.toLocation(player.world).add(surfaceNormal.clone().multiply(scale / 2.0 + 0.04))
+        if (prisms.size >= 3) prisms.removeFirst().display.remove()
+        val displayLocation = location.clone().add(-scale / 2.0, -scale / 2.0, -scale / 2.0)
+        val display = location.world.spawn(displayLocation, BlockDisplay::class.java)
+        display.block = Material.AMETHYST_BLOCK.createBlockData()
+        display.isPersistent = false
+        TemporaryDisplayManager.mark(display, player.uniqueId)
+        display.transformation = Transformation(
+            Vector3f(0.0f, 0.0f, 0.0f),
+            Quaternionf(),
+            Vector3f(scale.toFloat(), scale.toFloat(), scale.toFloat()),
+            Quaternionf(),
+        )
+        val prism = Prism(location.clone(), display)
+        prisms.addLast(prism)
+        playerData.trackTask(object : BukkitRunnable() {
+            var tick = 0
+            override fun run() {
+                if (prism !in prisms || !display.isValid) {
+                    display.remove()
+                    cancel()
+                    return
+                }
+                val bob = kotlin.math.sin(tick++ * 0.15) * 0.035
+                display.teleport(displayLocation.clone().add(surfaceNormal.clone().multiply(bob)))
+                if (tick % 8 == 0) particles.spawn(location, Particle.END_ROD, count = 2, spread = 0.32)
+            }
+        }.runTaskTimer(org.beobma.classWarPlugin.ClassWarPlugin.instance, 0L, 1L))
+        particles.spawn(location, Particle.END_ROD, count = 25, spread = 0.25, speed = 0.03)
+        sounds.play(location, Sound.BLOCK_GLASS_PLACE, pitch = 1.6f)
+        return true
+    }
+
+    private data class Beam(val start: Location, val direction: Vector, val depth: Int)
+
+    private fun fireBeams() {
+        val queue = ArrayDeque<Beam>()
+        queue += Beam(player.eyeLocation.clone(), player.eyeLocation.direction.normalize(), 0)
+        val activated = mutableSetOf<Prism>()
+        var processed = 0
+        while (queue.isNotEmpty() && processed++ < 16) {
+            val beam = queue.removeFirst()
+            val maxDistance = 24.0
+            val blockHit = beam.start.world.rayTraceBlocks(beam.start, beam.direction, maxDistance)?.hitPosition
+            var distance = blockHit?.distance(beam.start.toVector()) ?: maxDistance
+            val prism = prisms
+                .filter { it !in activated && it.location.world == beam.start.world }
+                .mapNotNull { prism ->
+                    val relative = prism.location.toVector().subtract(beam.start.toVector())
+                    val projection = relative.dot(beam.direction)
+                    if (projection <= 0.15 || projection >= distance) return@mapNotNull null
+                    val perpendicular = relative.clone().subtract(beam.direction.clone().multiply(projection)).length()
+                    if (perpendicular <= 0.8) prism to projection else null
+                }.minByOrNull { it.second }
+            if (prism != null) distance = prism.second
+            val end = beam.start.clone().add(beam.direction.clone().multiply(distance))
+            particles.line(beam.start, end, Particle.END_ROD, spacing = 0.3)
+            hitBeamTargets(beam, end)
+            if (prism != null && activated.add(prism.first)) {
+                sounds.play(prism.first.location, Sound.BLOCK_AMETHYST_BLOCK_CHIME, pitch = 1.8f)
+                particles.spawn(prism.first.location, Particle.FLASH, count = 1)
+                listOf(Vector(1, 0, 0), Vector(-1, 0, 0), Vector(0, 0, 1), Vector(0, 0, -1)).forEach {
+                    queue += Beam(prism.first.location.clone(), it, beam.depth + 1)
+                }
+            }
+        }
+        sounds.play(player, Sound.BLOCK_BEACON_ACTIVATE, pitch = 1.7f)
+    }
+
+    private fun hitBeamTargets(beam: Beam, end: Location) {
+        val start = beam.start.toVector()
+        val finish = end.toVector()
+        if (finish.distanceSquared(start) <= 0.0) return
+        playerData.getTargetCandidates().filter { it != playerData && it.entityStatus.isSkillTargeting }.forEach { target ->
+            if (target is PlayerData && !playerData.isEnemyOf(target)) return@forEach
+            if (!HitboxUtil.intersectsSegment(target.entity.boundingBox, start, finish, expansion = 0.25)) return@forEach
+            target.damage(max(1.0, if (beam.depth == 0) 8.0 else 4.0 / (1 shl (beam.depth - 1))), DamageType.Normal, playerData)
+            if (beam.depth > 0) target.getOrCreateStatus(playerData) { Brightness() }.applyStatus(powerDelta = 1)
+        }
+    }
+
+    private inner class RedSkill : Skill() {
         override val name = "<bold>프리즘"
         override val description = listOf(
             "<gray>10칸 내의 바라보는 블럭에 프리즘을 설치한다. (최대 3개)",
@@ -31,11 +138,17 @@ class LightWizard : GameClass() {
         override val cooldown = 1
 
         override fun use() {
-            // TODO: 프리즘 설치 로직 구현
+            placePrism()
+        }
+
+        override fun isUseSuccess(): Boolean {
+            if (playerData.shotLaserGetBlock(10.0) != null) return true
+            player.sendMiniMessage("<red><bold>[!] 바라보는 블럭이 없습니다.")
+            return false
         }
     }
 
-    private class OrangeSkill : Skill() {
+    private inner class OrangeSkill : Skill() {
         override val name = "<bold>분광"
         override val description = listOf(
             "<gray>바라보는 방향으로 빛의 광선을 발사한다.",
@@ -53,7 +166,7 @@ class LightWizard : GameClass() {
         override val cooldown = 20
 
         override fun use() {
-            // TODO: 광선 발사 및 반사 처리 구현
+            fireBeams()
         }
     }
 

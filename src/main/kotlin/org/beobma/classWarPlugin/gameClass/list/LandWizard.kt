@@ -11,6 +11,7 @@ import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.hasStatus
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Skill
@@ -22,6 +23,9 @@ import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.TargetType
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.bukkit.Material
+import org.bukkit.Particle
+import org.bukkit.Sound
+import org.beobma.classWarPlugin.effect.ParticleOptions
 
 class LandWizard : GameClass(), GameStatusHandler {
     override val name = "<gray>지맥술사"
@@ -65,6 +69,17 @@ class LandWizard : GameClass(), GameStatusHandler {
                 vibration.applyStatus(duration = 10, powerDelta = 2)
                 it.damage(2.0, DamageType.Normal, playerData)
             }
+            listOf(1.5, 2.7, 4.0).forEachIndexed { index, radius ->
+                particles.circle(player.location.clone().add(0.0, 0.08 + index * 0.03, 0.0), Particle.DUST_PLUME, radius, 24 + index * 8)
+            }
+            particles.spawn(
+                player.location.clone().add(0.0, 0.15, 0.0),
+                Particle.BLOCK,
+                Material.DEEPSLATE.createBlockData(),
+                ParticleOptions.spread(count = 32, spread = 3.2, speed = 0.09),
+            )
+            particles.spawn(player.location, Particle.CAMPFIRE_COSY_SMOKE, count = 12, spread = 2.8, speed = 0.02)
+            sounds.play(player, Sound.ENTITY_GENERIC_EXPLODE, volume = 0.48f, pitch = 0.72f)
         }
 
         override fun isUseSuccess(): Boolean {
@@ -90,7 +105,7 @@ class LandWizard : GameClass(), GameStatusHandler {
             val mana = playerData.getOrCreateStatus(playerData) { Mana() }
             val shield = playerData.addStatus(Shield(), playerData)
 
-            mana.decreasePower(100)
+            mana.decreasePower(60)
             shield.applyStatus(duration = 5, powerDelta = 8)
 
             val targets = playerData.radius(player.location, TargetType.Enemy, 4.0, false)
@@ -98,11 +113,17 @@ class LandWizard : GameClass(), GameStatusHandler {
                 val vibrationExplosion = it.addStatus(VibrationExplosion(), playerData)
                 vibrationExplosion.applyStatus(duration = 1, powerDelta = 1)
             }
+            listOf(1.5, 2.8, 4.0).forEachIndexed { index, radius ->
+                particles.circle(player.location.clone().add(0.0, 0.3 + index * 0.18, 0.0), Particle.ENCHANT, radius, 28 + index * 8)
+            }
+            particles.spawn(player.location.clone().add(0.0, 1.0, 0.0), Particle.REVERSE_PORTAL, count = 42, spread = 1.6, speed = 0.08)
+            particles.spawn(player.location.clone().add(0.0, 0.5, 0.0), Particle.ELECTRIC_SPARK, count = 24, spread = 2.5, speed = 0.06)
+            sounds.play(player, Sound.BLOCK_AMETHYST_BLOCK_RESONATE, volume = 0.85f, pitch = 0.9f)
         }
 
         override fun isUseSuccess(): Boolean {
             val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-            if (mana.power < 100) {
+            if (mana.power < 60) {
                 player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
                 return false
             }
@@ -117,7 +138,7 @@ class LandWizard : GameClass(), GameStatusHandler {
         )
 
         override fun whenAttackHit(event: DamageContext) {
-            event.addDamageDealtMultiplier(0.7)
+            if (playerData.hasStatus<Shield>()) event.addDamageTakenMultiplier(0.7)
         }
     }
 }

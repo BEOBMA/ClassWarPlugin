@@ -17,7 +17,7 @@ object SoundApi {
         sound: Sound,
         volume: Float = 1.0f,
         pitch: Float = 1.0f,
-        category: SoundCategory = SoundCategory.PLAYERS,
+        category: SoundCategory = SoundCategory.MASTER,
     ) {
         location.world.playSound(location, sound, category, volume, pitch)
     }
@@ -27,7 +27,7 @@ object SoundApi {
         sound: Sound,
         volume: Float = 1.0f,
         pitch: Float = 1.0f,
-        category: SoundCategory = SoundCategory.PLAYERS,
+        category: SoundCategory = SoundCategory.MASTER,
     ) = play(entity.location, sound, volume, pitch, category)
 
     fun playTo(
@@ -35,7 +35,7 @@ object SoundApi {
         sound: Sound,
         volume: Float = 1.0f,
         pitch: Float = 1.0f,
-        category: SoundCategory = SoundCategory.PLAYERS,
+        category: SoundCategory = SoundCategory.MASTER,
         location: Location = player.location,
     ) {
         player.playSound(location, sound, category, volume, pitch)
@@ -44,7 +44,7 @@ object SoundApi {
     fun stop(
         player: Player,
         sound: Sound,
-        category: SoundCategory = SoundCategory.PLAYERS,
+        category: SoundCategory = SoundCategory.MASTER,
     ) {
         player.stopSound(sound, category)
     }

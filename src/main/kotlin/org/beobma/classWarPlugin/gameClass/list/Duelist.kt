@@ -1,10 +1,28 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.ClassWarPlugin
+import org.beobma.classWarPlugin.damage.DamageContext
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
+import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
+import org.beobma.classWarPlugin.manager.PlayerManager.damage
+import org.beobma.classWarPlugin.manager.CooldownManager
+import org.beobma.classWarPlugin.manager.SkillManager.radius
+import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Skill
-import org.bukkit.Material
+import org.beobma.classWarPlugin.status.StatusAbnormality
+import org.beobma.classWarPlugin.util.DamageType
+import org.beobma.classWarPlugin.util.TargetType
+import org.beobma.classWarPlugin.util.HitboxUtil
+import org.bukkit.*
+import org.bukkit.scheduler.BukkitRunnable
+import java.util.UUID
 
 class Duelist : GameClass() {
     override val name = "<gray>결투가"
@@ -19,7 +37,27 @@ class Duelist : GameClass() {
         Passive()
     )
 
-    private class RedSkill : Skill() {
+    private var opponentId: UUID? = null
+    private var duelUntil = 0L
+    private var fenteChain = 0
+    private var disrupted = false
+
+    private fun inDuel(): Boolean = opponentId != null && player.world.fullTime < duelUntil
+
+    private class DuelMark(private val duelistId: UUID) : StatusAbnormality(), WhenHitHandler {
+        override val name = "<gold><bold>결투"
+        override val description = listOf("<gray>결투 중 받는 피해가 공격자에 따라 변경된다.")
+        override val canRemove = true
+        override var power = 1
+        override var duration: Int? = 15
+        override val showPower = false
+        override val showMaxPower = false
+        override fun whenHit(context: DamageContext) {
+            context.addDamageTakenMultiplier(if (context.attacker.uniqueId == duelistId) 1.3 else 0.7)
+        }
+    }
+
+    private inner class RedSkill : Skill() {
         override val name = "<bold>팡트"
         override val description = listOf(
             "<gray>바라보는 방향으로 짧게 도약한다.",
@@ -30,11 +68,36 @@ class Duelist : GameClass() {
         override val cooldown = 5
 
         override fun use() {
-            // TODO: 구현 예정
+            player.velocity = player.location.direction.normalize().multiply(1.15).setY(0.18)
+            sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_SWEEP, pitch = 1.5f)
+            playerData.trackTask(object : BukkitRunnable() {
+                override fun run() {
+                    val candidates = playerData.radius(player.location, TargetType.Enemy, 2.0, false)
+                    val target = candidates.firstOrNull { it.entity.uniqueId == opponentId }
+                        ?: candidates.minByOrNull { HitboxUtil.distanceSquared(it.entity.boundingBox, player.boundingBox) }
+                    if (target == null) {
+                        if (inDuel()) disrupted = true
+                        sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_NODAMAGE, pitch = 0.8f)
+                        return
+                    }
+                    target.damage(2.0, DamageType.Normal, playerData)
+                    particles.line(player.eyeLocation, target.entity.location.add(0.0, target.entity.height / 2.0, 0.0), Particle.CRIT, 0.2)
+                    if (inDuel() && target.entity.uniqueId == opponentId) {
+                        disrupted = false
+                        fenteChain++
+                        CooldownManager.reduceCooldown(player, this@RedSkill, 40)
+                        if (fenteChain >= 3) {
+                            target.damage(6.0, DamageType.Normal, playerData)
+                            fenteChain = 0
+                            sounds.play(target.entity, Sound.ENTITY_PLAYER_ATTACK_CRIT, pitch = 0.7f)
+                        }
+                    } else fenteChain = 0
+                }
+            }.runTaskLater(ClassWarPlugin.instance, 4L))
         }
     }
 
-    private class OrangeSkill : Skill() {
+    private inner class OrangeSkill : Skill() {
         override val name = "<bold>앙 가르드"
         override val description = listOf(
             "<gray>10칸 내의 바라보는 적에게 15초간 결투를 선포한다.",
@@ -48,11 +111,23 @@ class Duelist : GameClass() {
         override val cooldown = 70
 
         override fun use() {
-            // TODO: 구현 예정
+            val target = playerData.shotLaserGetEntityData(10.0, TargetType.Enemy, false) ?: return
+            opponentId = target.entity.uniqueId
+            duelUntil = player.world.fullTime + 300L
+            fenteChain = 0; disrupted = false
+            target.addStatus(DuelMark(player.uniqueId), playerData).applyStatus(duration = 15, powerSet = 1)
+            particles.line(player.eyeLocation, target.entity.location.add(0.0, target.entity.height / 2.0, 0.0), Particle.ENCHANT, 0.25)
+            sounds.play(player, Sound.ENTITY_ENDER_DRAGON_GROWL, volume = 0.6f, pitch = 1.5f)
+        }
+
+        override fun isUseSuccess(): Boolean {
+            if (playerData.shotLaserGetEntityData(10.0, TargetType.Enemy, false) != null) return true
+            player.sendMiniMessage("<red><bold>[!] 바라보는 적이 없습니다.")
+            return false
         }
     }
 
-    private class Passive : BasePassive() {
+    private inner class Passive : BasePassive(), OnHitHandler, WhenHitHandler {
         override val name = "<bold>자세 흐트러짐"
         override val description = listOf(
             "<gray>패시브",
@@ -62,5 +137,17 @@ class Duelist : GameClass() {
             "",
             "<gray>피해를 받거나, 결투가 종료되면 자세 흐트러짐이 제거된다."
         )
+
+        override fun onHit(context: DamageContext) {
+            if (inDuel() && context.target.entity.uniqueId == opponentId) context.addDamageDealtMultiplier(1.3)
+        }
+
+        override fun whenHit(context: DamageContext) {
+            if (!inDuel()) { disrupted = false; opponentId = null; return }
+            if (context.attacker.uniqueId == opponentId) {
+                if (disrupted) context.addDamageTakenMultiplier(1.25)
+                disrupted = false
+            } else context.addDamageTakenMultiplier(0.7)
+        }
     }
 }

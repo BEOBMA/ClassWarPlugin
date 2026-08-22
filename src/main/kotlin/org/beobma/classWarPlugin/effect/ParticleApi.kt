@@ -2,6 +2,7 @@ package org.beobma.classWarPlugin.effect
 
 import org.bukkit.Location
 import org.bukkit.Particle
+import org.bukkit.Color
 import org.bukkit.entity.Entity
 import org.bukkit.entity.Player
 import kotlin.math.PI
@@ -39,6 +40,7 @@ object ParticleApi {
     ) = spawn(location, particle, ParticleOptions.spread(count, spread, speed, force))
 
     fun spawn(location: Location, particle: Particle, options: ParticleOptions) {
+        val data = defaultData(particle)
         location.world.spawnParticle(
             particle,
             location,
@@ -47,7 +49,7 @@ object ParticleApi {
             options.offsetY,
             options.offsetZ,
             options.speed,
-            null,
+            data,
             options.force,
         )
     }
@@ -89,7 +91,7 @@ object ParticleApi {
         spread: Double = 0.0,
         speed: Double = 0.0,
     ) {
-        player.spawnParticle(particle, location, count, spread, spread, spread, speed)
+        player.spawnParticle(particle, location, count, spread, spread, spread, speed, defaultData(particle))
     }
 
     fun line(
@@ -128,5 +130,11 @@ object ParticleApi {
             val location = center.clone().add(cos(angle) * radius, 0.0, sin(angle) * radius)
             spawn(location, particle, options)
         }
+    }
+
+    /** Paper 26.2에서 일부 파티클(END_ROD 등)에 새로 요구되는 기본 데이터를 제공한다. */
+    private fun defaultData(particle: Particle): Any? = when (particle.dataType) {
+        Color::class.java -> Color.WHITE
+        else -> null
     }
 }

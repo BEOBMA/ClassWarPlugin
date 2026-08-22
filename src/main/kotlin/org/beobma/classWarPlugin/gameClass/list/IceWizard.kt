@@ -19,12 +19,16 @@ import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.Frostbite
 import org.beobma.classWarPlugin.status.list.Mana
 import org.beobma.classWarPlugin.status.list.MoveSpeedDecrease
+import org.beobma.classWarPlugin.status.list.Freezing
 import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.TargetType
 import org.bukkit.Location
 import org.bukkit.Material
+import org.bukkit.Particle
+import org.bukkit.Sound
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
+import java.util.UUID
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
 class IceWizard : GameClass(), GameStatusHandler {
@@ -40,19 +44,22 @@ class IceWizard : GameClass(), GameStatusHandler {
         Passive()
     )
 
+    private var isBlizzardActive = false
+
     override fun onBattleStart() {
         val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.increasePower(100)
     }
 
     override fun onGameTimePasses() {
+        if (isBlizzardActive) return
         val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.increasePower(10)
     }
 
-    private class RedSkill : Skill() {
+    private inner class RedSkill : Skill() {
         private var bukkitTask: BukkitTask? = null
-        private val applyDamagePlayerDatas: MutableMap<EntityData, Int> = mutableMapOf()
+        private val nextDamageTickByEntity: MutableMap<UUID, Long> = mutableMapOf()
 
         override val name = "<bold>눈폭풍"
         override val description = listOf(
@@ -72,29 +79,57 @@ class IceWizard : GameClass(), GameStatusHandler {
             if (bukkitTask != null) {
                 bukkitTask?.cancel()
                 bukkitTask = null
-                applyDamagePlayerDatas.clear()
+                isBlizzardActive = false
+                nextDamageTickByEntity.clear()
+                sounds.play(player, Sound.BLOCK_GLASS_BREAK, pitch = 1.5f)
                 return
             }
 
+            isBlizzardActive = true
             bukkitTask = playerData.trackTask(object : BukkitRunnable() {
+                private var elapsedTicks = 0
+
                 override fun run() {
-                    if (mana.power < 10) {
-                        cancel()
+                    if (!player.isOnline || player.isDead) {
+                        isBlizzardActive = false
                         bukkitTask = null
+                        cancel()
                         return
                     }
-                    val targets = playerData.radius(player.location, TargetType.Enemy, 3.0, false)
-                    targets.forEach {
-                        if (applyDamagePlayerDatas.getOrDefault(it, 0) == 0) return@forEach
-                        val frostbiteTarget = it as? PlayerData
-                        applyDamagePlayerDatas[it] = applyDamagePlayerDatas.getOrDefault(it, 20) - 1
-                        it.damage(3.0, DamageType.Normal, playerData)
-                        if (frostbiteTarget != null) {
-                            val frostbite = frostbiteTarget.getOrCreateStatus(playerData) { Frostbite() }
-                            frostbite.applyStatus(duration = 5, powerDelta = 2)
+                    if (elapsedTicks > 0 && elapsedTicks % 20 == 0) {
+                        if (mana.power < 10) {
+                            playerData.getOrCreateStatus(playerData) { Freezing() }.applyStatus(duration = 2, powerSet = 1)
+                            sounds.play(player, Sound.ENTITY_PLAYER_HURT_FREEZE, pitch = 0.7f)
+                            isBlizzardActive = false
+                            nextDamageTickByEntity.clear()
+                            cancel()
+                            bukkitTask = null
+                            return
+                        }
+                        mana.decreasePower(10)
+                        sounds.play(player, Sound.WEATHER_RAIN, volume = 0.22f, pitch = 1.6f)
+                        if (mana.power <= 0) {
+                            playerData.getOrCreateStatus(playerData) { Freezing() }.applyStatus(duration = 2, powerSet = 1)
+                            sounds.play(player, Sound.ENTITY_PLAYER_HURT_FREEZE, pitch = 0.7f)
+                            isBlizzardActive = false
+                            nextDamageTickByEntity.clear()
+                            cancel()
+                            bukkitTask = null
+                            return
                         }
                     }
-                    mana.decreasePower(10)
+
+                    val now = player.world.fullTime
+                    val targets = playerData.radius(player.location, TargetType.Enemy, 3.0, false)
+                    targets.forEach { target ->
+                        if (now < nextDamageTickByEntity.getOrDefault(target.entity.uniqueId, Long.MIN_VALUE)) return@forEach
+                        nextDamageTickByEntity[target.entity.uniqueId] = now + 20L
+                        target.damage(2.0, DamageType.Normal, playerData)
+                        target.getOrCreateStatus(playerData) { Frostbite() }.applyStatus(duration = 5, powerDelta = 2)
+                    }
+                    particles.circle(player.location, Particle.SNOWFLAKE, 3.0, 14)
+                    particles.spawn(player.location.add(0.0, 1.0, 0.0), Particle.SNOWFLAKE, count = 5, spread = 2.0, speed = 0.02)
+                    elapsedTicks++
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
         }
@@ -118,28 +153,29 @@ class IceWizard : GameClass(), GameStatusHandler {
     private class FrostZone(override var location: Location) : Flooring() {
         override var radius: Double = 4.0
         override var targetType: TargetType = TargetType.Enemy
-        override var time: Int? = 100
+        override var time: Int? = 5
 
-        private val hitPlayerDatas: MutableList<PlayerData> = mutableListOf()
+        private val affectedEntities: MutableSet<EntityData> = mutableSetOf()
+
+        override fun onFlooringContinue(location: Location) {
+            particles.circle(location, Particle.SNOWFLAKE, radius, 28)
+        }
 
         override fun onFlooringEntityHit(hitEntityData: EntityData, location: Location) {
-            val hitPlayerData = hitEntityData as? PlayerData ?: return
-            if (hitPlayerData in hitPlayerDatas) return
-            val moveSpeedDecrease = hitPlayerData.addStatus(MoveSpeedDecrease(), playerData)
-            val frostbite = hitPlayerData.getOrCreateStatus(playerData) { Frostbite() }
+            if (!affectedEntities.add(hitEntityData)) return
+            val moveSpeedDecrease = hitEntityData.addStatus(MoveSpeedDecrease(), playerData)
+            val frostbite = hitEntityData.getOrCreateStatus(playerData) { Frostbite() }
             moveSpeedDecrease.increasePower(25)
             frostbite.applyStatus(duration = 5, powerDelta = 2)
-            moveSpeedDecrease.setContinueWhileIf { hitPlayerDatas.contains(hitPlayerData) }
-            hitPlayerDatas.add(hitPlayerData)
+            moveSpeedDecrease.setContinueWhileIf { affectedEntities.contains(hitEntityData) }
         }
 
         override fun onFlooringEntityOut(hitEntityData: EntityData, location: Location) {
-            val hitPlayerData = hitEntityData as? PlayerData ?: return
-            hitPlayerDatas.remove(hitPlayerData)
+            affectedEntities.remove(hitEntityData)
         }
 
         override fun onFlooringEnd() {
-            hitPlayerDatas.clear()
+            affectedEntities.clear()
         }
     }
 }

@@ -89,6 +89,14 @@ enum class Keyword(val string: String, val description: String? = null) {
     Bullet(
         "<gold><bold>탄환</bold><gray>",
         "{keyword:Bullet}: 특정 스킬이나 공격으로 소모된다."
+    ),
+    Checkpoint(
+        "<aqua><bold>체크포인트</bold><gray>",
+        "{keyword:Checkpoint}: 저장된 위치와 체력으로 되돌아갈 수 있으며 지속시간 종료 시 사라진다."
+    ),
+    TimePhase(
+        "<yellow><bold>시간대</bold><gray>",
+        "{keyword:TimePhase}: 시계공의 현재 시간대이며 남은 시간이 끝나면 다음 시간대로 변경된다."
     );
 
     companion object {

@@ -43,6 +43,10 @@ class DamageContext(
         damage = remainingDamage.coerceAtLeast(0.0)
     }
 
+    fun capDamage(maximum: Double) {
+        damage = damage.coerceAtMost(maximum.coerceAtLeast(0.0))
+    }
+
     private fun recalculateDamage() {
         damage = (originalDamage + flatDamageBonus) * damageDealtMultiplier * damageTakenMultiplier
     }

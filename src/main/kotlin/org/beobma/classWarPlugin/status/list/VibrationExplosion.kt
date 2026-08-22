@@ -21,14 +21,14 @@ class VibrationExplosion : StatusAbnormality() {
     override var maxPower: Int? = 1
     override var duration: Int? = 1
 
-    override fun updatePower(amount: Int) {
+    override fun onPowerChanged() {
         val vibration = entityData.getStatus<Vibration>()
 
         if (vibration == null || vibration.power <= 0) {
             this.remove()
             return
         }
-        entityData.damage(vibration.power.toDouble(), DamageType.StatusAbnormality, casterData)
+        entityData.damage(vibration.power * 0.5, DamageType.StatusAbnormality, casterData)
         vibration.remove()
         this.remove()
     }

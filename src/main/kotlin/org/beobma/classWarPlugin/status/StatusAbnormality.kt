@@ -23,6 +23,7 @@ abstract class StatusAbnormality {
     open var maxPower: Int? = null
     open val showMaxPower = true
     open val showPower = true
+    open val isClassMechanic = false
     open var duration: Int? = null
     open val durationMode: StatusDurationMode = StatusDurationMode.Refresh
     open var continueWhile: (() -> Boolean)? = null
@@ -94,6 +95,7 @@ abstract class StatusAbnormality {
         stopDurationTicking()
         if (canRemove) {
             entityData.statusAbnormalitys.remove(this@StatusAbnormality)
+            power = 0
             onRemoveStatusAbnormality()
         } else {
             power = 0
@@ -132,6 +134,14 @@ abstract class StatusAbnormality {
 
     open fun onRemoveStatusAbnormality() {}
 
+    open fun actionBarText(): String {
+        val durationLabel = duration?.let { "<dark_gray>|</dark_gray><yellow>${it}s</yellow>" } ?: ""
+        val powerLabel = if (showPower) "<gold>${power}</gold>" else ""
+        val maxPowerLabel =
+            if (showMaxPower) maxPower?.let { "<dark_gray>/</dark_gray><gold>${it}</gold>" } ?: "" else ""
+        return "$name: $powerLabel$maxPowerLabel$durationLabel"
+    }
+
     private fun refreshDurationTask() {
         if (shouldTick()) {
             startDurationTicking()
@@ -154,6 +164,13 @@ abstract class StatusAbnormality {
 
     internal fun tickStatusFromManager() {
         tickStatus()
+    }
+
+    internal fun cleanupFromManager() {
+        stopDurationTicking()
+        entityData.statusAbnormalitys.remove(this)
+        power = 0
+        onRemoveStatusAbnormality()
     }
 
     private fun tickStatus() {
@@ -183,6 +200,7 @@ abstract class StatusAbnormality {
         stopDurationTicking()
         if (canRemove) {
             entityData.statusAbnormalitys.remove(this@StatusAbnormality)
+            power = 0
             onRemoveStatusAbnormality()
         } else {
             power = 0

@@ -10,6 +10,8 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.status.list.Shield
+import org.beobma.classWarPlugin.gameClass.handler.EnvironmentalDamageHandler
+import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
@@ -24,6 +26,10 @@ class OnEntityDamageEvent : Listener {
             event.isCancelled = true
         }
         val player = event.entity as? Player ?: return
+        val handlerData = findGameForPlayer(player)?.playerDatas?.filterIsInstance<PlayerData>()
+            ?.find { it.uniqueId == player.uniqueId }
+        (handlerData?.gameClass as? EnvironmentalDamageHandler)?.onEnvironmentalDamage(event)
+        if (event.isCancelled) return
         val activeGame = game
         if (activeGame != null) {
             val playerData = activeGame.playerDatas.filterIsInstance<PlayerData>()
@@ -55,6 +61,7 @@ class OnEntityDamageEvent : Listener {
 
         val finalDamage = event.finalDamage
         if (finalDamage > 0.0) {
+            player.playHurtAnimation(0.0f)
             DamageIndicatorManager.show(player, finalDamage, game.settings.damageIndicatorsEnabled)
             val formattedDamage = String.format("%.2f", finalDamage)
             player.sendMiniMessage("<red>받은 피해 정보 - <gray>피해량: <gold><bold>$formattedDamage</bold></gold>")

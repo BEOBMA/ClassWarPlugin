@@ -6,6 +6,7 @@ import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.SkillManager.getSkillId
 import org.beobma.classWarPlugin.manager.SkillManager.use
+import org.beobma.classWarPlugin.gameClass.handler.WeaponInputHandler
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
@@ -15,7 +16,7 @@ import org.bukkit.inventory.EquipmentSlot
 
 class OnPlayerInteractEvent : Listener {
 
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGH)
     fun onPlayerInteract(event: PlayerInteractEvent) {
         if (event.hand != EquipmentSlot.HAND) return
         if (event.action != Action.RIGHT_CLICK_AIR && event.action != Action.RIGHT_CLICK_BLOCK) return
@@ -24,11 +25,21 @@ class OnPlayerInteractEvent : Listener {
         val isTraining = PlayerTagManager.hasTag(player, "isTraining")
         if (!isGaming() && !isTraining) return
 
-        val clickedItem = event.item ?: return
-        val skillId = getSkillId(clickedItem, player.uniqueId) ?: return
+        // RIGHT_CLICK_AIR에서는 서버/아이템 종류에 따라 event.item이 비어 있을 수 있으므로
+        // 실제 주 손 아이템을 기준으로 스킬 사용을 시도한다.
+        val clickedItem = event.item ?: player.inventory.itemInMainHand
+        if (clickedItem.type.isAir) return
         val currentGame = findGameForPlayer(player) ?: return
         val playerData = currentGame.playerDatas.filterIsInstance<PlayerData>()
             .find { it.player.uniqueId == player.uniqueId } ?: return
+        val skillId = getSkillId(clickedItem, player.uniqueId)
+        if (skillId == null) {
+            val gameClass = playerData.gameClass
+            if (gameClass is WeaponInputHandler && clickedItem.type == gameClass.weapon.material) {
+                gameClass.onWeaponRightClick(event)
+            }
+            return
+        }
         val skill = playerData.gameClass?.skills?.find { it.id == skillId } ?: return
 
         event.isCancelled = true

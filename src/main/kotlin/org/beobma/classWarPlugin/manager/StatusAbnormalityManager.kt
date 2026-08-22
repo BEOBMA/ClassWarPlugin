@@ -16,6 +16,8 @@ import org.bukkit.scheduler.BukkitTask
 
 object StatusAbnormalityManager {
     private val tickingStatuses: MutableSet<StatusAbnormality> = HashSet()
+    private val originalAttackSpeeds: MutableMap<java.util.UUID, Double> = HashMap()
+    private val originalMoveSpeeds: MutableMap<java.util.UUID, Double> = HashMap()
     private var tickingTask: BukkitTask? = null
 
     data class DamageTakenModifier(val reductionMultiplier: Double, val increaseMultiplier: Double) {
@@ -79,7 +81,12 @@ object StatusAbnormalityManager {
         val entity = entity
         if (entity is LivingEntity) {
             val attributeInstance = entity.getAttribute(Attribute.ATTACK_SPEED) ?: return
-            val baseValue = 4.0
+            val hasModifier = statusAbnormalitys.any { it is AttackSpeedIncrease }
+            if (!hasModifier) {
+                originalAttackSpeeds.remove(entity.uniqueId)?.let { attributeInstance.baseValue = it }
+                return
+            }
+            val baseValue = originalAttackSpeeds.getOrPut(entity.uniqueId) { attributeInstance.baseValue }
             val newValue = baseValue * (1 + attackSpeedModifier / 100.0)
             attributeInstance.baseValue = newValue
             return
@@ -99,8 +106,12 @@ object StatusAbnormalityManager {
         val entity = entity
         if (entity is LivingEntity) {
             val attributeInstance = entity.getAttribute(Attribute.MOVEMENT_SPEED) ?: return
-
-            val baseValue = 0.1
+            val hasModifier = statusAbnormalitys.any { it is MoveSpeedIncrease || it is MoveSpeedDecrease }
+            if (!hasModifier) {
+                originalMoveSpeeds.remove(entity.uniqueId)?.let { attributeInstance.baseValue = it }
+                return
+            }
+            val baseValue = originalMoveSpeeds.getOrPut(entity.uniqueId) { attributeInstance.baseValue }
             val newValue = baseValue * increaseFactor * decreaseFactor
             attributeInstance.baseValue = newValue
             return
@@ -135,8 +146,9 @@ object StatusAbnormalityManager {
     }
 
     internal fun unregisterAllTickingStatuses(statuses: Iterable<StatusAbnormality>) {
-        for (status in statuses) {
+        for (status in statuses.toList()) {
             unregisterTickingStatus(status)
+            status.cleanupFromManager()
         }
     }
 
@@ -174,15 +186,13 @@ object StatusAbnormalityManager {
 
     private fun buildStatusActionBarMessage(statuses: List<StatusAbnormality>): String {
         if (statuses.isEmpty()) return ""
-        return statuses
-            .sortedBy { it.name }
-            .joinToString(" <dark_gray> | </dark_gray> ") { status ->
-                val durationLabel = status.duration?.let { "<dark_gray>|</dark_gray><yellow>${it}s</yellow>" } ?: ""
-                val powerLabel = if (status.showPower) "<gold>${status.power}</gold>" else ""
-                val maxPowerLabel =
-                    if (status.showMaxPower) status.maxPower?.let { "<dark_gray>/</dark_gray><gold>${it}</gold>" }
-                        ?: "" else ""
-                "${status.name}: ${powerLabel}${maxPowerLabel}${durationLabel}"
-            }
+        fun List<StatusAbnormality>.line(): String = sortedBy { it.name }
+            .joinToString(" <dark_gray> | </dark_gray> ") { it.actionBarText() }
+
+        val mechanics = statuses.filter { it.isClassMechanic }.line()
+        val abnormalities = statuses.filterNot { it.isClassMechanic }.line()
+        return listOf(mechanics, abnormalities)
+            .filter { it.isNotBlank() }
+            .joinToString(" <aqua><bold>|</bold></aqua> ")
     }
 }

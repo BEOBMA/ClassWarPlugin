@@ -8,6 +8,7 @@ import org.bukkit.NamespacedKey
 import org.bukkit.entity.Display
 import org.bukkit.entity.EntityType
 import org.bukkit.entity.Player
+import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.TextDisplay
 import org.bukkit.persistence.PersistentDataType
 import org.bukkit.scheduler.BukkitRunnable
@@ -45,14 +46,14 @@ object DamageIndicatorManager {
         }.runTaskTimer(ClassWarPlugin.instance, 1L, 1L)
     }
 
-    fun show(player: Player, damage: Double, enabled: Boolean) {
-        if (!enabled || damage <= 0.0 || !player.isOnline) return
-        val spawnLocation = player.location.clone().add(
+    fun show(entity: LivingEntity, damage: Double, enabled: Boolean) {
+        if (!enabled || damage <= 0.0 || entity.isDead || (entity is Player && !entity.isOnline)) return
+        val spawnLocation = entity.location.clone().add(
             Random.nextDouble(-0.35, 0.35),
-            player.height + 0.45,
+            entity.height + 0.45,
             Random.nextDouble(-0.35, 0.35),
         )
-        val display = player.world.spawnEntity(spawnLocation, EntityType.TEXT_DISPLAY) as TextDisplay
+        val display = entity.world.spawnEntity(spawnLocation, EntityType.TEXT_DISPLAY) as TextDisplay
         display.text(miniMessage.deserialize("<red><bold>-${numberFormat.format(damage)}</bold></red>"))
         display.billboard = Display.Billboard.CENTER
         display.isSeeThrough = true
@@ -61,7 +62,7 @@ object DamageIndicatorManager {
         display.textOpacity = 255.toByte()
         display.isPersistent = false
         display.persistentDataContainer.set(markerKey, PersistentDataType.BYTE, 1)
-        indicators.add(Indicator(player.uniqueId, display))
+        indicators.add(Indicator(entity.uniqueId, display))
     }
 
     fun clearForPlayers(playerIds: Collection<UUID>) {

@@ -3,6 +3,7 @@ package org.beobma.classWarPlugin.manager
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
+import org.beobma.classWarPlugin.entity.mob.MobEntityData
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.entity.player.PlayerData
@@ -14,6 +15,7 @@ import org.beobma.classWarPlugin.status.list.Silence
 import org.beobma.classWarPlugin.status.list.Stealth
 import org.beobma.classWarPlugin.status.list.Stun
 import org.beobma.classWarPlugin.util.TargetType
+import org.beobma.classWarPlugin.util.HitboxUtil
 import org.beobma.classWarPlugin.util.TargetType.*
 import org.bukkit.Bukkit
 import org.bukkit.Location
@@ -51,13 +53,17 @@ object SkillManager {
         else -> false
     }
 
-    private fun EntityData.getTargetCandidates(): List<EntityData> {
+    fun EntityData.getTargetCandidates(): List<EntityData> {
         val candidates: MutableList<EntityData> = game.playerDatas.toMutableList()
         val sourcePlayer = this as? PlayerData
         if (sourcePlayer != null && isTraining()) {
-            sourcePlayer.player.world.entities.filter { it.isMannequin() }.forEach { mannequin ->
-                val data = game.playerDatas.find { it.entity == mannequin }
-                    ?: DummyEntityData(mannequin, game).also { game.playerDatas.add(it) }
+            sourcePlayer.player.world.livingEntities
+                .filter { it.uniqueId != sourcePlayer.uniqueId && it !is Player }
+                .forEach { livingEntity ->
+                val data = game.playerDatas.find { it.entity == livingEntity }
+                    ?: if (livingEntity.isMannequin()) DummyEntityData(livingEntity, game)
+                    else MobEntityData(livingEntity, game)
+                if (data !in game.playerDatas) game.playerDatas.add(data)
                 candidates.add(data)
             }
         }
@@ -114,13 +120,15 @@ object SkillManager {
         val sourcePlayer = this as? PlayerData
         val world = entity.world
         val nearbyEntities = world.getNearbyEntities(location, radius, radius, radius)
-            .filter { it is Player || it.isMannequin() }
+            .filterIsInstance<LivingEntity>()
         val entityDatas = getTargetCandidates().filter { entityData ->
             val playerStatus = entityData.entityStatus
             return@filter !playerStatus.isDead && playerStatus.isSkillTargeting
         }
         val nearbyEntityData = nearbyEntities.mapNotNull { target ->
             entityDatas.find { it.entity == target }
+        }.filter { candidate ->
+            HitboxUtil.intersectsSphere(candidate.entity.boundingBox, location.toVector(), radius)
         }
 
         return when (targetType) {
@@ -128,7 +136,7 @@ object SkillManager {
 
             Enemy -> {
                 nearbyEntityData.filter { candidate ->
-                    candidate.entity.isMannequin() && isTraining ||
+                    (candidate !is PlayerData && isTraining) ||
                         (sourcePlayer != null && candidate is PlayerData && sourcePlayer.isEnemyOf(candidate))
                 }
             }
@@ -153,37 +161,54 @@ object SkillManager {
 
         val maxDistance: Double = maxRange
 
-        val entityRayTraceResult = world.rayTraceEntities(startLocation, direction, maxDistance, 1.0) { entity ->
-            entity !== this.entity
-        }
-
-        val hitEntity = entityRayTraceResult?.hitEntity ?: return null
+        val hitEntityData = playerDatas.asSequence()
+            .filter { candidate ->
+                val hitEntity = candidate.entity
+                if (hitEntity === this.entity || hitEntity !is LivingEntity) return@filter false
+                when (targetType) {
+                    Self -> false
+                    Enemy -> isTraining && candidate !is PlayerData ||
+                        (candidate is PlayerData && sourcePlayer.isEnemyOf(candidate))
+                    All -> true
+                }
+            }
+            .mapNotNull { candidate ->
+                HitboxUtil.rayIntersectionDistance(
+                    candidate.entity.boundingBox,
+                    startLocation.toVector(),
+                    direction,
+                    maxDistance,
+                    expansion = 1.0,
+                )?.let { distance -> candidate to distance }
+            }
+            .minByOrNull { it.second }
+            ?: return null
+        val hitEntity = hitEntityData.first.entity
         if (!wallShot) {
             val blockRayTraceResult = world.rayTraceBlocks(startLocation, direction, maxDistance)
             val blockPosition = blockRayTraceResult?.hitPosition
-            val entityPosition = entityRayTraceResult.hitPosition
             if (blockPosition != null &&
                 blockPosition.distanceSquared(startLocation.toVector()) <=
-                entityPosition.distanceSquared(startLocation.toVector())
+                hitEntityData.second * hitEntityData.second
             ) {
                 return null
             }
         }
-        if (hitEntity !is Player && !hitEntity.isMannequin()) return null
-        val hitEntityData = playerDatas.find { it.entity == hitEntity } ?: return null
-        if (hitEntityData.entityStatus.isSkillTargeting) {
-            if (isTraining && hitEntity.isMannequin()) {
-                return hitEntityData
+        if (hitEntity !is LivingEntity) return null
+        val targetData = hitEntityData.first
+        if (targetData.entityStatus.isSkillTargeting) {
+            if (isTraining && hitEntity !is Player) {
+                return targetData
             }
             val isValidTarget = when (targetType) {
                 Self -> false
-                Enemy -> hitEntityData is PlayerData && sourcePlayer.isEnemyOf(hitEntityData)
-                All -> hitEntityData is PlayerData
+                Enemy -> targetData !is PlayerData || sourcePlayer.isEnemyOf(targetData)
+                All -> true
             }
             if (!isValidTarget) {
                 return null
             }
-            return hitEntityData
+            return targetData
         }
         return null
     }
@@ -211,7 +236,7 @@ object SkillManager {
             if (!includeSelf && targetPlayerData == this)
                 return@filter false
 
-            if (!(isTraining && targetPlayerData.entity.isMannequin())) {
+            if (!(isTraining && targetPlayerData !is PlayerData)) {
                 when (targetType) {
                     Self -> if (targetPlayerData != sourcePlayer) return@filter false
                     Enemy -> if (targetPlayerData !is PlayerData || !sourcePlayer.isEnemyOf(targetPlayerData)) return@filter false
@@ -219,11 +244,12 @@ object SkillManager {
                 }
             }
 
-            val targetLocation = targetPlayerData.entity.location
-            val directionToTarget = targetLocation.toVector().subtract(playerLocation.toVector()).normalize()
-
-            val distanceSquared = playerLocation.distanceSquared(targetLocation)
+            val distanceSquared = HitboxUtil.distanceSquared(targetPlayerData.entity.boundingBox, playerLocation.toVector())
             if (distanceSquared > radius * radius) return@filter false
+            if (distanceSquared == 0.0) return@filter true
+
+            val targetPoint = HitboxUtil.closestPoint(targetPlayerData.entity.boundingBox, playerLocation.toVector())
+            val directionToTarget = targetPoint.clone().subtract(playerLocation.toVector()).normalize()
 
             val dotProduct = playerDirection.dot(directionToTarget)
             dotProduct >= cos(Math.toRadians(angle / 2))

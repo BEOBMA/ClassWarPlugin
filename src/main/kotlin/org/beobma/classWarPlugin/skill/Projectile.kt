@@ -4,8 +4,10 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.effect.EffectApiAccess
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
+import org.beobma.classWarPlugin.entity.mob.MobEntityData
 import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.manager.PlayerTagManager
+import org.beobma.classWarPlugin.manager.TemporaryDisplayManager
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.entity.player.PlayerStatus
@@ -139,11 +141,13 @@ abstract class Projectile : EffectApiAccess {
                                 trainingCandidates.add(data)
                             }
                         }
-                        for (mannequin in player.world.entities) {
-                            if (!mannequin.isMannequin()) continue
-                            val data = game.playerDatas.find { it.entity == mannequin }
-                                ?: DummyEntityData(mannequin, game).also { game.playerDatas.add(it) }
-                            val entityId = data.entity.uniqueId
+                        for (livingEntity in player.world.livingEntities) {
+                            if (livingEntity == player || livingEntity is Player) continue
+                            val data = game.playerDatas.find { it.entity == livingEntity }
+                                ?: if (livingEntity.isMannequin()) DummyEntityData(livingEntity, game)
+                                else MobEntityData(livingEntity, game)
+                            if (data !in game.playerDatas) game.playerDatas.add(data)
+                            val entityId = livingEntity.uniqueId
                             if (trainingCandidateIds.add(entityId)) {
                                 trainingCandidates.add(data)
                             }
@@ -159,7 +163,7 @@ abstract class Projectile : EffectApiAccess {
                         if (!bb.contains(currentLocation.x, currentLocation.y, currentLocation.z)) continue
                         val isValidTarget = when (targetType) {
                             Self -> targetData == playerData
-                            Enemy -> targetData.entity.isMannequin() && isTraining ||
+                            Enemy -> targetData !is PlayerData && isTraining ||
                                 (targetData is PlayerData && playerData.isEnemyOf(targetData))
                             All -> true
                         }
@@ -196,6 +200,7 @@ abstract class Projectile : EffectApiAccess {
         val item = itemDisplayItem?.clone() ?: return
         val display = startLocation.world.spawn(startLocation, ItemDisplay::class.java)
         display.setItemStack(item)
+        TemporaryDisplayManager.mark(display, player.uniqueId)
         itemDisplay = display
         onItemDisplaySpawn(display, startLocation)
     }

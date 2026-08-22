@@ -3,6 +3,7 @@ package org.beobma.classWarPlugin.listener
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
+import org.beobma.classWarPlugin.entity.mob.MobEntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.manager.DamageManager
@@ -12,6 +13,7 @@ import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.util.DamageType
 import org.bukkit.entity.Player
+import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Projectile
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -33,12 +35,13 @@ class OnEntityDamageByEntityEvent : Listener {
         } ?: return
         val path = if (directDamager is Projectile) DamagePath.RANGED_ATTACK else DamagePath.BASIC_ATTACK
 
-        val targetEntity = event.entity
+        val targetEntity = event.entity as? LivingEntity ?: return
         val isMannequin = targetEntity.isMannequin()
         val targetPlayer = targetEntity as? Player
-        if (targetPlayer == null && !isMannequin) return
+        val attackerIsTraining = PlayerTagManager.hasTag(attacker, "isTraining")
+        if (targetPlayer == null && !isMannequin && !attackerIsTraining) return
         if (!isGaming() &&
-            !PlayerTagManager.hasTag(attacker, "isTraining") &&
+            !attackerIsTraining &&
             !(targetPlayer != null && PlayerTagManager.hasTag(targetPlayer, "isTraining"))
         ) return
 
@@ -52,8 +55,11 @@ class OnEntityDamageByEntityEvent : Listener {
         val targetData = if (isMannequin) {
             attackerGame.playerDatas.find { it.entity.uniqueId == targetEntity.uniqueId }
                 ?: DummyEntityData(targetEntity, attackerGame).also { attackerGame.playerDatas.add(it) }
+        } else if (targetPlayer == null) {
+            attackerGame.playerDatas.find { it.entity.uniqueId == targetEntity.uniqueId }
+                ?: MobEntityData(targetEntity, attackerGame).also { attackerGame.playerDatas.add(it) }
         } else {
-            val player = targetPlayer ?: return
+            val player = targetPlayer
             val targetGame = findGameForPlayer(player) ?: return
             if (attackerGame !== targetGame) {
                 event.isCancelled = true
@@ -80,6 +86,7 @@ class OnEntityDamageByEntityEvent : Listener {
 
         if (isMannequin) {
             event.isCancelled = true
+            targetEntity.playHurtAnimation(0.0f)
             val formattedDamage = String.format("%.2f", context.damage)
             attacker.sendMiniMessage(
                 "<gray>피해 경로: ${path.displayName} <gray>피해량: <gold><bold>$formattedDamage</bold></gold>"

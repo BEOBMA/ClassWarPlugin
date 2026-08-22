@@ -27,6 +27,11 @@ class OnPlayerMoveEvent : Listener {
         }
         val gameClass = playerData.gameClass ?: return
 
+        if (gameClass is StatusPlayerMoveHandler) {
+            gameClass.onPlayerMove(event, playerData)
+            if (event.isCancelled) return
+        }
+
         // 상태이상
         for (status in playerData.statusAbnormalitys) {
             if (status !is StatusPlayerMoveHandler) continue

@@ -3,6 +3,7 @@ package org.beobma.classWarPlugin.manager
 import net.kyori.adventure.text.minimessage.MiniMessage
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
+import org.beobma.classWarPlugin.entity.mob.MobEntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
@@ -16,6 +17,7 @@ import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.DamageType.StatusAbnormality
 import org.bukkit.Material
 import org.bukkit.entity.Player
+import org.bukkit.entity.LivingEntity
 import org.bukkit.inventory.ItemStack
 
 object PlayerManager {
@@ -108,6 +110,7 @@ object PlayerManager {
         damager: PlayerData,
         isInvincibilityTimeIgnore: Boolean = true,
         bypassShield: Boolean = false,
+        damagePath: DamagePath? = null,
     ) {
         if (damage <= 0.0) {
             return
@@ -125,7 +128,7 @@ object PlayerManager {
             lastDamageTicks[key] = currentTick
         }
 
-        val path = if (damageType == StatusAbnormality) DamagePath.STATUS_EFFECT else DamagePath.SKILL
+        val path = damagePath ?: if (damageType == StatusAbnormality) DamagePath.STATUS_EFFECT else DamagePath.SKILL
         val context = DamageContext(damager, this, path, damageType, damage, bypassShield)
         if (!DamageManager.process(context)) return
 
@@ -134,6 +137,7 @@ object PlayerManager {
             return
         }
         DamageIndicatorManager.show(player, damageResult.finalDamage, initGame.settings.damageIndicatorsEnabled)
+        player.playHurtAnimation(0.0f)
         if (PlayerTagManager.hasTag(player, "isTraining")) {
             val formattedDamage = String.format("%.2f", damageResult.finalDamage)
             player.sendMiniMessage("<red>받은 피해 정보 - <gray>피해량: <gold><bold>$formattedDamage</bold></gold>")
@@ -160,9 +164,10 @@ object PlayerManager {
         damager: PlayerData,
         isInvincibilityTimeIgnore: Boolean = true,
         bypassShield: Boolean = false,
+        damagePath: DamagePath? = null,
     ) {
         when (this) {
-            is PlayerData -> this.damage(damage, damageType, damager, isInvincibilityTimeIgnore, bypassShield)
+            is PlayerData -> this.damage(damage, damageType, damager, isInvincibilityTimeIgnore, bypassShield, damagePath)
             is DummyEntityData -> {
                 if (damage <= 0.0) {
                     return
@@ -180,7 +185,7 @@ object PlayerManager {
                     lastDamageTicks[key] = currentTick
                 }
 
-                val path = if (damageType == StatusAbnormality) DamagePath.STATUS_EFFECT else DamagePath.SKILL
+                val path = damagePath ?: if (damageType == StatusAbnormality) DamagePath.STATUS_EFFECT else DamagePath.SKILL
                 val context = DamageContext(damager, this, path, damageType, damage, bypassShield)
                 if (!DamageManager.process(context)) return
                 val damageResult = targetPlayer?.let { DamageCalculator.calculate(context.damage, it, damageType) }
@@ -189,9 +194,30 @@ object PlayerManager {
                     return
                 }
                 val formattedDamage = String.format("%.2f", damageResult.finalDamage)
+                (entity as? LivingEntity)?.playHurtAnimation(0.0f)
                 damager.player.sendMiniMessage(
                     "<gray>피해 경로: ${path.displayName} <gray>피해량: <gold><bold>$formattedDamage</bold></gold>"
                 )
+            }
+            is MobEntityData -> {
+                if (damage <= 0.0 || entity.isDead) return
+                val currentTick = entity.world.fullTime
+                if (!isInvincibilityTimeIgnore) {
+                    val key = DamageInvincibilityKey(entity.uniqueId, damager.player.uniqueId, damageType)
+                    lastDamageTicks[key]?.let { lastTick ->
+                        if (currentTick - lastTick < invincibilityTicks) return
+                    }
+                    lastDamageTicks[key] = currentTick
+                }
+                val path = damagePath ?: if (damageType == StatusAbnormality) DamagePath.STATUS_EFFECT else DamagePath.SKILL
+                val context = DamageContext(damager, this, path, damageType, damage, bypassShield)
+                if (!DamageManager.process(context)) return
+                val target = entity
+                val result = DamageCalculator.calculate(context.damage, target, damageType)
+                if (result.finalDamage <= 0.0) return
+                DamageIndicatorManager.show(target, result.finalDamage, game.settings.damageIndicatorsEnabled)
+                target.playHurtAnimation(0.0f)
+                target.health = (target.health - result.finalDamage).coerceAtLeast(0.0)
             }
         }
     }
@@ -200,6 +226,7 @@ object PlayerManager {
         when (this) {
             is PlayerData -> this.heal(damage, damageType, healer)
             is DummyEntityData -> return
+            is MobEntityData -> entity.heal(damage)
         }
     }
 }

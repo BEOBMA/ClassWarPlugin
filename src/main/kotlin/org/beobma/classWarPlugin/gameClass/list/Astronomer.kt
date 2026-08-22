@@ -24,6 +24,19 @@ import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.TargetType
 import org.bukkit.Location
 import org.bukkit.Material
+import org.bukkit.Particle
+import org.bukkit.Sound
+import org.bukkit.entity.BlockDisplay
+import org.bukkit.util.Transformation
+import org.joml.Quaternionf
+import org.joml.Vector3f
+import org.beobma.classWarPlugin.effect.ParticleOptions
+import org.beobma.classWarPlugin.manager.TemporaryDisplayManager
+import org.bukkit.util.Vector
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.random.Random
+import org.beobma.classWarPlugin.manager.SkillManager.radius
 
 class Astronomer : GameClass(), GameStatusHandler {
     override val name = "<gray>천문학자"
@@ -35,6 +48,8 @@ class Astronomer : GameClass(), GameStatusHandler {
     override var passives: List<BasePassive> = listOf(
         Passive()
     )
+
+    private var blackHoleActiveUntil = 0L
 
     override fun onBattleStart() {
         val mana = playerData.getOrCreateStatus(playerData) { Mana() }
@@ -69,6 +84,8 @@ class Astronomer : GameClass(), GameStatusHandler {
                 }
                 block.location.add(0.5, 1.0, 0.5)
             }
+            (playerData.gameClass as? Astronomer)?.blackHoleActiveUntil = player.world.fullTime + 120L
+            sounds.play(blackHole.location, Sound.ENTITY_WITHER_SHOOT, volume = 0.6f, pitch = 0.5f)
             blackHole.spawnFlooring(playerData)
         }
 
@@ -95,15 +112,27 @@ class Astronomer : GameClass(), GameStatusHandler {
             "<gray>별은 적중한 적에게 1의 {keyword:TrueDamage}를 입힌다."
         )
 
-        override fun onSkillAttackHit(event: DamageContext) {
-            if (event.damageType == DamageType.True) return
+        override fun onSkillAttackHit(context: DamageContext) {
+            if (context.damageType == DamageType.True) return
             val mana = playerData.getOrCreateStatus(playerData) { Mana() }
             val count = (mana.power / 20).coerceIn(1, 5)
-            val targetLoc = event.target.entity.location.add(0.0, 5.0, 0.0)
+            val targetLoc = context.target.entity.location.clone()
+            val classData = playerData.gameClass as? Astronomer
+            val soundAndDisplayEndTick = minOf(
+                player.world.fullTime + 60L,
+                classData?.blackHoleActiveUntil ?: player.world.fullTime,
+            )
             repeat(count) {
-                val starMeteor = StarMeteor()
-                starMeteor.location = targetLoc
+                val landingAngle = Random.nextDouble(0.0, Math.PI * 2.0)
+                val landingRadius = Random.nextDouble(1.25, 4.5)
+                val landing = targetLoc.clone().add(cos(landingAngle) * landingRadius, 0.2, sin(landingAngle) * landingRadius)
+                val approach = Vector(Random.nextDouble(-7.0, 7.0), 14.0, Random.nextDouble(-7.0, 7.0))
+                val starMeteor = StarMeteor(Vector(-approach.x / 28.0, 0.0, -approach.z / 28.0))
+                starMeteor.location = landing.clone().add(approach)
+                starMeteor.time = null
+                starMeteor.continueWhile = { player.world.fullTime < soundAndDisplayEndTick }
                 starMeteor.spawnMeteor(playerData)
+                sounds.play(starMeteor.location, Sound.BLOCK_AMETHYST_BLOCK_CHIME, volume = 0.45f, pitch = 1.65f + it * 0.06f)
             }
             mana.updatePower(0)
         }
@@ -114,19 +143,57 @@ class Astronomer : GameClass(), GameStatusHandler {
         override lateinit var location: Location
         override var radius: Double = 5.0
         override var targetType: TargetType = TargetType.Enemy
-        override var time: Int? = 4
+        override var time: Int? = 6
 
-        //TODO(이펙트)
+        private var visualTick = 0
+
+        override fun onFlooringContinue(location: Location) {
+            val tick = visualTick++
+            if (tick % 2 == 0) {
+                particles.circle(location.clone().add(0.0, 0.25, 0.0), Particle.PORTAL, radius, 28)
+                particles.circle(location.clone().add(0.0, 0.65, 0.0), Particle.REVERSE_PORTAL, radius * 0.62, 20)
+            }
+            repeat(5) { index ->
+                val angle = tick * 0.18 + index * Math.PI * 0.4
+                val spiralRadius = radius * (1.0 - (tick % 30) / 35.0)
+                particles.spawn(
+                    location.clone().add(cos(angle) * spiralRadius, 0.25 + index * 0.18, sin(angle) * spiralRadius),
+                    Particle.END_ROD,
+                    count = 1,
+                )
+            }
+            particles.spawn(
+                location.clone().add(0.0, 0.32, 0.0),
+                Particle.BLOCK_MARKER,
+                Material.BLACK_CONCRETE.createBlockData(),
+                ParticleOptions(count = 6, offsetX = 0.38, offsetY = 0.22, offsetZ = 0.38),
+            )
+            if (tick % 20 == 0) sounds.play(location, Sound.BLOCK_PORTAL_AMBIENT, volume = 0.32f, pitch = 0.55f)
+        }
+
+        override fun onFlooringEnd() {
+            location.world.players.forEach { viewer ->
+                sounds.stop(viewer, Sound.BLOCK_PORTAL_AMBIENT)
+                sounds.stop(viewer, Sound.ENTITY_WITHER_SHOOT)
+            }
+        }
+
         override fun onFlooringEntityHit(hitEntityData: EntityData, location: Location) {
             val hitEntity = hitEntityData.entity
             val dir = location.clone().subtract(hitEntity.location).toVector().normalize().multiply(0.1)
             hitEntity.velocity = dir
             hitEntityData.damage(2.0, DamageType.Normal, playerData, false)
+            val victimMana = (hitEntityData as? PlayerData)?.getOrCreateStatus(playerData) { Mana() }
+            if (victimMana != null && victimMana.power > 0) {
+                val stolen = minOf(2, victimMana.power)
+                victimMana.decreasePower(stolen)
+                playerData.getOrCreateStatus(playerData) { Mana() }.increasePower(stolen)
+            }
         }
     }
 
     private class EnemyField : Flooring() {
-        private val affected = mutableSetOf<PlayerData>()
+        private val affected = mutableSetOf<EntityData>()
 
         override lateinit var location: Location
         override var radius: Double = 8.0
@@ -134,21 +201,19 @@ class Astronomer : GameClass(), GameStatusHandler {
         override var time: Int? = 5
 
         override fun onFlooringEntityHit(hitEntityData: EntityData, location: Location) {
-            val hitPlayerData = hitEntityData as? PlayerData ?: return
-            hitPlayerData.damage(2.0, DamageType.Normal, playerData, false)
-            if (affected.add(hitPlayerData)) {
-                val moveSpeedDecrease = hitPlayerData.addStatus(MoveSpeedDecrease(), playerData)
-                val whenDamageIncrease = hitPlayerData.addStatus(WhenDamageIncreased(), playerData)
+            hitEntityData.damage(2.0, DamageType.Normal, playerData, false)
+            if (affected.add(hitEntityData)) {
+                val moveSpeedDecrease = hitEntityData.addStatus(MoveSpeedDecrease(), playerData)
+                val whenDamageIncrease = hitEntityData.addStatus(WhenDamageIncreased(), playerData)
                 moveSpeedDecrease.increasePower(20)
                 whenDamageIncrease.increasePower(15)
-                moveSpeedDecrease.setContinueWhileIf { affected.contains(hitPlayerData) }
-                whenDamageIncrease.setContinueWhileIf { affected.contains(hitPlayerData) }
+                moveSpeedDecrease.setContinueWhileIf { affected.contains(hitEntityData) }
+                whenDamageIncrease.setContinueWhileIf { affected.contains(hitEntityData) }
             }
         }
 
         override fun onFlooringEntityOut(hitEntityData: EntityData, location: Location) {
-            val hitPlayerData = hitEntityData as? PlayerData ?: return
-            affected.remove(hitPlayerData)
+            affected.remove(hitEntityData)
         }
 
         override fun onFlooringEnd() {
@@ -156,7 +221,7 @@ class Astronomer : GameClass(), GameStatusHandler {
         }
     }
     private class SelfField : Flooring() {
-        private val affected = mutableSetOf<PlayerData>()
+        private val affected = mutableSetOf<EntityData>()
 
         override lateinit var location: Location
         override var radius: Double = 8.0
@@ -164,21 +229,19 @@ class Astronomer : GameClass(), GameStatusHandler {
         override var time: Int? = 5
 
         override fun onFlooringEntityHit(hitEntityData: EntityData, location: Location) {
-            val hitPlayerData = hitEntityData as? PlayerData ?: return
-            hitPlayerData.heal(2.0, DamageType.Normal, playerData)
-            if (affected.add(hitPlayerData)) {
-                val moveSpeedIncrease = hitPlayerData.addStatus(MoveSpeedIncrease(), playerData)
-                val whenDamageReduction = hitPlayerData.addStatus(WhenDamageReduction(), playerData)
+            hitEntityData.heal(2.0, DamageType.Normal, playerData)
+            if (affected.add(hitEntityData)) {
+                val moveSpeedIncrease = hitEntityData.addStatus(MoveSpeedIncrease(), playerData)
+                val whenDamageReduction = hitEntityData.addStatus(WhenDamageReduction(), playerData)
                 moveSpeedIncrease.increasePower(20)
                 whenDamageReduction.increasePower(15)
-                moveSpeedIncrease.setContinueWhileIf { affected.contains(hitPlayerData) }
-                whenDamageReduction.setContinueWhileIf { affected.contains(hitPlayerData) }
+                moveSpeedIncrease.setContinueWhileIf { affected.contains(hitEntityData) }
+                whenDamageReduction.setContinueWhileIf { affected.contains(hitEntityData) }
             }
         }
 
         override fun onFlooringEntityOut(hitEntityData: EntityData, location: Location) {
-            val hitPlayerData = hitEntityData as? PlayerData ?: return
-            affected.remove(hitPlayerData)
+            affected.remove(hitEntityData)
         }
 
         override fun onFlooringEnd() {
@@ -186,15 +249,60 @@ class Astronomer : GameClass(), GameStatusHandler {
         }
     }
 
-    private class StarMeteor : Meteor() {
+    private class StarMeteor(private val horizontalVelocity: Vector) : Meteor() {
         override lateinit var location: Location
         override var speed: Double = 0.5
-        override var isWallHit: Boolean = false
+        override var isWallHit: Boolean = true
         override var targetType: TargetType = TargetType.Enemy
+        override var time: Int? = 3
 
-        //TODO()
+        private var display: BlockDisplay? = null
+        private var visualTick = 0
+
+        private fun updateDisplay(location: Location) {
+            val current = display ?: location.world.spawn(
+                location.clone().add(-0.3, -0.3, -0.3),
+                BlockDisplay::class.java,
+            ).also { spawned ->
+                spawned.block = Material.SEA_LANTERN.createBlockData()
+                spawned.isPersistent = false
+                TemporaryDisplayManager.mark(spawned, player.uniqueId)
+                display = spawned
+            }
+            current.teleport(location.clone().add(-0.3, -0.3, -0.3))
+            current.transformation = Transformation(
+                Vector3f(),
+                Quaternionf().rotateXYZ(visualTick * 0.08f, visualTick * 0.11f, visualTick * 0.06f),
+                Vector3f(0.6f, 0.6f, 0.6f),
+                Quaternionf(),
+            )
+        }
+
+        override fun onMeteorMove(location: Location) {
+            location.add(horizontalVelocity)
+            updateDisplay(location)
+            particles.spawn(location, Particle.END_ROD, count = 1, spread = 0.08)
+            if (visualTick++ % 3 == 0) particles.spawn(location, Particle.ELECTRIC_SPARK, count = 1, spread = 0.04)
+        }
+
         override fun onMeteorEntityHit(hitEntityData: EntityData, location: Location) {
             hitEntityData.damage(1.0, DamageType.True, playerData)
+            particles.spawn(location, Particle.FLASH, count = 1)
+            sounds.play(location, Sound.BLOCK_AMETHYST_BLOCK_CHIME, pitch = 1.9f)
+        }
+
+        override fun onMeteorBlockHit(hitBlock: org.bukkit.block.Block, location: Location) {
+            particles.spawn(location, Particle.FLASH, count = 1)
+            particles.spawn(location, Particle.END_ROD, count = 18, spread = 1.0, speed = 0.12)
+            sounds.play(location, Sound.BLOCK_AMETHYST_CLUSTER_BREAK, volume = 0.65f, pitch = 1.7f)
+            playerData.radius(location, TargetType.Enemy, 1.75, false).forEach {
+                it.damage(1.0, DamageType.True, playerData)
+            }
+        }
+
+        override fun onMeteorEnd(location: Location) {
+            display?.remove()
+            display = null
         }
     }
 }

@@ -1,14 +1,26 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
-import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
-import org.beobma.classWarPlugin.keyword.Keyword
+import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
+import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
+import org.beobma.classWarPlugin.manager.PlayerManager.heal
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Skill
-import org.bukkit.Material
+import org.beobma.classWarPlugin.status.list.MoveSpeedDecrease
+import org.beobma.classWarPlugin.status.list.MoveSpeedIncrease
+import org.beobma.classWarPlugin.status.list.Shield
+import org.beobma.classWarPlugin.status.list.GamblerCardStatus
+import org.beobma.classWarPlugin.util.DamageType
+import org.bukkit.*
+import java.util.ArrayDeque
 
-class Gambler : GameClass() {
+class Gambler : GameClass(), GameStatusHandler {
     override val name = "<gray>도박사"
     override val rank = Rank.B
     override val classItemMaterial = Material.PAPER
@@ -23,7 +35,86 @@ class Gambler : GameClass() {
         Passive()
     )
 
-    private class RedSkill : Skill() {
+    private val deck = ArrayDeque<Int>()
+    private val hand = mutableListOf<Int>()
+    private var damageMultiplier = 1.0
+    private var damageMultiplierUntil = 0L
+
+    private fun updateCardStatus() {
+        playerData.getOrCreateStatus(playerData) { GamblerCardStatus() }.updateCards(hand)
+    }
+
+    override fun onBattleStart() = shuffleAndDeal()
+    override fun onGameTimePasses() = Unit
+
+    private fun freshDeck(): List<Int> = buildList {
+        repeat(4) { addAll(1..9); repeat(4) { add(10) } }
+    }.shuffled()
+
+    private fun shuffleAndDeal() {
+        deck.clear()
+        freshDeck().forEach(deck::addLast)
+        hand.clear()
+        updateCardStatus()
+        drawCard(resolve = false)
+        drawCard(resolve = true)
+    }
+
+    private fun drawCard(resolve: Boolean = true, doubled: Boolean = false): Outcome {
+        if (deck.isEmpty()) freshDeck().forEach(deck::addLast)
+        val card = deck.removeFirst()
+        hand += card
+        updateCardStatus()
+        sounds.playTo(player, Sound.ITEM_BOOK_PAGE_TURN, pitch = 0.8f + card * 0.04f)
+        particles.spawn(player, Particle.ENCHANT, count = 8, spread = 0.35)
+        if (!resolve) return Outcome.NONE
+        val outcome = when {
+            hand.sum() == 21 -> Outcome.JACKPOT
+            hand.sum() > 21 -> Outcome.BUST
+            else -> Outcome.NONE
+        }
+        if (outcome != Outcome.NONE) resolveOutcome(outcome, doubled)
+        return outcome
+    }
+
+    private fun resolveOutcome(outcome: Outcome, doubled: Boolean) {
+        val factor = if (doubled) 2 else 1
+        when (outcome) {
+            Outcome.JACKPOT -> {
+                playerData.heal(4.0 * factor, DamageType.Normal, playerData)
+                playerData.addStatus(Shield(), playerData).applyStatus(duration = 8, powerDelta = 4 * factor)
+                playerData.addStatus(MoveSpeedIncrease(), playerData).applyStatus(duration = 8, powerSet = 15 * factor)
+                setDamageMultiplier(1.0 + 0.2 * factor, 8)
+                sounds.play(player, Sound.UI_TOAST_CHALLENGE_COMPLETE, volume = 1.2f, pitch = 1.25f)
+                particles.spawn(player, Particle.TOTEM_OF_UNDYING, count = 35, spread = 0.7, speed = 0.2)
+            }
+            Outcome.BUST -> {
+                playerData.addStatus(MoveSpeedDecrease(), playerData).applyStatus(duration = 8 * factor, powerSet = 10)
+                setDamageMultiplier(0.85, 8 * factor)
+                sounds.play(player, Sound.ENTITY_VILLAGER_NO, pitch = 0.65f)
+                particles.spawn(player, Particle.SMOKE, count = 20, spread = 0.5)
+            }
+            Outcome.NONE -> Unit
+        }
+        shuffleAndDeal()
+    }
+
+    private fun stand(multiplier: Int = 1) {
+        val total = hand.sum()
+        playerData.heal((total / 5.0) * multiplier, DamageType.Normal, playerData)
+        setDamageMultiplier(1.0 + total * 0.01 * multiplier, 5)
+        sounds.play(player, Sound.BLOCK_NOTE_BLOCK_CHIME, pitch = 1.2f)
+        shuffleAndDeal()
+    }
+
+    private fun setDamageMultiplier(multiplier: Double, seconds: Int) {
+        damageMultiplier = multiplier
+        damageMultiplierUntil = player.world.fullTime + seconds * 20L
+    }
+
+    private enum class Outcome { NONE, JACKPOT, BUST }
+
+    private inner class RedSkill : Skill() {
         override val name = "<bold>히트"
         override val description = listOf(
             "<gray>덱에서 {keyword:Card}를 1장 뽑는다."
@@ -31,11 +122,11 @@ class Gambler : GameClass() {
         override val cooldown = 5
 
         override fun use() {
-            // TODO: 구현 예정
+            drawCard()
         }
     }
 
-    private class OrangeSkill : Skill() {
+    private inner class OrangeSkill : Skill() {
         override val name = "<bold>스탠드"
         override val description = listOf(
             "<gray>패를 덱으로 되돌리고 덱을 섞는다.",
@@ -45,11 +136,11 @@ class Gambler : GameClass() {
         override val cooldown = 20
 
         override fun use() {
-            // TODO: 구현 예정
+            stand()
         }
     }
 
-    private class YellowSkill : Skill() {
+    private inner class YellowSkill : Skill() {
         override val name = "<bold>더블"
         override val description = listOf(
             "<gray>덱에서 {keyword:Card}를 1장 뽑는다.",
@@ -60,11 +151,12 @@ class Gambler : GameClass() {
         override val cooldown = 70
 
         override fun use() {
-            // TODO: 구현 예정
+            val outcome = drawCard(doubled = true)
+            if (outcome == Outcome.NONE) stand(2)
         }
     }
 
-    private class Passive : BasePassive() {
+    private inner class Passive : BasePassive(), OnHitHandler {
         override val name = "<bold>블랙잭"
         override val description = listOf(
             "<gray>패시브",
@@ -83,5 +175,10 @@ class Gambler : GameClass() {
             "<gray>  8초간 가하는 피해 15% 감소",
             "<gray>  8초간 이동 속도 10% 감소",
         )
+
+        override fun onHit(context: DamageContext) {
+            if (player.world.fullTime >= damageMultiplierUntil) damageMultiplier = 1.0
+            context.addDamageDealtMultiplier(damageMultiplier)
+        }
     }
 }

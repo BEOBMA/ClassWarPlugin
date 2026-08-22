@@ -21,6 +21,7 @@ class Stun : StatusAbnormality(), StatusOnHitHandler, StatusPlayerMoveHandler {
             "<gray>지속시간 종료 시 소멸"
         )
     override val canRemove: Boolean = true
+    override var power: Int = 1
     override var maxPower: Int? = 1
     override var duration: Int? = null
     override val durationMode: StatusDurationMode = StatusDurationMode.Extend

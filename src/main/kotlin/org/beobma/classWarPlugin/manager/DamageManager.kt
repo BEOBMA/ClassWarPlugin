@@ -73,10 +73,15 @@ object DamageManager {
         targetClass?.passives?.filterIsInstance<WhenHitHandler>()?.forEach { it.dispatchWhenHit(context) }
         targetClass?.skills?.filterIsInstance<WhenHitHandler>()?.forEach { it.dispatchWhenHit(context) }
 
-        if (context.path.isBasicAttack && targetPlayer != null) {
+        context.attacker.statusAbnormalitys.filterIsInstance<OnHitHandler>()
+            .forEach { it.dispatchOnHit(context) }
+        context.target.statusAbnormalitys.filterIsInstance<WhenHitHandler>()
+            .forEach { it.dispatchWhenHit(context) }
+
+        if (context.path.isBasicAttack) {
             context.attacker.statusAbnormalitys.filterIsInstance<StatusOnHitHandler>()
                 .forEach { it.onAttackHit(context) }
-            targetPlayer.statusAbnormalitys.filterIsInstance<StatusWhenHitHandler>()
+            context.target.statusAbnormalitys.filterIsInstance<StatusWhenHitHandler>()
                 .forEach { it.whenAttackHit(context) }
         }
     }

@@ -24,6 +24,7 @@ import org.bukkit.GameMode
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.Sound
+import org.bukkit.SoundCategory
 import org.bukkit.World
 import org.bukkit.attribute.Attribute
 import org.bukkit.block.Block
@@ -47,7 +48,7 @@ object GameManager {
     private val gameClassFactories: List<() -> GameClass> = listOf(
         ::Berserker, ::Sniper, ::Meteor, ::TimeManiqulator, ::LandWizard,
         ::Gambler, ::Knight, ::LightningWizard, ::LightWizard,
-        ::AbyssalVeil, ::Warlock, ::Mathematician,
+        ::AbyssalVeil, ::Warlock, ::Geometer,
         ::Duelist, ::Astronomer, ::Assassin, ::IceWizard,
         ::GunBlader, ::Watchmaker,
     )
@@ -131,7 +132,7 @@ object GameManager {
 
         gameClass = replacement
         currentGame.refreshesRemaining[player.uniqueId] = remaining - 1
-        player.playSound(player.location, Sound.BLOCK_ENCHANTMENT_TABLE_USE, 1.0F, 1.2F)
+        player.playSound(player.location, Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0F, 1.2F)
         openAssignedClassInventory()
     }
 
@@ -212,7 +213,13 @@ object GameManager {
                             miniMessage.deserialize("<gray>잠시 후 무작위 위치로 산개합니다.")
                         )
                     )
-                    playerData.player.playSound(playerData.player.location, Sound.BLOCK_NOTE_BLOCK_HAT, 1.0F, 1.0F)
+                    playerData.player.playSound(
+                        playerData.player.location,
+                        Sound.BLOCK_NOTE_BLOCK_HAT,
+                        SoundCategory.MASTER,
+                        1.0F,
+                        1.0F,
+                    )
                 }
                 remaining--
             }
@@ -421,6 +428,9 @@ object GameManager {
         playerData.entityStatus.isSkillTargeting = false
         StealthVisibilityManager.reveal(playerData)
         StealthVisibilityManager.revealTo(playerData.player)
+        TemporaryDisplayManager.clear(playerData.player.world, playerData.uniqueId)
+        unregisterAllTickingStatuses(playerData.statusAbnormalitys)
+        playerData.statusAbnormalitys.clear()
         playerData.bukkitTasks.forEach { it.cancel() }
         playerData.bukkitTasks.clear()
         playerData.player.gameMode = GameMode.SPECTATOR
@@ -614,6 +624,7 @@ object GameManager {
 
         activePlayers().forEach { playerData ->
             StealthVisibilityManager.reveal(playerData)
+            TemporaryDisplayManager.clear(playerData.player.world, playerData.uniqueId)
             unregisterAllTickingStatuses(playerData.statusAbnormalitys)
             playerData.statusAbnormalitys.clear()
             playerData.bukkitTasks.toList().forEach { it.cancel() }
@@ -625,6 +636,12 @@ object GameManager {
             } else if (snapshot != null) {
                 pendingPostGameCleanup[player.uniqueId] = snapshot
             }
+        }
+        playerDatas.filterNot { it is PlayerData }.forEach { entityData ->
+            unregisterAllTickingStatuses(entityData.statusAbnormalitys)
+            entityData.statusAbnormalitys.clear()
+            entityData.bukkitTasks.toList().forEach { it.cancel() }
+            entityData.bukkitTasks.clear()
         }
         playerSnapshots.clear()
         disconnectedPlayers.clear()
@@ -675,12 +692,13 @@ object GameManager {
     fun Player.stopTraining() {
         val trainingGame = trainingInstance.find { it.activePlayers().any { data -> data.player == this } } ?: return
         trainingGame.tasks.forEach { it.cancel() }
-        trainingGame.activePlayers().forEach { playerData ->
-            StealthVisibilityManager.reveal(playerData)
-            unregisterAllTickingStatuses(playerData.statusAbnormalitys)
-            playerData.statusAbnormalitys.clear()
-            playerData.bukkitTasks.toList().forEach { it.cancel() }
-            playerData.bukkitTasks.clear()
+        TemporaryDisplayManager.clear(world, uniqueId)
+        trainingGame.playerDatas.forEach { entityData ->
+            (entityData as? PlayerData)?.let(StealthVisibilityManager::reveal)
+            unregisterAllTickingStatuses(entityData.statusAbnormalitys)
+            entityData.statusAbnormalitys.clear()
+            entityData.bukkitTasks.toList().forEach { it.cancel() }
+            entityData.bukkitTasks.clear()
         }
         clearDamageInvincibility(listOf(uniqueId))
         DamageManager.clearAttributions(listOf(uniqueId))
@@ -700,6 +718,7 @@ object GameManager {
                     playerData.player.stopTraining()
                 } else {
                     StealthVisibilityManager.reveal(playerData)
+                    TemporaryDisplayManager.clear(playerData.player.world, playerData.uniqueId)
                     unregisterAllTickingStatuses(playerData.statusAbnormalitys)
                     playerData.statusAbnormalitys.clear()
                     playerData.bukkitTasks.toList().forEach { it.cancel() }
@@ -708,6 +727,12 @@ object GameManager {
                         pendingPostGameCleanup[playerData.uniqueId] = snapshot
                     }
                 }
+            }
+            trainingGame.playerDatas.filterNot { it is PlayerData }.forEach { entityData ->
+                unregisterAllTickingStatuses(entityData.statusAbnormalitys)
+                entityData.statusAbnormalitys.clear()
+                entityData.bukkitTasks.toList().forEach { it.cancel() }
+                entityData.bukkitTasks.clear()
             }
             trainingGame.tasks.toList().forEach { it.cancel() }
             trainingGame.tasks.clear()
@@ -785,7 +810,13 @@ object GameManager {
 
     private fun Game.sendNotification(message: String) {
         activePlayers().filter { it.player.isOnline }.forEach { playerData ->
-            playerData.player.playSound(playerData.player.location, Sound.BLOCK_NOTE_BLOCK_GUITAR, 1.0F, 2.0F)
+            playerData.player.playSound(
+                playerData.player.location,
+                Sound.BLOCK_NOTE_BLOCK_GUITAR,
+                SoundCategory.MASTER,
+                1.0F,
+                2.0F,
+            )
             playerData.player.sendMessage(miniMessage.deserialize("<gray>[!] $message"))
         }
     }

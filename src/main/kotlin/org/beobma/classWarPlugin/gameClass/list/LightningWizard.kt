@@ -3,16 +3,17 @@ package org.beobma.classWarPlugin.gameClass.list
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
-import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
-import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
+import org.beobma.classWarPlugin.manager.PlayerManager.damage
+import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
-import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Skill
-import org.beobma.classWarPlugin.status.list.Mana
 import org.bukkit.Location
 import org.bukkit.Material
+import org.bukkit.Particle
+import org.bukkit.Sound
+import org.bukkit.SoundCategory
 import org.bukkit.scheduler.BukkitRunnable
 
 class LightningWizard : GameClass() {
@@ -30,13 +31,53 @@ class LightningWizard : GameClass() {
         Passive()
     )
 
-
     private data class Marker(
         val location: Location,
-        var coolTime: Int = 0,
-        var isOn: Boolean = false,
-        var isOverload: Boolean = false
+        var isOverload: Boolean = false,
+        var ageSeconds: Int = 0,
     )
+
+    private fun createMarker(location: Location) {
+        markers.clear()
+        val marker = Marker(location.clone())
+        markers += marker
+        sounds.play(location, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, volume = 0.7f, pitch = 1.7f)
+        playerData.trackTask(object : BukkitRunnable() {
+            override fun run() {
+                if (marker !in markers) { cancel(); return }
+                marker.ageSeconds++
+                particles.spawn(marker.location, Particle.CLOUD, count = 16, spread = 1.2, speed = 0.02)
+                if (marker.isOverload || marker.ageSeconds % 5 == 0) strike(marker.location)
+                if (marker.isOverload && marker.ageSeconds >= 5) {
+                    markers.remove(marker)
+                    cancel()
+                }
+            }
+        }.runTaskTimer(ClassWarPlugin.instance, 20L, 20L))
+    }
+
+    private fun strike(location: Location) {
+        location.world.strikeLightningEffect(location)
+        location.world.players
+            .filter { it.location.distanceSquared(location) <= 64.0 * 64.0 }
+        sounds.play(
+            location,
+            Sound.ENTITY_LIGHTNING_BOLT_IMPACT,
+            volume = 0.62f,
+            pitch = 1.3f,
+            category = SoundCategory.MASTER,
+        )
+        sounds.play(
+            location,
+            Sound.ENTITY_LIGHTNING_BOLT_THUNDER,
+            volume = 0.34f,
+            pitch = 1.5f,
+            category = SoundCategory.MASTER,
+        )
+        playerData.radius(location, org.beobma.classWarPlugin.util.TargetType.Enemy, 3.0, false)
+            .forEach { it.damage(4.0, org.beobma.classWarPlugin.util.DamageType.Normal, playerData) }
+        particles.spawn(location, Particle.ELECTRIC_SPARK, count = 30, spread = 1.4, speed = 0.12)
+    }
 
     private class RedSkill : Skill() {
         override val name = "<bold>적란운"
@@ -49,38 +90,26 @@ class LightningWizard : GameClass() {
         override val cooldown = 8
 
         override fun use() {
-            val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-
             val location = if (player.isSneaking) {
-                playerData.shotLaserGetBlock(4.0)?.location?.add(0.0, 1.0, 0.0) ?: run {
+                player.location.clone().add(0.0, 1.0, 0.0)
+            }
+            else {
+                playerData.shotLaserGetBlock(10.0)?.location?.add(0.5, 1.0, 0.5) ?: run {
                     player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
                     return
                 }
-            }
-            else {
-                player.location.clone().add(0.0, 1.0, 0.0)
             }
 
             val gameClass = playerData.gameClass
 
             if (gameClass !is LightningWizard) return
-            val markerList = gameClass.markers
-            if (markerList.size >= 3) {
-                markerList.removeFirstOrNull()
-            }
-            markerList.add(Marker(location))
-            mana.decreasePower(20)
+            gameClass.createMarker(location)
             return
         }
 
         override fun isUseSuccess(): Boolean {
-            val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-            if (mana.power < 20) {
-                player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-                return false
-            }
-            if (player.isSneaking) {
-                playerData.shotLaserGetBlock(4.0)?.location?.add(0.0, 1.0, 0.0) ?: run {
+            if (!player.isSneaking) {
+                playerData.shotLaserGetBlock(10.0)?.location?.add(0.0, 1.0, 0.0) ?: run {
                     player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
                     return false
                 }
@@ -97,11 +126,6 @@ class LightningWizard : GameClass() {
         override val cooldown = 50
 
         override fun use() {
-            val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-            if (mana.power < 100) {
-                player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-                return
-            }
             val gameClass = playerData.gameClass
 
             if (gameClass !is LightningWizard) return
@@ -111,23 +135,11 @@ class LightningWizard : GameClass() {
                 return
             }
 
-            mana.decreasePower(100)
-            markerList.forEach { it.isOverload = true }
-
-            val task = object : BukkitRunnable() {
-                override fun run() {
-                    markerList.clear()
-                }
-            }.runTaskLater(ClassWarPlugin.instance, 200L)
-            playerData.trackTask(task)
+            markerList.forEach { marker -> marker.isOverload = true; marker.ageSeconds = 0 }
+            sounds.play(player, Sound.BLOCK_BEACON_POWER_SELECT, pitch = 1.8f)
         }
 
         override fun isUseSuccess(): Boolean {
-            val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-            if (mana.power < 100) {
-                player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-                return false
-            }
             val gameClass = playerData.gameClass
             if (gameClass !is LightningWizard) return false
             val markerList = gameClass.markers

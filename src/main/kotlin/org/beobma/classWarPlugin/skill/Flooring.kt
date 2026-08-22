@@ -4,12 +4,14 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.effect.EffectApiAccess
 import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
+import org.beobma.classWarPlugin.entity.mob.MobEntityData
 import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.entity.player.PlayerStatus
 import org.beobma.classWarPlugin.util.TargetType
+import org.beobma.classWarPlugin.util.HitboxUtil
 import org.bukkit.Location
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitRunnable
@@ -88,11 +90,13 @@ abstract class Flooring : EffectApiAccess {
                             trainingCandidates.add(data)
                         }
                     }
-                    for (mannequin in player.world.entities) {
-                        if (!mannequin.isMannequin()) continue
-                        val data = game.playerDatas.find { it.entity == mannequin }
-                            ?: DummyEntityData(mannequin, game).also { game.playerDatas.add(it) }
-                        val entityId = data.entity.uniqueId
+                    for (livingEntity in player.world.livingEntities) {
+                        if (livingEntity == player || livingEntity is Player) continue
+                        val data = game.playerDatas.find { it.entity == livingEntity }
+                            ?: if (livingEntity.isMannequin()) DummyEntityData(livingEntity, game)
+                            else MobEntityData(livingEntity, game)
+                        if (data !in game.playerDatas) game.playerDatas.add(data)
+                        val entityId = livingEntity.uniqueId
                         if (trainingCandidateIds.add(entityId)) {
                             trainingCandidates.add(data)
                         }
@@ -103,14 +107,13 @@ abstract class Flooring : EffectApiAccess {
                 }
 
                 currentTargets.clear()
-                val radiusSquared = radius * radius
                 for (targetData in targetCandidates) {
-                    if (targetType != TargetType.Self && targetData == playerData) continue
+                    if (targetType == TargetType.Enemy && targetData == playerData) continue
                     if (!targetData.entityStatus.isSkillTargeting) continue
-                    if (targetData.entity.location.distanceSquared(currentLocation) > radiusSquared) continue
+                    if (!HitboxUtil.intersectsSphere(targetData.entity.boundingBox, currentLocation.toVector(), radius)) continue
                     val isValidTarget = when (targetType) {
                         TargetType.Self -> targetData == playerData
-                        TargetType.Enemy -> targetData.entity.isMannequin() && isTraining ||
+                        TargetType.Enemy -> targetData !is PlayerData && isTraining ||
                             (targetData is PlayerData && playerData.isEnemyOf(targetData))
                         TargetType.All -> true
                     }
