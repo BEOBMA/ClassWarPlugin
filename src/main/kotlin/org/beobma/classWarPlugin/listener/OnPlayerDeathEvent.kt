@@ -3,6 +3,7 @@ package org.beobma.classWarPlugin.listener
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.manager.GameManager.handleDeath
+import org.beobma.classWarPlugin.manager.GameManager.recordPlayerKill
 import org.beobma.classWarPlugin.manager.DamageManager
 import net.kyori.adventure.text.minimessage.MiniMessage
 import org.bukkit.GameMode
@@ -46,6 +47,7 @@ class OnPlayerDeathEvent : Listener{
         Mathematician.clearSessions(listOf(player.uniqueId))
         Vampire.clearForms(listOf(player.uniqueId))
         val killerId = attribution?.attackerId ?: player.killer?.uniqueId
+        currentGame.recordPlayerKill(player.uniqueId, killerId)
         AreaDevelopment.handlePlayerDeath(playerData, killerId)
         Levatain.handleKill(killerId)
         Contractor.clearSessions(listOf(player.uniqueId))

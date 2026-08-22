@@ -4,8 +4,10 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
+import org.beobma.classWarPlugin.gameClass.handler.EnvironmentalDamageHandler
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.skill.Skill
@@ -14,10 +16,14 @@ import org.bukkit.Color
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
+import org.bukkit.entity.Player
+import org.bukkit.entity.Projectile
+import org.bukkit.event.entity.EntityDamageByEntityEvent
+import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.scheduler.BukkitRunnable
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
-class Darkness : GameClass() {
+class Darkness : GameClass(), EnvironmentalDamageHandler {
     override val name = "<gray>어둠"
     override val rank = Rank.B
     override val classItemMaterial = Material.BLACK_CONCRETE
@@ -28,6 +34,15 @@ class Darkness : GameClass() {
 
     private fun isInDarkness(): Boolean =
         player.world.fullTime < artificialDarknessUntilTick || player.eyeLocation.block.lightFromBlocks.toInt() == 0
+
+    override fun onEnvironmentalDamage(event: EntityDamageEvent) {
+        if (!playerData.entityStatus.isAttackable || event.damage <= 0.0) return
+        if (event is EntityDamageByEntityEvent) {
+            val playerDriven = event.damager is Player || (event.damager as? Projectile)?.shooter is Player
+            if (playerDriven) return
+        }
+        passives.filterIsInstance<Passive>().firstOrNull()?.handleEnvironmentalDamage(event)
+    }
 
     private inner class RedSkill : Skill() {
         override val name = "<bold>어둠 확산"
@@ -62,38 +77,78 @@ class Darkness : GameClass() {
         }
     }
 
-    private inner class Passive : BasePassive(), GameStatusHandler, OnHitHandler {
+    private inner class Passive : BasePassive(), GameStatusHandler, OnHitHandler, WhenHitHandler {
         override val name = "<bold>어둠"
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>빛이 없는 곳에서 {keyword:Stealth} 상태가 되며 기본 공격 피해가 2 증가한다."
+            "<gray>빛이 없는 곳에서 {keyword:Stealth} 상태가 되며 기본 공격 피해가 2 증가한다.",
+            "<gray>기본 공격을 하거나 피해를 받으면 3초 동안 {keyword:Stealth} 상태가 해제된다.",
+            "<gray>{keyword:Stealth} 상태가 아닐 때 받는 피해가 50% 증가한다."
         )
 
         private var grantedStealth: Stealth? = null
+        private var stealthSuppressedUntilTick = 0L
 
         override fun onBattleStart() = refreshDarknessState()
 
         override fun onGameTimePasses() = refreshDarknessState()
 
         fun refreshDarknessState() {
-            if (isInDarkness()) {
-                if (grantedStealth?.power == 1) return
+            val stealthSuppressed = player.world.fullTime < stealthSuppressedUntilTick
+            if (isInDarkness() && !stealthSuppressed) {
+                if (grantedStealth?.let { it.power == 1 && playerData.statusAbnormalitys.contains(it) } == true) return
                 grantedStealth = playerData.addStatus(Stealth(), playerData) as Stealth
                 grantedStealth?.applyStatus(powerSet = 1)
                 particles.spawn(player, Particle.LARGE_SMOKE, count = 10, spread = 0.35, speed = 0.01)
                 sounds.play(player, Sound.BLOCK_SCULK_SENSOR_CLICKING, volume = 0.35f, pitch = 0.55f)
             } else {
-                grantedStealth?.remove()
-                grantedStealth = null
+                removeGrantedStealth()
             }
         }
 
         override fun onAttackHit(context: DamageContext) {
+            suppressStealth()
             if (!isInDarkness()) return
             context.addBaseDamage(2.0)
             particles.spawn(context.target.entity, Particle.SQUID_INK, count = 6, spread = 0.25)
             sounds.play(context.target.entity, Sound.ENTITY_PHANTOM_BITE, volume = 0.55f, pitch = 0.8f)
         }
+
+        override fun whenHit(context: DamageContext) {
+            val wasStealthed = hasActiveStealth()
+            suppressStealth()
+            if (!wasStealthed) context.addDamageTakenMultiplier(1.5)
+        }
+
+        fun handleEnvironmentalDamage(event: EntityDamageEvent) {
+            val wasStealthed = hasActiveStealth()
+            suppressStealth()
+            if (!wasStealthed) event.damage *= 1.5
+        }
+
+        private fun suppressStealth() {
+            stealthSuppressedUntilTick = player.world.fullTime + 60L
+            val wasStealthed = grantedStealth != null
+            removeGrantedStealth()
+            if (wasStealthed) {
+                particles.spawn(player, Particle.LARGE_SMOKE, count = 14, spread = 0.45, speed = 0.025)
+                sounds.play(player, Sound.BLOCK_SCULK_SENSOR_CLICKING, volume = 0.4f, pitch = 1.5f)
+            }
+            playerData.trackTask(object : BukkitRunnable() {
+                override fun run() {
+                    if (!player.isOnline || player.isDead) return
+                    refreshDarknessState()
+                }
+            }.runTaskLater(ClassWarPlugin.instance, 60L))
+        }
+
+        private fun removeGrantedStealth() {
+            grantedStealth?.remove()
+            grantedStealth = null
+        }
+
+        private fun hasActiveStealth(): Boolean =
+            playerData.statusAbnormalitys.any { it is Stealth && it.power > 0 }
     }
 }

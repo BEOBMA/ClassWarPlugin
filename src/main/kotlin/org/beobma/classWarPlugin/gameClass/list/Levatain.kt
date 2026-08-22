@@ -2,6 +2,7 @@ package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamageContext
+import org.beobma.classWarPlugin.effect.ParticleOptions
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
@@ -23,6 +24,10 @@ import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.attribute.Attribute
 import org.bukkit.scheduler.BukkitRunnable
+import org.bukkit.scheduler.BukkitTask
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
@@ -39,8 +44,11 @@ class Levatain : GameClass(), GameStatusHandler {
     private var sealStage = 0
     private var belowHalfTriggered = false
     private var belowQuarterTriggered = false
+    private var finalAuraTask: BukkitTask? = null
 
     override fun onBattleStart() {
+        finalAuraTask?.cancel()
+        finalAuraTask = null
         sealStage = 0
         belowHalfTriggered = false
         belowQuarterTriggered = false
@@ -85,14 +93,22 @@ class Levatain : GameClass(), GameStatusHandler {
             center,
             Particle.DUST,
             Particle.DustOptions(color, if (sealStage == FINAL_STAGE) 2.0f else 1.45f),
-            org.beobma.classWarPlugin.effect.ParticleOptions.spread(48 + sealStage * 18, 1.0, 0.14),
+            ParticleOptions.spread(90 + sealStage * 35, 1.35, 0.2),
         )
-        particles.spawn(center, Particle.ENCHANT, count = 40 + sealStage * 20, spread = 1.2, speed = 0.16)
+        particles.spawn(center, Particle.ENCHANT, count = 90 + sealStage * 35, spread = 1.65, speed = 0.22)
+        particles.circle(center.clone().add(0.0, -0.85, 0.0), Particle.END_ROD, 1.1 + sealStage * 0.3, 36 + sealStage * 10)
+        particles.circle(center.clone().add(0.0, -0.72, 0.0), Particle.ENCHANT, 1.75 + sealStage * 0.35, 48 + sealStage * 12)
+        playSealReleaseAnimation(sealStage, color)
         if (sealStage == FINAL_STAGE) {
-            particles.spawn(center, Particle.FLAME, count = 90, spread = 1.15, speed = 0.2)
-            particles.spawn(center, Particle.FLASH, count = 2)
-            sounds.play(center, Sound.ITEM_TRIDENT_THUNDER, volume = 1.0f, pitch = 0.8f)
-            sounds.play(center, Sound.ENTITY_BLAZE_SHOOT, volume = 1.0f, pitch = 0.55f)
+            particles.spawn(center, Particle.FLAME, count = 180, spread = 1.55, speed = 0.28)
+            particles.spawn(center, Particle.LAVA, count = 18, spread = 1.0, speed = 0.12)
+            particles.spawn(center, Particle.LARGE_SMOKE, count = 75, spread = 1.35, speed = 0.08)
+            particles.spawn(center, Particle.FLASH, count = 5)
+            particles.spawn(center, Particle.EXPLOSION, count = 4, spread = 0.6, speed = 0.05)
+            sounds.play(center, Sound.ITEM_TRIDENT_THUNDER, volume = 1.35f, pitch = 0.72f)
+            sounds.play(center, Sound.ENTITY_BLAZE_SHOOT, volume = 1.2f, pitch = 0.48f)
+            sounds.play(center, Sound.ENTITY_WITHER_SPAWN, volume = 0.7f, pitch = 1.35f)
+            startFinalAura()
         } else {
             sounds.play(center, Sound.BLOCK_ENCHANTMENT_TABLE_USE, volume = 1.0f, pitch = 0.8f + sealStage * 0.25f)
             sounds.play(center, Sound.ITEM_ARMOR_EQUIP_IRON, volume = 0.9f, pitch = 0.75f + sealStage * 0.15f)
@@ -100,6 +116,108 @@ class Levatain : GameClass(), GameStatusHandler {
         player.sendMiniMessage(
             "<gold><bold>[봉인 해제]</bold> <gray>검이 <white>${weapon.name}<gray>(으)로 변화했습니다."
         )
+    }
+
+    private fun playSealReleaseAnimation(stage: Int, color: Color) {
+        val duration = if (stage >= FINAL_STAGE) 42 else 30
+        val accentParticle = when (stage) {
+            1 -> Particle.END_ROD
+            2 -> Particle.ELECTRIC_SPARK
+            else -> Particle.FLAME
+        }
+        playerData.trackTask(object : BukkitRunnable() {
+            var tick = 0
+
+            override fun run() {
+                if (!player.isOnline || playerStatus.isDead || sealStage < stage || tick > duration) {
+                    cancel()
+                    return
+                }
+                val progress = tick.toDouble() / duration
+                val center = player.boundingBox.center.toLocation(player.world)
+                val radius = 0.45 + progress * (1.75 + stage * 0.28)
+                val height = -0.75 + progress * (3.4 + stage * 0.25)
+                repeat(3) { strand ->
+                    val angle = tick * (0.42 + stage * 0.045) + strand * (2.0 * PI / 3.0)
+                    val point = center.clone().add(cos(angle) * radius, height, sin(angle) * radius)
+                    particles.spawn(
+                        point,
+                        Particle.DUST,
+                        Particle.DustOptions(color, if (stage >= FINAL_STAGE) 1.65f else 1.25f),
+                        ParticleOptions(count = 2, offsetX = 0.035, offsetY = 0.035, offsetZ = 0.035),
+                    )
+                    particles.spawn(point, accentParticle, count = if (stage >= FINAL_STAGE) 3 else 2, spread = 0.055, speed = 0.025)
+                }
+
+                if (tick % 3 == 0) {
+                    val ringCenter = center.clone().add(0.0, -0.82 + progress * 2.2, 0.0)
+                    val ringRadius = 0.65 + progress * (1.8 + stage * 0.3)
+                    spawnDustRing(ringCenter, ringRadius, 28 + stage * 7, color, tick * 0.13)
+                    particles.circle(ringCenter, accentParticle, ringRadius * 0.72, 20 + stage * 6)
+                }
+                if (tick % 6 == 0) {
+                    val base = center.clone().add(0.0, -0.85, 0.0)
+                    particles.line(base, base.clone().add(0.0, 3.5 + stage * 0.25, 0.0), accentParticle, spacing = 0.2)
+                    particles.spawn(center, Particle.ENCHANT, count = 24 + stage * 8, spread = 1.15 + progress, speed = 0.14)
+                }
+                if (stage >= FINAL_STAGE && tick % 4 == 0) {
+                    particles.spawn(center.clone().add(0.0, -0.4, 0.0), Particle.LAVA, count = 3, spread = radius * 0.55, speed = 0.08)
+                    particles.spawn(center, Particle.LARGE_SMOKE, count = 12, spread = radius * 0.65, speed = 0.045)
+                }
+                if (tick == duration) {
+                    particles.spawn(center, Particle.FLASH, count = if (stage >= FINAL_STAGE) 4 else 2)
+                    particles.spawn(center, Particle.EXPLOSION, count = if (stage >= FINAL_STAGE) 3 else 1, spread = 0.35)
+                }
+                tick++
+            }
+        }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
+    }
+
+    private fun startFinalAura() {
+        finalAuraTask?.cancel()
+        val task = object : BukkitRunnable() {
+            var tick = 0
+
+            override fun run() {
+                if (!player.isOnline || playerStatus.isDead || sealStage < FINAL_STAGE) {
+                    finalAuraTask = null
+                    cancel()
+                    return
+                }
+                val center = player.boundingBox.center.toLocation(player.world)
+                repeat(3) { strand ->
+                    val angle = tick * 0.31 + strand * (2.0 * PI / 3.0)
+                    val height = -0.65 + strand * 0.72 + sin(tick * 0.18 + strand) * 0.2
+                    val point = center.clone().add(cos(angle) * 0.82, height, sin(angle) * 0.82)
+                    particles.spawn(point, Particle.FLAME, count = 2, spread = 0.035, speed = 0.018)
+                    particles.spawn(point, Particle.SOUL_FIRE_FLAME, count = 1)
+                }
+                particles.spawn(center, Particle.ASH, count = 5, spread = 0.72, speed = 0.012)
+                if (tick % 4 == 0) {
+                    particles.circle(center.clone().add(0.0, -0.82, 0.0), Particle.FLAME, 1.05, 28)
+                    particles.circle(center.clone().add(0.0, -0.72, 0.0), Particle.SOUL_FIRE_FLAME, 0.66, 18)
+                }
+                if (tick % 10 == 0) {
+                    particles.line(
+                        center.clone().add(0.0, -0.82, 0.0),
+                        center.clone().add(0.0, 1.25, 0.0),
+                        Particle.END_ROD,
+                        spacing = 0.24,
+                    )
+                }
+                tick++
+            }
+        }.runTaskTimer(ClassWarPlugin.instance, 0L, 2L)
+        finalAuraTask = task
+        playerData.trackTask(task)
+    }
+
+    private fun spawnDustRing(center: org.bukkit.Location, radius: Double, points: Int, color: Color, rotation: Double) {
+        repeat(points) { index ->
+            val angle = rotation + 2.0 * PI * index / points
+            val point = center.clone().add(cos(angle) * radius, 0.0, sin(angle) * radius)
+            particles.spawn(point, Particle.DUST, Particle.DustOptions(color, 1.3f), ParticleOptions())
+        }
     }
 
     private fun updateWeaponItem() {
@@ -148,9 +266,38 @@ class Levatain : GameClass(), GameStatusHandler {
             context.target.getOrCreateStatus(playerData) { Bleeding() }
                 .applyStatus(duration = 3, powerDelta = 1)
             val targetCenter = context.target.entity.boundingBox.center.toLocation(context.target.entity.world)
-            particles.spawn(targetCenter, Particle.FLAME, count = 16, spread = 0.45, speed = 0.08)
-            particles.spawn(targetCenter, Particle.ASH, count = 12, spread = 0.38, speed = 0.025)
-            sounds.play(targetCenter, Sound.ENTITY_BLAZE_HURT, volume = 0.65f, pitch = 0.8f)
+            val slashStart = player.eyeLocation.clone().add(player.location.direction.clone().multiply(0.35))
+            particles.line(slashStart, targetCenter, Particle.FLAME, spacing = 0.17)
+            particles.line(slashStart, targetCenter, Particle.END_ROD, spacing = 0.38)
+            particles.spawn(targetCenter, Particle.FLAME, count = 55, spread = 0.68, speed = 0.13)
+            particles.spawn(targetCenter, Particle.ASH, count = 34, spread = 0.58, speed = 0.04)
+            particles.spawn(targetCenter, Particle.LARGE_SMOKE, count = 18, spread = 0.5, speed = 0.055)
+            particles.spawn(targetCenter, Particle.LAVA, count = 5, spread = 0.42, speed = 0.08)
+            particles.circle(targetCenter, Particle.FLAME, 0.85, 30)
+            playLevatainHitAfterimage(context.target.entity)
+            sounds.play(targetCenter, Sound.ENTITY_BLAZE_HURT, volume = 0.9f, pitch = 0.72f)
+            sounds.play(targetCenter, Sound.ITEM_FIRECHARGE_USE, volume = 0.75f, pitch = 0.8f)
+        }
+
+        private fun playLevatainHitAfterimage(target: org.bukkit.entity.Entity) {
+            playerData.trackTask(object : BukkitRunnable() {
+                var frame = 0
+
+                override fun run() {
+                    if (!target.isValid || frame >= 6) {
+                        cancel()
+                        return
+                    }
+                    val center = target.boundingBox.center.toLocation(target.world)
+                    val progress = frame / 5.0
+                    val radius = 0.55 + progress * 1.35
+                    particles.circle(center.clone().add(0.0, -0.15 + progress * 0.9, 0.0), Particle.FLAME, radius, 22)
+                    particles.circle(center.clone().add(0.0, 0.55 + progress * 0.75, 0.0), Particle.END_ROD, radius * 0.62, 14)
+                    particles.spawn(center, Particle.ASH, count = 10, spread = radius * 0.42, speed = 0.025)
+                    if (frame % 2 == 0) particles.spawn(center, Particle.LAVA, count = 2, spread = radius * 0.3, speed = 0.045)
+                    frame++
+                }
+            }.runTaskTimer(ClassWarPlugin.instance, 0L, 2L))
         }
 
         override fun whenHit(context: DamageContext) {

@@ -17,6 +17,7 @@ data class Game(
     val availableClasses: MutableList<GameClass> = mutableListOf(),
     val refreshesRemaining: MutableMap<UUID, Int> = mutableMapOf(),
     val confirmedPlayers: MutableSet<UUID> = mutableSetOf(),
+    val playerKillCounts: MutableMap<UUID, Int> = mutableMapOf(),
     val spawnLocations: MutableList<Location> = mutableListOf(),
     val assignedSpawnLocations: MutableMap<UUID, Location> = mutableMapOf(),
     val disconnectedPlayers: MutableSet<UUID> = mutableSetOf(),

@@ -28,11 +28,15 @@ import org.bukkit.SoundCategory
 import org.bukkit.World
 import org.bukkit.attribute.Attribute
 import org.bukkit.block.Block
+import org.bukkit.block.data.type.Door
+import org.bukkit.block.data.type.Gate
+import org.bukkit.block.data.type.TrapDoor
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import java.util.Locale
 import java.util.UUID
+import java.util.ArrayDeque
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.floor
@@ -43,7 +47,11 @@ import kotlin.random.Random
 object GameManager {
     private val miniMessage = MiniMessage.miniMessage()
     private const val RECONNECT_GRACE_TICKS = 5L * 60L * 20L
+    private const val SPAWN_ESCAPE_DISTANCE = 16
+    private const val SPAWN_ESCAPE_MAX_VISITED_NODES = 2_500
     private val pendingPostGameCleanup: MutableMap<UUID, PlayerSnapshot> = mutableMapOf()
+
+    private data class SpawnPathNode(val x: Int, val y: Int, val z: Int)
 
     private val gameClassFactories: List<() -> GameClass> = listOf(
         ::Berserker, ::Sniper, ::Meteor, ::TimeManiqulator, ::LandWizard,
@@ -88,6 +96,7 @@ object GameManager {
         availableClasses.addAll(gameClassFactories.map { it() })
         confirmedPlayers.clear()
         refreshesRemaining.clear()
+        playerKillCounts.clear()
 
         participants.forEach { playerData ->
             val player = playerData.player
@@ -424,6 +433,7 @@ object GameManager {
                 if (result.any { it.distanceSquared(candidate) < settings.minimumPlayerDistance * settings.minimumPlayerDistance }) {
                     return@repeat
                 }
+                if (!hasSpawnEscapeRoute(world, candidate)) return@repeat
                 selected = candidate
             }
             result.add(selected ?: return null)
@@ -440,6 +450,83 @@ object GameManager {
         if (!world.getBlockAt(x, y + 1, z).type.isAir || !world.getBlockAt(x, y + 2, z).type.isAir) return null
         if ((1..3).any { depth -> !isNaturalGround(world.getBlockAt(x, y - depth, z)) }) return null
         return Location(world, x + 0.5, y + 1.0, z + 0.5)
+    }
+
+    private fun hasSpawnEscapeRoute(world: World, spawn: Location): Boolean {
+        val start = SpawnPathNode(spawn.blockX, spawn.blockY, spawn.blockZ)
+        if (!isSafeStandingNode(world, start)) return false
+
+        val queue = ArrayDeque<SpawnPathNode>()
+        val visited = HashSet<SpawnPathNode>()
+        queue.add(start)
+        visited.add(start)
+        val requiredDistanceSquared = SPAWN_ESCAPE_DISTANCE * SPAWN_ESCAPE_DISTANCE
+        val directions = arrayOf(
+            intArrayOf(1, 0),
+            intArrayOf(-1, 0),
+            intArrayOf(0, 1),
+            intArrayOf(0, -1),
+        )
+
+        while (queue.isNotEmpty() && visited.size <= SPAWN_ESCAPE_MAX_VISITED_NODES) {
+            val current = queue.removeFirst()
+            val deltaX = current.x - start.x
+            val deltaZ = current.z - start.z
+            if (deltaX * deltaX + deltaZ * deltaZ >= requiredDistanceSquared && isOpenOutdoorNode(world, current)) {
+                return true
+            }
+
+            directions.forEach { direction ->
+                val nextX = current.x + direction[0]
+                val nextZ = current.z + direction[1]
+                val horizontalX = nextX - start.x
+                val horizontalZ = nextZ - start.z
+                if (horizontalX * horizontalX + horizontalZ * horizontalZ > requiredDistanceSquared + SPAWN_ESCAPE_DISTANCE) {
+                    return@forEach
+                }
+                val nextY = findReachableStandingY(world, current, nextX, nextZ) ?: return@forEach
+                val next = SpawnPathNode(nextX, nextY, nextZ)
+                if (visited.add(next)) queue.addLast(next)
+            }
+        }
+        return false
+    }
+
+    private fun findReachableStandingY(world: World, current: SpawnPathNode, x: Int, z: Int): Int? {
+        for (verticalOffset in intArrayOf(1, 0, -1, -2, -3)) {
+            val candidateY = current.y + verticalOffset
+            val candidate = SpawnPathNode(x, candidateY, z)
+            if (!isSafeStandingNode(world, candidate)) continue
+            if (verticalOffset > 0 && !isTraversable(world.getBlockAt(current.x, current.y + 2, current.z))) continue
+            return candidateY
+        }
+        return null
+    }
+
+    private fun isSafeStandingNode(world: World, node: SpawnPathNode): Boolean {
+        if (node.y - 1 < world.minHeight || node.y + 1 >= world.maxHeight) return false
+        val feet = world.getBlockAt(node.x, node.y, node.z)
+        val head = world.getBlockAt(node.x, node.y + 1, node.z)
+        val ground = world.getBlockAt(node.x, node.y - 1, node.z)
+        if (!isTraversable(feet) || !isTraversable(head) || !ground.type.isSolid) return false
+        return feet.type !in unsafeSpawnPathMaterials &&
+            head.type !in unsafeSpawnPathMaterials &&
+            ground.type !in unsafeSpawnPathMaterials
+    }
+
+    private fun isOpenOutdoorNode(world: World, node: SpawnPathNode): Boolean {
+        if ((0..2).any { offset -> !isTraversable(world.getBlockAt(node.x, node.y + offset, node.z)) }) return false
+        return world.getHighestBlockYAt(node.x, node.z) <= node.y - 1
+    }
+
+    private fun isTraversable(block: Block): Boolean {
+        if (block.isPassable) return true
+        return when (val data = block.blockData) {
+            is Door -> block.type != Material.IRON_DOOR
+            is TrapDoor -> block.type != Material.IRON_TRAPDOOR
+            is Gate -> true
+            else -> false
+        }
     }
 
     private fun isNaturalGround(block: Block): Boolean {
@@ -461,6 +548,12 @@ object GameManager {
         Material.END_STONE, Material.BASALT, Material.BLACKSTONE,
     )
 
+    private val unsafeSpawnPathMaterials = setOf(
+        Material.LAVA, Material.FIRE, Material.SOUL_FIRE, Material.POWDER_SNOW,
+        Material.CACTUS, Material.MAGMA_BLOCK, Material.CAMPFIRE, Material.SOUL_CAMPFIRE,
+        Material.SWEET_BERRY_BUSH, Material.WITHER_ROSE, Material.POINTED_DRIPSTONE,
+    )
+
     fun handleDeath(playerData: PlayerData) {
         val currentGame = playerData.initGame
         if (currentGame.phase != GamePhase.RUNNING || playerData.entityStatus.isDead) return
@@ -480,6 +573,13 @@ object GameManager {
 
         val survivors = currentGame.contenders()
         if (survivors.size <= 1) currentGame.finish(survivors.firstOrNull())
+    }
+
+    fun Game.recordPlayerKill(victimId: UUID, killerId: UUID?) {
+        val creditedKillerId = killerId?.takeIf { it != victimId } ?: return
+        if (phase != GamePhase.RUNNING) return
+        if (activePlayers().none { it.uniqueId == creditedKillerId }) return
+        playerKillCounts[creditedKillerId] = (playerKillCounts[creditedKillerId] ?: 0) + 1
     }
 
     fun handleTemporaryDisconnect(player: Player) {
@@ -716,6 +816,7 @@ object GameManager {
         availableClasses.clear()
         refreshesRemaining.clear()
         confirmedPlayers.clear()
+        playerKillCounts.clear()
         spawnLocations.clear()
         roundCenterX = settings.centerX
         roundCenterZ = settings.centerZ
@@ -906,10 +1007,12 @@ object GameManager {
             .sortedBy { it.player.name.lowercase(Locale.ROOT) }
             .joinToString("\n") { playerData ->
                 val className = playerData.gameClass?.name ?: "<red>배정되지 않음"
-                "<gray>- <white>${playerData.player.name}<dark_gray>: $className"
+                val kills = playerKillCounts[playerData.uniqueId] ?: 0
+                "<gray>- <white>${playerData.player.name}<dark_gray>: $className " +
+                    "<dark_gray>| <red>킬 <white><bold>$kills</bold>"
             }
         val summary = miniMessage.deserialize(
-            "<gold><bold>[게임 종료 - 클래스 공개]</bold>\n$classLines"
+            "<gold><bold>[게임 종료 - 클래스 및 킬 공개]</bold>\n$classLines"
         )
         Bukkit.getOnlinePlayers().forEach { it.sendMessage(summary) }
     }

@@ -1,3 +1,5 @@
+import java.util.zip.ZipFile
+
 plugins {
     kotlin("jvm") version "2.4.20-RC"
     id("com.gradleup.shadow") version "8.3.11"
@@ -26,12 +28,35 @@ kotlin {
     jvmToolchain(targetJavaVersion)
 }
 
-tasks.build {
-    dependsOn("shadowJar")
-}
-
 tasks.shadowJar {
     relocate("kotlin", "org.beobma.classWarPlugin.libs.kotlin")
+}
+
+val verifyShadowJarContents = tasks.register("verifyShadowJarContents") {
+    dependsOn("shadowJar")
+
+    doLast {
+        val shadowArchive = tasks.named<org.gradle.api.tasks.bundling.Jar>("shadowJar")
+            .get()
+            .archiveFile
+            .get()
+            .asFile
+        val requiredEntries = listOf(
+            "org/beobma/classWarPlugin/gameClass/list/TimeManiqulator.class",
+            "org/beobma/classWarPlugin/status/list/CheckpointStatus.class",
+        )
+
+        ZipFile(shadowArchive).use { archive ->
+            val missingEntries = requiredEntries.filter { archive.getEntry(it) == null }
+            check(missingEntries.isEmpty()) {
+                "Shadow JAR is missing required runtime classes: ${missingEntries.joinToString()}"
+            }
+        }
+    }
+}
+
+tasks.build {
+    dependsOn(verifyShadowJarContents)
 }
 
 tasks.processResources {
