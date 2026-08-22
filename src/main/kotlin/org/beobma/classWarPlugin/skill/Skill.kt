@@ -19,6 +19,7 @@ abstract class Skill : EffectApiAccess {
     abstract val cooldown: Int?
 
     open val isOnOffSKill: Boolean = false
+    open val canUseWhileSilenced: Boolean = false
 
     private var activeContext: SkillContext? = null
 

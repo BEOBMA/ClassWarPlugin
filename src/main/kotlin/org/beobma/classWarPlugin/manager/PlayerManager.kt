@@ -219,6 +219,7 @@ object PlayerManager {
                 if (result.finalDamage <= 0.0) return
                 DamageIndicatorManager.show(target, result.finalDamage, game.settings.damageIndicatorsEnabled)
                 target.playHurtAnimation(0.0f)
+                DamageManager.recordSuccessfulDamage(context)
                 target.health = (target.health - result.finalDamage).coerceAtLeast(0.0)
             }
         }

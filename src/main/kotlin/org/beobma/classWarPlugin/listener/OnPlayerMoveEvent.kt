@@ -8,13 +8,23 @@ import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.event.player.PlayerTeleportEvent
+import org.beobma.classWarPlugin.gameClass.list.AreaDevelopment
+import org.bukkit.Particle
+import org.bukkit.Sound
 
 class OnPlayerMoveEvent : Listener {
 
     @EventHandler
     fun onEntityMove(event: PlayerMoveEvent) {
-        if (event is PlayerTeleportEvent) return
         val player = event.player
+        if (event is PlayerTeleportEvent) {
+            if (AreaDevelopment.shouldBlockTeleport(player.uniqueId, event.from, event.to)) {
+                event.isCancelled = true
+                player.spawnParticle(Particle.SMOKE, player.location.add(0.0, 1.0, 0.0), 10, 0.3, 0.45, 0.3, 0.025)
+                player.playSound(player.location, Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE, 0.45f, 1.6f)
+            }
+            return
+        }
         val game = Info.game ?: trainingInstance.find { game -> game.playerDatas.any { playerData -> playerData.entity == player } } ?: return
         val playerData = game.playerDatas.find { playerData -> playerData.entity == player } as? PlayerData ?: return
         if (!playerData.entityStatus.canMove) {

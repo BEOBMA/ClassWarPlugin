@@ -5,6 +5,7 @@ import org.beobma.classWarPlugin.info.Info
 import org.beobma.classWarPlugin.manager.GameManager
 import org.beobma.classWarPlugin.listener.OnEntityDamageByEntityEvent
 import org.beobma.classWarPlugin.listener.OnEntityDamageEvent
+import org.beobma.classWarPlugin.listener.OnEntityDeathEvent
 import org.beobma.classWarPlugin.listener.OnDamageIndicatorEvent
 import org.beobma.classWarPlugin.listener.OnFoodChangeEvent
 import org.beobma.classWarPlugin.listener.OnInventoryClickEvent
@@ -19,6 +20,7 @@ import org.beobma.classWarPlugin.listener.OnPlayerSwapHandItemsEvent
 import org.beobma.classWarPlugin.listener.OnPlayerToggleSneakEvent
 import org.beobma.classWarPlugin.listener.OnPlayerInputEvent
 import org.beobma.classWarPlugin.listener.OnAsyncChatEvent
+import org.beobma.classWarPlugin.listener.OnProjectileHitEvent
 import org.beobma.classWarPlugin.game.GameSettings
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager
 import org.beobma.classWarPlugin.manager.DamageIndicatorManager
@@ -67,6 +69,7 @@ class ClassWarPlugin : JavaPlugin() {
         server.pluginManager.registerEvents(OnPlayerDeathEvent(), this)
         server.pluginManager.registerEvents(OnEntityDamageByEntityEvent(), this)
         server.pluginManager.registerEvents(OnEntityDamageEvent(), this)
+        server.pluginManager.registerEvents(OnEntityDeathEvent(), this)
         server.pluginManager.registerEvents(OnDamageIndicatorEvent(), this)
         server.pluginManager.registerEvents(OnPlayerInteractEvent(), this)
         server.pluginManager.registerEvents(OnFoodChangeEvent(), this)
@@ -77,6 +80,7 @@ class ClassWarPlugin : JavaPlugin() {
         server.pluginManager.registerEvents(OnPlayerToggleSneakEvent(), this)
         server.pluginManager.registerEvents(OnPlayerInputEvent(), this)
         server.pluginManager.registerEvents(OnAsyncChatEvent(), this)
+        server.pluginManager.registerEvents(OnProjectileHitEvent(), this)
     }
 
     private fun startStatusActionBarTask() {

@@ -4,6 +4,7 @@ import io.papermc.paper.event.player.AsyncChatEvent
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.gameClass.list.Hacker
+import org.beobma.classWarPlugin.gameClass.list.Mathematician
 import org.bukkit.Bukkit
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
@@ -13,11 +14,14 @@ class OnAsyncChatEvent : Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     fun onAsyncChat(event: AsyncChatEvent) {
         val player = event.player
-        if (!Hacker.hasActiveSession(player.uniqueId)) return
+        val isHacking = Hacker.hasActiveSession(player.uniqueId)
+        val isAnsweringMath = Mathematician.hasActiveProblem(player.uniqueId)
+        if (!isHacking && !isAnsweringMath) return
         event.isCancelled = true
         val input = PlainTextComponentSerializer.plainText().serialize(event.message())
         Bukkit.getScheduler().runTask(ClassWarPlugin.instance, Runnable {
-            Hacker.handleChatInput(player, input)
+            if (isHacking) Hacker.handleChatInput(player, input)
+            else Mathematician.handleChatInput(player, input)
         })
     }
 }

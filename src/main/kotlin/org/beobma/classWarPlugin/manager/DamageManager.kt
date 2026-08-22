@@ -10,7 +10,7 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
 import org.beobma.classWarPlugin.status.handler.StatusOnHitHandler
 import org.beobma.classWarPlugin.status.handler.StatusWhenHitHandler
 import org.beobma.classWarPlugin.status.list.Shield
-import org.bukkit.entity.Player
+import org.bukkit.entity.Entity
 import java.util.UUID
 import kotlin.math.roundToInt
 
@@ -45,16 +45,16 @@ object DamageManager {
     }
 
     fun recordSuccessfulDamage(context: DamageContext) {
-        val target = context.target as? PlayerData ?: return
+        val target = context.target.entity
         lastDamageByTarget[target.uniqueId] = Attribution(
             context.attacker.uniqueId,
             context.attacker.player.name,
             context.path,
-            target.player.world.fullTime,
+            target.world.fullTime,
         )
     }
 
-    fun consumeAttribution(target: Player): Attribution? {
+    fun consumeAttribution(target: Entity): Attribution? {
         val attribution = lastDamageByTarget.remove(target.uniqueId) ?: return null
         return attribution.takeIf { target.world.fullTime - it.recordedAtTick <= 200L }
     }

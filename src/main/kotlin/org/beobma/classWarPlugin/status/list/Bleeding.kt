@@ -2,6 +2,8 @@ package org.beobma.classWarPlugin.status.list
 
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
+import org.beobma.classWarPlugin.gameClass.handler.BleedingDamageHandler
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.hasStatus
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.beobma.classWarPlugin.status.StatusDurationMode
@@ -26,7 +28,10 @@ class Bleeding : StatusAbnormality(), StatusOnHitHandler {
 
     override fun onAttackHit(event: DamageContext) {
         if (power <= 0) return
-        event.attacker.damage(power.toDouble(), DamageType.StatusAbnormality, event.attacker)
+        event.attacker.damage(power.toDouble(), DamageType.StatusAbnormality, casterData)
+        casterData.gameClass?.passives?.filterIsInstance<BleedingDamageHandler>()
+            ?.forEach { it.onBleedingDamage(event.attacker, power) }
+        if (entityData.hasStatus<BleedingLock>()) return
         if (power / 2 <= 0) {
             this.remove()
             return

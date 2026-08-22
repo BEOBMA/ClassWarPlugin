@@ -53,6 +53,8 @@ object GameManager {
         ::GunBlader, ::Watchmaker,
         ::Barrier, ::Darkness, ::Feather, ::GeneralPerson,
         ::GraveRobber, ::Hacker, ::SpiderMan, ::Trapper,
+        ::Mathematician, ::PortalGun, ::Tour, ::Pacifist, ::Roulette,
+        ::AreaDevelopment, ::Parasite, ::Chubby, ::Vampire,
     )
 
     private val miniMessageTagPattern = Regex("<[^>]+>")
@@ -446,6 +448,10 @@ object GameManager {
         if (currentGame.phase == GamePhase.WAITING || currentGame.phase == GamePhase.FINISHED) return
         val playerData = currentGame.findParticipant(player.uniqueId) ?: return
         Hacker.clearSessions(listOf(player.uniqueId))
+        Mathematician.clearSessions(listOf(player.uniqueId))
+        Vampire.clearForms(listOf(player.uniqueId))
+        PortalGun.clearForPlayers(listOf(player.uniqueId))
+        AreaDevelopment.clearDomains(listOf(player.uniqueId))
         if (!currentGame.disconnectedPlayers.add(player.uniqueId)) return
 
         PlayerTagManager.clear(player)
@@ -614,6 +620,10 @@ object GameManager {
         val participantIds = activePlayers().map { it.uniqueId }
         GraveRobber.clearDeathRecords(this)
         Hacker.clearSessions(participantIds)
+        Mathematician.clearSessions(participantIds)
+        Vampire.clearForms(participantIds)
+        PortalGun.clearForPlayers(participantIds)
+        AreaDevelopment.clearDomains(participantIds)
         DamageManager.clearAttributions(participantIds)
         clearDamageInvincibility(participantIds)
         CooldownManager.clear(participantIds)
@@ -697,6 +707,10 @@ object GameManager {
     fun Player.stopTraining() {
         val trainingGame = trainingInstance.find { it.activePlayers().any { data -> data.player == this } } ?: return
         Hacker.clearSessions(listOf(uniqueId))
+        Mathematician.clearSessions(listOf(uniqueId))
+        Vampire.clearForms(listOf(uniqueId))
+        PortalGun.clearForPlayers(listOf(uniqueId))
+        AreaDevelopment.clearDomains(listOf(uniqueId))
         trainingGame.tasks.forEach { it.cancel() }
         TemporaryDisplayManager.clear(world, uniqueId)
         trainingGame.playerDatas.forEach { entityData ->
@@ -707,7 +721,7 @@ object GameManager {
             entityData.bukkitTasks.clear()
         }
         clearDamageInvincibility(listOf(uniqueId))
-        DamageManager.clearAttributions(listOf(uniqueId))
+        DamageManager.clearAttributions(trainingGame.playerDatas.map { it.entity.uniqueId })
         CooldownManager.clear(listOf(uniqueId))
         DamageIndicatorManager.clearForPlayers(listOf(uniqueId))
         trainingGame.playerSnapshots.remove(uniqueId)?.let { restorePlayerAfterGame(this, it) }
@@ -793,6 +807,9 @@ object GameManager {
         snapshot.potionEffects.forEach { player.addPotionEffect(it) }
         snapshot.movementSpeedBase?.let { player.getAttribute(Attribute.MOVEMENT_SPEED)?.baseValue = it }
         snapshot.attackSpeedBase?.let { player.getAttribute(Attribute.ATTACK_SPEED)?.baseValue = it }
+        snapshot.maxHealthBase?.let { player.getAttribute(Attribute.MAX_HEALTH)?.baseValue = it }
+        snapshot.jumpStrengthBase?.let { player.getAttribute(Attribute.JUMP_STRENGTH)?.baseValue = it }
+        snapshot.scaleBase?.let { player.getAttribute(Attribute.SCALE)?.baseValue = it }
         player.walkSpeed = snapshot.walkSpeed
         player.flySpeed = snapshot.flySpeed
         player.foodLevel = snapshot.foodLevel

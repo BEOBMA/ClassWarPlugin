@@ -12,6 +12,7 @@ import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.status.list.Shield
 import org.beobma.classWarPlugin.gameClass.handler.EnvironmentalDamageHandler
 import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
+import org.beobma.classWarPlugin.gameClass.list.Vampire
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
@@ -22,6 +23,7 @@ import kotlin.math.roundToInt
 class OnEntityDamageEvent : Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     fun onEntityDamage(event: EntityDamageEvent) {
+        if (Vampire.handleBatDamage(event)) return
         if (event.entity.isMannequin()) {
             event.isCancelled = true
         }

@@ -80,7 +80,7 @@ object SkillManager {
             playerData.player.sendMiniMessage("<red><bold>[!] 기절 상태에서는 스킬을 사용할 수 없습니다.")
             return false
         }
-        if (playerData.hasStatus<Silence>()) {
+        if (playerData.hasStatus<Silence>() && !skill.canUseWhileSilenced) {
             playerData.player.sendMiniMessage("<red><bold>[!] 침묵 상태에서는 스킬을 사용할 수 없습니다.")
             return false
         }

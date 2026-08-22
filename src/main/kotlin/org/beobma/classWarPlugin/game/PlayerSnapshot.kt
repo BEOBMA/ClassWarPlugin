@@ -27,6 +27,9 @@ data class PlayerSnapshot(
     val flySpeed: Float,
     val movementSpeedBase: Double?,
     val attackSpeedBase: Double?,
+    val maxHealthBase: Double?,
+    val jumpStrengthBase: Double?,
+    val scaleBase: Double?,
 ) {
     companion object {
         fun capture(player: Player): PlayerSnapshot = PlayerSnapshot(
@@ -49,6 +52,9 @@ data class PlayerSnapshot(
             flySpeed = player.flySpeed,
             movementSpeedBase = player.getAttribute(Attribute.MOVEMENT_SPEED)?.baseValue,
             attackSpeedBase = player.getAttribute(Attribute.ATTACK_SPEED)?.baseValue,
+            maxHealthBase = player.getAttribute(Attribute.MAX_HEALTH)?.baseValue,
+            jumpStrengthBase = player.getAttribute(Attribute.JUMP_STRENGTH)?.baseValue,
+            scaleBase = player.getAttribute(Attribute.SCALE)?.baseValue,
         )
     }
 }

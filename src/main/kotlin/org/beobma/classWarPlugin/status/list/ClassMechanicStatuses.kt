@@ -151,3 +151,12 @@ class SpiderWebChargeStatus : StatusAbnormality() {
         return "$name: <white>$power</white><dark_gray>/</dark_gray><white>${maxPower ?: 5}</white>$recharge$rope"
     }
 }
+
+class MathAnswerStackStatus : MoveSpeedIncrease() {
+    override val name = "<aqua><bold>정답 스택</bold><gray>"
+    override val description = listOf("<gray>수학 문제로 얻은 정답 스택이다. 스택당 피해와 이동 속도가 1% 증가한다.")
+    override val canRemove = false
+    override val isClassMechanic = true
+    override var maxPower: Int? = 100
+    override var duration: Int? = null
+}

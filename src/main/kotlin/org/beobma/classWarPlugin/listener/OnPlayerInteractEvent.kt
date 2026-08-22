@@ -7,6 +7,7 @@ import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.SkillManager.getSkillId
 import org.beobma.classWarPlugin.manager.SkillManager.use
 import org.beobma.classWarPlugin.gameClass.handler.WeaponInputHandler
+import org.beobma.classWarPlugin.gameClass.handler.SkillInputHandler
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
@@ -19,7 +20,9 @@ class OnPlayerInteractEvent : Listener {
     @EventHandler(priority = EventPriority.HIGH)
     fun onPlayerInteract(event: PlayerInteractEvent) {
         if (event.hand != EquipmentSlot.HAND) return
-        if (event.action != Action.RIGHT_CLICK_AIR && event.action != Action.RIGHT_CLICK_BLOCK) return
+        val isRightClick = event.action == Action.RIGHT_CLICK_AIR || event.action == Action.RIGHT_CLICK_BLOCK
+        val isLeftClick = event.action == Action.LEFT_CLICK_AIR || event.action == Action.LEFT_CLICK_BLOCK
+        if (!isRightClick && !isLeftClick) return
 
         val player = event.player
         val isTraining = PlayerTagManager.hasTag(player, "isTraining")
@@ -35,12 +38,18 @@ class OnPlayerInteractEvent : Listener {
         val skillId = getSkillId(clickedItem, player.uniqueId)
         if (skillId == null) {
             val gameClass = playerData.gameClass
-            if (gameClass is WeaponInputHandler && clickedItem.type == gameClass.weapon.material) {
+            if (isRightClick && gameClass is WeaponInputHandler && clickedItem.type == gameClass.weapon.material) {
                 gameClass.onWeaponRightClick(event)
             }
             return
         }
         val skill = playerData.gameClass?.skills?.find { it.id == skillId } ?: return
+        val inputHandler = playerData.gameClass as? SkillInputHandler
+        if (inputHandler != null) {
+            if (!inputHandler.prepareSkillInput(event, skill)) return
+        } else if (!isRightClick) {
+            return
+        }
 
         event.isCancelled = true
         playerData.use(skill, clickedItem)
