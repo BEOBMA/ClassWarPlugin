@@ -41,11 +41,6 @@ class Mathematician : GameClass() {
 
     private class OrangeSkill : Skill() {
         override val name = "<bold>압축"
-        override val summary: List<String> =  listOf(
-            "<gray>직육면체를 중심으로 압축한다.",
-            "<gray>내부의 모든 적에게 직육면체의 부피에 반비례하여 피해를 입힌다.",
-            "<gray>이후 직육면체와 좌표가 모두 제거된다."
-        )
         override val description = listOf(
             "<gray>직육면체를 중심으로 압축한다.",
             "<gray>내부의 모든 적에게 직육면체의 부피에 반비례하여 피해를 입힌다.",

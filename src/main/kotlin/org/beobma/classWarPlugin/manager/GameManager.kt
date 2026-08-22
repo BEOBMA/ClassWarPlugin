@@ -66,17 +66,6 @@ object GameManager {
         get() = Bukkit.getWorlds().first()
 
     val trainingInstance: MutableList<Game> = mutableListOf()
-    private fun Game.trainingSpawn(): Location {
-        val world = Bukkit.getWorld(settings.trainingWorld) ?: gameWorld
-        return Location(
-            world,
-            settings.trainingX,
-            settings.trainingY,
-            settings.trainingZ,
-            settings.trainingYaw,
-            settings.trainingPitch,
-        )
-    }
 
     fun Game.start() {
         val participants = activePlayers()
@@ -312,8 +301,14 @@ object GameManager {
         borderBossBar = bossBar
         contenders().filter { it.player.isOnline }.forEach { it.player.showBossBar(bossBar) }
 
-        var elapsed = 0
+        val delayTicks = settings.borderDelaySeconds.toLong() * 20L
+        val shrinkTicks = settings.borderShrinkSeconds.toLong() * 20L
+        var elapsedTicks = 0L
         var shrinking = false
+        var shrinkStartX = settings.centerX
+        var shrinkStartZ = settings.centerZ
+        var shrinkTargetX = settings.centerX
+        var shrinkTargetZ = settings.centerZ
         val task = object : BukkitRunnable() {
             override fun run() {
                 if (phase != GamePhase.RUNNING) {
@@ -321,32 +316,45 @@ object GameManager {
                     return
                 }
 
-                if (!shrinking && elapsed >= settings.borderDelaySeconds) {
+                if (!shrinking && elapsedTicks >= delayTicks) {
                     shrinking = true
-                    elapsed = 0
+                    elapsedTicks = 0L
+                    shrinkStartX = border.center.x
+                    shrinkStartZ = border.center.z
+                    val maximumOffset = ((border.size - settings.borderMinimumSize) / 2.0).coerceAtLeast(0.0)
+                    shrinkTargetX = shrinkStartX + Random.nextDouble(-maximumOffset, maximumOffset)
+                    shrinkTargetZ = shrinkStartZ + Random.nextDouble(-maximumOffset, maximumOffset)
                     border.changeSize(settings.borderMinimumSize, settings.borderShrinkSeconds.toLong() * 20L)
                     bossBar.color(BossBar.Color.RED)
                 }
 
                 if (!shrinking) {
-                    val total = settings.borderDelaySeconds.coerceAtLeast(1)
-                    val remaining = (settings.borderDelaySeconds - elapsed).coerceAtLeast(0)
+                    val total = delayTicks.coerceAtLeast(1L)
+                    val remainingTicks = (delayTicks - elapsedTicks).coerceAtLeast(0L)
+                    val remaining = ((remainingTicks + 19L) / 20L).toInt()
                     bossBar.name(miniMessage.deserialize("<aqua><bold>월드보더 축소까지 ${formatTime(remaining)}"))
-                    bossBar.progress((remaining.toFloat() / total).coerceIn(0.0F, 1.0F))
+                    bossBar.progress((remainingTicks.toFloat() / total).coerceIn(0.0F, 1.0F))
                 } else {
-                    val remaining = (settings.borderShrinkSeconds - elapsed).coerceAtLeast(0)
+                    val progress = (elapsedTicks.toDouble() / shrinkTicks).coerceIn(0.0, 1.0)
+                    border.setCenter(
+                        shrinkStartX + (shrinkTargetX - shrinkStartX) * progress,
+                        shrinkStartZ + (shrinkTargetZ - shrinkStartZ) * progress,
+                    )
+                    val remainingTicks = (shrinkTicks - elapsedTicks).coerceAtLeast(0L)
+                    val remaining = ((remainingTicks + 19L) / 20L).toInt()
                     bossBar.name(miniMessage.deserialize("<red><bold>월드보더 축소 중 ${formatTime(remaining)}"))
-                    bossBar.progress((remaining.toFloat() / settings.borderShrinkSeconds).coerceIn(0.0F, 1.0F))
-                    if (elapsed >= settings.borderShrinkSeconds) {
+                    bossBar.progress((remainingTicks.toFloat() / shrinkTicks).coerceIn(0.0F, 1.0F))
+                    if (elapsedTicks >= shrinkTicks) {
+                        border.setCenter(shrinkTargetX, shrinkTargetZ)
                         activePlayers().filter { it.player.isOnline }.forEach { it.player.hideBossBar(bossBar) }
                         borderBossBar = null
                         cancel()
                         return
                     }
                 }
-                elapsed++
+                elapsedTicks++
             }
-        }.runTaskTimer(ClassWarPlugin.instance, 0L, 20L)
+        }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L)
         track(task)
     }
 
@@ -647,10 +655,9 @@ object GameManager {
         playerData.gameClass = gameClass
         trainingInstance.add(trainingGame)
         PlayerTagManager.addTag(this, "isTraining")
-        teleport(trainingGame.trainingSpawn())
         playerData.classSet()
         inventory.heldItemSlot = 0
-        showTitle(Title.title(miniMessage.deserialize("<bold>훈련장"), Component.empty()))
+        showTitle(Title.title(miniMessage.deserialize("<bold>훈련 시작"), Component.empty()))
         playerData.entityStatus.canAttack = true
         playerData.entityStatus.canSkillUse = true
         playerData.entityStatus.isAttackable = true
@@ -745,7 +752,9 @@ object GameManager {
         player.playerListName(miniMessage.deserialize(player.name))
         player.closeInventory()
         player.sendActionBar(Component.empty())
-        player.spectatorTarget = null
+        if (player.gameMode == GameMode.SPECTATOR) {
+            player.spectatorTarget = null
+        }
         player.resetDyeCooldowns()
         player.inventory.clear()
         player.inventory.contents = snapshot.inventoryContents.map { it?.clone() }.toTypedArray()

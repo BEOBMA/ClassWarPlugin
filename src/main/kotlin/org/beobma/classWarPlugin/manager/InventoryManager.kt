@@ -1,6 +1,7 @@
 package org.beobma.classWarPlugin.manager
 
 import net.kyori.adventure.text.minimessage.MiniMessage
+import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.game.GameSettings
@@ -9,9 +10,11 @@ import org.beobma.classWarPlugin.manager.GameManager.gameClassList
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.bukkit.Bukkit
 import org.bukkit.Material
+import org.bukkit.NamespacedKey
 import org.bukkit.entity.Player
 import org.bukkit.inventory.Inventory
 import org.bukkit.inventory.ItemStack
+import org.bukkit.persistence.PersistentDataType
 
 enum class ConfigCategory {
     GAME,
@@ -19,11 +22,12 @@ enum class ConfigCategory {
     SCATTER,
     BORDER,
     COMBAT,
-    TRAINING,
 }
 
 object InventoryManager {
     private val miniMessage = MiniMessage.miniMessage()
+    private val classIdKey: NamespacedKey
+        get() = NamespacedKey(ClassWarPlugin.instance, "class-id")
     private val nextPage = ItemStack(Material.ARROW, 1).apply {
         itemMeta = itemMeta.apply {
             displayName(miniMessage.deserialize("<gray>다음 페이지"))
@@ -69,10 +73,9 @@ object InventoryManager {
                 2 -> Material.YELLOW_DYE
                 else -> Material.GREEN_DYE
             }
-            inventory.setItem(21 + index, createExpandableDescriptionItem(
+            inventory.setItem(21 + index, createFullDescriptionItem(
                 material,
                 skill.name,
-                skill.summary,
                 skill.description,
                 ItemDescriptionManager.cooldownLines(skill.cooldown),
             ))
@@ -80,8 +83,8 @@ object InventoryManager {
 
         gameClass.passives.forEachIndexed { index, passive ->
             if (index >= 7) return@forEachIndexed
-            inventory.setItem(30 + index, createExpandableDescriptionItem(
-                Material.WHITE_DYE, passive.name, passive.summary, passive.description
+            inventory.setItem(30 + index, createFullDescriptionItem(
+                Material.WHITE_DYE, passive.name, passive.description
             ))
         }
 
@@ -89,15 +92,15 @@ object InventoryManager {
             itemMeta = itemMeta.apply {
                 displayName(miniMessage.deserialize("<aqua><bold>클래스 새로고침"))
                 lore(listOf(
-                    miniMessage.deserialize("<gray>남은 횟수: <yellow><bold>$remainingRefreshes"),
-                    miniMessage.deserialize("<gray>클릭하면 중복되지 않는 새 클래스를 배정합니다.")
+                    ItemDescriptionManager.renderLoreLine("<gray>남은 횟수: <yellow><bold>$remainingRefreshes"),
+                    ItemDescriptionManager.renderLoreLine("<gray>클릭하면 중복되지 않는 새 클래스를 배정합니다.")
                 ))
             }
         })
         inventory.setItem(53, ItemStack(Material.LIME_DYE).apply {
             itemMeta = itemMeta.apply {
                 displayName(miniMessage.deserialize("<green><bold>클래스 확정"))
-                lore(listOf(miniMessage.deserialize("<gray>확정하면 다시 변경할 수 없습니다.")))
+                lore(listOf(ItemDescriptionManager.renderLoreLine("<gray>확정하면 다시 변경할 수 없습니다.")))
             }
         })
 
@@ -137,12 +140,6 @@ object InventoryManager {
             "<yellow><bold>전투 표시 설정",
             listOf("<gray>피해량 텍스트 등 전투 표시 기능을 설정합니다."),
         ))
-        inventory.setItem(24, createDescriptionItem(
-            Material.LODESTONE,
-            "<yellow><bold>훈련장 설정",
-            listOf("<gray>훈련장 시작 위치를 설정합니다."),
-        ))
-
         openConfigView(inventory, null)
     }
 
@@ -154,7 +151,6 @@ object InventoryManager {
             ConfigCategory.SCATTER -> "맵 및 산개 설정"
             ConfigCategory.BORDER -> "월드보더 설정"
             ConfigCategory.COMBAT -> "전투 표시 설정"
-            ConfigCategory.TRAINING -> "훈련장 설정"
         }
         val inventory = Bukkit.createInventory(null, 27, miniMessage.deserialize("<dark_gray>$title"))
         fillWith(inventory, Material.BLACK_STAINED_GLASS_PANE, " ")
@@ -191,19 +187,6 @@ object InventoryManager {
             ConfigCategory.COMBAT -> {
                 inventory.setItem(13, createToggleItem("피해량 텍스트 표시", settings.damageIndicatorsEnabled))
             }
-
-            ConfigCategory.TRAINING -> {
-                inventory.setItem(13, createDescriptionItem(
-                    Material.LODESTONE,
-                    "<yellow><bold>훈련장 위치 설정",
-                    listOf(
-                        "<gray>현재 위치: <white>${settings.trainingWorld}",
-                        "<gray>${"%.1f".format(settings.trainingX)}, ${"%.1f".format(settings.trainingY)}, ${"%.1f".format(settings.trainingZ)}",
-                        "",
-                        "<green>클릭하면 현재 위치를 훈련장으로 저장합니다.",
-                    ),
-                ))
-            }
         }
 
         inventory.setItem(18, ItemStack(Material.ARROW).apply {
@@ -230,6 +213,12 @@ object InventoryManager {
             ?.substringAfter("configCategory:")
             ?.let { name -> ConfigCategory.entries.find { it.name == name } }
 
+    fun getClassFromItem(item: ItemStack): GameClass? {
+        val classId = item.itemMeta.persistentDataContainer
+            .get(classIdKey, PersistentDataType.STRING) ?: return null
+        return gameClassList.find { it.javaClass.name == classId }
+    }
+
     fun Player.openClassStatusInventory(gameClass: GameClass) {
         val inventory = Bukkit.createInventory(null, 27, miniMessage.deserialize(UtilManager.applyKeywords(gameClass.name)))
         inventory.setItem(0, gameClass.weapon.toItemStack())
@@ -242,10 +231,9 @@ object InventoryManager {
                 3 -> Material.GREEN_DYE
                 else -> Material.RED_DYE
             }
-            inventory.setItem(i + 1, createExpandableDescriptionItem(
+            inventory.setItem(i + 1, createFullDescriptionItem(
                 material,
                 skill.name,
-                skill.summary,
                 skill.description,
                 ItemDescriptionManager.cooldownLines(skill.cooldown),
             ))
@@ -253,8 +241,8 @@ object InventoryManager {
         for (i in gameClass.skills.size + 1..gameClass.passives.size + gameClass.skills.size + 1) {
             val passive = gameClass.passives.getOrNull(i - gameClass.skills.size - 1) ?: break
             val material = Material.WHITE_DYE
-            inventory.setItem(i, createExpandableDescriptionItem(
-                material, passive.name, passive.summary, passive.description
+            inventory.setItem(i, createFullDescriptionItem(
+                material, passive.name, passive.description
             ))
         }
         openInventory(inventory)
@@ -302,14 +290,13 @@ object InventoryManager {
         ItemStack(material).apply {
             itemMeta = itemMeta.apply {
                 displayName(miniMessage.deserialize(UtilManager.applyKeywords(name)))
-                lore(lines.map { miniMessage.deserialize(UtilManager.applyKeywords(it)) })
+                lore(lines.map(ItemDescriptionManager::renderLoreLine))
             }
         }
 
-    private fun createExpandableDescriptionItem(
+    private fun createFullDescriptionItem(
         material: Material,
         name: String,
-        summary: List<String>,
         details: List<String>,
         alwaysVisibleLines: List<String> = emptyList(),
     ): ItemStack = ItemDescriptionManager.apply(
@@ -318,7 +305,6 @@ object InventoryManager {
                 displayName(miniMessage.deserialize(UtilManager.applyKeywords(name)))
             }
         },
-        summary,
         details,
         alwaysVisibleLines,
     )
@@ -328,10 +314,10 @@ object InventoryManager {
             itemMeta = itemMeta.apply {
                 displayName(miniMessage.deserialize("<yellow><bold>$name"))
                 lore(listOf(
-                    miniMessage.deserialize("<gray>현재 값: <white><bold>$value $unit"),
-                    miniMessage.deserialize(""),
-                    miniMessage.deserialize("<green>좌클릭: 증가 <red>우클릭: 감소"),
-                    miniMessage.deserialize("<gray>Shift 클릭: 10배 조절")
+                    ItemDescriptionManager.renderLoreLine("<gray>현재 값: <white><bold>$value $unit"),
+                    ItemDescriptionManager.renderLoreLine(""),
+                    ItemDescriptionManager.renderLoreLine("<green>좌클릭: 증가 <red>우클릭: 감소"),
+                    ItemDescriptionManager.renderLoreLine("<gray>Shift 클릭: 10배 조절")
                 ))
             }
         }
@@ -341,11 +327,11 @@ object InventoryManager {
             itemMeta = itemMeta.apply {
                 displayName(miniMessage.deserialize("<yellow><bold>$name"))
                 lore(listOf(
-                    miniMessage.deserialize(
+                    ItemDescriptionManager.renderLoreLine(
                         if (enabled) "<gray>현재 값: <green><bold>활성화" else "<gray>현재 값: <red><bold>비활성화"
                     ),
-                    miniMessage.deserialize(""),
-                    miniMessage.deserialize("<gray>클릭하여 활성화 여부를 변경합니다.")
+                    ItemDescriptionManager.renderLoreLine(""),
+                    ItemDescriptionManager.renderLoreLine("<gray>클릭하여 활성화 여부를 변경합니다.")
                 ))
             }
         }
@@ -358,11 +344,11 @@ object InventoryManager {
             itemMeta = itemMeta.apply {
                 displayName(miniMessage.deserialize("${rank.formattedName} <yellow>등장 가중치"))
                 lore(listOf(
-                    miniMessage.deserialize("<gray>현재 가중치: <white><bold>$weight"),
-                    miniMessage.deserialize("<gray>전체 기준 확률: <white><bold>${"%.2f".format(chance)}%"),
-                    miniMessage.deserialize(""),
-                    miniMessage.deserialize("<green>좌클릭: 증가 <red>우클릭: 감소"),
-                    miniMessage.deserialize("<gray>Shift 클릭: 10배 조절"),
+                    ItemDescriptionManager.renderLoreLine("<gray>현재 가중치: <white><bold>$weight"),
+                    ItemDescriptionManager.renderLoreLine("<gray>전체 기준 확률: <white><bold>${"%.2f".format(chance)}%"),
+                    ItemDescriptionManager.renderLoreLine(""),
+                    ItemDescriptionManager.renderLoreLine("<green>좌클릭: 증가 <red>우클릭: 감소"),
+                    ItemDescriptionManager.renderLoreLine("<gray>Shift 클릭: 10배 조절"),
                 ))
             }
         }
@@ -370,11 +356,12 @@ object InventoryManager {
 
     private fun createClassItem(gameClass: GameClass): ItemStack {
         val name = miniMessage.deserialize(UtilManager.applyKeywords(gameClass.name))
-        val rank = listOf(miniMessage.deserialize("<gray>랭크: ${gameClass.rank.formattedName}"))
+        val rank = listOf(ItemDescriptionManager.renderLoreLine("<gray>랭크: ${gameClass.rank.formattedName}"))
         return ItemStack(gameClass.classItemMaterial, 1).apply {
             itemMeta = itemMeta.apply {
                 displayName(name)
                 lore(rank)
+                persistentDataContainer.set(classIdKey, PersistentDataType.STRING, gameClass.javaClass.name)
             }
         }
     }

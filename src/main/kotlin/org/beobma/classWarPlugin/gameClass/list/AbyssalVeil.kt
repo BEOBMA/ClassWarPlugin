@@ -82,7 +82,7 @@ class AbyssalVeil : GameClass() {
         override val description = listOf(
             "<gray>바라보는 방향으로 잠식된 연기를 발사한다.",
             "<gray>적중한 모든 적에게 5의 피해를 입히고 4초간 {keyword:Abyss} 상태로 만든다.",
-            "<gray>대상이 {keyword:Erosion} 상태였다면 소모하여 대상을 3초간 {keyword:Silence> 상태로 만든다.",
+            "<gray>대상이 {keyword:Erosion} 상태였다면 소모하여 대상을 3초간 {keyword:Silence} 상태로 만든다.",
         )
         override val cooldown = 35
 

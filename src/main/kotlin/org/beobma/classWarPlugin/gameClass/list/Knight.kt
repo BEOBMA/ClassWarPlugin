@@ -32,7 +32,6 @@ class Knight : GameClass() {
 
     override var skills: List<Skill> = listOf(
         RedSkill(),
-        OrangeSkill()
     )
 
     override var passives: List<BasePassive> = listOf(
@@ -45,8 +44,7 @@ class Knight : GameClass() {
         override val description = listOf(
             "<gray>기본 공격 피격 직전 우클릭하면 해당 피해를 무효로 한다.",
             "<gray>패링에 성공하면 가로베기의 재사용 대기 시간이 초기화된다.",
-            "",
-            "<dark_gray>재사용 대기 시간: 24초"
+            "<gray>이 효과는 24초마다 한 번만 사용할 수 있다."
         )
         override val material = Material.IRON_SWORD
     }
@@ -69,39 +67,6 @@ class Knight : GameClass() {
                     status.applyStatus(duration = 3, powerSet = 5)
                 }
             }
-        }
-    }
-
-    private class OrangeSkill : Skill(), WhenHitHandler {
-        override val name = "<bold>패링"
-        override val description = listOf(
-            "<gray>기본 공격 피격 직전 사용 시 해당 피해를 {keyword:Invalidity}로 한다.",
-            "<gray>패링에 성공하면 가로베기의 재사용 대기 시간이 초기화된다."
-        )
-        override val cooldown = 30
-
-        override fun use() {
-            activateParry()
-        }
-
-        private var isParry = false
-
-        override fun whenAttackHit(event: DamageContext) {
-            if (isParry) {
-                isParry = false
-                event.isCancelled = true
-                CooldownManager.resetCooldown(player, this)
-            }
-        }
-
-        fun activateParry() {
-            isParry = true
-            val task = object : BukkitRunnable() {
-                override fun run() {
-                    isParry = false
-                }
-            }.runTaskLater(ClassWarPlugin.instance, 2L)
-            playerData.trackTask(task)
         }
     }
 

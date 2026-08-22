@@ -46,9 +46,6 @@ object SkillManager {
         return container.get(skillIdKey, PersistentDataType.STRING)
     }
 
-    fun isBoundSkillItem(item: ItemStack?): Boolean =
-        item?.itemMeta?.persistentDataContainer?.has(skillIdKey, PersistentDataType.STRING) == true
-
     private fun EntityData.isTraining(): Boolean = when (this) {
         is PlayerData -> PlayerTagManager.hasTag(player, "isTraining")
         else -> false

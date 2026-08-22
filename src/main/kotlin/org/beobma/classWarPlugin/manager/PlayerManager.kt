@@ -62,7 +62,6 @@ object PlayerManager {
             val item = markSkillItem(
                 ItemDescriptionManager.apply(
                     displayItem,
-                    skill.summary,
                     skill.description,
                     ItemDescriptionManager.cooldownLines(skill.cooldown),
                 ),
@@ -81,7 +80,7 @@ object PlayerManager {
                 itemMeta = itemMeta.apply {
                     displayName(miniMessage.deserialize(name))
                 }
-            }, skill.summary, skill.description)
+            }, skill.description)
 
             if (index + 9 > 26) return@forEachIndexed
             player.inventory.setItem(9 + index, item)

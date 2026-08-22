@@ -1,7 +1,6 @@
 package org.beobma.classWarPlugin.skill
 
 import org.beobma.classWarPlugin.game.Game
-import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.effect.EffectApiAccess
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.entity.player.PlayerStatus
@@ -17,8 +16,6 @@ abstract class Skill : EffectApiAccess {
     open val id: String
         get() = javaClass.name
     abstract val description: List<String>
-    open val summary: List<String>
-        get() = description.filter { it.isNotBlank() && !Keyword.isExplanation(it) }.take(2)
     abstract val cooldown: Int?
 
     open val isOnOffSKill: Boolean = false

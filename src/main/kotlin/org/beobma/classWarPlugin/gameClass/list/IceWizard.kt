@@ -9,7 +9,6 @@ import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
-import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
@@ -26,14 +25,12 @@ import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
-import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
 class IceWizard : GameClass(), GameStatusHandler {
     override val name = "<gray>블리자드"
     override val rank = Rank.A
     override val classItemMaterial = Material.BLUE_ICE
-    override val weapon: BaseWeapon = Weapon()
 
     override var skills: List<Skill> = listOf(
         RedSkill()
@@ -51,13 +48,6 @@ class IceWizard : GameClass(), GameStatusHandler {
     override fun onGameTimePasses() {
         val mana = playerData.getOrCreateStatus(playerData) { Mana() }
         mana.increasePower(10)
-    }
-
-
-    private class Weapon : BaseWeapon() {
-        override val name = "<gray>무기 이름"
-        override val description = listOf("<gray>무기 설명")
-        override val material = Material.WOODEN_SWORD
     }
 
     private class RedSkill : Skill() {

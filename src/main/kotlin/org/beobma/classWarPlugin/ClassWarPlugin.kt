@@ -11,7 +11,6 @@ import org.beobma.classWarPlugin.listener.OnInventoryClickEvent
 import org.beobma.classWarPlugin.listener.OnInventoryCloseEvent
 import org.beobma.classWarPlugin.listener.OnPlayerDeathEvent
 import org.beobma.classWarPlugin.listener.OnPlayerInteractEvent
-import org.beobma.classWarPlugin.listener.OnSkillItemProtectionEvent
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.listener.OnPlayerSkillUseEvent
 import org.beobma.classWarPlugin.listener.OnPlayerMoveEvent
@@ -66,7 +65,6 @@ class ClassWarPlugin : JavaPlugin() {
         server.pluginManager.registerEvents(OnEntityDamageEvent(), this)
         server.pluginManager.registerEvents(OnDamageIndicatorEvent(), this)
         server.pluginManager.registerEvents(OnPlayerInteractEvent(), this)
-        server.pluginManager.registerEvents(OnSkillItemProtectionEvent(), this)
         server.pluginManager.registerEvents(OnFoodChangeEvent(), this)
         server.pluginManager.registerEvents(OnPlayerSkillUseEvent(), this)
         server.pluginManager.registerEvents(OnPlayerMoveEvent(), this)

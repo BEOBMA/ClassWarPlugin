@@ -10,7 +10,7 @@ import org.beobma.classWarPlugin.skill.Passive as BasePassive
 class GunBlader : GameClass() {
     override val name = "<gray>총검사"
     override val rank = Rank.A
-    override val classItemMaterial = Material.WOODEN_SWORD
+    override val classItemMaterial = Material.IRON_SWORD
     override val weapon: BaseWeapon = Weapon()
 
     override var skills: List<Skill> = listOf(
@@ -51,9 +51,9 @@ class GunBlader : GameClass() {
     private class OrangeSkill : Skill() {
         override val name = "<bold>전탄 격발"
         override val description = listOf(
-            "<gray>16칸 내의 바라보는 적을 조준하고 장전된 탄환을 모두 소모하여 사격한다.",
-            "<gray>탄환마다 2의 피해를 입히고, 10초간 {keyword:Vibration}을 1 부여한다.",
-            "<gray>마지막 탄환이 적중하면 {keyword:VibrationExplosion}을 적용한다."
+            "<gray>16칸 내의 바라보는 적을 조준하고 장전된 {keyword:Bullet}을 모두 소모하여 사격한다.",
+            "<gray>{keyword:Bullet}마다 2의 피해를 입히고, 10초간 {keyword:Vibration}을 1 부여한다.",
+            "<gray>마지막 {keyword:Bullet}이 적중하면 {keyword:VibrationExplosion}을 적용한다."
         )
         override val cooldown = 55
 

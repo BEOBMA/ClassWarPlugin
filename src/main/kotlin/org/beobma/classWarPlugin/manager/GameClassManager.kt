@@ -15,6 +15,6 @@ object GameClassManager {
                 displayName(miniMessage.deserialize(UtilManager.applyKeywords(name)))
             }
         }
-        return ItemDescriptionManager.apply(itemStack, summary, description)
+        return ItemDescriptionManager.apply(itemStack, description)
     }
 }

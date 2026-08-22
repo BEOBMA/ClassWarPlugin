@@ -4,7 +4,6 @@ import net.kyori.adventure.text.minimessage.MiniMessage
 import org.beobma.classWarPlugin.game.GameSettings
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.manager.GameManager.confirmAssignedClass
-import org.beobma.classWarPlugin.manager.GameManager.gameClassList
 import org.beobma.classWarPlugin.manager.GameManager.refreshAssignedClass
 import org.beobma.classWarPlugin.manager.GameManager.startTraining
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
@@ -12,10 +11,10 @@ import org.beobma.classWarPlugin.manager.InventoryManager.openClassStatusInvento
 import org.beobma.classWarPlugin.manager.InventoryManager.openConfigInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openConfigCategoryInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.getOpenConfigCategory
+import org.beobma.classWarPlugin.manager.InventoryManager.getClassFromItem
 import org.beobma.classWarPlugin.manager.InventoryManager.openTrainingClassListInventory
 import org.beobma.classWarPlugin.manager.ConfigCategory
 import org.beobma.classWarPlugin.manager.PlayerTagManager
-import org.beobma.classWarPlugin.manager.ItemDescriptionManager
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.bukkit.Material
 import org.bukkit.entity.Player
@@ -59,7 +58,6 @@ class OnInventoryClickEvent : Listener {
                     14 -> ConfigCategory.SCATTER
                     16 -> ConfigCategory.BORDER
                     20 -> ConfigCategory.COMBAT
-                    24 -> ConfigCategory.TRAINING
                     else -> null
                 } ?: return
                 player.openConfigCategoryInventory(selectedCategory)
@@ -70,13 +68,6 @@ class OnInventoryClickEvent : Listener {
                 player.openConfigInventory()
                 return
             }
-            if (category == ConfigCategory.TRAINING && event.rawSlot == 13) {
-                GameSettings.setTrainingSpawn(player.location)
-                player.sendMessage(miniMessage.deserialize("<green><bold>[!] 현재 위치를 훈련장 시작 위치로 저장했습니다."))
-                player.openConfigCategoryInventory(category)
-                return
-            }
-
             val settingSlot = configSettingSlot(category, event.rawSlot) ?: return
             GameSettings.adjust(settingSlot, event.isLeftClick, if (event.isShiftClick) 10 else 1)
             player.openConfigCategoryInventory(category)
@@ -86,7 +77,6 @@ class OnInventoryClickEvent : Listener {
         if (PlayerTagManager.hasTag(player, "openAssignedClassInventory")) {
             event.isCancelled = true
             if (event.rawSlot !in 0 until inventory.topInventory.size) return
-            if (isDescriptionToggleClick(event) && ItemDescriptionManager.toggle(event.currentItem)) return
             val currentGame = game ?: return
             val playerData = currentGame.playerDatas.filterIsInstance<PlayerData>()
                 .find { it.player == player } ?: return
@@ -109,22 +99,13 @@ class OnInventoryClickEvent : Listener {
             event.isCancelled = true
             if (event.rawSlot !in 0 until inventory.topInventory.size) return
             val clickItem = event.currentItem ?: return
-            trainingClassListHandler(player, clickItem, inventory, isDescriptionToggleClick(event))
+            trainingClassListHandler(player, clickItem, inventory)
             return
         }
 
         if (PlayerTagManager.hasTag(player, "openClassStatusInventory")) {
             event.isCancelled = true
-            if (event.rawSlot in 0 until inventory.topInventory.size && isDescriptionToggleClick(event)) {
-                ItemDescriptionManager.toggle(event.currentItem)
-            }
             return
-        }
-
-        if (event.clickedInventory == player.inventory && isDescriptionToggleClick(event) &&
-            ItemDescriptionManager.toggle(event.currentItem)
-        ) {
-            event.isCancelled = true
         }
     }
 
@@ -148,8 +129,7 @@ class OnInventoryClickEvent : Listener {
             nullItem -> return
 
             else -> {
-                val gameClassList = gameClassList
-                val gameClass = gameClassList.find { it.classItemMaterial == clickItem.type } ?: return
+                val gameClass = getClassFromItem(clickItem) ?: return
                 val currentPage = getCurrentPageFromTitle(inventory.title().toString())
                 PlayerTagManager.removeIf(player) { it.startsWith("classListPage:") }
                 PlayerTagManager.addTag(player, "classListPage:$currentPage")
@@ -167,7 +147,6 @@ class OnInventoryClickEvent : Listener {
         player: Player,
         clickItem: ItemStack,
         inventory: InventoryView,
-        showDetails: Boolean,
     ) {
         val itemMeta = clickItem.itemMeta ?: return
         when (itemMeta) {
@@ -188,18 +167,7 @@ class OnInventoryClickEvent : Listener {
             nullItem -> return
 
             else -> {
-                val gameClass = gameClassList.find { it.classItemMaterial == clickItem.type } ?: return
-                if (showDetails) {
-                    val currentPage = getCurrentPageFromTitle(inventory.title().toString())
-                    PlayerTagManager.removeIf(player) { it.startsWith("classListPage:") }
-                    PlayerTagManager.addTag(player, "classListPage:$currentPage")
-                    PlayerTagManager.removeIf(player) { it.startsWith("classStatusReturn:") }
-                    PlayerTagManager.addTag(player, "classStatusReturn:training")
-                    PlayerTagManager.addTag(player, "openingClassStatusInventory")
-                    player.openClassStatusInventory(gameClass)
-                    PlayerTagManager.addTag(player, "openClassStatusInventory")
-                    return
-                }
+                val gameClass = getClassFromItem(clickItem) ?: return
                 player.closeInventory()
                 PlayerTagManager.removeTag(player, "openTrainingClassListInventory")
                 player.startTraining(gameClass)
@@ -212,9 +180,6 @@ class OnInventoryClickEvent : Listener {
         val matchResult = pageRegex.find(title) ?: return 0
         return matchResult.groupValues[1].toInt() - 1
     }
-
-    private fun isDescriptionToggleClick(event: InventoryClickEvent): Boolean =
-        event.isShiftClick && event.isRightClick
 
     private fun configSettingSlot(category: ConfigCategory, inventorySlot: Int): Int? = when (category) {
         ConfigCategory.GAME -> when (inventorySlot) {
@@ -253,7 +218,5 @@ class OnInventoryClickEvent : Listener {
             13 -> 24
             else -> null
         }
-
-        ConfigCategory.TRAINING -> null
     }
 }

@@ -12,7 +12,6 @@ class LightWizard : GameClass() {
     override val name = "<gray>프리즘"
     override val rank = Rank.A
     override val classItemMaterial = Material.LIGHT
-    override val weapon: BaseWeapon = Weapon()
 
     override var skills: List<Skill> = listOf(
         RedSkill(),
@@ -22,13 +21,6 @@ class LightWizard : GameClass() {
     override var passives: List<BasePassive> = listOf(
         Passive()
     )
-
-
-    private class Weapon : BaseWeapon() {
-        override val name = "<gray>지팡이 대용 검"
-        override val description = listOf("<gray>무기 설명")
-        override val material = Material.WOODEN_SWORD
-    }
 
     private class RedSkill : Skill() {
         override val name = "<bold>프리즘"
@@ -45,14 +37,6 @@ class LightWizard : GameClass() {
 
     private class OrangeSkill : Skill() {
         override val name = "<bold>분광"
-        override val summary: List<String> = listOf(
-            "<gray>바라보는 방향으로 빛의 광선을 발사한다.",
-            "<gray>광선에 직접 적중한 적은 8의 피해를 입는다.",
-            "",
-            "<gray>광선이 프리즘에 적중하면 해당 프리즘이 활성화된다.",
-            "<gray>활성화된 프리즘은 십자 방향으로 빛의 광선을 방출한다.",
-            "<gray>프리즘에서 방출된 빛의 광선에 적중한 적은 4의 피해를 입는다."
-        )
         override val description = listOf(
             "<gray>바라보는 방향으로 빛의 광선을 발사한다.",
             "<gray>광선에 직접 적중한 적은 8의 피해를 입는다.",

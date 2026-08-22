@@ -36,7 +36,7 @@ enum class Keyword(val string: String, val description: String? = null) {
         "{keyword:Untargetability}: 이미 적용된 효과를 제외하고, 효과의 대상이 되지 않는다."
     ),
     Abyss(
-        "<black><bold>심연</bold><gray>",
+        "<#9B59FF><bold>심연</bold><gray>",
         "{keyword:Abyss}: 시야가 극도로 좁아지고 치명타 공격을 할 수 없다."
     ),
     Silence(
@@ -71,7 +71,7 @@ enum class Keyword(val string: String, val description: String? = null) {
     ),
     Fix("<dark_gray><bold>고정</bold><gray>"),
     Frostbite(
-        "<dark_blue><bold>동상</bold><gray>",
+        "<aqua><bold>동상</bold><gray>",
         "{keyword:Frostbite}: 5초간 <gold><bold>이동 속도가 (수치 x 5)% 만큼 감소</bold><gray>한다. 수치가 10 이상이면 {keyword:Frostbite}을 제거하고 {keyword:Freezing} 상태가 된다."
     ),
     Freezing(
@@ -93,10 +93,32 @@ enum class Keyword(val string: String, val description: String? = null) {
 
     companion object {
         private val explanationPrefix = "^\\s*\\{keyword:[A-Za-z]+}:".toRegex()
+        private val keywordToken = "\\{keyword:([A-Za-z]+)}".toRegex()
+        private val keywordsByName by lazy { entries.associateBy { it.name } }
         private val registeredExplanations by lazy { entries.mapNotNull { it.description }.toSet() }
 
         /** 짧은 키워드 사용 문장이 아니라, 키워드 사전에서 덧붙인 해설 줄인지 판별한다. */
         fun isExplanation(line: String): Boolean =
             line in registeredExplanations || explanationPrefix.containsMatchIn(line)
+
+        /** 설명 본문과 키워드 해설에서 참조한 모든 키워드의 해설을 등장 순서대로 반환한다. */
+        fun explanationsFor(lines: List<String>): List<String> {
+            val keywords = linkedSetOf<Keyword>()
+            val pending = ArrayDeque<Keyword>()
+
+            fun collect(line: String) {
+                keywordToken.findAll(line)
+                    .mapNotNull { match -> keywordsByName[match.groupValues[1]] }
+                    .filter(keywords::add)
+                    .forEach(pending::addLast)
+            }
+
+            lines.forEach(::collect)
+            while (pending.isNotEmpty()) {
+                pending.removeFirst().description?.let(::collect)
+            }
+
+            return keywords.mapNotNull { it.description }
+        }
     }
 }

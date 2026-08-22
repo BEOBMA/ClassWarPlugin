@@ -2,7 +2,6 @@ package org.beobma.classWarPlugin.game
 
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.gameClass.Rank
-import org.bukkit.Location
 import org.bukkit.configuration.file.FileConfiguration
 
 private val defaultRankWeights = mapOf(
@@ -21,12 +20,6 @@ data class GameConfiguration(
     val rankWeights: Map<Rank, Int> = defaultRankWeights,
     val centerX: Double = 704.5,
     val centerZ: Double = -615.5,
-    val trainingWorld: String = "world",
-    val trainingX: Double = 33.5,
-    val trainingY: Double = -60.0,
-    val trainingZ: Double = -27.5,
-    val trainingYaw: Float = -135.0F,
-    val trainingPitch: Float = 0.0F,
     val scatterMinRadius: Double = 45.0,
     val scatterMaxRadius: Double = 140.0,
     val minimumPlayerDistance: Double = 24.0,
@@ -50,12 +43,6 @@ object GameSettings {
             },
             centerX = config.getDouble("map.center-x", 704.5),
             centerZ = config.getDouble("map.center-z", -615.5),
-            trainingWorld = config.getString("training.spawn.world", "world") ?: "world",
-            trainingX = config.getDouble("training.spawn.x", 33.5),
-            trainingY = config.getDouble("training.spawn.y", -60.0),
-            trainingZ = config.getDouble("training.spawn.z", -27.5),
-            trainingYaw = config.getDouble("training.spawn.yaw", -135.0).toFloat(),
-            trainingPitch = config.getDouble("training.spawn.pitch", 0.0).toFloat(),
             scatterMinRadius = config.getDouble("scatter.minimum-radius", 45.0).coerceAtLeast(0.0),
             scatterMaxRadius = config.getDouble("scatter.maximum-radius", 140.0).coerceAtLeast(5.0),
             minimumPlayerDistance = config.getDouble("scatter.minimum-player-distance", 24.0).coerceAtLeast(2.0),
@@ -65,6 +52,11 @@ object GameSettings {
             borderShrinkSeconds = config.getInt("border.shrink-seconds", 600).coerceAtLeast(1),
             borderMinimumSize = config.getDouble("border.minimum-size", 40.0).coerceAtLeast(10.0),
         ).normalized()
+
+        if (config.contains("training")) {
+            config.set("training", null)
+            ClassWarPlugin.instance.saveConfig()
+        }
     }
 
     fun snapshot(): GameConfiguration = current.copy()
@@ -91,18 +83,6 @@ object GameSettings {
             43 -> current.withRankWeight(Rank.C, direction * multiplier)
             else -> current
         }.normalized()
-        save()
-    }
-
-    fun setTrainingSpawn(location: Location) {
-        current = current.copy(
-            trainingWorld = location.world.name,
-            trainingX = location.x,
-            trainingY = location.y,
-            trainingZ = location.z,
-            trainingYaw = location.yaw,
-            trainingPitch = location.pitch,
-        )
         save()
     }
 
@@ -142,12 +122,6 @@ object GameSettings {
         }
         plugin.config.set("map.center-x", current.centerX)
         plugin.config.set("map.center-z", current.centerZ)
-        plugin.config.set("training.spawn.world", current.trainingWorld)
-        plugin.config.set("training.spawn.x", current.trainingX)
-        plugin.config.set("training.spawn.y", current.trainingY)
-        plugin.config.set("training.spawn.z", current.trainingZ)
-        plugin.config.set("training.spawn.yaw", current.trainingYaw)
-        plugin.config.set("training.spawn.pitch", current.trainingPitch)
         plugin.config.set("scatter.minimum-radius", current.scatterMinRadius)
         plugin.config.set("scatter.maximum-radius", current.scatterMaxRadius)
         plugin.config.set("scatter.minimum-player-distance", current.minimumPlayerDistance)

@@ -86,7 +86,7 @@ class Command : Listener, CommandExecutor, TabCompleter {
                     sender.openClassListInventory(0)
                 }
 
-                "training" -> {
+                "training", "tranning" -> {
                     if (isGaming()) {
                         sender.sendWaringMessage("게임 진행 중 사용할 수 없는 명령어입니다.")
                         return false

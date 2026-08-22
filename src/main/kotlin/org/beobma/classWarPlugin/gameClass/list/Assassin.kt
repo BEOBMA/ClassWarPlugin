@@ -53,11 +53,12 @@ class Assassin : GameClass() {
         override val name = "<bold>단검 투척"
         override val description = listOf(
             "<gray>바라보는 방향으로 단검을 투척한다.",
+            "",
             "<gray>단검이 적에게 적중하면 5의 피해를 입히고 해당 적의 뒤로 즉시 이동한다.",
             "<gray>단검이 블록에 적중하면 {keyword:Stealth} 상태가 되고, 해당 블록으로 날아가 벽에 붙는다.",
             "<gray>벽에 붙은 상태에서 행동하면 벽에서 떨어진다.",
             "",
-            "<dark_gray>이 스킬을 사용한 후, 최초 1회의 낙하 피해는 무효화되며, 벽에서 떨어진 후 6초간 {keyword:Stealth} 상태가 유지된다.",
+            "<dark_gray>이 스킬을 사용한 후, 최초 1회의 낙하 피해는 무효화되며, 벽에서 떨어진 후 6초간 {keyword:Stealth}<dark_gray> 상태가 유지된다.",
         )
         override val cooldown = 30
 
