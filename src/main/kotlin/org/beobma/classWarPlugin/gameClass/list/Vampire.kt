@@ -78,7 +78,7 @@ class Vampire : GameClass() {
     private var savedAttackable = true
     private var savedSkillTargeting = true
 
-    private inner class RedSkill : Skill() {
+    private inner class RedSkill : Skill(), org.beobma.classWarPlugin.skill.MovementSkill {
         override val name = "<bold>박쥐화"
         override val description = listOf(
             "<gray>자신은 박쥐로 변신하여 날아다닐 수 있게 된다.",

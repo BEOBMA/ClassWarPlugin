@@ -125,7 +125,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         target.damage(amount, DamageType.Normal, playerData, damagePath = DamagePath.SKILL)
     }
 
-    private inner class ScimitarSkill : Skill() {
+    private inner class ScimitarSkill : Skill(), org.beobma.classWarPlugin.skill.MovementSkill {
         override val name = "<bold>시미터"
         override val description = listOf(
             "<gray>바라보는 방향으로 돌진하여 모든 적을 베어 2의 피해를 입힌다.", "",
@@ -201,7 +201,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         }
     }
 
-    private inner class ClawSkill : Skill() {
+    private inner class ClawSkill : Skill(), org.beobma.classWarPlugin.skill.MovementSkill {
         override val name = "<bold>클로"
         override val description = listOf(
             "<gray>공중에서만 사용할 수 있다.", "",

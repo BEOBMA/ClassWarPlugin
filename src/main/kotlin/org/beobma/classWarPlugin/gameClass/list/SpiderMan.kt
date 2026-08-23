@@ -61,7 +61,7 @@ class SpiderMan : GameClass(), GameStatusHandler, MovementInputHandler, Environm
         player.fallDistance = 0f
     }
 
-    private class RedSkill : Skill() {
+    private class RedSkill : Skill(), org.beobma.classWarPlugin.skill.MovementSkill {
         override val name = "<bold>거미줄"
         override val description = listOf(
             "<gray>최대 5회 충전되는 충전형 스킬.",

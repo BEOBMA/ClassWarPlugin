@@ -70,7 +70,7 @@ class Duelist : GameClass() {
         }
     }
 
-    private inner class RedSkill : Skill() {
+    private inner class RedSkill : Skill(), org.beobma.classWarPlugin.skill.MovementSkill {
         override val name = "<bold>팡트"
         override val description = listOf(
             "<gray>바라보는 방향으로 짧게 도약한다.",

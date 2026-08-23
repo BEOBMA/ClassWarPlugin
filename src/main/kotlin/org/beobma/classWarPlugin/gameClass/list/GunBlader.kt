@@ -90,7 +90,7 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
         override val material = Material.IRON_SWORD
     }
 
-    private inner class RedSkill : Skill() {
+    private inner class RedSkill : Skill(), org.beobma.classWarPlugin.skill.MovementSkill {
         override val name = "<bold>돌파"
         override val description = listOf(
             "<gray>바라보는 방향으로 3칸 돌진한다.",

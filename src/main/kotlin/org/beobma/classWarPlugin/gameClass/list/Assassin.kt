@@ -223,7 +223,7 @@ class Assassin : GameClass(), EnvironmentalDamageHandler, StatusPlayerMoveHandle
         override val material = Material.IRON_SWORD
     }
 
-    private inner class RedSkill : Skill() {
+    private inner class RedSkill : Skill(), org.beobma.classWarPlugin.skill.MovementSkill {
         override val name = "<bold>단검 투척"
         override val description = listOf(
             "<gray>바라보는 방향으로 단검을 투척한다.",

@@ -11,6 +11,7 @@ import org.beobma.classWarPlugin.game.GamePhase
 import org.beobma.classWarPlugin.game.PlayerSnapshot
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
+import org.beobma.classWarPlugin.gameClass.handler.GameEndHandler
 import org.beobma.classWarPlugin.gameClass.list.*
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.manager.InventoryManager.openAssignedClassInventory
@@ -34,6 +35,7 @@ import org.bukkit.block.data.type.TrapDoor
 import org.bukkit.entity.BlockDisplay
 import org.bukkit.entity.Display
 import org.bukkit.entity.Player
+import org.bukkit.potion.PotionEffectType
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.Transformation
@@ -74,6 +76,9 @@ object GameManager {
         ::Mathematician, ::PortalGun, ::Tour, ::Pacifist, ::Roulette,
         ::AreaDevelopment, ::Parasite, ::Chubby, ::Vampire,
         ::Contractor, ::Levatain, ::WeaponMaster, ::DeathNote, ::Swordplay, ::Referee,
+        ::Anchor, ::Avenger, ::Bull, ::ConArtist, ::Conflict, ::Damocles,
+        ::DevastatingBlow, ::Error, ::Exodia, ::Fear, ::Ghost, ::Grass,
+        ::Hero, ::HighJumper, ::Hikikomori, ::Phantom, ::Refugees, ::Stalker, ::Tonic,
     )
 
     private val miniMessageTagPattern = Regex("<[^>]+>")
@@ -901,6 +906,7 @@ object GameManager {
             playerData.entityStatus.canSkillUse = false
             playerData.entityStatus.isAttackable = false
             playerData.entityStatus.isSkillTargeting = false
+            playerData.player.clearGameGlowing()
             playerData.player.showTitle(
                 Title.title(
                     miniMessage.deserialize("<gold><bold>${winner?.player?.name ?: "생존자 없음"}"),
@@ -920,6 +926,11 @@ object GameManager {
         phase = GamePhase.FINISHED
         if (wasRunning) broadcastClassSummary()
         val participantIds = activePlayers().map { it.uniqueId }
+        activePlayers().forEach { data ->
+            val assigned = data.gameClass ?: return@forEach
+            assigned.passives.filterIsInstance<GameEndHandler>().forEach { it.onGameEnd() }
+            (assigned as? GameEndHandler)?.onGameEnd()
+        }
         GraveRobber.clearDeathRecords(this)
         Contractor.clearSessions(participantIds)
         DeathNote.clearSessions(participantIds)
@@ -952,6 +963,7 @@ object GameManager {
             playerData.bukkitTasks.toList().forEach { it.cancel() }
             playerData.bukkitTasks.clear()
             val player = playerData.player
+            player.clearGameGlowing()
             val snapshot = playerSnapshots.remove(player.uniqueId)
             if (player.isOnline) {
                 if (snapshot != null) restorePlayerAfterGame(player, snapshot)
@@ -1019,6 +1031,11 @@ object GameManager {
 
     fun Player.stopTraining() {
         val trainingGame = trainingInstance.find { it.activePlayers().any { data -> data.player == this } } ?: return
+        trainingGame.activePlayers().forEach { data ->
+            val assigned = data.gameClass ?: return@forEach
+            assigned.passives.filterIsInstance<GameEndHandler>().forEach { it.onGameEnd() }
+            (assigned as? GameEndHandler)?.onGameEnd()
+        }
         Contractor.clearSessions(listOf(uniqueId))
         DeathNote.clearSessions(listOf(uniqueId))
         Hacker.clearSessions(listOf(uniqueId))
@@ -1041,6 +1058,7 @@ object GameManager {
         DamageManager.clearAttributions(trainingGame.playerDatas.map { it.entity.uniqueId })
         CooldownManager.clear(listOf(uniqueId))
         DamageIndicatorManager.clearForPlayers(listOf(uniqueId))
+        clearGameGlowing()
         trainingGame.playerSnapshots.remove(uniqueId)?.let { restorePlayerAfterGame(this, it) }
         trainingInstance.remove(trainingGame)
     }
@@ -1057,6 +1075,10 @@ object GameManager {
                 if (playerData.player.isOnline) {
                     playerData.player.stopTraining()
                 } else {
+                    playerData.gameClass?.let { assigned ->
+                        assigned.passives.filterIsInstance<GameEndHandler>().forEach { it.onGameEnd() }
+                        (assigned as? GameEndHandler)?.onGameEnd()
+                    }
                     StealthVisibilityManager.reveal(playerData)
                     TemporaryDisplayManager.clear(playerData.player.world, playerData.uniqueId)
                     unregisterAllTickingStatuses(playerData.statusAbnormalitys)
@@ -1146,6 +1168,12 @@ object GameManager {
         val maximumHealth = player.getAttribute(Attribute.MAX_HEALTH)?.value ?: player.getPlayerMaxHealth()
         player.health = snapshot.health.coerceIn(0.01, maximumHealth)
         player.teleport(snapshot.location)
+        player.clearGameGlowing()
+    }
+
+    private fun Player.clearGameGlowing() {
+        isGlowing = false
+        removePotionEffect(PotionEffectType.GLOWING)
     }
 
     private fun Game.track(task: BukkitTask) {

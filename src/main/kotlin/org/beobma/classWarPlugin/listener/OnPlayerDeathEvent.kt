@@ -20,6 +20,7 @@ import org.beobma.classWarPlugin.gameClass.list.Contractor
 import org.beobma.classWarPlugin.gameClass.list.DeathNote
 import org.beobma.classWarPlugin.gameClass.list.Levatain
 import org.beobma.classWarPlugin.gameClass.list.Referee
+import org.beobma.classWarPlugin.gameClass.handler.PlayerDeathHandler
 
 class OnPlayerDeathEvent : Listener{
     private val miniMessage = MiniMessage.miniMessage()
@@ -30,6 +31,9 @@ class OnPlayerDeathEvent : Listener{
         val currentGame = game ?: return
         val playerData = currentGame.playerDatas.filterIsInstance<PlayerData>()
             .find { it.player.uniqueId == player.uniqueId } ?: return
+        val assignedClass = playerData.gameClass
+        assignedClass?.passives?.filterIsInstance<PlayerDeathHandler>()?.forEach { it.onPlayerDeath() }
+        (assignedClass as? PlayerDeathHandler)?.onPlayerDeath()
         val attribution = DamageManager.consumeAttribution(player)
         val killerName = attribution?.takeIf { it.attackerId != player.uniqueId }?.attackerName
             ?: player.killer?.name

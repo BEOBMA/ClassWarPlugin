@@ -91,7 +91,7 @@ class TimeManiqulator : GameClass() {
         }
     }
 
-    private inner class OrangeSkill : Skill() {
+    private inner class OrangeSkill : Skill(), org.beobma.classWarPlugin.skill.MovementSkill {
         override val name = "<bold>회귀"
         override val description = listOf(
             "<gray>저장된 {keyword:Checkpoint}가 있을 때에만 사용할 수 있다.",
