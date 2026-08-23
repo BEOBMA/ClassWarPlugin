@@ -16,6 +16,7 @@ import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.beobma.classWarPlugin.status.list.Snare
 import org.bukkit.Color
+import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
@@ -108,6 +109,9 @@ class Hacker : GameClass(), GameStatusHandler {
         private fun issuePrompt(stage: Int, timeLimit: Int) {
             val expected = generateHackCode(stage)
             val token = UUID.randomUUID()
+            val expiresAtTick = Bukkit.getCurrentTick().toLong() + timeLimit * 20L
+            val progressStatus = playerData.getOrCreateStatus(playerData) { HackerProgressStatus() }
+            progressStatus.start(stage, expiresAtTick)
             val timeout = playerData.trackTask(object : BukkitRunnable() {
                 override fun run() {
                     val current = activeSessions[player.uniqueId] ?: return
@@ -115,8 +119,13 @@ class Hacker : GameClass(), GameStatusHandler {
                     failSession("입력 제한시간을 초과했습니다.")
                 }
             }.runTaskLater(ClassWarPlugin.instance, timeLimit * 20L))
-            activeSessions.put(player.uniqueId, HackSession(this, stage, expected, token, timeout))
-                ?.timeoutTask?.cancel()
+            activeSessions.put(
+                player.uniqueId,
+                HackSession(this, stage, expected, token, timeout, progressStatus),
+            )?.let { previous ->
+                previous.timeoutTask.cancel()
+                if (previous.progressStatus !== progressStatus) previous.progressStatus.remove()
+            }
             player.sendMiniMessage(
                 "<aqua><bold>[해킹 코드]</bold> <dark_gray>(${expected.length}자)</dark_gray> <white>$expected"
             )
@@ -168,6 +177,7 @@ class Hacker : GameClass(), GameStatusHandler {
             }
             session.timeoutTask.cancel()
             activeSessions.remove(player.uniqueId)
+            session.progressStatus.remove()
             completeHack(session.stage)
         }
 
@@ -257,7 +267,10 @@ class Hacker : GameClass(), GameStatusHandler {
         }
 
         private fun failSession(reason: String) {
-            activeSessions.remove(player.uniqueId)?.timeoutTask?.cancel()
+            activeSessions.remove(player.uniqueId)?.let { session ->
+                session.timeoutTask.cancel()
+                session.progressStatus.remove()
+            }
             player.sendMiniMessage("<red><bold>[해킹 실패]</bold> <gray>$reason")
             particles.spawn(player, Particle.SMOKE, count = 16, spread = 0.35, speed = 0.04)
             sounds.playTo(player, Sound.BLOCK_NOTE_BLOCK_BASS, volume = 0.9f, pitch = 0.55f)
@@ -271,6 +284,7 @@ class Hacker : GameClass(), GameStatusHandler {
             val expected: String,
             val token: UUID,
             val timeoutTask: BukkitTask,
+            val progressStatus: HackerProgressStatus,
         )
 
         private val activeSessions: ConcurrentHashMap<UUID, HackSession> = ConcurrentHashMap()
@@ -283,8 +297,38 @@ class Hacker : GameClass(), GameStatusHandler {
         }
 
         fun clearSessions(playerIds: Collection<UUID>) {
-            playerIds.forEach { playerId -> activeSessions.remove(playerId)?.timeoutTask?.cancel() }
+            playerIds.forEach { playerId ->
+                activeSessions.remove(playerId)?.let { session ->
+                    session.timeoutTask.cancel()
+                    session.progressStatus.remove()
+                }
+            }
         }
+    }
+}
+
+private class HackerProgressStatus : StatusAbnormality() {
+    override val name = "<aqua><bold>해킹 진행</bold><gray>"
+    override val description = listOf("<gray>현재 진행 중인 해킹의 단계와 코드 입력 제한시간이다.")
+    override val canRemove = true
+    override val isClassMechanic = true
+    override var power = 1
+    override var maxPower: Int? = MAX_HACK_STAGE
+    override val showPower = false
+    override val showMaxPower = false
+    override var duration: Int? = null
+
+    private var expiresAtTick: Long = 0L
+
+    fun start(stage: Int, expiresAtTick: Long) {
+        this.expiresAtTick = expiresAtTick
+        updatePower(stage.coerceIn(1, MAX_HACK_STAGE))
+    }
+
+    override fun actionBarText(): String {
+        val remainingTicks = (expiresAtTick - Bukkit.getCurrentTick().toLong()).coerceAtLeast(0L)
+        val remainingSeconds = (remainingTicks + 19L) / 20L
+        return "<aqua><bold>해킹 $power/$MAX_HACK_STAGE</bold></aqua>: <yellow>${remainingSeconds}초</yellow>"
     }
 }
 

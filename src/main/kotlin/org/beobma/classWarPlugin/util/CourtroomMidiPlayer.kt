@@ -23,8 +23,9 @@ internal class CourtroomMidiPlayer private constructor(
     fun tick(listeners: Collection<Player>) {
         val notes = notesByTick[tick++].orEmpty()
         if (notes.isEmpty()) return
-        notes.take(MAX_NOTES_PER_TICK).forEach { note ->
-            listeners.filter { it.isOnline }.forEach { listener ->
+        listeners.forEach { listener ->
+            if (!listener.isOnline) return@forEach
+            notes.forEach { note ->
                 listener.playSound(
                     listener.location,
                     note.sound,
@@ -37,13 +38,13 @@ internal class CourtroomMidiPlayer private constructor(
     }
 
     private data class Note(val sound: Sound, val volume: Float, val pitch: Float)
+    private data class NoteKey(val sound: Sound, val pitch: Float)
     private data class OrderedEvent(val event: MidiEvent, val track: Int, val index: Int)
 
     companion object {
         private const val RESOURCE = "/music/27_Dating_Fight.mid.gz.b64"
         private const val MICROS_PER_SERVER_TICK = 50_000.0
         private const val DEFAULT_TEMPO = 500_000L
-        private const val MAX_NOTES_PER_TICK = 28
         private const val BACKGROUND_VOLUME_MULTIPLIER = 0.45F
         private val fullVolumePrograms = setOf(
             1,   // Bright Acoustic Piano (GM 2)
@@ -54,6 +55,11 @@ internal class CourtroomMidiPlayer private constructor(
         private val cachedNotes: Map<Int, List<Note>> by lazy(::loadNotes)
 
         fun create(): CourtroomMidiPlayer = CourtroomMidiPlayer(cachedNotes)
+
+        /** Parses and compacts the MIDI during plugin startup instead of the first trial tick. */
+        fun preload() {
+            cachedNotes.size
+        }
 
         private fun loadNotes(): Map<Int, List<Note>> {
             return runCatching {
@@ -107,8 +113,18 @@ internal class CourtroomMidiPlayer private constructor(
                         }
                     }
                 }
-                result
+                result.mapValues { (_, notes) -> compactSimultaneousNotes(notes) }
             }.getOrElse { emptyMap() }
+        }
+
+        private fun compactSimultaneousNotes(notes: List<Note>): List<Note> {
+            val compacted = LinkedHashMap<NoteKey, Note>()
+            notes.forEach { note ->
+                val key = NoteKey(note.sound, note.pitch)
+                val current = compacted[key]
+                if (current == null || note.volume > current.volume) compacted[key] = note
+            }
+            return compacted.values.toList()
         }
 
         private fun eventPriority(event: MidiEvent): Int = when (val message = event.message) {
