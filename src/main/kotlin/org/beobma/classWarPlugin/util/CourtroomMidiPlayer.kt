@@ -44,6 +44,13 @@ internal class CourtroomMidiPlayer private constructor(
         private const val MICROS_PER_SERVER_TICK = 50_000.0
         private const val DEFAULT_TEMPO = 500_000L
         private const val MAX_NOTES_PER_TICK = 28
+        private const val BACKGROUND_VOLUME_MULTIPLIER = 0.45F
+        private val fullVolumePrograms = setOf(
+            1,   // Bright Acoustic Piano (GM 2)
+            55,  // Orchestra Hit (GM 56)
+            80,  // Square Lead (GM 81) - both tracks
+            112, // Tinkle Bell (GM 113)
+        )
         private val cachedNotes: Map<Int, List<Note>> by lazy(::loadNotes)
 
         fun create(): CourtroomMidiPlayer = CourtroomMidiPlayer(cachedNotes)
@@ -93,7 +100,7 @@ internal class CourtroomMidiPlayer private constructor(
                                 val serverTick = (elapsedMicros / MICROS_PER_SERVER_TICK).roundToInt()
                                 result.getOrPut(serverTick) { mutableListOf() } += Note(
                                     soundFor(message.channel, programs[message.channel], message.data1),
-                                    (0.18F + message.data2 / 127.0F * 0.42F).coerceAtMost(0.6F),
+                                    noteVolume(message.channel, programs[message.channel], message.data2),
                                     notePitch(message.data1),
                                 )
                             }
@@ -126,6 +133,12 @@ internal class CourtroomMidiPlayer private constructor(
                 in 8..15 -> Sound.BLOCK_NOTE_BLOCK_BELL
                 else -> Sound.BLOCK_NOTE_BLOCK_HARP
             }
+        }
+
+        private fun noteVolume(channel: Int, program: Int, velocity: Int): Float {
+            val currentVolume = (0.18F + velocity / 127.0F * 0.42F).coerceAtMost(0.6F)
+            val keepCurrentVolume = channel != 9 && program in fullVolumePrograms
+            return if (keepCurrentVolume) currentVolume else currentVolume * BACKGROUND_VOLUME_MULTIPLIER
         }
 
         private fun notePitch(midiNote: Int): Float {
