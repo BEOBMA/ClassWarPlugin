@@ -19,6 +19,7 @@ import org.beobma.classWarPlugin.gameClass.list.PortalGun
 import org.beobma.classWarPlugin.gameClass.list.Contractor
 import org.beobma.classWarPlugin.gameClass.list.DeathNote
 import org.beobma.classWarPlugin.gameClass.list.Levatain
+import org.beobma.classWarPlugin.gameClass.list.Referee
 
 class OnPlayerDeathEvent : Listener{
     private val miniMessage = MiniMessage.miniMessage()
@@ -48,6 +49,7 @@ class OnPlayerDeathEvent : Listener{
         Mathematician.clearSessions(listOf(player.uniqueId))
         Vampire.clearForms(listOf(player.uniqueId))
         val killerId = attribution?.attackerId ?: player.killer?.uniqueId
+        Referee.recordMurder(currentGame, killerId, playerData)
         currentGame.recordPlayerKill(player.uniqueId, killerId)
         AreaDevelopment.handlePlayerDeath(playerData, killerId)
         Levatain.handleKill(killerId)

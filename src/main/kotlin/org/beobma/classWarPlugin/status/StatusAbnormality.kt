@@ -175,6 +175,7 @@ abstract class StatusAbnormality {
     }
 
     private fun tickStatus() {
+        if (game.isPaused) return
         if (!shouldTick()) {
             stopDurationTicking()
             return

@@ -2,6 +2,7 @@ package org.beobma.classWarPlugin.listener
 
 import org.beobma.classWarPlugin.event.PlayerSkillUseEvent
 import org.beobma.classWarPlugin.gameClass.handler.OnSkillUseHandler
+import org.beobma.classWarPlugin.gameClass.list.Referee
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 
@@ -35,5 +36,6 @@ class OnPlayerSkillUseEvent : Listener {
             status.onSkillUse(event)
             if (event.isCancelled) return
         }
+        Referee.recordSkillUse(playerData)
     }
 }

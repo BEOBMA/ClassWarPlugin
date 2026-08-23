@@ -54,6 +54,17 @@ object CooldownManager {
         refreshMaterialCooldown(player, entry.material)
     }
 
+    fun multiplyCooldown(player: Player, skill: Skill, multiplier: Double) {
+        if (multiplier <= 0.0) return
+        val key = CooldownKey(player.uniqueId, skill.id)
+        val entry = cooldowns[key] ?: return
+        val now = entry.pausedAtNanos ?: System.nanoTime()
+        val remainingNanos = (entry.expiresAtNanos - now).coerceAtLeast(0L)
+        val multiplied = (remainingNanos.toDouble() * multiplier).toLong()
+        cooldowns[key] = entry.copy(expiresAtNanos = now + multiplied)
+        refreshMaterialCooldown(player, entry.material)
+    }
+
     fun pauseCooldown(player: Player, skill: Skill) {
         val key = CooldownKey(player.uniqueId, skill.id)
         val entry = cooldowns[key] ?: return

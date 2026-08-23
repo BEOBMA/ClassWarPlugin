@@ -29,6 +29,7 @@ data class Game(
     var originalBorderCenter: Location? = null,
     var originalBorderSize: Double? = null,
 ) {
+    var isPaused: Boolean = false
     var roundCenterX: Double = settings.centerX
     var roundCenterZ: Double = settings.centerZ
     var battleMapView: MapView? = null

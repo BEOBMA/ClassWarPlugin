@@ -108,6 +108,10 @@ enum class Keyword(val string: String, val description: String? = null) {
     TimePhase(
         "<yellow><bold>시간대</bold><gray>",
         "{keyword:TimePhase}: 시계공의 현재 시간대이며 남은 시간이 끝나면 다음 시간대로 변경된다."
+    ),
+    Invincibility(
+        "<yellow><bold>무적</bold><gray>",
+        "{keyword:Invincibility}: 어떠한 방법으로도 피해를 받지 않는다."
     );
 
     companion object {

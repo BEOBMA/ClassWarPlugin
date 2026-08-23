@@ -45,13 +45,15 @@ object InventoryManager {
     }
 
     fun Player.openClassListInventory(page: Int) {
-        val inventory = buildClassListInventory(page, gameClassList) ?: return
+        val visibleClasses = gameClassList.filter { isOp || it.rank != Rank.SPECIAL }
+        val inventory = buildClassListInventory(page, visibleClasses) ?: return
         PlayerTagManager.addTag(this, "openClassListInventory")
         openInventory(inventory)
     }
 
     fun Player.openTrainingClassListInventory(page: Int) {
-        val inventory = buildClassListInventory(page, gameClassList) ?: return
+        val visibleClasses = gameClassList.filter { isOp || it.rank != Rank.SPECIAL }
+        val inventory = buildClassListInventory(page, visibleClasses) ?: return
         PlayerTagManager.addTag(this, "openTrainingClassListInventory")
         openInventory(inventory)
     }

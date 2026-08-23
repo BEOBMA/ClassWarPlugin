@@ -9,6 +9,7 @@ import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.game.GamePhase
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
+import org.beobma.classWarPlugin.gameClass.list.Referee
 import org.beobma.classWarPlugin.manager.GameClassManager.toItemStack
 import org.beobma.classWarPlugin.manager.SkillManager.markSkillItem
 import org.beobma.classWarPlugin.manager.InventoryManager.skillDyeMaterial
@@ -152,6 +153,7 @@ object PlayerManager {
         }
 
         DamageManager.recordSuccessfulDamage(context)
+        Referee.recordDamage(context, damageResult.finalDamage)
         val newHealth = (player.health - damageResult.finalDamage).coerceAtLeast(0.0)
         player.health = newHealth
     }

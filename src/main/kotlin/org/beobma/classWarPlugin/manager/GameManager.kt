@@ -63,7 +63,7 @@ object GameManager {
         ::GraveRobber, ::Hacker, ::SpiderMan, ::Trapper,
         ::Mathematician, ::PortalGun, ::Tour, ::Pacifist, ::Roulette,
         ::AreaDevelopment, ::Parasite, ::Chubby, ::Vampire,
-        ::Contractor, ::Levatain, ::WeaponMaster, ::DeathNote, ::Swordplay,
+        ::Contractor, ::Levatain, ::WeaponMaster, ::DeathNote, ::Swordplay, ::Referee,
     )
 
     private val miniMessageTagPattern = Regex("<[^>]+>")
@@ -294,6 +294,7 @@ object GameManager {
         val task = object : BukkitRunnable() {
             override fun run() {
                 if (phase != GamePhase.RUNNING) return
+                if (isPaused) return
                 contenders().filter {
                     !disconnectedPlayers.contains(it.player.uniqueId) &&
                         battleInitializedPlayers.contains(it.player.uniqueId)
@@ -335,11 +336,24 @@ object GameManager {
         var shrinkStartZ = roundCenterZ
         var shrinkTargetX = roundCenterX
         var shrinkTargetZ = roundCenterZ
+        var borderPaused = false
         val task = object : BukkitRunnable() {
             override fun run() {
                 if (phase != GamePhase.RUNNING) {
                     cancel()
                     return
+                }
+
+                if (isPaused) {
+                    if (!borderPaused && shrinking) border.changeSize(border.size, 0L)
+                    borderPaused = true
+                    return
+                }
+                if (borderPaused) {
+                    borderPaused = false
+                    if (shrinking) {
+                        border.changeSize(targetBorderSize, (shrinkTicks - elapsedTicks).coerceAtLeast(0L))
+                    }
                 }
 
                 if (!shrinking && elapsedTicks >= delayTicks) {
@@ -770,6 +784,7 @@ object GameManager {
         DeathNote.clearSessions(participantIds)
         Hacker.clearSessions(participantIds)
         Mathematician.clearSessions(participantIds)
+        Referee.clearSessions(participantIds)
         Vampire.clearForms(participantIds)
         PortalGun.clearForPlayers(participantIds)
         AreaDevelopment.clearDomains(participantIds)
@@ -824,6 +839,7 @@ object GameManager {
         roundCenterZ = settings.centerZ
         originalBorderCenter = null
         originalBorderSize = null
+        isPaused = false
         if (game === this) game = null
     }
 
@@ -865,6 +881,7 @@ object GameManager {
         DeathNote.clearSessions(listOf(uniqueId))
         Hacker.clearSessions(listOf(uniqueId))
         Mathematician.clearSessions(listOf(uniqueId))
+        Referee.clearSessions(listOf(uniqueId))
         Vampire.clearForms(listOf(uniqueId))
         PortalGun.clearForPlayers(listOf(uniqueId))
         AreaDevelopment.clearDomains(listOf(uniqueId))

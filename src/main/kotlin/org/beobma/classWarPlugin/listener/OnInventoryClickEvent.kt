@@ -18,6 +18,7 @@ import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.list.Contractor
 import org.beobma.classWarPlugin.gameClass.list.DeathNote
+import org.beobma.classWarPlugin.gameClass.Rank
 import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -146,6 +147,7 @@ class OnInventoryClickEvent : Listener {
 
             else -> {
                 val gameClass = getClassFromItem(clickItem) ?: return
+                if (!player.isOp && gameClass.rank == Rank.SPECIAL) return
                 val currentPage = getCurrentPageFromTitle(inventory.title().toString())
                 PlayerTagManager.removeIf(player) { it.startsWith("classListPage:") }
                 PlayerTagManager.addTag(player, "classListPage:$currentPage")
@@ -184,6 +186,7 @@ class OnInventoryClickEvent : Listener {
 
             else -> {
                 val gameClass = getClassFromItem(clickItem) ?: return
+                if (!player.isOp && gameClass.rank == Rank.SPECIAL) return
                 player.closeInventory()
                 PlayerTagManager.removeTag(player, "openTrainingClassListInventory")
                 player.startTraining(gameClass)

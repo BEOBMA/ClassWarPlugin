@@ -130,6 +130,7 @@ class Command : Listener, CommandExecutor, TabCompleter {
         if (command.name.equals("classwar", ignoreCase = true)) {
             return when (args.size) {
                 1 -> listOf("start", "stop", "config", "classlist", "training", "exit")
+                    .filter { it.startsWith(args[0], ignoreCase = true) }
 
                 else -> emptyList()
             }

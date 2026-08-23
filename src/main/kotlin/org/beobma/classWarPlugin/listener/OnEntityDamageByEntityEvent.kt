@@ -14,6 +14,7 @@ import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.gameClass.list.Vampire
+import org.beobma.classWarPlugin.gameClass.list.Referee
 import org.bukkit.entity.Player
 import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Projectile
@@ -103,6 +104,7 @@ class OnEntityDamageByEntityEvent : Listener {
             DamageIndicatorManager.show(targetEntity, event.finalDamage, attackerGame.settings.damageIndicatorsEnabled)
         }
         DamageManager.recordSuccessfulDamage(context)
+        if (targetPlayer != null) Referee.recordDamage(context, event.finalDamage)
         targetPlayer?.noDamageTicks = 0
     }
 }
