@@ -43,6 +43,10 @@ enum class Keyword(val string: String, val description: String? = null) {
         "<dark_gray><bold>침묵</bold><gray>",
         "{keyword:Silence}: 스킬을 사용할 수 없다."
     ),
+    Disarm(
+        "<dark_gray><bold>무장해제</bold><gray>",
+        "{keyword:Disarm}: 기본공격을 할 수 없다."
+    ),
     Bleeding(
         "<dark_red><bold>출혈</bold><gray>",
         "{keyword:Bleeding}: 기본 공격 시 수치 만큼 {keyword:AbnormalStatusDamage}를 입고 수치를 절반으로 만든다."
@@ -67,6 +71,10 @@ enum class Keyword(val string: String, val description: String? = null) {
     Brightness(
         "<white><bold>광휘</bold><gray>",
         "{keyword:Brightness}: 수치가 10이 되면 {keyword:Brightness}를 제거하고 2초간 {keyword:Snare}된다."
+    ),
+    Radiation(
+        "<white><bold>발광</bold><gray>",
+        "{keyword:Radiation}: 주변에 있는 플레이어에게 위치가 드러난다."
     ),
     Charge(
         "<blue><bold>충전</bold><gray>",
