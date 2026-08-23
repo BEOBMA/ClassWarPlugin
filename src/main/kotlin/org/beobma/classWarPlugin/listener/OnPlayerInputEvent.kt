@@ -18,8 +18,8 @@ class OnPlayerInputEvent : Listener {
         val playerData = findGameForPlayer(player)?.playerDatas?.filterIsInstance<PlayerData>()
             ?.find { it.uniqueId == player.uniqueId } ?: return
         if (!playerData.canDispatchClassHandlers()) return
-        val gameClass = playerData.gameClass ?: return
-        (gameClass as? MovementInputHandler)?.onPlayerInput(event)
+        playerData.gameClasses.filterIsInstance<MovementInputHandler>()
+            .forEach { it.onPlayerInput(event) }
         playerData.statusAbnormalitys.toList()
             .filterIsInstance<MovementInputHandler>()
             .forEach { it.onPlayerInput(event) }

@@ -31,9 +31,10 @@ class OnPlayerDeathEvent : Listener{
         val currentGame = game ?: return
         val playerData = currentGame.playerDatas.filterIsInstance<PlayerData>()
             .find { it.player.uniqueId == player.uniqueId } ?: return
-        val assignedClass = playerData.gameClass
-        assignedClass?.passives?.filterIsInstance<PlayerDeathHandler>()?.forEach { it.onPlayerDeath() }
-        (assignedClass as? PlayerDeathHandler)?.onPlayerDeath()
+        playerData.gameClasses.forEach { assignedClass ->
+            assignedClass.passives.filterIsInstance<PlayerDeathHandler>().forEach { it.onPlayerDeath() }
+            (assignedClass as? PlayerDeathHandler)?.onPlayerDeath()
+        }
         val attribution = DamageManager.consumeAttribution(player)
         val killerName = attribution?.takeIf { it.attackerId != player.uniqueId }?.attackerName
             ?: player.killer?.name

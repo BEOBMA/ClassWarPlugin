@@ -23,8 +23,8 @@ import org.bukkit.scheduler.BukkitTask
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
 // 밸런스 조정 상수
-private const val TRAPPER_TRAP_COOLDOWN_SECONDS = 5
 private const val TRAPPER_TRAP_DAMAGE = 4.0
+private const val TRAPPER_ANCHOR_RANGE = 6.0
 
 class Trapper : GameClass() {
     override val name = "<gray>트래퍼"
@@ -36,14 +36,14 @@ class Trapper : GameClass() {
     private class RedSkill : Skill() {
         override val name = "<bold>선"
         override val description = listOf(
-            "<gray>2칸 내의 바라보는 블럭에 기준점을 설치한다.",
+            "<gray>${TRAPPER_ANCHOR_RANGE.toInt()}칸 내의 바라보는 블럭에 기준점을 설치한다.",
             "<gray>기준점을 2개 설치하면 기준점 사이에 보이지 않는 선을 만든다.",
             "<gray>적이 선을 통과하면 4의 피해를 입고 선이 제거된다.",
             "",
             "<dark_gray>선은 최대 10개까지 만들 수 있으며, 최대치를 초과한 경우 오래된 선을 제거하고 만든다.",
             "<dark_gray>선을 만들 때 기준점 사이의 거리가 10칸을 초과하거나 장애물로 막힌 경우 실패한다.",
         )
-        override val cooldown = TRAPPER_TRAP_COOLDOWN_SECONDS
+        override val cooldown = 0
 
         private data class TrapLine(val start: Location, val end: Location)
 
@@ -57,14 +57,16 @@ class Trapper : GameClass() {
             val trace = player.world.rayTraceBlocks(
                 player.eyeLocation,
                 player.eyeLocation.direction,
-                2.0,
+                TRAPPER_ANCHOR_RANGE,
                 FluidCollisionMode.NEVER,
                 true,
             )
             val hitPosition = trace?.hitPosition
             val hitFace = trace?.hitBlockFace
             if (hitPosition == null || hitFace == null) {
-                player.sendMiniMessage("<red><bold>[!] 2칸 내의 블록을 바라봐야 합니다.")
+                player.sendMiniMessage(
+                    "<red><bold>[!] ${TRAPPER_ANCHOR_RANGE.toInt()}칸 내의 블록을 바라봐야 합니다."
+                )
                 return false
             }
             val candidate = hitPosition.toLocation(player.world)

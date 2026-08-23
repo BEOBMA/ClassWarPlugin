@@ -105,26 +105,29 @@ class GraveRobber : GameClass(), GameStatusHandler, OnSkillUseHandler, Environme
             selectedRecord = null
             if (!recordsFor(game).remove(record)) return
 
-            val stolenClass = runCatching {
-                record.classType.getDeclaredConstructor().newInstance()
+            val stolenClasses = runCatching {
+                record.classTypes.map { it.getDeclaredConstructor().newInstance() }
             }.getOrElse {
                 player.sendMiniMessage("<red><bold>[!] 사망한 플레이어의 클래스를 복원하지 못했습니다.")
                 return
             }
-            stolenClass.inject(playerData)
+            stolenClasses.forEach { it.inject(playerData) }
 
             val existingSkillIds = skills.mapTo(mutableSetOf()) { it.id }
-            val addedSkills = stolenClass.skills.filter { existingSkillIds.add(it.id) }
+            val addedSkills = stolenClasses.flatMap { it.skills }.filter { existingSkillIds.add(it.id) }
             val existingPassiveTypes = passives.mapTo(mutableSetOf()) { it.javaClass.name }
-            val addedPassives = stolenClass.passives.filter { existingPassiveTypes.add(it.javaClass.name) }
+            val addedPassives = stolenClasses.flatMap { it.passives }
+                .filter { existingPassiveTypes.add(it.javaClass.name) }
             skills = skills + addedSkills
             passives = passives + addedPassives
 
             playerData.classSet(initializeHandlers = false)
             addedPassives.filterIsInstance<GameStatusHandler>().forEach(GameStatusHandler::onBattleStart)
-            if (inheritedClassTypes.add(stolenClass.javaClass)) {
-                inheritedClasses += stolenClass
-                if (stolenClass is GameStatusHandler) stolenClass.onBattleStart()
+            stolenClasses.forEach { stolenClass ->
+                if (inheritedClassTypes.add(stolenClass.javaClass)) {
+                    inheritedClasses += stolenClass
+                    if (stolenClass is GameStatusHandler) stolenClass.onBattleStart()
+                }
             }
 
             particles.spawn(player.location.clone().add(0.0, 1.0, 0.0), Particle.SOUL_FIRE_FLAME, count = 34, spread = 0.8, speed = 0.08)
@@ -177,7 +180,7 @@ class GraveRobber : GameClass(), GameStatusHandler, OnSkillUseHandler, Environme
             val victimId: java.util.UUID,
             val victimName: String,
             val location: Location,
-            val classType: Class<out GameClass>,
+            val classTypes: List<Class<out GameClass>>,
         )
 
         private val recordsByGame: IdentityHashMap<Game, MutableList<DeathRecord>> = IdentityHashMap()
@@ -186,12 +189,13 @@ class GraveRobber : GameClass(), GameStatusHandler, OnSkillUseHandler, Environme
             recordsByGame.getOrPut(game) { mutableListOf() }
 
         fun recordDeath(playerData: PlayerData) {
-            val fallenClass = playerData.gameClass ?: return
+            val fallenClasses = playerData.gameClasses.map { it.javaClass }
+            if (fallenClasses.isEmpty()) return
             recordsFor(playerData.initGame) += DeathRecord(
                 playerData.uniqueId,
                 playerData.player.name,
                 playerData.player.location.clone(),
-                fallenClass.javaClass,
+                fallenClasses,
             )
         }
 

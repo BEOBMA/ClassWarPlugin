@@ -24,9 +24,10 @@ import kotlin.math.PI
 
 // 밸런스 조정 상수
 private const val GEOMETER_COORDINATE_COOLDOWN_SECONDS = 1
-private const val GEOMETER_COMPRESSION_COOLDOWN_SECONDS = 18
-private const val GEOMETER_MAX_AXIS_LENGTH = 8.0
-private const val GEOMETER_MAX_VOLUME = 125.0
+private const val GEOMETER_COMPRESSION_COOLDOWN_SECONDS = 8
+private const val GEOMETER_COORDINATE_RANGE = 50.0
+private const val GEOMETER_MAX_AXIS_LENGTH = 24.0
+private const val GEOMETER_MAX_VOLUME = 4096.0
 private const val GEOMETER_MAX_COMPRESSION_DAMAGE = 16.0
 private const val GEOMETER_MIN_COMPRESSION_DAMAGE = 5.0
 
@@ -114,13 +115,13 @@ class Geometer : GameClass() {
     private inner class RedSkill : Skill() {
         override val name = "<bold>좌표 설정"
         override val description = listOf(
-            "<gray>10칸 내의 바라보는 블럭에 좌표를 지정한다.",
+            "<gray>${GEOMETER_COORDINATE_RANGE.toInt()}칸 내의 바라보는 블럭에 좌표를 지정한다.",
             "",
             "<gray>첫 번째 좌표와 두 번째 좌표가 지정되면",
             "<gray>두 좌표를 꼭짓점으로 하는 직육면체가 생성된다.",
             "",
-            "<gray>직육면체의 부피는 최대 125이며",
-            "<gray>각 변의 길이는 8칸을 초과할 수 없다.",
+            "<gray>직육면체의 부피는 최대 ${GEOMETER_MAX_VOLUME.toInt()}이며",
+            "<gray>각 변의 길이는 ${GEOMETER_MAX_AXIS_LENGTH.toInt()}칸을 초과할 수 없다.",
             "",
             "<dark_gray>웅크린 상태에서 사용하면 모든 좌표를 제거한다."
         )
@@ -128,13 +129,19 @@ class Geometer : GameClass() {
 
         override fun use() {
             if (player.isSneaking) { clearCoordinates(); return }
-            val point = playerData.shotLaserGetBlock(10.0)!!.location.add(0.5, 1.0, 0.5)
+            val point = playerData.shotLaserGetBlock(GEOMETER_COORDINATE_RANGE)!!.location.add(0.5, 1.0, 0.5)
             if (first == null || second != null) {
                 if (second != null) clearCoordinates(playSound = false)
                 first = point; second = null
             }
             else if (validBox(first!!, point)) second = point
-            else { player.sendMiniMessage("<red><bold>[!] 부피 125, 변 길이 8 제한을 초과합니다."); return }
+            else {
+                player.sendMiniMessage(
+                    "<red><bold>[!] 부피 ${GEOMETER_MAX_VOLUME.toInt()}, " +
+                        "변 길이 ${GEOMETER_MAX_AXIS_LENGTH.toInt()} 제한을 초과합니다."
+                )
+                return
+            }
             particles.spawn(point, Particle.HAPPY_VILLAGER, count = 12, spread = 0.2)
             sounds.play(point, Sound.BLOCK_NOTE_BLOCK_PLING, pitch = if (second == null) 1.0f else 1.6f)
             second?.let {
@@ -144,8 +151,10 @@ class Geometer : GameClass() {
         }
 
         override fun isUseSuccess(): Boolean {
-            if (player.isSneaking || playerData.shotLaserGetBlock(10.0) != null) return true
-            player.sendMiniMessage("<red><bold>[!] 10칸 내에 바라보는 블럭이 없습니다.")
+            if (player.isSneaking || playerData.shotLaserGetBlock(GEOMETER_COORDINATE_RANGE) != null) return true
+            player.sendMiniMessage(
+                "<red><bold>[!] ${GEOMETER_COORDINATE_RANGE.toInt()}칸 내에 바라보는 블럭이 없습니다."
+            )
             return false
         }
     }

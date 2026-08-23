@@ -93,7 +93,7 @@ class Astronomer : GameClass(), GameStatusHandler {
                 }
                 block.location.add(0.5, 1.0, 0.5)
             }
-            (playerData.gameClass as? Astronomer)?.blackHoleActiveUntil = player.world.fullTime + 120L
+            playerData.findGameClass(Astronomer::class.java)?.blackHoleActiveUntil = player.world.fullTime + 120L
             sounds.play(blackHole.location, Sound.ENTITY_WITHER_SHOOT, volume = 0.6f, pitch = 0.5f)
             blackHole.spawnFlooring(playerData)
         }
@@ -126,7 +126,7 @@ class Astronomer : GameClass(), GameStatusHandler {
             val mana = playerData.getOrCreateStatus(playerData) { Mana() }
             val count = (mana.power / ASTRONOMER_MANA_PER_METEOR).coerceIn(1, ASTRONOMER_MAX_METEOR_COUNT)
             val targetLoc = context.target.entity.location.clone()
-            val classData = playerData.gameClass as? Astronomer
+            val classData = playerData.findGameClass(Astronomer::class.java)
             val soundAndDisplayEndTick = minOf(
                 player.world.fullTime + 60L,
                 classData?.blackHoleActiveUntil ?: player.world.fullTime,

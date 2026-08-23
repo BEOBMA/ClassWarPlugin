@@ -5,6 +5,7 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.game.GameSettings
+import org.beobma.classWarPlugin.game.MatchMode
 import org.beobma.classWarPlugin.manager.GameClassManager.toItemStack
 import org.beobma.classWarPlugin.manager.GameManager.gameClassList
 import org.beobma.classWarPlugin.entity.player.PlayerData
@@ -28,6 +29,8 @@ object InventoryManager {
     private val miniMessage = MiniMessage.miniMessage()
     private val classIdKey: NamespacedKey
         get() = NamespacedKey(ClassWarPlugin.instance, "class-id")
+    private val matchModeKey: NamespacedKey
+        get() = NamespacedKey(ClassWarPlugin.instance, "match-mode")
     private val nextPage = ItemStack(Material.ARROW, 1).apply {
         itemMeta = itemMeta.apply {
             displayName(miniMessage.deserialize("<gray>다음 페이지"))
@@ -59,45 +62,40 @@ object InventoryManager {
     }
 
     fun PlayerData.openAssignedClassInventory() {
-        val gameClass = gameClass ?: return
+        val assignedClasses = gameClasses.toList()
+        if (assignedClasses.isEmpty()) return
+        val isDual = assignedClasses.size == 2
         val remainingRefreshes = initGame.refreshesRemaining[player.uniqueId] ?: 0
-        val inventory = Bukkit.createInventory(null, 54, miniMessage.deserialize("<dark_gray>클래스 배정"))
+        val title = if (isDual) "<dark_gray>듀얼 클래스 배정" else "<dark_gray>클래스 배정"
+        val inventory = Bukkit.createInventory(null, 54, miniMessage.deserialize(title))
         fillWith(inventory, Material.GRAY_STAINED_GLASS_PANE, " ")
 
-        inventory.setItem(4, createClassItem(gameClass))
-        inventory.setItem(19, gameClass.weapon.toItemStack())
-
-        val skillSlots = listOf(20, 21, 22, 23, 24, 25, 26, 27)
-        gameClass.skills.forEachIndexed { index, skill ->
-            val slot = skillSlots.getOrNull(index) ?: return@forEachIndexed
-            inventory.setItem(slot, createFullDescriptionItem(
-                skillDyeMaterial(index),
-                skill.name,
-                skill.description,
-                ItemDescriptionManager.cooldownLines(skill.cooldown),
-            ))
-        }
-
-        gameClass.passives.forEachIndexed { index, passive ->
-            if (index >= 7) return@forEachIndexed
-            inventory.setItem(30 + index, createFullDescriptionItem(
-                Material.WHITE_DYE, passive.name, passive.description
-            ))
-        }
+        if (isDual) populateDualAssignedClasses(inventory, assignedClasses)
+        else populateSingleAssignedClass(inventory, assignedClasses.first())
 
         inventory.setItem(45, ItemStack(Material.NETHER_STAR).apply {
             itemMeta = itemMeta.apply {
-                displayName(miniMessage.deserialize("<aqua><bold>클래스 새로고침"))
+                displayName(miniMessage.deserialize(
+                    if (isDual) "<aqua><bold>두 클래스 모두 새로고침" else "<aqua><bold>클래스 새로고침"
+                ))
                 lore(listOf(
                     ItemDescriptionManager.renderLoreLine("<gray>남은 횟수: <yellow><bold>$remainingRefreshes"),
-                    ItemDescriptionManager.renderLoreLine("<gray>클릭하면 중복되지 않는 새 클래스를 배정합니다.")
+                    ItemDescriptionManager.renderLoreLine(
+                        if (isDual) "<gray>클릭하면 현재 조합을 버리고 두 클래스를 함께 다시 배정합니다."
+                        else "<gray>클릭하면 중복되지 않는 새 클래스를 배정합니다."
+                    )
                 ))
             }
         })
         inventory.setItem(53, ItemStack(Material.LIME_DYE).apply {
             itemMeta = itemMeta.apply {
-                displayName(miniMessage.deserialize("<green><bold>클래스 확정"))
-                lore(listOf(ItemDescriptionManager.renderLoreLine("<gray>확정하면 다시 변경할 수 없습니다.")))
+                displayName(miniMessage.deserialize(
+                    if (isDual) "<green><bold>두 클래스 동시 확정" else "<green><bold>클래스 확정"
+                ))
+                lore(listOf(ItemDescriptionManager.renderLoreLine(
+                    if (isDual) "<gray>두 클래스를 한 번에 확정하며 이후에는 변경할 수 없습니다."
+                    else "<gray>확정하면 다시 변경할 수 없습니다."
+                )))
             }
         })
 
@@ -106,6 +104,63 @@ object InventoryManager {
         }
         PlayerTagManager.addTag(player, "openAssignedClassInventory")
         player.openInventory(inventory)
+    }
+
+    private fun populateSingleAssignedClass(inventory: Inventory, gameClass: GameClass) {
+        inventory.setItem(4, createClassItem(gameClass))
+        inventory.setItem(19, gameClass.weapon.toItemStack())
+        val skillSlots = listOf(20, 21, 22, 23, 24, 25, 26, 27)
+        gameClass.skills.forEachIndexed { index, skill ->
+            val slot = skillSlots.getOrNull(index) ?: return@forEachIndexed
+            inventory.setItem(slot, createFullDescriptionItem(
+                skillDyeMaterial(index), skill.name, skill.description,
+                ItemDescriptionManager.cooldownLines(skill.cooldown),
+            ))
+        }
+        gameClass.passives.forEachIndexed { index, passive ->
+            if (index >= 7) return@forEachIndexed
+            inventory.setItem(30 + index, createFullDescriptionItem(
+                Material.WHITE_DYE, passive.name, passive.description
+            ))
+        }
+    }
+
+    private fun populateDualAssignedClasses(inventory: Inventory, classes: List<GameClass>) {
+        val first = classes[0]
+        val second = classes[1]
+        inventory.setItem(2, createClassItem(first))
+        inventory.setItem(6, createClassItem(second))
+        inventory.setItem(11, first.weapon.toItemStack())
+        inventory.setItem(15, second.weapon.toItemStack())
+
+        populateAssignedSkills(inventory, first, (18..25).toList())
+        populateAssignedSkills(inventory, second, (27..34).toList(), first.skills.size)
+        populateAssignedPassives(inventory, first, (36..42).toList())
+        populateAssignedPassives(inventory, second, (46..52).toList())
+    }
+
+    private fun populateAssignedSkills(
+        inventory: Inventory,
+        gameClass: GameClass,
+        slots: List<Int>,
+        dyeOffset: Int = 0,
+    ) {
+        gameClass.skills.forEachIndexed { index, skill ->
+            val slot = slots.getOrNull(index) ?: return@forEachIndexed
+            inventory.setItem(slot, createFullDescriptionItem(
+                skillDyeMaterial(dyeOffset + index), skill.name, skill.description,
+                ItemDescriptionManager.cooldownLines(skill.cooldown),
+            ))
+        }
+    }
+
+    private fun populateAssignedPassives(inventory: Inventory, gameClass: GameClass, slots: List<Int>) {
+        gameClass.passives.forEachIndexed { index, passive ->
+            val slot = slots.getOrNull(index) ?: return@forEachIndexed
+            inventory.setItem(slot, createFullDescriptionItem(
+                Material.WHITE_DYE, passive.name, passive.description
+            ))
+        }
     }
 
     fun Player.openConfigInventory() {
@@ -208,6 +263,37 @@ object InventoryManager {
         openInventory(inventory)
     }
 
+    fun Player.openGameModeInventory() {
+        val inventory = Bukkit.createInventory(null, 27, miniMessage.deserialize("<dark_gray>게임 모드 선택"))
+        fillWith(inventory, Material.BLACK_STAINED_GLASS_PANE, " ")
+        inventory.setItem(11, createMatchModeItem(Material.IRON_SWORD, MatchMode.CLASSIC))
+        inventory.setItem(13, createMatchModeItem(Material.AMETHYST_SHARD, MatchMode.DUAL))
+        inventory.setItem(15, createMatchModeItem(Material.RECOVERY_COMPASS, MatchMode.TAIL_TAG))
+        listOf(
+            "openGameModeInventory",
+            "openConfigInventory",
+            "openingConfigInventory",
+            "openClassListInventory",
+            "openTrainingClassListInventory",
+            "openClassStatusInventory",
+            "openingClassStatusInventory",
+        ).forEach { PlayerTagManager.removeTag(this, it) }
+        PlayerTagManager.removeIf(this) {
+            it.startsWith("configCategory:") ||
+                it.startsWith("classListPage:") ||
+                it.startsWith("classStatusReturn:")
+        }
+        closeInventory()
+        PlayerTagManager.addTag(this, "openGameModeInventory")
+        openInventory(inventory)
+    }
+
+    fun getMatchModeFromItem(item: ItemStack): MatchMode? {
+        val modeName = item.itemMeta.persistentDataContainer
+            .get(matchModeKey, PersistentDataType.STRING) ?: return null
+        return MatchMode.entries.find { it.name == modeName }
+    }
+
     fun getOpenConfigCategory(player: Player): ConfigCategory? =
         PlayerTagManager.findTag(player) { it.startsWith("configCategory:") }
             ?.substringAfter("configCategory:")
@@ -287,6 +373,17 @@ object InventoryManager {
             }
         }
 
+    private fun createMatchModeItem(material: Material, mode: MatchMode): ItemStack =
+        createDescriptionItem(
+            material,
+            mode.displayName,
+            listOf(mode.description, "", "<green>클릭하여 이 모드로 게임을 시작합니다."),
+        ).apply {
+            itemMeta = itemMeta.apply {
+                persistentDataContainer.set(matchModeKey, PersistentDataType.STRING, mode.name)
+            }
+        }
+
     fun skillDyeMaterial(index: Int): Material = when (index) {
         0 -> Material.RED_DYE
         1 -> Material.ORANGE_DYE
@@ -296,6 +393,13 @@ object InventoryManager {
         5 -> Material.PURPLE_DYE
         6 -> Material.PINK_DYE
         7 -> Material.BLACK_DYE
+        8 -> Material.LIME_DYE
+        9 -> Material.CYAN_DYE
+        10 -> Material.LIGHT_BLUE_DYE
+        11 -> Material.MAGENTA_DYE
+        12 -> Material.BROWN_DYE
+        13 -> Material.LIGHT_GRAY_DYE
+        14 -> Material.GRAY_DYE
         else -> Material.WHITE_DYE
     }
 

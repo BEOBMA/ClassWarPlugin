@@ -37,9 +37,8 @@ class OnPlayerMoveEvent : Listener {
             }
         }
         if (!playerData.canDispatchClassHandlers()) return
-        val gameClass = playerData.gameClass ?: return
-
-        if (gameClass is StatusPlayerMoveHandler) {
+        for (gameClass in playerData.gameClasses) {
+            if (gameClass !is StatusPlayerMoveHandler) continue
             gameClass.onPlayerMove(event, playerData)
             if (event.isCancelled) return
         }

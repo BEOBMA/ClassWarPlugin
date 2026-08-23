@@ -13,8 +13,14 @@ import java.util.UUID
 class PlayerData(
     var player: Player,
     val initGame: Game,
-    var gameClass: GameClass? = null,
 ) : EntityData() {
+    val gameClasses: MutableList<GameClass> = mutableListOf()
+    var gameClass: GameClass?
+        get() = gameClasses.firstOrNull()
+        set(value) {
+            gameClasses.clear()
+            if (value != null) gameClasses += value
+        }
     val uniqueId: UUID = player.uniqueId
     override val entity: Entity
         get() = player
@@ -29,7 +35,16 @@ class PlayerData(
         return task
     }
 
-    fun isEnemyOf(other: PlayerData): Boolean = this != other
+    fun isEnemyOf(other: PlayerData): Boolean =
+        initGame === other.initGame && initGame.areEnemies(uniqueId, other.uniqueId)
+
+    fun assignGameClasses(classes: Collection<GameClass>) {
+        gameClasses.clear()
+        gameClasses.addAll(classes)
+    }
+
+    fun <T : GameClass> findGameClass(type: Class<T>): T? =
+        gameClasses.firstOrNull { type.isInstance(it) }?.let(type::cast)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

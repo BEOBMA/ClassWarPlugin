@@ -13,21 +13,21 @@ class OnPlayerSkillUseEvent : Listener {
     @EventHandler
     fun onPlayerSkillUse(event: PlayerSkillUseEvent) {
         val playerData = event.playerData
-        val gameClass = playerData.gameClass ?: return
 
         // 클래스
-        if (gameClass is OnSkillUseHandler) {
+        for (gameClass in playerData.gameClasses) {
+            if (gameClass !is OnSkillUseHandler) continue
             gameClass.onSkillUse(event)
             if (event.isCancelled) return
         }
         // 스킬
-        for (skill in gameClass.skills) {
+        for (skill in playerData.gameClasses.flatMap { it.skills }) {
             if (skill !is OnSkillUseHandler) continue
             skill.onSkillUse(event)
             if (event.isCancelled) return
         }
         // 패시브
-        for (passive in gameClass.passives) {
+        for (passive in playerData.gameClasses.flatMap { it.passives }) {
             if (passive !is OnSkillUseHandler) continue
             passive.onSkillUse(event)
             if (event.isCancelled) return
@@ -42,10 +42,11 @@ class OnPlayerSkillUseEvent : Listener {
             .filterIsInstance<PlayerData>()
             .filter { it != playerData && !it.entityStatus.isDead }
             .forEach { observer ->
-                val observerClass = observer.gameClass ?: return@forEach
-                (observerClass as? OtherSkillUseHandler)?.onOtherPlayerSkillUse(event)
-                observerClass.passives.filterIsInstance<OtherSkillUseHandler>()
-                    .forEach { it.onOtherPlayerSkillUse(event) }
+                observer.gameClasses.forEach { observerClass ->
+                    (observerClass as? OtherSkillUseHandler)?.onOtherPlayerSkillUse(event)
+                    observerClass.passives.filterIsInstance<OtherSkillUseHandler>()
+                        .forEach { it.onOtherPlayerSkillUse(event) }
+                }
             }
         Referee.recordSkillUse(playerData)
     }

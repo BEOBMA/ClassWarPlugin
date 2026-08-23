@@ -32,6 +32,8 @@ private const val LIGHT_WIZARD_PRIMARY_BEAM_DAMAGE = 8.0
 private const val LIGHT_WIZARD_SPLIT_BEAM_DAMAGE = 4.0
 private const val LIGHT_WIZARD_MIN_BEAM_DAMAGE = 1.0
 private const val LIGHT_WIZARD_MAX_PRISMS = 5
+private const val LIGHT_WIZARD_PRISM_PULSE_RADIUS = 2.0
+private const val LIGHT_WIZARD_PRISM_PULSE_POINTS = 48
 
 class LightWizard : GameClass() {
     override val name = "<gray>프리즘"
@@ -96,7 +98,7 @@ class LightWizard : GameClass() {
         queue += Beam(player.eyeLocation.clone(), player.eyeLocation.direction.normalize(), 0)
         val activated = mutableSetOf<Prism>()
         var processed = 0
-        while (queue.isNotEmpty() && processed++ < 16) {
+        while (queue.isNotEmpty() && processed++ < 1 + LIGHT_WIZARD_MAX_PRISMS * 4) {
             val beam = queue.removeFirst()
             val maxDistance = 24.0
             val blockHit = beam.start.world.rayTraceBlocks(beam.start, beam.direction, maxDistance)?.hitPosition
@@ -114,12 +116,8 @@ class LightWizard : GameClass() {
             val end = beam.start.clone().add(beam.direction.clone().multiply(distance))
             particles.line(beam.start, end, Particle.END_ROD, spacing = 0.3)
             hitBeamTargets(beam, end)
-            if (prism != null && activated.add(prism.first)) {
-                sounds.play(prism.first.location, Sound.BLOCK_AMETHYST_BLOCK_CHIME, pitch = 1.8f)
-                particles.spawn(prism.first.location, Particle.FLASH, count = 1)
-                listOf(Vector(1, 0, 0), Vector(-1, 0, 0), Vector(0, 0, 1), Vector(0, 0, -1)).forEach {
-                    queue += Beam(prism.first.location.clone(), it, beam.depth + 1)
-                }
+            if (prism != null) {
+                activatePrismCluster(prism.first, beam.depth + 1, queue, activated)
             }
         }
         sounds.play(player, Sound.BLOCK_BEACON_ACTIVATE, pitch = 1.7f)
@@ -132,18 +130,78 @@ class LightWizard : GameClass() {
         playerData.getTargetCandidates().filter { it != playerData && it.entityStatus.isSkillTargeting }.forEach { target ->
             if (target is PlayerData && !playerData.isEnemyOf(target)) return@forEach
             if (!HitboxUtil.intersectsSegment(target.entity.boundingBox, start, finish, expansion = 0.25)) return@forEach
-            target.damage(
-                max(
-                    LIGHT_WIZARD_MIN_BEAM_DAMAGE,
-                    if (beam.depth == 0) LIGHT_WIZARD_PRIMARY_BEAM_DAMAGE
-                    else LIGHT_WIZARD_SPLIT_BEAM_DAMAGE / (1 shl (beam.depth - 1)),
-                ),
-                DamageType.Normal,
-                playerData,
-            )
-            if (beam.depth > 0) target.getOrCreateStatus(playerData) { Brightness() }.applyStatus(powerDelta = 1)
+            damageWithLight(target, beam.depth)
         }
     }
+
+    private fun activatePrismCluster(
+        first: Prism,
+        outputDepth: Int,
+        beamQueue: ArrayDeque<Beam>,
+        activated: MutableSet<Prism>,
+    ) {
+        val pending = ArrayDeque<Prism>()
+        pending += first
+        while (pending.isNotEmpty()) {
+            val prism = pending.removeFirst()
+            if (!prism.display.isValid || !activated.add(prism)) continue
+
+            renderPrismPulse(prism.location)
+            hitPrismPulseTargets(prism.location, outputDepth)
+            CARDINAL_BEAM_DIRECTIONS.forEach { direction ->
+                beamQueue += Beam(prism.location.clone(), direction.clone(), outputDepth)
+            }
+
+            prisms.asSequence()
+                .filter { nearby ->
+                    nearby !in activated && nearby.display.isValid &&
+                        nearby.location.world == prism.location.world &&
+                        nearby.location.distanceSquared(prism.location) <=
+                            LIGHT_WIZARD_PRISM_PULSE_RADIUS * LIGHT_WIZARD_PRISM_PULSE_RADIUS
+                }
+                .forEach(pending::addLast)
+        }
+    }
+
+    private fun renderPrismPulse(center: Location) {
+        sounds.play(center, Sound.BLOCK_AMETHYST_BLOCK_CHIME, pitch = 1.8f)
+        particles.spawn(center, Particle.FLASH, count = 1)
+        particles.circle(
+            center,
+            Particle.END_ROD,
+            LIGHT_WIZARD_PRISM_PULSE_RADIUS,
+            LIGHT_WIZARD_PRISM_PULSE_POINTS,
+        )
+        particles.spawn(center, Particle.ELECTRIC_SPARK, count = 16, spread = 0.65, speed = 0.055)
+    }
+
+    private fun hitPrismPulseTargets(center: Location, depth: Int) {
+        playerData.getTargetCandidates()
+            .filter { it != playerData && it.entityStatus.isSkillTargeting }
+            .forEach { target ->
+                if (target is PlayerData && !playerData.isEnemyOf(target)) return@forEach
+                if (!HitboxUtil.intersectsSphere(
+                        target.entity.boundingBox,
+                        center.toVector(),
+                        LIGHT_WIZARD_PRISM_PULSE_RADIUS,
+                    )
+                ) return@forEach
+                damageWithLight(target, depth)
+            }
+    }
+
+    private fun damageWithLight(target: org.beobma.classWarPlugin.entity.EntityData, depth: Int) {
+        target.damage(lightDamage(depth), DamageType.Normal, playerData)
+        if (depth > 0) {
+            target.getOrCreateStatus(playerData) { Brightness() }.applyStatus(powerDelta = 1)
+        }
+    }
+
+    private fun lightDamage(depth: Int): Double = max(
+        LIGHT_WIZARD_MIN_BEAM_DAMAGE,
+        if (depth == 0) LIGHT_WIZARD_PRIMARY_BEAM_DAMAGE
+        else LIGHT_WIZARD_SPLIT_BEAM_DAMAGE / (1 shl (depth - 1)),
+    )
 
     private inner class RedSkill : Skill() {
         override val name = "<bold>프리즘"
@@ -171,6 +229,8 @@ class LightWizard : GameClass() {
             "<gray>광선에 직접 적중한 적은 8의 피해를 입는다.",
             "",
             "<gray>광선이 프리즘에 적중하면 해당 프리즘이 활성화된다.",
+            "<gray>활성화 시 지름 4칸의 빛을 방출해 범위 안의 적에게 광선과 동일한 피해를 입힌다.",
+            "<gray>빛의 범위 안에 있는 다른 프리즘도 연쇄 활성화된다.",
             "<gray>활성화된 프리즘은 십자 방향으로 빛의 광선을 방출한다.",
             "<gray>프리즘에서 방출된 빛의 광선에 적중한 적은 4의 피해를 입는다.",
             "",
@@ -192,6 +252,15 @@ class LightWizard : GameClass() {
             "<gray>패시브",
             "",
             "<gray>프리즘에서 방출된 빛의 광선에 적중한 적에게 {keyword:Brightness}를 1 부여한다."
+        )
+    }
+
+    companion object {
+        private val CARDINAL_BEAM_DIRECTIONS = listOf(
+            Vector(1, 0, 0),
+            Vector(-1, 0, 0),
+            Vector(0, 0, 1),
+            Vector(0, 0, -1),
         )
     }
 }

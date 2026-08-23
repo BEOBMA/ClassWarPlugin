@@ -4,6 +4,7 @@ import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
 import org.beobma.classWarPlugin.manager.GameManager.canDispatchClassHandlers
+import org.beobma.classWarPlugin.manager.GameClassManager.getWeaponClassId
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.SkillManager.getSkillId
 import org.beobma.classWarPlugin.manager.SkillManager.use
@@ -39,14 +40,24 @@ class OnPlayerInteractEvent : Listener {
         if (!playerData.canDispatchClassHandlers()) return
         val skillId = getSkillId(clickedItem, player.uniqueId)
         if (skillId == null) {
-            val gameClass = playerData.gameClass
-            if (isRightClick && gameClass is WeaponInputHandler && clickedItem.type == gameClass.weapon.material) {
-                gameClass.onWeaponRightClick(event)
+            if (isRightClick) {
+                val taggedClassId = getWeaponClassId(clickedItem)
+                playerData.gameClasses
+                    .filter { gameClass ->
+                        if (taggedClassId != null) gameClass.javaClass.name == taggedClassId
+                        else clickedItem.type == gameClass.weapon.material
+                    }
+                    .filterIsInstance<WeaponInputHandler>()
+                    .forEach { handler ->
+                        handler.onWeaponRightClick(event)
+                        if (event.isCancelled) return
+                    }
             }
             return
         }
-        val skill = playerData.gameClass?.skills?.find { it.id == skillId } ?: return
-        val inputHandler = playerData.gameClass as? SkillInputHandler
+        val ownerClass = playerData.gameClasses.find { gameClass -> gameClass.skills.any { it.id == skillId } } ?: return
+        val skill = ownerClass.skills.find { it.id == skillId } ?: return
+        val inputHandler = ownerClass as? SkillInputHandler
         if (inputHandler != null) {
             if (!inputHandler.prepareSkillInput(event, skill)) return
         } else if (!isRightClick) {

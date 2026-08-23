@@ -1,12 +1,18 @@
 package org.beobma.classWarPlugin.manager
 
 import net.kyori.adventure.text.minimessage.MiniMessage
+import org.beobma.classWarPlugin.ClassWarPlugin
+import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Weapon
 import org.bukkit.Material
+import org.bukkit.NamespacedKey
 import org.bukkit.inventory.ItemStack
+import org.bukkit.persistence.PersistentDataType
 
 object GameClassManager {
     private val miniMessage = MiniMessage.miniMessage()
+    private val weaponClassKey: NamespacedKey
+        get() = NamespacedKey(ClassWarPlugin.instance, "weapon-class")
 
     fun Weapon.toItemStack(): ItemStack {
         if (material == Material.AIR) return ItemStack(Material.AIR)
@@ -17,4 +23,15 @@ object GameClassManager {
         }
         return ItemDescriptionManager.apply(itemStack, description)
     }
+
+    fun GameClass.toWeaponItemStack(): ItemStack = weapon.toItemStack().apply {
+        if (!type.isAir) {
+            itemMeta = itemMeta.apply {
+                persistentDataContainer.set(weaponClassKey, PersistentDataType.STRING, javaClass.name)
+            }
+        }
+    }
+
+    fun getWeaponClassId(item: ItemStack): String? = item.itemMeta.persistentDataContainer
+        .get(weaponClassKey, PersistentDataType.STRING)
 }

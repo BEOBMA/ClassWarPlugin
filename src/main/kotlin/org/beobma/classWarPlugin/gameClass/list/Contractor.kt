@@ -47,7 +47,7 @@ class Contractor : GameClass() {
 
         override fun isUseSuccess(): Boolean {
             pendingTarget = game.playerDatas.filterIsInstance<PlayerData>()
-                .filter { it != playerData && it.player.isOnline && !it.entityStatus.isDead && it.gameClass != null }
+                .filter { it != playerData && it.player.isOnline && !it.entityStatus.isDead && it.gameClasses.isNotEmpty() }
                 .randomOrNull(Random)
             if (pendingTarget != null) return true
             player.sendMiniMessage("<red><bold>[!] 청부 대상으로 지정할 생존 적이 없습니다.")
@@ -102,14 +102,14 @@ class Contractor : GameClass() {
         PlayerTagManager.removeTag(player, GUESS_INVENTORY_TAG)
         player.closeInventory()
 
-        if (target == null || !target.player.isOnline || target.entityStatus.isDead || target.gameClass == null) {
+        if (target == null || !target.player.isOnline || target.entityStatus.isDead || target.gameClasses.isEmpty()) {
             player.sendMiniMessage("<red><bold>[청부 실패]</bold> <gray>대상이 더 이상 유효하지 않습니다.")
             particles.spawn(player, Particle.SMOKE, count = 18, spread = 0.45, speed = 0.04)
             sounds.play(player, Sound.BLOCK_NOTE_BLOCK_BASS, volume = 0.9f, pitch = 0.55f)
             return
         }
 
-        if (target.gameClass!!.javaClass != guessedClass) {
+        if (target.gameClasses.none { it.javaClass == guessedClass }) {
             player.sendMiniMessage("<red><bold>[청부 실패]</bold> <gray>직업을 잘못 추측했습니다.")
             particles.spawn(player, Particle.SMOKE, count = 22, spread = 0.5, speed = 0.05)
             sounds.play(player, Sound.ENTITY_VILLAGER_NO, volume = 0.8f, pitch = 0.7f)

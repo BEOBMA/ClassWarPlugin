@@ -5,6 +5,7 @@ import org.beobma.classWarPlugin.gameClass.handler.WeaponInputHandler
 import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
 import org.beobma.classWarPlugin.manager.GameManager.canDispatchClassHandlers
+import org.beobma.classWarPlugin.manager.GameClassManager.getWeaponClassId
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -18,8 +19,17 @@ class OnPlayerSwapHandItemsEvent : Listener {
         val playerData = findGameForPlayer(player)?.playerDatas?.filterIsInstance<PlayerData>()
             ?.find { it.uniqueId == player.uniqueId } ?: return
         if (!playerData.canDispatchClassHandlers()) return
-        val gameClass = playerData.gameClass
-        if (gameClass !is WeaponInputHandler || player.inventory.itemInMainHand.type != gameClass.weapon.material) return
-        gameClass.onWeaponSwapHand(event)
+        val heldItem = player.inventory.itemInMainHand
+        val taggedClassId = getWeaponClassId(heldItem)
+        playerData.gameClasses
+            .filter { gameClass ->
+                if (taggedClassId != null) gameClass.javaClass.name == taggedClassId
+                else heldItem.type == gameClass.weapon.material
+            }
+            .filterIsInstance<WeaponInputHandler>()
+            .forEach { handler ->
+                handler.onWeaponSwapHand(event)
+                if (event.isCancelled) return
+            }
     }
 }

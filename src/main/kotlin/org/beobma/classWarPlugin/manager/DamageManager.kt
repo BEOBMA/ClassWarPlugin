@@ -32,9 +32,15 @@ object DamageManager {
 
     fun process(context: DamageContext): Boolean {
         if (context.damage <= 0.0) return false
-        if ((context.attacker.gameClass as? Parasite)?.isParasitizing() == true) return false
-        if (((context.target as? PlayerData)?.gameClass as? Parasite)?.isParasitizing() == true) return false
+        if (context.attacker.gameClasses.filterIsInstance<Parasite>().any { it.isParasitizing() }) return false
+        if ((context.target as? PlayerData)?.gameClasses?.filterIsInstance<Parasite>()
+                ?.any { it.isParasitizing() } == true
+        ) return false
         if (context.target.hasStatus<Invincibility>()) return false
+        val targetPlayer = context.target as? PlayerData
+        if (targetPlayer != null && context.attacker != targetPlayer && !context.attacker.isEnemyOf(targetPlayer)) {
+            return false
+        }
 
         val attackerStatus = context.attacker.entityStatus
         val targetStatus = context.target.entityStatus
@@ -78,14 +84,18 @@ object DamageManager {
     }
 
     private fun dispatchHandlers(context: DamageContext) {
-        val attackerClass = context.attacker.gameClass
         val targetPlayer = context.target as? PlayerData
-        val targetClass = targetPlayer?.gameClass
 
-        attackerClass?.passives?.filterIsInstance<OnHitHandler>()?.forEach { it.dispatchOnHit(context) }
-        attackerClass?.skills?.filterIsInstance<OnHitHandler>()?.forEach { it.dispatchOnHit(context) }
-        targetClass?.passives?.filterIsInstance<WhenHitHandler>()?.forEach { it.dispatchWhenHit(context) }
-        targetClass?.skills?.filterIsInstance<WhenHitHandler>()?.forEach { it.dispatchWhenHit(context) }
+        context.attacker.gameClasses.forEach { gameClass ->
+            (gameClass as? OnHitHandler)?.dispatchOnHit(context)
+            gameClass.passives.filterIsInstance<OnHitHandler>().forEach { it.dispatchOnHit(context) }
+            gameClass.skills.filterIsInstance<OnHitHandler>().forEach { it.dispatchOnHit(context) }
+        }
+        targetPlayer?.gameClasses?.forEach { gameClass ->
+            (gameClass as? WhenHitHandler)?.dispatchWhenHit(context)
+            gameClass.passives.filterIsInstance<WhenHitHandler>().forEach { it.dispatchWhenHit(context) }
+            gameClass.skills.filterIsInstance<WhenHitHandler>().forEach { it.dispatchWhenHit(context) }
+        }
 
         context.attacker.statusAbnormalitys.filterIsInstance<OnHitHandler>()
             .forEach { it.dispatchOnHit(context) }

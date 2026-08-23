@@ -1,18 +1,15 @@
 package org.beobma.classWarPlugin.command
 
 import net.kyori.adventure.text.minimessage.MiniMessage
-import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.info.Info.isGaming
-import org.beobma.classWarPlugin.manager.GameManager.start
 import org.beobma.classWarPlugin.manager.GameManager.stop
 import org.beobma.classWarPlugin.manager.GameManager.stopTraining
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openTrainingClassListInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openConfigInventory
+import org.beobma.classWarPlugin.manager.InventoryManager.openGameModeInventory
 import org.beobma.classWarPlugin.manager.PlayerTagManager
-import org.beobma.classWarPlugin.entity.player.PlayerData
-import org.bukkit.Bukkit
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender
@@ -51,15 +48,7 @@ class Command : Listener, CommandExecutor, TabCompleter {
                         sender.sendWaringMessage("이 명령어는 관리자만 사용할 수 있습니다.")
                         return false
                     }
-                    val game = Game(mutableListOf())
-                    val players = Bukkit.getOnlinePlayers().map { PlayerData(it, game) }.toHashSet()
-                    game.playerDatas.addAll(players.filter { !PlayerTagManager.hasTag(it.player, "isTraining") })
-
-                    if (game.playerDatas.size <= 1) {
-                        sender.sendWaringMessage("참가자가 2명 이상이여야 게임을 시작할 수 있습니다.")
-                        return false
-                    }
-                    game.start()
+                    sender.openGameModeInventory()
                     return true
                 }
 

@@ -29,8 +29,8 @@ class Bleeding : StatusAbnormality(), StatusOnHitHandler {
     override fun onAttackHit(context: DamageContext) {
         if (power <= 0) return
         context.attacker.damage(power.toDouble(), DamageType.StatusAbnormality, casterData)
-        casterData.gameClass?.passives?.filterIsInstance<BleedingDamageHandler>()
-            ?.forEach { it.onBleedingDamage(context.attacker, power) }
+        casterData.gameClasses.flatMap { it.passives }.filterIsInstance<BleedingDamageHandler>()
+            .forEach { it.onBleedingDamage(context.attacker, power) }
         if (entityData.hasStatus<BleedingLock>()) return
         if (power / 2 <= 0) {
             this.remove()

@@ -101,34 +101,11 @@ class Mathematician : GameClass(), GameStatusHandler {
     }
 
     private fun generateProblem(level: Int): Pair<String, Int> = when (level) {
-        1 -> {
-            val a = Random.nextInt(8, 31)
-            val b = Random.nextInt(3, 18)
-            if (Random.nextBoolean()) "$a + $b = ?" to a + b else "$a − $b = ?" to a - b
-        }
-        2 -> {
-            val a = Random.nextInt(3, 14)
-            val b = Random.nextInt(3, 14)
-            "$a × $b = ?" to a * b
-        }
-        3 -> {
-            val a = Random.nextInt(4, 15)
-            val b = Random.nextInt(3, 11)
-            val c = Random.nextInt(5, 31)
-            "$a × $b + $c = ?" to a * b + c
-        }
-        4 -> {
-            val a = Random.nextInt(8, 21)
-            val b = Random.nextInt(3, 10)
-            val c = Random.nextInt(2, 8)
-            "($a + $b) × $c = ?" to (a + b) * c
-        }
-        5 -> {
-            val x = Random.nextInt(4, 18)
-            val a = Random.nextInt(3, 10)
-            val b = Random.nextInt(8, 40)
-            "$a·x + $b = ${a * x + b}, x = ?" to x
-        }
+        1 -> generateBasicArithmeticProblem()
+        2 -> generateMultiplicationProblem()
+        3 -> generateMixedArithmeticProblem()
+        4 -> generateAppliedArithmeticProblem()
+        5 -> generateLinearProblem()
         6 -> generateQuadraticProblem()
         7 -> generateSequenceProblem()
         8 -> generateLogarithmProblem()
@@ -136,37 +113,177 @@ class Mathematician : GameClass(), GameStatusHandler {
         else -> generateSeniorProblem()
     }
 
+    private fun generateBasicArithmeticProblem(): Pair<String, Int> = when (Random.nextInt(5)) {
+        0 -> {
+            val a = Random.nextInt(10, 201); val b = Random.nextInt(5, 151)
+            "$a + $b = ?" to a + b
+        }
+        1 -> {
+            val answer = Random.nextInt(5, 151); val b = Random.nextInt(5, 151)
+            "${answer + b} − $b = ?" to answer
+        }
+        2 -> {
+            val a = Random.nextInt(10, 101); val b = Random.nextInt(5, 81); val c = Random.nextInt(5, 61)
+            "$a + $b − $c = ?" to a + b - c
+        }
+        3 -> {
+            val x = Random.nextInt(5, 151); val b = Random.nextInt(5, 101)
+            "x + $b = ${x + b}, x = ?" to x
+        }
+        else -> {
+            val a = Random.nextInt(-100, 101); val b = Random.nextInt(-100, 101)
+            "|$a − ($b)| = ?" to kotlin.math.abs(a - b)
+        }
+    }
+
+    private fun generateMultiplicationProblem(): Pair<String, Int> = when (Random.nextInt(5)) {
+        0 -> {
+            val a = Random.nextInt(3, 31); val b = Random.nextInt(3, 31)
+            "$a × $b = ?" to a * b
+        }
+        1 -> {
+            val divisor = Random.nextInt(2, 21); val quotient = Random.nextInt(3, 41)
+            "${divisor * quotient} ÷ $divisor = ?" to quotient
+        }
+        2 -> {
+            val a = Random.nextInt(2, 21); val b = Random.nextInt(2, 11)
+            "${a}² + $b = ?" to a * a + b
+        }
+        3 -> {
+            val a = Random.nextInt(4, 26); val b = Random.nextInt(3, 16); val c = Random.nextInt(5, 101)
+            "$a × $b − $c = ?" to a * b - c
+        }
+        else -> {
+            val a = Random.nextInt(2, 16); val b = Random.nextInt(2, 16)
+            val c = Random.nextInt(2, 16); val d = Random.nextInt(2, 16)
+            "$a × $b + $c × $d = ?" to a * b + c * d
+        }
+    }
+
+    private fun generateMixedArithmeticProblem(): Pair<String, Int> = when (Random.nextInt(5)) {
+        0 -> {
+            val a = Random.nextInt(4, 21); val b = Random.nextInt(3, 16); val c = Random.nextInt(5, 61)
+            "$a × $b + $c = ?" to a * b + c
+        }
+        1 -> {
+            val a = Random.nextInt(5, 31); val b = Random.nextInt(3, 21); val c = Random.nextInt(2, 11)
+            "($a + $b) × $c = ?" to (a + b) * c
+        }
+        2 -> {
+            val a = Random.nextInt(20, 101); val b = Random.nextInt(3, 16)
+            val c = Random.nextInt(3, 16); val d = Random.nextInt(5, 51)
+            "$a + $b × $c − $d = ?" to a + b * c - d
+        }
+        3 -> {
+            val average = Random.nextInt(10, 51); val a = Random.nextInt(5, average * 2)
+            val b = Random.nextInt(5, average * 2); val c = average * 3 - a - b
+            "($a + $b + $c) ÷ 3 = ?" to average
+        }
+        else -> {
+            val a = Random.nextInt(6, 31); val b = Random.nextInt(6, 31)
+            "lcm($a, $b) = ?" to a / greatestCommonDivisor(a, b) * b
+        }
+    }
+
+    private fun generateAppliedArithmeticProblem(): Pair<String, Int> = when (Random.nextInt(5)) {
+        0 -> {
+            val percent = listOf(10, 20, 25, 40, 50, 75).random()
+            val unit = if (percent == 25 || percent == 75) 4 else 10
+            val value = Random.nextInt(2, 21) * unit
+            "$value 의 $percent% = ?" to value * percent / 100
+        }
+        1 -> {
+            val left = Random.nextInt(2, 10); val right = Random.nextInt(2, 10); val factor = Random.nextInt(3, 16)
+            "$left : $right = ${left * factor} : x, x = ?" to right * factor
+        }
+        2 -> {
+            val width = Random.nextInt(4, 31); val height = Random.nextInt(4, 31)
+            "가로 $width, 세로 $height 인 직사각형의 둘레 = ?" to 2 * (width + height)
+        }
+        3 -> {
+            val base = Random.nextInt(2, 21) * 2; val height = Random.nextInt(3, 26)
+            "밑변 $base, 높이 $height 인 삼각형의 넓이 = ?" to base * height / 2
+        }
+        else -> {
+            val a = Random.nextInt(8, 31); val b = Random.nextInt(2, 8); val c = Random.nextInt(5, 51)
+            "($a − $b)² + $c = ?" to (a - b) * (a - b) + c
+        }
+    }
+
+    private fun generateLinearProblem(): Pair<String, Int> = when (Random.nextInt(5)) {
+        0 -> {
+            val x = Random.nextInt(-20, 31); val a = Random.nextInt(2, 13); val b = Random.nextInt(5, 51)
+            "$a·x + $b = ${a * x + b}, x = ?" to x
+        }
+        1 -> {
+            val x = Random.nextInt(3, 31); val a = Random.nextInt(2, 13); val b = Random.nextInt(5, 51)
+            "$a·x − $b = ${a * x - b}, x = ?" to x
+        }
+        2 -> {
+            val x = Random.nextInt(-10, 31); val a = Random.nextInt(2, 11); val b = Random.nextInt(2, 16)
+            "$a(x + $b) = ${a * (x + b)}, x = ?" to x
+        }
+        3 -> {
+            val divisor = Random.nextInt(2, 11); val quotient = Random.nextInt(2, 21); val b = Random.nextInt(2, 16)
+            "x ÷ $divisor + $b = ${quotient + b}, x = ?" to divisor * quotient
+        }
+        else -> {
+            val x = Random.nextInt(3, 31); val y = Random.nextInt(1, x)
+            "x + y = ${x + y}, x − y = ${x - y}, x = ?" to x
+        }
+    }
+
     private fun generateQuadraticProblem(): Pair<String, Int> {
         val smallerRoot = Random.nextInt(1, 8)
         val largerRoot = Random.nextInt(smallerRoot + 1, 13)
         val rootSum = smallerRoot + largerRoot
         val rootProduct = smallerRoot * largerRoot
-        return "x² − $rootSum·x + $rootProduct = 0, 큰 근 x = ?" to largerRoot
+        return when (Random.nextInt(5)) {
+            0 -> "x² − $rootSum·x + $rootProduct = 0, 큰 근 x = ?" to largerRoot
+            1 -> "x² − $rootSum·x + $rootProduct = 0, 작은 근 x = ?" to smallerRoot
+            2 -> "x² − $rootSum·x + $rootProduct = 0, 두 근의 합 = ?" to rootSum
+            3 -> "x² − $rootSum·x + $rootProduct = 0, 두 근의 곱 = ?" to rootProduct
+            else -> {
+                val a = Random.nextInt(1, 6); val vertexX = Random.nextInt(-8, 9); val constant = Random.nextInt(1, 20)
+                "f(x) = ${a}x² ${signed(-2 * a * vertexX)}x + $constant, 꼭짓점의 x좌표 = ?" to vertexX
+            }
+        }
     }
 
-    private fun generateSequenceProblem(): Pair<String, Int> {
-        if (Random.nextBoolean()) {
+    private fun generateSequenceProblem(): Pair<String, Int> = when (Random.nextInt(5)) {
+        0 -> {
             val firstTerm = Random.nextInt(2, 12)
             val difference = Random.nextInt(2, 8)
             val termCount = Random.nextInt(7, 13)
             val lastTerm = firstTerm + (termCount - 1) * difference
             val sum = termCount * (firstTerm + lastTerm) / 2
-            return "a₁ = $firstTerm, d = $difference, n = $termCount ⇒ Sₙ = ?" to sum
+            "a₁ = $firstTerm, d = $difference, n = $termCount ⇒ Sₙ = ?" to sum
         }
-
-        val firstTerm = Random.nextInt(1, 5)
-        val ratio = Random.nextInt(2, 4)
-        val termCount = Random.nextInt(5, 8)
-        var term = firstTerm
-        var sum = 0
-        repeat(termCount) {
-            sum += term
-            term *= ratio
+        1 -> {
+            val firstTerm = Random.nextInt(1, 5); val ratio = Random.nextInt(2, 4); val termCount = Random.nextInt(5, 9)
+            var term = firstTerm; var sum = 0
+            repeat(termCount) { sum += term; term *= ratio }
+            "a₁ = $firstTerm, r = $ratio, n = $termCount ⇒ Sₙ = ?" to sum
         }
-        return "a₁ = $firstTerm, r = $ratio, n = $termCount ⇒ Sₙ = ?" to sum
+        2 -> {
+            val first = Random.nextInt(2, 21); val difference = Random.nextInt(-6, 10); val n = Random.nextInt(8, 21)
+            "a₁ = $first, d = $difference 일 때 a${toSubscript(n)} = ?" to first + (n - 1) * difference
+        }
+        3 -> {
+            val first = Random.nextInt(1, 16); val difference = Random.nextInt(2, 11); val n = Random.nextInt(6, 16)
+            val last = first + (n - 1) * difference
+            "a₁ = $first, a${toSubscript(n)} = $last 인 등차수열의 공차 d = ?" to difference
+        }
+        else -> {
+            val first = Random.nextInt(1, 6); val second = Random.nextInt(1, 6); val n = Random.nextInt(8, 14)
+            var previous = first; var current = second
+            repeat(n - 2) { val next = previous + current; previous = current; current = next }
+            "a₁ = $first, a₂ = $second, aₙ = aₙ₋₁ + aₙ₋₂ 일 때 a${toSubscript(n)} = ?" to current
+        }
     }
 
-    private fun generateLogarithmProblem(): Pair<String, Int> {
+    private fun generateLogarithmProblem(): Pair<String, Int> = when (Random.nextInt(5)) {
+        0 -> {
         val base = Random.nextInt(2, 6)
         val knownExponent = Random.nextInt(1, 4)
         val answerExponent = Random.nextInt(2, 5)
@@ -174,25 +291,54 @@ class Mathematician : GameClass(), GameStatusHandler {
         val knownValue = intPower(base, knownExponent)
         val answer = intPower(base, answerExponent)
         val baseSubscript = toSubscript(base)
-        return "log$baseSubscript(x) + log$baseSubscript($knownValue) = $rightSide, x = ?" to answer
+            "log$baseSubscript(x) + log$baseSubscript($knownValue) = $rightSide, x = ?" to answer
+        }
+        1 -> {
+            val base = Random.nextInt(2, 8); val exponent = Random.nextInt(2, 7)
+            "log${toSubscript(base)}(${intPower(base, exponent)}) = ?" to exponent
+        }
+        2 -> {
+            val base = Random.nextInt(2, 7); val exponent = Random.nextInt(2, 7)
+            "${base}ˣ = ${intPower(base, exponent)}, x = ?" to exponent
+        }
+        3 -> {
+            val root = Random.nextInt(3, 31); val addend = Random.nextInt(2, 31)
+            "√${root * root} + $addend = ?" to root + addend
+        }
+        else -> {
+            val base = Random.nextInt(2, 6); val a = Random.nextInt(3, 8)
+            val b = Random.nextInt(2, 7); val c = Random.nextInt(1, minOf(a + b, 7))
+            "$base${toSuperscript(a)} × $base${toSuperscript(b)} ÷ $base${toSuperscript(c)} = ?" to intPower(base, a + b - c)
+        }
     }
 
-    private fun generateCalculusProblem(): Pair<String, Int> {
-        if (Random.nextBoolean()) {
+    private fun generateCalculusProblem(): Pair<String, Int> = when (Random.nextInt(5)) {
+        0 -> {
             val coefficient = Random.nextInt(1, 5)
             val linear = Random.nextInt(1, 8)
             val point = Random.nextInt(1, 6)
             val answer = 2 * coefficient * point + linear
-            return "f(x) = ${coefficient}x² + ${linear}x + 1, f′($point) = ?" to answer
+            "f(x) = ${coefficient}x² + ${linear}x + 1, f′($point) = ?" to answer
         }
-
-        val coefficient = Random.nextInt(1, 5)
-        val point = Random.nextInt(2, 8)
-        val answer = 2 * coefficient * point
-        return "limₕ→₀ [${coefficient}(($point + h)² − ${point * point}) ÷ h] = ?" to answer
+        1 -> {
+            val coefficient = Random.nextInt(1, 5); val point = Random.nextInt(2, 8)
+            "limₕ→₀ [${coefficient}(($point + h)² − ${point * point}) ÷ h] = ?" to 2 * coefficient * point
+        }
+        2 -> {
+            val cubic = Random.nextInt(1, 5); val linear = Random.nextInt(1, 9); val point = Random.nextInt(1, 6)
+            "f(x) = ${cubic}x³ + ${linear}x, f′($point) = ?" to 3 * cubic * point * point + linear
+        }
+        3 -> {
+            val a = Random.nextInt(1, 6); val b = Random.nextInt(1, 9); val upper = Random.nextInt(2, 8)
+            "∫₀${toSuperscript(upper)} (${2 * a}x + $b) dx = ?" to a * upper * upper + b * upper
+        }
+        else -> {
+            val a = Random.nextInt(2, 16)
+            "limₓ→$a (x² − ${a * a}) ÷ (x − $a) = ?" to 2 * a
+        }
     }
 
-    private fun generateSeniorProblem(): Pair<String, Int> = when (Random.nextInt(3)) {
+    private fun generateSeniorProblem(): Pair<String, Int> = when (Random.nextInt(6)) {
         0 -> {
             val cubicCoefficient = Random.nextInt(1, 4)
             val quadraticCoefficient = Random.nextInt(1, 6)
@@ -211,7 +357,7 @@ class Mathematician : GameClass(), GameStatusHandler {
             val answer = outerPower * coefficient * intPower(innerValue, outerPower - 1)
             "f(x) = ($coefficient·x + $constant)³, f′($point) = ?" to answer
         }
-        else -> {
+        2 -> {
             val denominatorCoefficient = Random.nextInt(2, 7)
             val answer = Random.nextInt(2, 8)
             val numeratorCoefficient = denominatorCoefficient * answer
@@ -220,7 +366,36 @@ class Mathematician : GameClass(), GameStatusHandler {
             "limₙ→∞ (${numeratorCoefficient}n² + $numeratorConstant) ÷ " +
                 "(${denominatorCoefficient}n² + $denominatorConstant) = ?" to answer
         }
+        3 -> {
+            val n = Random.nextInt(6, 13); val r = Random.nextInt(2, minOf(6, n))
+            "${n}C$r = ?" to combination(n, r)
+        }
+        4 -> {
+            val a = Random.nextInt(-8, 9); val b = Random.nextInt(-8, 9)
+            val c = Random.nextInt(-8, 9); val d = Random.nextInt(-8, 9)
+            "det[[$a, $b], [$c, $d]] = ?" to a * d - b * c
+        }
+        else -> {
+            val coefficient = Random.nextInt(2, 7); val constant = Random.nextInt(1, 8); val point = Random.nextInt(1, 6)
+            val inner = coefficient * point * point + constant
+            "f(x) = (${coefficient}x² + $constant)², f′($point) = ?" to 4 * coefficient * point * inner
+        }
     }
+
+    private fun greatestCommonDivisor(first: Int, second: Int): Int {
+        var a = kotlin.math.abs(first); var b = kotlin.math.abs(second)
+        while (b != 0) { val remainder = a % b; a = b; b = remainder }
+        return a
+    }
+
+    private fun combination(n: Int, r: Int): Int {
+        val selected = minOf(r, n - r)
+        var result = 1
+        for (index in 1..selected) result = result * (n - selected + index) / index
+        return result
+    }
+
+    private fun signed(value: Int): String = if (value >= 0) "+ $value" else "− ${-value}"
 
     private fun toSubscript(value: Int): String = value.toString().map { digit ->
         when (digit) {
@@ -319,7 +494,8 @@ class Mathematician : GameClass(), GameStatusHandler {
         override val description = listOf(
             "<gray>패시브", "",
             "<gray>30초마다 설정한 난이도에 따라 수학 문제가 출제된다.",
-            "<gray>난이도는 1~10이며 최대 난이도에는 고등학교 3학년 과정이 포함된다.", "",
+            "<gray>난이도는 1~10이며 최대 난이도에는 고등학교 3학년 과정이 포함된다.",
+            "<gray>사칙연산부터 수열, 로그, 미적분, 행렬까지 50개 이상의 유형이 출제된다.", "",
             "<gray>정답을 맞추면 정답 스택을 맞춘 문제의 난이도에 비례하여 얻는다.",
             "<gray>오답이거나 제한 시간 초과 시 정답 스택이 전부 사라진다.", "",
             "<gray>정답 스택당 가하는 피해가 1% 증가하고 이동 속도가 1% 증가한다. (최대 100스택)"

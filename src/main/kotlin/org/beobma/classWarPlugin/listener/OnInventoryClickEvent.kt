@@ -6,12 +6,14 @@ import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.manager.GameManager.confirmAssignedClass
 import org.beobma.classWarPlugin.manager.GameManager.refreshAssignedClass
 import org.beobma.classWarPlugin.manager.GameManager.startTraining
+import org.beobma.classWarPlugin.manager.GameManager.startNewGame
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassStatusInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openConfigInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openConfigCategoryInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.getOpenConfigCategory
 import org.beobma.classWarPlugin.manager.InventoryManager.getClassFromItem
+import org.beobma.classWarPlugin.manager.InventoryManager.getMatchModeFromItem
 import org.beobma.classWarPlugin.manager.InventoryManager.openTrainingClassListInventory
 import org.beobma.classWarPlugin.manager.ConfigCategory
 import org.beobma.classWarPlugin.manager.PlayerTagManager
@@ -61,6 +63,23 @@ class OnInventoryClickEvent : Listener {
             event.isCancelled = true
             if (event.rawSlot !in 0 until inventory.topInventory.size) return
             DeathNote.handleInventoryClick(player, event.rawSlot)
+            return
+        }
+
+        if (PlayerTagManager.hasTag(player, "openGameModeInventory")) {
+            event.isCancelled = true
+            if (event.rawSlot !in 0 until inventory.topInventory.size) return
+            val matchMode = event.currentItem?.let(::getMatchModeFromItem) ?: return
+            PlayerTagManager.removeTag(player, "openGameModeInventory")
+            player.closeInventory()
+            if (!player.isOp) {
+                player.sendMessage(miniMessage.deserialize("<red><bold>[!] 이 명령어는 관리자만 사용할 수 있습니다."))
+                return
+            }
+            val error = startNewGame(matchMode)
+            if (error != null) {
+                player.sendMessage(miniMessage.deserialize("<red><bold>[!] $error"))
+            }
             return
         }
 

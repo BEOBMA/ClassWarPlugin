@@ -51,7 +51,10 @@ class OnEntityDamageEvent : Listener {
             event.isCancelled = true
             return
         }
-        (handlerData?.gameClass as? EnvironmentalDamageHandler)?.onEnvironmentalDamage(event)
+        handlerData?.gameClasses?.filterIsInstance<EnvironmentalDamageHandler>()?.forEach { handler ->
+            handler.onEnvironmentalDamage(event)
+            if (event.isCancelled) return
+        }
         if (event.isCancelled) return
         if (!PlayerTagManager.hasTag(player, "isTraining")) {
             if (handlerData != null && event.finalDamage > 0.0) {

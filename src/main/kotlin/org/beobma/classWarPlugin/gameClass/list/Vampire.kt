@@ -54,6 +54,7 @@ import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
 // 밸런스 조정 상수
 private const val VAMPIRE_BAT_COOLDOWN_SECONDS = 60
+private const val VAMPIRE_BAT_MAX_DURATION_SECONDS = 30
 private const val VAMPIRE_BLOOD_PLAGUE_COOLDOWN_SECONDS = 120
 private const val VAMPIRE_REFLECTED_DAMAGE_MULTIPLIER = 2.0
 private const val VAMPIRE_BLOOD_PLAGUE_DURATION_SECONDS = 4
@@ -82,11 +83,11 @@ class Vampire : GameClass() {
         override val name = "<bold>박쥐화"
         override val description = listOf(
             "<gray>자신은 박쥐로 변신하여 날아다닐 수 있게 된다.",
-            "<gray>이 스킬을 다시 사용하면 변신이 해제된다.",
+            "<gray>박쥐화는 최대 ${VAMPIRE_BAT_MAX_DURATION_SECONDS}초간 유지되며, 다시 사용하면 즉시 해제된다.",
             "<gray>박쥐가 피해를 입으면 해당 피해의 2배 만큼 자신이 피해를 입는다.",
             "<gray>박쥐가 사망한 경우 이 스킬의 재사용 대기 시간이 2배로 증가하고 변신이 해제된다.", "",
             "<dark_gray>박쥐로 변신한 상태에서는 {keyword:Silence} 상태가 되며, 기본 공격을 사용할 수 없다.",
-            "<dark_gray>변신이 해제된 후 부터 재사용 대기 시간이 감소한다."
+            "<dark_gray>변신 중에는 재사용 대기 시간이 흐르지 않으며, 변신이 해제된 후부터 감소한다."
         )
         override val cooldown = VAMPIRE_BAT_COOLDOWN_SECONDS
         override val isOnOffSKill = true
@@ -154,12 +155,21 @@ class Vampire : GameClass() {
                     cancel()
                     return
                 }
+                if (ticks >= VAMPIRE_BAT_MAX_DURATION_SECONDS * 20) {
+                    player.sendMiniMessage(
+                        "<dark_red><bold>[박쥐화]</bold> <gray>최대 지속시간이 끝나 변신이 해제되었습니다."
+                    )
+                    endTransformation(batDied = false)
+                    cancel()
+                    return
+                }
                 currentBat.teleport(player.location.clone().add(0.0, 0.85, 0.0))
                 currentBat.velocity = player.velocity
                 player.fallDistance = 0f
-                if (ticks++ % 3 == 0) {
+                if (ticks % 3 == 0) {
                     particles.spawn(currentBat, Particle.SMOKE, count = 3, spread = 0.22, speed = 0.02)
                 }
+                ticks++
             }
         }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
     }
@@ -188,10 +198,18 @@ class Vampire : GameClass() {
         particles.spawn(player, Particle.SMOKE, count = 26, spread = 0.55, speed = 0.1)
         sounds.play(player, if (batDied) Sound.ENTITY_BAT_DEATH else Sound.ENTITY_BAT_TAKEOFF, volume = 0.9f, pitch = if (batDied) 0.5f else 1.35f)
 
-        if (batDied && player.isOnline && !player.isDead) {
+        if (player.isOnline && !player.isDead) {
             val skillItem = player.inventory.getItem(1) ?: ItemStack(Material.RED_DYE)
-            CooldownManager.setCooldown(player, batSkill, skillItem, batSkill.cooldown * 40)
-            player.sendMiniMessage("<red><bold>[박쥐 사망]</bold> <gray>박쥐화 재사용 대기 시간이 2배로 적용됩니다.")
+            val cooldownMultiplier = if (batDied) 2 else 1
+            CooldownManager.setCooldown(
+                player,
+                batSkill,
+                skillItem,
+                batSkill.cooldown * 20 * cooldownMultiplier,
+            )
+            if (batDied) {
+                player.sendMiniMessage("<red><bold>[박쥐 사망]</bold> <gray>박쥐화 재사용 대기 시간이 2배로 적용됩니다.")
+            }
         }
     }
 

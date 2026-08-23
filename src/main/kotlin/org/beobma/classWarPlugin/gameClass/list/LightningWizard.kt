@@ -111,9 +111,7 @@ class LightningWizard : GameClass() {
                 }
             }
 
-            val gameClass = playerData.gameClass
-
-            if (gameClass !is LightningWizard) return
+            val gameClass = playerData.findGameClass(LightningWizard::class.java) ?: return
             gameClass.createMarker(location)
             return
         }
@@ -137,9 +135,7 @@ class LightningWizard : GameClass() {
         override val cooldown = LIGHTNING_WIZARD_OVERLOAD_COOLDOWN_SECONDS
 
         override fun use() {
-            val gameClass = playerData.gameClass
-
-            if (gameClass !is LightningWizard) return
+            val gameClass = playerData.findGameClass(LightningWizard::class.java) ?: return
             val markerList = gameClass.markers
             if (markerList.isEmpty()) {
                 player.sendMiniMessage("<red><bold>[!] 생성된 표식이 존재하지 않습니다.")
@@ -151,8 +147,7 @@ class LightningWizard : GameClass() {
         }
 
         override fun isUseSuccess(): Boolean {
-            val gameClass = playerData.gameClass
-            if (gameClass !is LightningWizard) return false
+            val gameClass = playerData.findGameClass(LightningWizard::class.java) ?: return false
             val markerList = gameClass.markers
             if (markerList.isEmpty()) {
                 player.sendMiniMessage("<red><bold>[!] 생성된 표식이 존재하지 않습니다.")

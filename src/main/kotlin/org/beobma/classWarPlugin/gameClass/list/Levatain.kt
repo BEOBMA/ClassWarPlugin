@@ -9,7 +9,7 @@ import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
-import org.beobma.classWarPlugin.manager.GameClassManager.toItemStack
+import org.beobma.classWarPlugin.manager.GameClassManager.toWeaponItemStack
 import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
@@ -230,7 +230,8 @@ class Levatain : GameClass(), GameStatusHandler {
     }
 
     private fun updateWeaponItem() {
-        player.inventory.setItem(0, weapon.toItemStack())
+        val weaponSlot = if (playerData.gameClasses.indexOf(this) == 1) 8 else 0
+        player.inventory.setItem(weaponSlot, toWeaponItemStack())
     }
 
     private fun checkHealthThresholds() {
@@ -374,7 +375,7 @@ class Levatain : GameClass(), GameStatusHandler {
             val currentGame = findGameForPlayer(killer) ?: return
             val killerData = currentGame.playerDatas.filterIsInstance<PlayerData>()
                 .find { it.uniqueId == id } ?: return
-            (killerData.gameClass as? Levatain)?.addRelease(100)
+            killerData.findGameClass(Levatain::class.java)?.addRelease(100)
         }
     }
 }

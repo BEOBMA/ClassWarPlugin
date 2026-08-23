@@ -8,6 +8,7 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.game.GamePhase
+import org.beobma.classWarPlugin.game.MatchMode
 import org.beobma.classWarPlugin.game.PlayerSnapshot
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
@@ -48,6 +49,7 @@ import kotlin.math.PI
 import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.floor
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
@@ -66,6 +68,9 @@ object GameManager {
     private const val FINAL_BORDER_UPDATE_INTERVAL_TICKS = 2L
     private const val FINAL_BORDER_DAMAGE_INTERVAL_TICKS = 20L
     private const val FINAL_BORDER_DAMAGE = 2.0
+    private const val TAIL_HEARTBEAT_RADIUS = 48.0
+    private const val TAIL_HEARTBEAT_MIN_INTERVAL_TICKS = 7
+    private const val TAIL_HEARTBEAT_MAX_INTERVAL_TICKS = 36
     private val pendingPostGameCleanup: MutableMap<UUID, PlayerSnapshot> = mutableMapOf()
 
     private data class SpawnPathNode(val x: Int, val y: Int, val z: Int)
@@ -113,9 +118,27 @@ object GameManager {
 
     val trainingInstance: MutableList<Game> = mutableListOf()
 
+    fun startNewGame(mode: MatchMode): String? {
+        if (game != null) return "이미 진행중인 게임이 있습니다."
+
+        val newGame = Game(mutableListOf(), mode = mode)
+        val participants = Bukkit.getOnlinePlayers()
+            .filterNot { PlayerTagManager.hasTag(it, "isTraining") }
+            .map { PlayerData(it, newGame) }
+        if (participants.size <= 1) return "참가자가 2명 이상이여야 게임을 시작할 수 있습니다."
+        val requiredClassCount = participants.size * mode.assignedClassCount
+        if (requiredClassCount > gameClassFactories.size) {
+            return "사용 가능한 클래스 수보다 참가자가 많아 게임을 시작할 수 없습니다."
+        }
+
+        newGame.playerDatas.addAll(participants)
+        newGame.start()
+        return null
+    }
+
     fun Game.start() {
         val participants = activePlayers()
-        if (participants.size > gameClassFactories.size) {
+        if (participants.size * mode.assignedClassCount > gameClassFactories.size) {
             sendNotification("사용 가능한 클래스 수보다 참가자가 많아 게임을 시작할 수 없습니다.")
             return
         }
@@ -129,6 +152,7 @@ object GameManager {
         confirmedPlayers.clear()
         refreshesRemaining.clear()
         playerKillCounts.clear()
+        tailTargets.clear()
 
         participants.forEach { playerData ->
             val player = playerData.player
@@ -145,16 +169,20 @@ object GameManager {
             player.fireTicks = 0
             player.health = player.getPlayerMaxHealth()
             refreshesRemaining[player.uniqueId] = settings.refreshChances
-            playerData.gameClass = drawRandomClass() ?: return@forEach
+            val assignedClasses = mutableListOf<GameClass>()
+            repeat(mode.assignedClassCount) {
+                drawRandomClass()?.let(assignedClasses::add)
+            }
+            playerData.assignGameClasses(assignedClasses)
         }
 
-        if (participants.any { it.gameClass == null }) {
+        if (participants.any { it.gameClasses.size != mode.assignedClassCount }) {
             sendNotification("클래스 배정에 실패하여 게임을 종료합니다.")
             stop()
             return
         }
 
-        sendNotification("무작위 클래스가 배정되었습니다. 클래스를 확인하고 확정해 주세요.")
+        sendNotification("${mode.displayName} <gray>모드가 선택되었습니다. 무작위 클래스를 확인하고 확정해 주세요.")
         participants.forEach { it.openAssignedClassInventory() }
     }
 
@@ -169,16 +197,22 @@ object GameManager {
             return
         }
 
-        val previous = gameClass ?: return
-        currentGame.availableClasses.add(previous)
-        val replacement = currentGame.drawRandomClass(previous::class.java)
-        if (replacement == null) {
-            currentGame.availableClasses.remove(previous)
-            player.sendMessage(miniMessage.deserialize("<red><bold>[!] 새로 배정할 수 있는 클래스가 없습니다."))
+        val previousClasses = gameClasses.toList()
+        if (previousClasses.isEmpty()) return
+        currentGame.availableClasses.addAll(previousClasses)
+        val excludedTypes = previousClasses.map { it.javaClass }.toSet()
+        val replacements = mutableListOf<GameClass>()
+        repeat(currentGame.mode.assignedClassCount) {
+            currentGame.drawRandomClass(excludedTypes)?.let(replacements::add)
+        }
+        if (replacements.size != currentGame.mode.assignedClassCount) {
+            currentGame.availableClasses.addAll(replacements)
+            previousClasses.forEach(currentGame.availableClasses::remove)
+            player.sendMessage(miniMessage.deserialize("<red><bold>[!] 새로 배정할 수 있는 클래스 조합이 없습니다."))
             return
         }
 
-        gameClass = replacement
+        assignGameClasses(replacements)
         currentGame.refreshesRemaining[player.uniqueId] = remaining - 1
         player.playSound(player.location, Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0F, 1.2F)
         openAssignedClassInventory()
@@ -187,11 +221,11 @@ object GameManager {
     fun PlayerData.confirmAssignedClass() {
         val currentGame = initGame
         if (currentGame.phase != GamePhase.CLASS_SELECTION) return
+        if (gameClasses.size != currentGame.mode.assignedClassCount) return
         if (!currentGame.confirmedPlayers.add(player.uniqueId)) return
 
         PlayerTagManager.removeTag(player, "openAssignedClassInventory")
         player.closeInventory()
-        if (gameClass == null) return
         player.playerListName(miniMessage.deserialize(player.name))
         currentGame.sendNotification("${player.name}님이 클래스를 확정했습니다. (${currentGame.confirmedPlayers.size}/${currentGame.contenders().size})")
 
@@ -200,12 +234,8 @@ object GameManager {
         }
     }
 
-    private fun Game.drawRandomClass(excludedType: Class<out GameClass>? = null): GameClass? {
-        val candidates = if (excludedType == null) {
-            availableClasses
-        } else {
-            availableClasses.filter { it.javaClass != excludedType }
-        }
+    private fun Game.drawRandomClass(excludedTypes: Set<Class<out GameClass>> = emptySet()): GameClass? {
+        val candidates = availableClasses.filter { it.javaClass !in excludedTypes }
         if (candidates.isEmpty()) return null
 
         val weightedRanks = candidates.map { it.rank }.distinct().mapNotNull { rank ->
@@ -227,6 +257,7 @@ object GameManager {
     private fun Game.beginCountdown() {
         phase = GamePhase.COUNTDOWN
         val participants = contenders()
+        initializeTailTargets(participants)
         participants.forEach {
             PlayerTagManager.removeTag(it.player, "openAssignedClassInventory")
             it.player.closeInventory()
@@ -313,6 +344,9 @@ object GameManager {
 
     private fun Game.beginBattle() {
         phase = GamePhase.RUNNING
+        if (mode == MatchMode.TAIL_TAG && tailTargets.isEmpty()) {
+            initializeTailTargets(contenders())
+        }
         contenders().forEach { playerData ->
             val status = playerData.entityStatus
             if (disconnectedPlayers.contains(playerData.player.uniqueId)) {
@@ -328,13 +362,98 @@ object GameManager {
             playerData.player.showTitle(
                 Title.title(
                     miniMessage.deserialize("<red><bold>Fight!"),
-                    miniMessage.deserialize("<gray>마지막 생존자가 되세요.")
+                    miniMessage.deserialize(
+                        if (mode == MatchMode.TAIL_TAG) {
+                            val targetName = targetOf(playerData.uniqueId)?.let { findParticipant(it) }?.player?.name
+                                ?: "표적 없음"
+                            "<gold>당신의 표적: <white><bold>$targetName"
+                        } else {
+                            "<gray>마지막 생존자가 되세요."
+                        }
+                    )
                 )
             )
+            if (mode == MatchMode.TAIL_TAG) sendTailTargetNotice(playerData)
         }
-        sendNotification("게임이 시작되었습니다.")
+        sendNotification("${mode.displayName} <gray>게임이 시작되었습니다.")
         startClassTickTask()
+        startTailHeartbeatTask()
         startWorldBorder()
+    }
+
+    private fun Game.initializeTailTargets(participants: List<PlayerData>) {
+        tailTargets.clear()
+        if (mode != MatchMode.TAIL_TAG || participants.size <= 1) return
+        val shuffledIds = participants.map { it.uniqueId }.shuffled()
+        shuffledIds.forEachIndexed { index, playerId ->
+            tailTargets[playerId] = shuffledIds[(index + 1) % shuffledIds.size]
+        }
+    }
+
+    private fun Game.sendTailTargetNotice(playerData: PlayerData) {
+        val target = targetOf(playerData.uniqueId)?.let { findParticipant(it) } ?: return
+        if (!playerData.player.isOnline) return
+        playerData.player.sendMessage(
+            miniMessage.deserialize(
+                "<gold><bold>[꼬리잡기]</bold> <gray>당신의 표적은 <white><bold>${target.player.name}</bold><gray>님입니다. " +
+                    "<red>표적에게만 피해를 줄 수 있습니다."
+            )
+        )
+    }
+
+    private fun Game.startTailHeartbeatTask() {
+        if (mode != MatchMode.TAIL_TAG) return
+        val nextHeartbeatTicks = mutableMapOf<UUID, Long>()
+        var elapsedTicks = 0L
+        val task = object : BukkitRunnable() {
+            override fun run() {
+                if (phase != GamePhase.RUNNING) {
+                    cancel()
+                    return
+                }
+                if (isPaused) return
+                elapsedTicks += 2L
+
+                contenders().forEach { playerData ->
+                    val player = playerData.player
+                    val threat = threatOf(playerData.uniqueId)?.let { findParticipant(it) }
+                    if (!player.isOnline || disconnectedPlayers.contains(playerData.uniqueId) ||
+                        threat == null || threat.entityStatus.isDead || !threat.player.isOnline ||
+                        disconnectedPlayers.contains(threat.uniqueId) || player.world != threat.player.world
+                    ) {
+                        nextHeartbeatTicks.remove(playerData.uniqueId)
+                        return@forEach
+                    }
+
+                    val distanceSquared = player.location.distanceSquared(threat.player.location)
+                    if (distanceSquared > TAIL_HEARTBEAT_RADIUS * TAIL_HEARTBEAT_RADIUS) {
+                        nextHeartbeatTicks.remove(playerData.uniqueId)
+                        return@forEach
+                    }
+
+                    val distance = sqrt(distanceSquared)
+                    val proximity = (1.0 - distance / TAIL_HEARTBEAT_RADIUS).coerceIn(0.0, 1.0)
+                    val interval = (
+                        TAIL_HEARTBEAT_MAX_INTERVAL_TICKS -
+                            (TAIL_HEARTBEAT_MAX_INTERVAL_TICKS - TAIL_HEARTBEAT_MIN_INTERVAL_TICKS) * proximity
+                        ).roundToInt().coerceAtLeast(TAIL_HEARTBEAT_MIN_INTERVAL_TICKS)
+                    val nextHeartbeat = nextHeartbeatTicks[playerData.uniqueId] ?: elapsedTicks
+                    if (elapsedTicks < nextHeartbeat) return@forEach
+
+                    val pitch = (0.75 + proximity * 0.4).toFloat()
+                    val volume = (0.45 + proximity * 0.55).toFloat()
+                    player.playSound(
+                        player.location,
+                        Sound.ENTITY_WARDEN_HEARTBEAT,
+                        SoundCategory.MASTER,
+                        volume,
+                        pitch,
+                    )
+                    nextHeartbeatTicks[playerData.uniqueId] = elapsedTicks + interval
+                }
+            }
+        }.runTaskTimer(ClassWarPlugin.instance, 0L, 2L)
+        track(task)
     }
 
     private fun Game.startClassTickTask() {
@@ -346,9 +465,11 @@ object GameManager {
                     !disconnectedPlayers.contains(it.player.uniqueId) &&
                         battleInitializedPlayers.contains(it.player.uniqueId)
                 }.forEach { playerData ->
-                    playerData.gameClass?.passives?.filterIsInstance<GameStatusHandler>()
-                        ?.forEach { it.onGameTimePasses() }
-                    (playerData.gameClass as? GameStatusHandler)?.onGameTimePasses()
+                    playerData.gameClasses.forEach { gameClass ->
+                        gameClass.passives.filterIsInstance<GameStatusHandler>()
+                            .forEach { it.onGameTimePasses() }
+                        (gameClass as? GameStatusHandler)?.onGameTimePasses()
+                    }
                 }
             }
         }.runTaskTimer(ClassWarPlugin.instance, 20L, 20L)
@@ -705,7 +826,7 @@ object GameManager {
         val player = playerData.player
         val appliedDamage = FINAL_BORDER_DAMAGE.coerceAtMost(player.health)
         if (appliedDamage <= 0.0) return
-        (playerData.gameClass as? Grass)?.suppressStealthFromDamage()
+        playerData.gameClasses.filterIsInstance<Grass>().forEach { it.suppressStealthFromDamage() }
         CombatManager.recordDamageTaken(playerData)
         DamageIndicatorManager.show(player, appliedDamage, settings.damageIndicatorsEnabled)
         player.playHurtAnimation(0.0F)
@@ -966,6 +1087,7 @@ object GameManager {
     fun handleDeath(playerData: PlayerData) {
         val currentGame = playerData.initGame
         if (currentGame.phase != GamePhase.RUNNING || playerData.entityStatus.isDead) return
+        currentGame.removeTailParticipant(playerData.uniqueId)
         playerData.entityStatus.isDead = true
         playerData.entityStatus.canAttack = false
         playerData.entityStatus.canSkillUse = false
@@ -1117,6 +1239,7 @@ object GameManager {
                 player.gameMode = GameMode.ADVENTURE
                 currentGame.borderBossBar?.let { player.showBossBar(it) }
                 player.sendMessage(miniMessage.deserialize("<green><bold>[!] 게임에 정상적으로 복귀했습니다."))
+                if (currentGame.mode == MatchMode.TAIL_TAG) currentGame.sendTailTargetNotice(playerData)
             }
 
             GamePhase.WAITING, GamePhase.FINISHED -> Unit
@@ -1130,6 +1253,7 @@ object GameManager {
     }
 
     private fun Game.permanentlyEliminateDisconnectedPlayer(playerData: PlayerData) {
+        removeTailParticipant(playerData.uniqueId)
         playerData.entityStatus.isDead = true
         StealthVisibilityManager.reveal(playerData)
         expiredReconnectPlayers.add(playerData.uniqueId)
@@ -1138,7 +1262,7 @@ object GameManager {
         playerData.bukkitTasks.clear()
         confirmedPlayers.remove(playerData.uniqueId)
         if (phase == GamePhase.CLASS_SELECTION) {
-            playerData.gameClass?.let { assigned ->
+            playerData.gameClasses.forEach { assigned ->
                 if (availableClasses.none { it.javaClass == assigned.javaClass }) availableClasses.add(assigned)
             }
         }
@@ -1152,6 +1276,37 @@ object GameManager {
         if (phase == GamePhase.CLASS_SELECTION && survivors.all { confirmedPlayers.contains(it.uniqueId) }) {
             beginCountdown()
         }
+    }
+
+    private fun Game.removeTailParticipant(victimId: UUID) {
+        if (mode != MatchMode.TAIL_TAG || tailTargets.isEmpty()) return
+        val successorId = tailTargets.remove(victimId)
+        val hunterId = tailTargets.entries.firstOrNull { (_, targetId) -> targetId == victimId }?.key
+        if (hunterId != null) tailTargets.remove(hunterId)
+
+        val remaining = contenders().count { it.uniqueId != victimId }
+        if (remaining <= 1) {
+            tailTargets.clear()
+            StealthVisibilityManager.refreshAll()
+            return
+        }
+
+        if (hunterId != null && successorId != null && hunterId != successorId) {
+            tailTargets[hunterId] = successorId
+            findParticipant(hunterId)?.let { hunter ->
+                sendTailTargetNotice(hunter)
+                if (hunter.player.isOnline) {
+                    hunter.player.playSound(
+                        hunter.player.location,
+                        Sound.BLOCK_NOTE_BLOCK_BELL,
+                        SoundCategory.MASTER,
+                        1.0F,
+                        1.4F,
+                    )
+                }
+            }
+        }
+        StealthVisibilityManager.refreshAll()
     }
 
     private fun Game.finish(winner: PlayerData?) {
@@ -1185,10 +1340,10 @@ object GameManager {
         if (wasRunning) broadcastClassSummary()
         val participantIds = activePlayers().map { it.uniqueId }
         activePlayers().forEach { data ->
-            val assigned = data.gameClass ?: return@forEach
-            if (!assigned.isInjectedFor(data)) return@forEach
-            assigned.passives.filterIsInstance<GameEndHandler>().forEach { it.onGameEnd() }
-            (assigned as? GameEndHandler)?.onGameEnd()
+            data.gameClasses.filter { it.isInjectedFor(data) }.forEach { assigned ->
+                assigned.passives.filterIsInstance<GameEndHandler>().forEach { it.onGameEnd() }
+                (assigned as? GameEndHandler)?.onGameEnd()
+            }
         }
         GraveRobber.clearDeathRecords(this)
         Contractor.clearSessions(participantIds)
@@ -1243,6 +1398,7 @@ object GameManager {
         expiredReconnectPlayers.clear()
         assignedSpawnLocations.clear()
         battleInitializedPlayers.clear()
+        tailTargets.clear()
         availableClasses.clear()
         refreshesRemaining.clear()
         confirmedPlayers.clear()
@@ -1264,8 +1420,7 @@ object GameManager {
         }
 
     fun PlayerData.canDispatchClassHandlers(): Boolean {
-        val assignedClass = gameClass ?: return false
-        if (!assignedClass.isInjectedFor(this)) return false
+        if (gameClasses.isEmpty() || gameClasses.any { !it.isInjectedFor(this) }) return false
         if (!initGame.battleInitializedPlayers.contains(uniqueId)) return false
         return PlayerTagManager.hasTag(player, "isTraining") || initGame.phase == GamePhase.RUNNING
     }
@@ -1288,9 +1443,11 @@ object GameManager {
 
         val task = object : BukkitRunnable() {
             override fun run() {
-                playerData.gameClass?.passives?.filterIsInstance<GameStatusHandler>()
-                    ?.forEach { it.onGameTimePasses() }
-                (playerData.gameClass as? GameStatusHandler)?.onGameTimePasses()
+                playerData.gameClasses.forEach { gameClass ->
+                    gameClass.passives.filterIsInstance<GameStatusHandler>()
+                        .forEach { it.onGameTimePasses() }
+                    (gameClass as? GameStatusHandler)?.onGameTimePasses()
+                }
             }
         }.runTaskTimer(ClassWarPlugin.instance, 20L, 20L)
         trainingGame.track(task)
@@ -1299,10 +1456,10 @@ object GameManager {
     fun Player.stopTraining() {
         val trainingGame = trainingInstance.find { it.activePlayers().any { data -> data.player == this } } ?: return
         trainingGame.activePlayers().forEach { data ->
-            val assigned = data.gameClass ?: return@forEach
-            if (!assigned.isInjectedFor(data)) return@forEach
-            assigned.passives.filterIsInstance<GameEndHandler>().forEach { it.onGameEnd() }
-            (assigned as? GameEndHandler)?.onGameEnd()
+            data.gameClasses.filter { it.isInjectedFor(data) }.forEach { assigned ->
+                assigned.passives.filterIsInstance<GameEndHandler>().forEach { it.onGameEnd() }
+                (assigned as? GameEndHandler)?.onGameEnd()
+            }
         }
         Contractor.clearSessions(listOf(uniqueId))
         DeathNote.clearSessions(listOf(uniqueId))
@@ -1343,8 +1500,7 @@ object GameManager {
                 if (playerData.player.isOnline) {
                     playerData.player.stopTraining()
                 } else {
-                    playerData.gameClass?.let { assigned ->
-                        if (!assigned.isInjectedFor(playerData)) return@let
+                    playerData.gameClasses.filter { it.isInjectedFor(playerData) }.forEach { assigned ->
                         assigned.passives.filterIsInstance<GameEndHandler>().forEach { it.onGameEnd() }
                         (assigned as? GameEndHandler)?.onGameEnd()
                     }
@@ -1388,7 +1544,7 @@ object GameManager {
 
     private fun Game.rebindPlayer(playerData: PlayerData, player: Player) {
         playerData.player = player
-        playerData.gameClass?.let { gameClass ->
+        playerData.gameClasses.forEach { gameClass ->
             gameClass.inject(playerData)
             gameClass.skills.forEach { it.inject(playerData) }
             gameClass.passives.forEach { it.inject(playerData) }
@@ -1467,7 +1623,9 @@ object GameManager {
         val classLines = activePlayers()
             .sortedBy { it.player.name.lowercase(Locale.ROOT) }
             .joinToString("\n") { playerData ->
-                val className = playerData.gameClass?.name ?: "<red>배정되지 않음"
+                val className = playerData.gameClasses
+                    .joinToString(" <dark_gray>+</dark_gray> ") { it.name }
+                    .ifEmpty { "<red>배정되지 않음" }
                 val kills = playerKillCounts[playerData.uniqueId] ?: 0
                 "<gray>- <white>${playerData.player.name}<dark_gray>: $className " +
                     "<dark_gray>| <red>킬 <white><bold>$kills</bold>"

@@ -13,6 +13,7 @@ import java.util.UUID
 data class Game(
     val playerDatas: MutableList<EntityData>,
     val settings: GameConfiguration = GameSettings.snapshot(),
+    val mode: MatchMode = MatchMode.CLASSIC,
     var phase: GamePhase = GamePhase.WAITING,
     val tasks: MutableList<BukkitTask> = mutableListOf(),
     val availableClasses: MutableList<GameClass> = mutableListOf(),
@@ -25,6 +26,7 @@ data class Game(
     val expiredReconnectPlayers: MutableSet<UUID> = mutableSetOf(),
     val disconnectTasks: MutableMap<UUID, BukkitTask> = mutableMapOf(),
     val battleInitializedPlayers: MutableSet<UUID> = mutableSetOf(),
+    val tailTargets: MutableMap<UUID, UUID> = mutableMapOf(),
     val playerSnapshots: MutableMap<UUID, PlayerSnapshot> = mutableMapOf(),
     var borderBossBar: BossBar? = null,
     var originalBorderCenter: Location? = null,
@@ -36,4 +38,14 @@ data class Game(
     var roundCenterZ: Double = settings.centerZ
     var battleMapView: MapView? = null
     var battleMapRenderer: MapRenderer? = null
+
+    fun targetOf(playerId: UUID): UUID? = tailTargets[playerId]
+
+    fun threatOf(playerId: UUID): UUID? =
+        tailTargets.entries.firstOrNull { (_, targetId) -> targetId == playerId }?.key
+
+    fun areEnemies(attackerId: UUID, targetId: UUID): Boolean = when (mode) {
+        MatchMode.CLASSIC, MatchMode.DUAL -> attackerId != targetId
+        MatchMode.TAIL_TAG -> tailTargets[attackerId] == targetId
+    }
 }

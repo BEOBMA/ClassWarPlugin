@@ -75,7 +75,7 @@ class Referee : GameClass(), GameStatusHandler {
     }
 
     override fun onGameTimePasses() {
-        if (playerData.entityStatus.isDead || playerData.gameClass !== this) {
+        if (playerData.entityStatus.isDead || this !in playerData.gameClasses) {
             activeReferees.remove(player.uniqueId, this)
             return
         }
@@ -551,7 +551,7 @@ class Referee : GameClass(), GameStatusHandler {
                 data.entityStatus.isSkillTargeting = snapshot.isSkillTargeting
                 data.player.isGlowing = snapshot.glowing
                 if (data.player.isOnline) data.player.teleport(snapshot.location)
-                data.gameClass?.skills?.forEach { CooldownManager.resumeCooldown(data.player, it) }
+                data.gameClasses.flatMap { it.skills }.forEach { CooldownManager.resumeCooldown(data.player, it) }
             }
             sessionGames.forEach { participantGame ->
                 activeTrials.remove(participantGame, this)
@@ -595,7 +595,7 @@ class Referee : GameClass(), GameStatusHandler {
         }
 
         private fun pauseCooldowns() = participants.forEach { data ->
-            data.gameClass?.skills?.forEach { CooldownManager.pauseCooldown(data.player, it) }
+            data.gameClasses.flatMap { it.skills }.forEach { CooldownManager.pauseCooldown(data.player, it) }
         }
 
         private fun updateBar(label: String, totalSeconds: Int) {
@@ -1066,7 +1066,8 @@ class Referee : GameClass(), GameStatusHandler {
             }
             Crime.ABUSE -> {
                 val cooldownMultiplier = if (perjury) 4.0 else 2.0
-                target.gameClass?.skills?.forEach { CooldownManager.multiplyCooldown(target.player, it, cooldownMultiplier) }
+                target.gameClasses.flatMap { it.skills }
+                    .forEach { CooldownManager.multiplyCooldown(target.player, it, cooldownMultiplier) }
             }
             Crime.ESCAPE -> {
                 val duration = 10 * multiplier
@@ -1127,7 +1128,7 @@ class Referee : GameClass(), GameStatusHandler {
 
         private fun Referee.isActiveFor(targetGame: Game): Boolean =
             game === targetGame && game.phase == GamePhase.RUNNING &&
-                !playerData.entityStatus.isDead && playerData.gameClass === this
+                !playerData.entityStatus.isDead && this in playerData.gameClasses
 
         private fun sameWorldDistance(first: Location, second: Location): Double =
             if (first.world != second.world) Double.MAX_VALUE else first.distance(second)

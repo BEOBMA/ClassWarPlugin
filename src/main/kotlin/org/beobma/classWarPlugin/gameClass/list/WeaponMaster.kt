@@ -107,7 +107,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
     override fun onGameTimePasses() = Unit
 
     private fun returnToWeapon() {
-        player.inventory.heldItemSlot = 0
+        player.inventory.heldItemSlot = if (playerData.gameClasses.indexOf(this) == 1) 8 else 0
     }
 
     private fun horizontalDirection(): Vector {

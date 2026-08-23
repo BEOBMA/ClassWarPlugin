@@ -10,7 +10,7 @@ import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.game.GamePhase
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.list.Referee
-import org.beobma.classWarPlugin.manager.GameClassManager.toItemStack
+import org.beobma.classWarPlugin.manager.GameClassManager.toWeaponItemStack
 import org.beobma.classWarPlugin.manager.SkillManager.markSkillItem
 import org.beobma.classWarPlugin.manager.InventoryManager.skillDyeMaterial
 import org.beobma.classWarPlugin.manager.ItemDescriptionManager
@@ -40,22 +40,27 @@ object PlayerManager {
     }
 
     fun PlayerData.classSet(initializeHandlers: Boolean = true) {
-        val gameClass = gameClass ?: return
-        gameClass.inject(this)
-        gameClass.skills.forEach { skill ->
-            skill.inject(this)
-        }
-        gameClass.passives.forEach { passive ->
-            passive.inject(this)
+        val assignedClasses = gameClasses.toList()
+        if (assignedClasses.isEmpty()) return
+        assignedClasses.forEach { gameClass ->
+            gameClass.inject(this)
+            gameClass.skills.forEach { skill -> skill.inject(this) }
+            gameClass.passives.forEach { passive -> passive.inject(this) }
         }
 
         player.inventory.setHelmet(ItemStack(Material.IRON_HELMET))
         player.inventory.setChestplate(ItemStack(Material.IRON_CHESTPLATE))
         player.inventory.setLeggings(ItemStack(Material.IRON_LEGGINGS))
         player.inventory.setBoots(ItemStack(Material.IRON_BOOTS))
-        player.inventory.setItem(0, gameClass.weapon.toItemStack())
-        gameClass.skills.forEachIndexed { index, skill ->
-            if (index + 1 > 8) return@forEachIndexed
+        player.inventory.setItem(0, assignedClasses.first().toWeaponItemStack())
+        if (assignedClasses.size > 1) {
+            player.inventory.setItem(8, assignedClasses[1].toWeaponItemStack())
+        }
+
+        val contentSlots = ((1..7) + (9..35)).iterator()
+        val allSkills = assignedClasses.flatMap { it.skills }
+        allSkills.forEachIndexed { index, skill ->
+            if (!contentSlots.hasNext()) return@forEachIndexed
             val name = UtilManager.applyKeywords(skill.name)
             val type = skillDyeMaterial(index)
             val displayItem = ItemStack(type, 1).apply {
@@ -72,38 +77,31 @@ object PlayerManager {
                 skill,
                 player.uniqueId,
             )
-
-
-            player.inventory.setItem(index + 1, item)
+            player.inventory.setItem(contentSlots.next(), item)
         }
 
-        gameClass.passives.forEachIndexed { index, skill ->
-            val name = UtilManager.applyKeywords(skill.name)
+        assignedClasses.flatMap { it.passives }.forEach { passive ->
+            if (!contentSlots.hasNext()) return@forEach
+            val name = UtilManager.applyKeywords(passive.name)
             val type = Material.WHITE_DYE
             val item = ItemDescriptionManager.apply(ItemStack(type, 1).apply {
                 itemMeta = itemMeta.apply {
                     displayName(miniMessage.deserialize(name))
                 }
-            }, skill.description)
-
-            if (index + 9 > 26) return@forEachIndexed
-            player.inventory.setItem(9 + index, item)
+            }, passive.description)
+            player.inventory.setItem(contentSlots.next(), item)
         }
 
-        gameClass.extraItemMaterials.forEachIndexed { index, item ->
-            if (index + 27 > 35) return@forEachIndexed
-            player.inventory.setItem(index + 27, item)
+        assignedClasses.flatMap { it.extraItemMaterials }.forEach { item ->
+            if (!contentSlots.hasNext()) return@forEach
+            player.inventory.setItem(contentSlots.next(), item)
         }
 
         if (initializeHandlers) {
-            gameClass.passives.forEach { passive ->
-                if (passive is GameStatusHandler) {
-                    passive.onBattleStart()
-                }
-            }
-
-            if (gameClass is GameStatusHandler) {
-                gameClass.onBattleStart()
+            assignedClasses.forEach { gameClass ->
+                gameClass.passives.filterIsInstance<GameStatusHandler>()
+                    .forEach { it.onBattleStart() }
+                (gameClass as? GameStatusHandler)?.onBattleStart()
             }
         }
 

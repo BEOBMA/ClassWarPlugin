@@ -31,6 +31,11 @@ class OnInventoryCloseEvent : Listener {
             return
         }
 
+        if (PlayerTagManager.hasTag(player, "openGameModeInventory")) {
+            PlayerTagManager.removeTag(player, "openGameModeInventory")
+            return
+        }
+
         if (PlayerTagManager.hasTag(player, "openingAssignedClassInventory")) {
             PlayerTagManager.removeTag(player, "openingAssignedClassInventory")
             return

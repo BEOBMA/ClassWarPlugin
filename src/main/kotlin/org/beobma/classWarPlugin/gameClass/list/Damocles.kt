@@ -21,6 +21,8 @@ import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.util.Vector
 import kotlin.random.Random
 
+private const val DAMOCLES_SWORD_SCALE = 3.0f
+
 class Damocles : GameClass(), GameStatusHandler {
     override val name = "<gray>다모클레스"
     override val rank = Rank.S
@@ -46,7 +48,7 @@ class Damocles : GameClass(), GameStatusHandler {
             brightness = Display.Brightness(15, 15)
             isPersistent = false
         }
-        DisplayOrientationUtil.alignSwordBladeVertically(display, Vector(0.0, -1.0, 0.0), 4.2f)
+        DisplayOrientationUtil.alignSwordBladeVertically(display, Vector(0.0, -1.0, 0.0), DAMOCLES_SWORD_SCALE)
         TemporaryDisplayManager.mark(display, player.uniqueId)
         sword = display
         playerData.trackTask(object : BukkitRunnable() {
