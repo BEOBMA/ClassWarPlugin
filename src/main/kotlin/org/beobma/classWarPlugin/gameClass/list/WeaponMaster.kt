@@ -47,6 +47,33 @@ import kotlin.math.cos
 import kotlin.math.sin
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val WEAPON_MASTER_SCIMITAR_COOLDOWN_SECONDS = 4
+private const val WEAPON_MASTER_SHOTGUN_COOLDOWN_SECONDS = 5
+private const val WEAPON_MASTER_CLAW_COOLDOWN_SECONDS = 3
+private const val WEAPON_MASTER_BRICK_COOLDOWN_SECONDS = 8
+private const val WEAPON_MASTER_BOMB_COOLDOWN_SECONDS = 8
+private const val WEAPON_MASTER_KNIFE_COOLDOWN_SECONDS = 5
+private const val WEAPON_MASTER_WING_DAGGER_COOLDOWN_SECONDS = 10
+private const val WEAPON_MASTER_NEEDLE_BAT_COOLDOWN_SECONDS = 12
+private const val WEAPON_MASTER_SCIMITAR_DAMAGE = 2.0
+private const val WEAPON_MASTER_SHOTGUN_DAMAGE = 3.0
+private const val WEAPON_MASTER_CLAW_DAMAGE = 2.0
+private const val WEAPON_MASTER_BRICK_DAMAGE = 4.0
+private const val WEAPON_MASTER_BOMB_DAMAGE = 4.0
+private const val WEAPON_MASTER_KNIFE_DAMAGE = 5.0
+private const val WEAPON_MASTER_WING_DAGGER_DAMAGE = 2.0
+private const val WEAPON_MASTER_WING_DAGGER_EXPLOSION_DAMAGE = 3.0
+private const val WEAPON_MASTER_NEEDLE_BAT_START_DAMAGE = 2.0
+private const val WEAPON_MASTER_NEEDLE_BAT_DAMAGE_PER_COMBO = 1.0
+private const val WEAPON_MASTER_NEEDLE_BAT_MAX_COMBO = 3
+private const val WEAPON_MASTER_MASTERY_DAMAGE_PER_STACK = 0.1
+private const val WEAPON_MASTER_MAX_MASTERY_STACKS = 8
+private const val WEAPON_MASTER_MASTERY_DURATION_SECONDS = 6
+private const val WEAPON_MASTER_CHAIN_SHIELD_DURATION_SECONDS = 2
+private const val WEAPON_MASTER_CHAIN_SHIELD_POWER = 2
+private const val WEAPON_MASTER_CHAIN_BURST_DAMAGE = 4.0
+
 class WeaponMaster : GameClass(), GameStatusHandler {
     override val name = "<gray>웨폰마스터"
     override val rank = Rank.L
@@ -104,7 +131,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             "<gray>바라보는 방향으로 돌진하여 모든 적을 베어 2의 피해를 입힌다.", "",
             "<dark_gray>사용 후 핫바키가 1번으로 자동 교체된다."
         )
-        override val cooldown = 4
+        override val cooldown = WEAPON_MASTER_SCIMITAR_COOLDOWN_SECONDS
 
         override fun use() {
             val direction = horizontalDirection()
@@ -123,7 +150,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
                         if (target.entity.uniqueId in hit) return@forEach
                         if (!HitboxUtil.intersectsSegment(target.entity.boundingBox, previous, current, 0.85)) return@forEach
                         hit += target.entity.uniqueId
-                        skillDamage(target, 2.0)
+                        skillDamage(target, WEAPON_MASTER_SCIMITAR_DAMAGE)
                         particles.spawn(target.entity, Particle.SWEEP_ATTACK, count = 1)
                     }
                     particles.spawn(current.toLocation(player.world), Particle.SWEEP_ATTACK, count = 1, spread = 0.12)
@@ -143,7 +170,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             "<gray>바라보는 방향으로 샷건을 발사하여 3의 피해를 입힌 뒤 자신은 후방으로 밀려난다.", "",
             "<dark_gray>사용 후 핫바키가 1번으로 자동 교체된다."
         )
-        override val cooldown = 5
+        override val cooldown = WEAPON_MASTER_SHOTGUN_COOLDOWN_SECONDS
 
         override fun use() {
             val eye = player.eyeLocation
@@ -155,7 +182,9 @@ class WeaponMaster : GameClass(), GameStatusHandler {
                 ?.distance(eye.toVector()) ?: 8.0
             playerData.getConeTargets(8.0, 42.0, TargetType.Enemy, false).forEach { target ->
                 val closest = HitboxUtil.closestPoint(target.entity.boundingBox, eye.toVector())
-                if (closest.distance(eye.toVector()) <= blockDistance + 0.3) skillDamage(target, 3.0)
+                if (closest.distance(eye.toVector()) <= blockDistance + 0.3) {
+                    skillDamage(target, WEAPON_MASTER_SHOTGUN_DAMAGE)
+                }
             }
             repeat(11) { pellet ->
                 val spread = (pellet - 5) * 0.035
@@ -179,7 +208,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             "<gray>전방 사선 방향으로 하강하며 적중한 적에게 2의 피해를 입힌다.", "",
             "<dark_gray>사용 후 핫바키가 1번으로 자동 교체된다."
         )
-        override val cooldown = 3
+        override val cooldown = WEAPON_MASTER_CLAW_COOLDOWN_SECONDS
 
         override fun isUseSuccess(): Boolean {
             if (!isGrounded()) return true
@@ -204,7 +233,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
                         if (target.entity.uniqueId in hit) return@forEach
                         if (!HitboxUtil.intersectsSegment(target.entity.boundingBox, previous, current, 0.75)) return@forEach
                         hit += target.entity.uniqueId
-                        skillDamage(target, 2.0)
+                        skillDamage(target, WEAPON_MASTER_CLAW_DAMAGE)
                         particles.spawn(target.entity, Particle.CRIT, count = 14, spread = 0.35, speed = 0.08)
                     }
                     particles.spawn(current.toLocation(player.world), Particle.SWEEP_ATTACK, count = 1, spread = 0.08)
@@ -223,7 +252,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             "<gray>전방을 향해 짧게 점프하며 벽돌을 내려 찍어 모든 적에게 4의 피해를 입힌다.", "",
             "<dark_gray>사용 후 핫바키가 1번으로 자동 교체된다."
         )
-        override val cooldown = 8
+        override val cooldown = WEAPON_MASTER_BRICK_COOLDOWN_SECONDS
 
         override fun use() {
             player.velocity = horizontalDirection().multiply(0.58).setY(0.72)
@@ -248,7 +277,8 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         }
 
         private fun slam(location: Location) {
-            playerData.radius(location, TargetType.Enemy, 3.25, false).forEach { skillDamage(it, 4.0) }
+            playerData.radius(location, TargetType.Enemy, 3.25, false)
+                .forEach { skillDamage(it, WEAPON_MASTER_BRICK_DAMAGE) }
             particles.spawn(location, Particle.BLOCK, Material.BRICKS.createBlockData(), org.beobma.classWarPlugin.effect.ParticleOptions.spread(90, 2.2, 0.24))
             particles.circle(location.clone().add(0.0, 0.12, 0.0), Particle.DUST_PLUME, 3.25, 52)
             particles.spawn(location, Particle.EXPLOSION, count = 4, spread = 1.2, speed = 0.05)
@@ -264,7 +294,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             "<gray>이후 폭탄이 폭발하여 모든 적에게 4의 피해를 입힌다.", "",
             "<dark_gray>사용 후 핫바키가 1번으로 자동 교체된다."
         )
-        override val cooldown = 8
+        override val cooldown = WEAPON_MASTER_BOMB_COOLDOWN_SECONDS
 
         override fun use() {
             val direction = player.eyeLocation.direction.normalize()
@@ -314,7 +344,8 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         }
 
         private fun explode(location: Location) {
-            playerData.radius(location, TargetType.Enemy, 3.6, false).forEach { skillDamage(it, 4.0) }
+            playerData.radius(location, TargetType.Enemy, 3.6, false)
+                .forEach { skillDamage(it, WEAPON_MASTER_BOMB_DAMAGE) }
             particles.spawn(location, Particle.EXPLOSION_EMITTER, count = 2, spread = 0.8)
             particles.spawn(location, Particle.FLAME, count = 70, spread = 2.2, speed = 0.2)
             particles.spawn(location, Particle.SMOKE, count = 55, spread = 2.0, speed = 0.14)
@@ -328,7 +359,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             "<gray>전후방을 베어내어 모든 적에게 5의 피해를 입힌다.", "",
             "<dark_gray>사용 후 핫바키가 1번으로 자동 교체된다."
         )
-        override val cooldown = 5
+        override val cooldown = WEAPON_MASTER_KNIFE_COOLDOWN_SECONDS
 
         override fun use() {
             val origin = player.boundingBox.center
@@ -338,7 +369,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
                 val closest = HitboxUtil.closestPoint(target.entity.boundingBox, origin)
                 val relative = closest.subtract(origin)
                 if (relative.lengthSquared() <= 1.0E-8 || abs(forward.dot(relative.normalize())) >= threshold) {
-                    skillDamage(target, 5.0)
+                    skillDamage(target, WEAPON_MASTER_KNIFE_DAMAGE)
                 }
             }
             repeat(2) { side ->
@@ -362,7 +393,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             "<gray>닿은 적에게는 2의 피해를, 폭발에 닿으면 3의 피해를 입는다.", "",
             "<dark_gray>사용 후 핫바키가 1번으로 자동 교체된다."
         )
-        override val cooldown = 10
+        override val cooldown = WEAPON_MASTER_WING_DAGGER_COOLDOWN_SECONDS
 
         private var activeDisplay: ItemDisplay? = null
         private var activeLocation: Location? = null
@@ -411,7 +442,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
                         val hitTarget = playerData.radius(next, TargetType.Enemy, 1.3, false)
                             .firstOrNull { HitboxUtil.intersectsSegment(it.entity.boundingBox, current.toVector(), next.toVector(), 0.35) }
                         if (hitTarget != null) {
-                            skillDamage(hitTarget, 2.0)
+                            skillDamage(hitTarget, WEAPON_MASTER_WING_DAGGER_DAMAGE)
                             particles.spawn(hitTarget.entity, Particle.CRIT, count = 14, spread = 0.35, speed = 0.08)
                             sounds.play(hitTarget.entity, Sound.ENTITY_PLAYER_ATTACK_CRIT, volume = 0.75f, pitch = 1.45f)
                             stuck = true
@@ -445,7 +476,8 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             activeDisplay?.remove()
             activeDisplay = null
             activeLocation = null
-            playerData.radius(location, TargetType.Enemy, 3.2, false).forEach { skillDamage(it, 3.0) }
+            playerData.radius(location, TargetType.Enemy, 3.2, false)
+                .forEach { skillDamage(it, WEAPON_MASTER_WING_DAGGER_EXPLOSION_DAMAGE) }
             particles.spawn(location, Particle.EXPLOSION, count = 4, spread = 1.2, speed = 0.08)
             particles.spawn(location, Particle.END_ROD, count = 55, spread = 2.0, speed = 0.18)
             particles.spawn(location, Particle.CRIT, count = 45, spread = 1.8, speed = 0.16)
@@ -473,7 +505,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             "<gray>최대 3번까지 연속으로 사용 가능하며, 각각 2, 3, 4의 피해를 입힌다.", "",
             "<dark_gray>사용 후 핫바키가 1번으로 자동 교체된다."
         )
-        override val cooldown = 12
+        override val cooldown = WEAPON_MASTER_NEEDLE_BAT_COOLDOWN_SECONDS
 
         private var combo = 0
         private var comboToken = 0
@@ -481,13 +513,14 @@ class WeaponMaster : GameClass(), GameStatusHandler {
 
         override fun use() {
             cooldownItem = player.inventory.itemInMainHand.clone()
-            combo = (combo + 1).coerceAtMost(3)
+            combo = (combo + 1).coerceAtMost(WEAPON_MASTER_NEEDLE_BAT_MAX_COMBO)
             val step = combo
-            val damage = (step + 1).toDouble()
+            val damage = WEAPON_MASTER_NEEDLE_BAT_START_DAMAGE +
+                (step - 1) * WEAPON_MASTER_NEEDLE_BAT_DAMAGE_PER_COMBO
             playerData.getConeTargets(3.8, 82.0, TargetType.Enemy, false).forEach { skillDamage(it, damage) }
             drawBatSwing(step)
             sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_STRONG, volume = 0.85f, pitch = 1.2f - step * 0.14f)
-            if (step < 3) {
+            if (step < WEAPON_MASTER_NEEDLE_BAT_MAX_COMBO) {
                 multiplyCurrentCooldown(0.0)
                 scheduleComboTimeout()
             } else {
@@ -547,7 +580,9 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         override fun onSkillAttackHit(context: DamageContext) {
             if (applyingChainBurstDamage) return
             val stacks = playerData.getStatus<WeaponMasteryStatus>()?.power ?: 0
-            if (stacks > 0) context.addDamageDealtMultiplier(1.0 + stacks * 0.1)
+            if (stacks > 0) {
+                context.addDamageDealtMultiplier(1.0 + stacks * WEAPON_MASTER_MASTERY_DAMAGE_PER_STACK)
+            }
         }
 
         override fun onSkillUse(event: PlayerSkillUseEvent) {
@@ -560,8 +595,14 @@ class WeaponMaster : GameClass(), GameStatusHandler {
     private fun gainMasteryStack() {
         val status = playerData.getOrCreateStatus(playerData) { WeaponMasteryStatus() }
         val wasMaximum = status.power >= 8
-        status.applyStatus(duration = 6, powerSet = (status.power + 1).coerceAtMost(8))
-        playerData.addStatus(Shield(), playerData).applyStatus(duration = 2, powerSet = 2)
+        status.applyStatus(
+            duration = WEAPON_MASTER_MASTERY_DURATION_SECONDS,
+            powerSet = (status.power + 1).coerceAtMost(WEAPON_MASTER_MAX_MASTERY_STACKS),
+        )
+        playerData.addStatus(Shield(), playerData).applyStatus(
+            duration = WEAPON_MASTER_CHAIN_SHIELD_DURATION_SECONDS,
+            powerSet = WEAPON_MASTER_CHAIN_SHIELD_POWER,
+        )
         particles.spawn(
             player.boundingBox.center.toLocation(player.world),
             Particle.DUST,
@@ -609,7 +650,12 @@ class WeaponMaster : GameClass(), GameStatusHandler {
                         if (!intersects || !hit.add(target.entity.uniqueId)) return@forEach
                         applyingChainBurstDamage = true
                         try {
-                            target.damage(4.0, DamageType.Normal, playerData, damagePath = DamagePath.SKILL)
+                            target.damage(
+                                WEAPON_MASTER_CHAIN_BURST_DAMAGE,
+                                DamageType.Normal,
+                                playerData,
+                                damagePath = DamagePath.SKILL,
+                            )
                         } finally {
                             applyingChainBurstDamage = false
                         }

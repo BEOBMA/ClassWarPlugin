@@ -33,6 +33,16 @@ import kotlin.math.cos
 import kotlin.math.sin
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val PORTAL_GUN_FIRE_COOLDOWN_SECONDS = 30
+private const val PORTAL_GUN_MOMENTUM_CHAIN_TICKS = 100L
+private const val PORTAL_GUN_MAX_MOMENTUM_CHAIN = 20
+private const val PORTAL_GUN_BASE_SPEED_GAIN = 0.075
+private const val PORTAL_GUN_SPEED_GAIN_PER_CHAIN = 0.022
+private const val PORTAL_GUN_MAX_SPEED_GAIN = 0.42
+private const val PORTAL_GUN_MAX_PLAYER_SPEED = 4.2
+private const val PORTAL_GUN_MAX_ENTITY_SPEED = 6.0
+
 class PortalGun : GameClass(), SkillInputHandler {
     override val name = "<gray>포탈건"
     override val rank = Rank.B
@@ -84,7 +94,7 @@ class PortalGun : GameClass(), SkillInputHandler {
             "<gray>두 포탈이 모두 설치되면 서로 연결된다.",
             "<gray>이 스킬의 재사용 대기 시간은 포탈이 연결된 후에 적용된다."
         )
-        override val cooldown = 30
+        override val cooldown = PORTAL_GUN_FIRE_COOLDOWN_SECONDS
 
         var nextColor = PortalColor.ORANGE
         private var pendingPlacement: Placement? = null
@@ -332,8 +342,8 @@ class PortalGun : GameClass(), SkillInputHandler {
 
             val now = exit.center.world.fullTime
             val momentum = portalMomentumByEntity[entity.uniqueId]
-            val chain = if (momentum != null && now - momentum.lastTransitTick <= 100L) {
-                (momentum.chain + 1).coerceAtMost(20)
+            val chain = if (momentum != null && now - momentum.lastTransitTick <= PORTAL_GUN_MOMENTUM_CHAIN_TICKS) {
+                (momentum.chain + 1).coerceAtMost(PORTAL_GUN_MAX_MOMENTUM_CHAIN)
             } else {
                 1
             }
@@ -341,8 +351,9 @@ class PortalGun : GameClass(), SkillInputHandler {
 
             val currentSpeed = velocity.length()
             if (currentSpeed > 1.0E-6) {
-                val speedGain = (0.075 + chain * 0.022).coerceAtMost(0.42)
-                val maximumSpeed = if (entity is Player) 4.2 else 6.0
+                val speedGain = (PORTAL_GUN_BASE_SPEED_GAIN + chain * PORTAL_GUN_SPEED_GAIN_PER_CHAIN)
+                    .coerceAtMost(PORTAL_GUN_MAX_SPEED_GAIN)
+                val maximumSpeed = if (entity is Player) PORTAL_GUN_MAX_PLAYER_SPEED else PORTAL_GUN_MAX_ENTITY_SPEED
                 velocity.multiply((currentSpeed + speedGain).coerceAtMost(maximumSpeed) / currentSpeed)
             }
             return chain

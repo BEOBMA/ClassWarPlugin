@@ -31,6 +31,13 @@ import org.bukkit.scheduler.BukkitTask
 import java.util.UUID
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val ICE_WIZARD_SKILL_COOLDOWN_SECONDS = 1
+private const val ICE_WIZARD_FREEZING_DURATION_SECONDS = 2
+private const val ICE_WIZARD_PROJECTILE_DAMAGE = 2.0
+private const val ICE_WIZARD_FROSTBITE_DURATION_SECONDS = 5
+private const val ICE_WIZARD_FROSTBITE_POWER = 2
+
 class IceWizard : GameClass(), GameStatusHandler {
     override val name = "<gray>블리자드"
     override val rank = Rank.A
@@ -69,7 +76,7 @@ class IceWizard : GameClass(), GameStatusHandler {
             "<gray>자신 주위 모든 적에게 초당 2의 피해를 입히고 {keyword:Frostbite}을 2 부여한다.",
             "{keyword:Mana}가 0이 되면 스킬이 강제로 비활성화되며, 자신은 2초간 {keyword:Freezing} 상태가 된다."
         )
-        override val cooldown = 1
+        override val cooldown = ICE_WIZARD_SKILL_COOLDOWN_SECONDS
 
         override val isOnOffSKill: Boolean = true
 
@@ -98,7 +105,8 @@ class IceWizard : GameClass(), GameStatusHandler {
                     }
                     if (elapsedTicks > 0 && elapsedTicks % 20 == 0) {
                         if (mana.power < 10) {
-                            playerData.getOrCreateStatus(playerData) { Freezing() }.applyStatus(duration = 2, powerSet = 1)
+                            playerData.getOrCreateStatus(playerData) { Freezing() }
+                                .applyStatus(duration = ICE_WIZARD_FREEZING_DURATION_SECONDS, powerSet = 1)
                             sounds.play(player, Sound.ENTITY_PLAYER_HURT_FREEZE, pitch = 0.7f)
                             isBlizzardActive = false
                             nextDamageTickByEntity.clear()
@@ -109,7 +117,8 @@ class IceWizard : GameClass(), GameStatusHandler {
                         mana.decreasePower(10)
                         sounds.play(player, Sound.WEATHER_RAIN, volume = 0.22f, pitch = 1.6f)
                         if (mana.power <= 0) {
-                            playerData.getOrCreateStatus(playerData) { Freezing() }.applyStatus(duration = 2, powerSet = 1)
+                            playerData.getOrCreateStatus(playerData) { Freezing() }
+                                .applyStatus(duration = ICE_WIZARD_FREEZING_DURATION_SECONDS, powerSet = 1)
                             sounds.play(player, Sound.ENTITY_PLAYER_HURT_FREEZE, pitch = 0.7f)
                             isBlizzardActive = false
                             nextDamageTickByEntity.clear()
@@ -124,8 +133,11 @@ class IceWizard : GameClass(), GameStatusHandler {
                     targets.forEach { target ->
                         if (now < nextDamageTickByEntity.getOrDefault(target.entity.uniqueId, Long.MIN_VALUE)) return@forEach
                         nextDamageTickByEntity[target.entity.uniqueId] = now + 20L
-                        target.damage(2.0, DamageType.Normal, playerData)
-                        target.getOrCreateStatus(playerData) { Frostbite() }.applyStatus(duration = 5, powerDelta = 2)
+                        target.damage(ICE_WIZARD_PROJECTILE_DAMAGE, DamageType.Normal, playerData)
+                        target.getOrCreateStatus(playerData) { Frostbite() }.applyStatus(
+                            duration = ICE_WIZARD_FROSTBITE_DURATION_SECONDS,
+                            powerDelta = ICE_WIZARD_FROSTBITE_POWER,
+                        )
                     }
                     particles.circle(player.location, Particle.SNOWFLAKE, 3.0, 14)
                     particles.spawn(player.location.add(0.0, 1.0, 0.0), Particle.SNOWFLAKE, count = 5, spread = 2.0, speed = 0.02)
@@ -166,7 +178,10 @@ class IceWizard : GameClass(), GameStatusHandler {
             val moveSpeedDecrease = hitEntityData.addStatus(MoveSpeedDecrease(), playerData)
             val frostbite = hitEntityData.getOrCreateStatus(playerData) { Frostbite() }
             moveSpeedDecrease.increasePower(25)
-            frostbite.applyStatus(duration = 5, powerDelta = 2)
+            frostbite.applyStatus(
+                duration = ICE_WIZARD_FROSTBITE_DURATION_SECONDS,
+                powerDelta = ICE_WIZARD_FROSTBITE_POWER,
+            )
             moveSpeedDecrease.setContinueWhileIf { affectedEntities.contains(hitEntityData) }
         }
 

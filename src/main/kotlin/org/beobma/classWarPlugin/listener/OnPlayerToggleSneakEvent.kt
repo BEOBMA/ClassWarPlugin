@@ -16,7 +16,14 @@ class OnPlayerToggleSneakEvent : Listener {
         if (!isGaming() && !PlayerTagManager.hasTag(player, "isTraining")) return
         val playerData = findGameForPlayer(player)?.playerDatas?.filterIsInstance<PlayerData>()
             ?.find { it.uniqueId == player.uniqueId } ?: return
-        val gameClass = playerData.gameClass as? SneakInputHandler ?: return
-        gameClass.onPlayerToggleSneak(event)
+        val gameClass = playerData.gameClass ?: return
+        (gameClass as? SneakInputHandler)?.onPlayerToggleSneak(event)
+        if (event.isCancelled) return
+        playerData.statusAbnormalitys.toList()
+            .filterIsInstance<SneakInputHandler>()
+            .forEach { status ->
+                status.onPlayerToggleSneak(event)
+                if (event.isCancelled) return
+            }
     }
 }

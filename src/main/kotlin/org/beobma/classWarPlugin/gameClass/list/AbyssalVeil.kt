@@ -31,6 +31,14 @@ import org.bukkit.Sound
 import org.beobma.classWarPlugin.effect.ParticleOptions
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val ABYSSAL_VEIL_SMOKE_COOLDOWN_SECONDS = 35
+private const val ABYSSAL_VEIL_EROSION_COOLDOWN_SECONDS = 35
+private const val ABYSSAL_VEIL_EROSION_DURATION_SECONDS = 8
+private const val ABYSSAL_VEIL_ABYSS_DURATION_SECONDS = 4
+private const val ABYSSAL_VEIL_SILENCE_DURATION_SECONDS = 3
+private const val ABYSSAL_VEIL_EROSION_DAMAGE = 5.0
+
 class AbyssalVeil : GameClass() {
     override val name = "<gray>심연 장막"
     override val rank = Rank.C
@@ -52,7 +60,7 @@ class AbyssalVeil : GameClass() {
             "",
             "<dark_gray>웅크린 상태에서 사용하면 4칸 내의 바라보는 블럭에 연기를 형성할 수도 있다."
         )
-        override val cooldown = 35
+        override val cooldown = ABYSSAL_VEIL_SMOKE_COOLDOWN_SECONDS
 
         override fun use() {
             val smoke = Smoke()
@@ -89,11 +97,11 @@ class AbyssalVeil : GameClass() {
             "<gray>적중한 모든 적에게 5의 피해를 입히고 4초간 {keyword:Abyss} 상태로 만든다.",
             "<gray>대상이 {keyword:Erosion} 상태였다면 소모하여 대상을 3초간 {keyword:Silence} 상태로 만든다.",
         )
-        override val cooldown = 35
+        override val cooldown = ABYSSAL_VEIL_EROSION_COOLDOWN_SECONDS
 
         override fun use() {
             val projectile = ProjectileSmoke()
-            projectile.location = player.location.clone()
+            projectile.location = player.eyeLocation.clone()
 
             projectile.spawnProjectile(playerData)
             sounds.play(player, Sound.ENTITY_WARDEN_SONIC_CHARGE, volume = 0.48f, pitch = 0.62f)
@@ -181,7 +189,7 @@ class AbyssalVeil : GameClass() {
 
         override fun onAttackHit(context: DamageContext) {
             val erosion = context.target.getOrCreateStatus(playerData) { Erosion() }
-            erosion.applyStatus(duration = 8, powerSet = 1)
+            erosion.applyStatus(duration = ABYSSAL_VEIL_EROSION_DURATION_SECONDS, powerSet = 1)
             particles.spawn(context.target.entity, Particle.SQUID_INK, count = 8, spread = 0.3)
             sounds.play(context.target.entity, Sound.BLOCK_SCULK_SPREAD, volume = 0.5f, pitch = 0.7f)
         }
@@ -201,12 +209,13 @@ class AbyssalVeil : GameClass() {
         override fun onProjectileEntityHit(hitEntityData: EntityData, location: Location) {
             if (hitSet.add(hitEntityData.entity.uniqueId)) {
                 val abyss = hitEntityData.getOrCreateStatus(playerData) { Abyss() }
-                abyss.applyStatus(duration = 4)
+                abyss.applyStatus(duration = ABYSSAL_VEIL_ABYSS_DURATION_SECONDS)
                 hitEntityData.getStatus<Erosion>()?.let { erosion ->
                     erosion.remove()
-                    hitEntityData.getOrCreateStatus(playerData) { Silence() }.applyStatus(duration = 3, powerSet = 1)
+                    hitEntityData.getOrCreateStatus(playerData) { Silence() }
+                        .applyStatus(duration = ABYSSAL_VEIL_SILENCE_DURATION_SECONDS, powerSet = 1)
                 }
-                hitEntityData.damage(5.0, DamageType.Normal, playerData)
+                hitEntityData.damage(ABYSSAL_VEIL_EROSION_DAMAGE, DamageType.Normal, playerData)
                 particles.spawn(hitEntityData.entity, Particle.SQUID_INK, count = 10, spread = 0.4)
                 sounds.play(hitEntityData.entity, Sound.ENTITY_ENDERMAN_HURT, pitch = 0.6f)
                 return

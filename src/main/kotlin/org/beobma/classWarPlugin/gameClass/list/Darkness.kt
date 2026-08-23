@@ -23,6 +23,13 @@ import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.scheduler.BukkitRunnable
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val DARKNESS_SPREAD_COOLDOWN_SECONDS = 35
+private const val DARKNESS_SPREAD_DURATION_TICKS = 120L
+private const val DARKNESS_STEALTH_SUPPRESSION_TICKS = 60L
+private const val DARKNESS_BONUS_ATTACK_DAMAGE = 2.0
+private const val DARKNESS_FIRST_HIT_DAMAGE_TAKEN_MULTIPLIER = 1.5
+
 class Darkness : GameClass(), EnvironmentalDamageHandler {
     override val name = "<gray>어둠"
     override val rank = Rank.B
@@ -49,16 +56,16 @@ class Darkness : GameClass(), EnvironmentalDamageHandler {
         override val description = listOf(
             "<gray>6초 동안 빛이 있는 곳에 있더라도 빛이 없는 곳으로 간주한다."
         )
-        override val cooldown = 35
+        override val cooldown = DARKNESS_SPREAD_COOLDOWN_SECONDS
 
         override fun use() {
-            artificialDarknessUntilTick = player.world.fullTime + 120L
+            artificialDarknessUntilTick = player.world.fullTime + DARKNESS_SPREAD_DURATION_TICKS
             passives.filterIsInstance<Passive>().firstOrNull()?.refreshDarknessState()
             sounds.play(player, Sound.ENTITY_WARDEN_HEARTBEAT, volume = 0.75f, pitch = 0.55f)
             playerData.trackTask(object : BukkitRunnable() {
                 var ticks = 0
                 override fun run() {
-                    if (ticks++ >= 120 || !player.isOnline || player.isDead) {
+                    if (ticks++ >= DARKNESS_SPREAD_DURATION_TICKS || !player.isOnline || player.isDead) {
                         passives.filterIsInstance<Passive>().firstOrNull()?.refreshDarknessState()
                         sounds.play(player, Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE, volume = 0.45f, pitch = 0.6f)
                         cancel()
@@ -110,7 +117,7 @@ class Darkness : GameClass(), EnvironmentalDamageHandler {
         override fun onAttackHit(context: DamageContext) {
             suppressStealth()
             if (!isInDarkness()) return
-            context.addBaseDamage(2.0)
+            context.addBaseDamage(DARKNESS_BONUS_ATTACK_DAMAGE)
             particles.spawn(context.target.entity, Particle.SQUID_INK, count = 6, spread = 0.25)
             sounds.play(context.target.entity, Sound.ENTITY_PHANTOM_BITE, volume = 0.55f, pitch = 0.8f)
         }
@@ -118,17 +125,17 @@ class Darkness : GameClass(), EnvironmentalDamageHandler {
         override fun whenHit(context: DamageContext) {
             val wasStealthed = hasActiveStealth()
             suppressStealth()
-            if (!wasStealthed) context.addDamageTakenMultiplier(1.5)
+            if (!wasStealthed) context.addDamageTakenMultiplier(DARKNESS_FIRST_HIT_DAMAGE_TAKEN_MULTIPLIER)
         }
 
         fun handleEnvironmentalDamage(event: EntityDamageEvent) {
             val wasStealthed = hasActiveStealth()
             suppressStealth()
-            if (!wasStealthed) event.damage *= 1.5
+            if (!wasStealthed) event.damage *= DARKNESS_FIRST_HIT_DAMAGE_TAKEN_MULTIPLIER
         }
 
         private fun suppressStealth() {
-            stealthSuppressedUntilTick = player.world.fullTime + 60L
+            stealthSuppressedUntilTick = player.world.fullTime + DARKNESS_STEALTH_SUPPRESSION_TICKS
             val wasStealthed = grantedStealth != null
             removeGrantedStealth()
             if (wasStealthed) {
@@ -140,7 +147,7 @@ class Darkness : GameClass(), EnvironmentalDamageHandler {
                     if (!player.isOnline || player.isDead) return
                     refreshDarknessState()
                 }
-            }.runTaskLater(ClassWarPlugin.instance, 60L))
+            }.runTaskLater(ClassWarPlugin.instance, DARKNESS_STEALTH_SUPPRESSION_TICKS))
         }
 
         private fun removeGrantedStealth() {

@@ -18,6 +18,17 @@ import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.bukkit.Material
 
+// 밸런스 조정 상수
+private const val BERSERKER_RAGNAROK_COOLDOWN_SECONDS = 60
+private const val BERSERKER_RAGNAROK_DURATION_SECONDS = 8
+private const val BERSERKER_RAGNAROK_DURATION_TICKS = 160L
+private const val BERSERKER_RAGNAROK_SPEED_BONUS_PERCENT = 50
+private const val BERSERKER_MISSING_HEALTH_DAMAGE_RATIO = 0.2
+private const val BERSERKER_MAX_BONUS_DAMAGE = 4.0
+private const val BERSERKER_LOW_HEALTH_RATIO = 0.5
+private const val BERSERKER_LIFESTEAL_RATIO = 0.1
+private const val BERSERKER_RAGNAROK_MIN_HEALTH = 1.0
+
 class Berserker : GameClass() {
     override val name: String = "<gray>광전사"
     override val rank = Rank.B
@@ -46,21 +57,21 @@ class Berserker : GameClass() {
                 "<gray>라그나로크가 지속되는 동안 체력이 1 미만으로 감소하지 않는다."
             )
         override val cooldown: Int
-            get() = 60
+            get() = BERSERKER_RAGNAROK_COOLDOWN_SECONDS
 
         override fun use() {
             val playerMoveSpeedIncrease = playerData.addStatus(MoveSpeedIncrease(), playerData)
             val playerAttackSpeedIncrease = playerData.addStatus(AttackSpeedIncrease(), playerData)
 
             playerMoveSpeedIncrease.applyStatus(
-                duration = 8,
-                powerDelta = 50
+                duration = BERSERKER_RAGNAROK_DURATION_SECONDS,
+                powerDelta = BERSERKER_RAGNAROK_SPEED_BONUS_PERCENT
             )
             playerAttackSpeedIncrease.applyStatus(
-                duration = 8,
-                powerDelta = 50
+                duration = BERSERKER_RAGNAROK_DURATION_SECONDS,
+                powerDelta = BERSERKER_RAGNAROK_SPEED_BONUS_PERCENT
             )
-            ragnarokUntil = player.world.fullTime + 160L
+            ragnarokUntil = player.world.fullTime + BERSERKER_RAGNAROK_DURATION_TICKS
             sounds.play(player, org.bukkit.Sound.ENTITY_RAVAGER_ROAR, volume = 1.1f, pitch = 0.75f)
             particles.spawn(player, org.bukkit.Particle.ANGRY_VILLAGER, count = 18, spread = 0.6)
         }
@@ -78,16 +89,19 @@ class Berserker : GameClass() {
 
         override fun onAttackHit(event: DamageContext) {
             val missingHealth = player.getPlayerMaxHealth() - player.health
-            val damageBoost = (missingHealth * 0.2).coerceAtMost(4.0)
+            val damageBoost = (missingHealth * BERSERKER_MISSING_HEALTH_DAMAGE_RATIO)
+                .coerceAtMost(BERSERKER_MAX_BONUS_DAMAGE)
             event.addBaseDamage(damageBoost)
 
-            if (player.getPlayerMaxHealth() / 2 > player.health) {
-                playerData.heal(event.damage / 10, DamageType.Normal, playerData)
+            if (player.getPlayerMaxHealth() * BERSERKER_LOW_HEALTH_RATIO > player.health) {
+                playerData.heal(event.damage * BERSERKER_LIFESTEAL_RATIO, DamageType.Normal, playerData)
             }
         }
 
         override fun whenHit(context: DamageContext) {
-            if (player.world.fullTime < ragnarokUntil) context.capDamage(player.health - 1.0)
+            if (player.world.fullTime < ragnarokUntil) {
+                context.capDamage(player.health - BERSERKER_RAGNAROK_MIN_HEALTH)
+            }
         }
     }
 }

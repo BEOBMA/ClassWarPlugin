@@ -7,6 +7,7 @@ import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openAssignedClassInventory
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.list.Contractor
+import org.beobma.classWarPlugin.gameClass.list.DeathNote
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -22,6 +23,11 @@ class OnInventoryCloseEvent : Listener {
 
         if (Contractor.isGuessInventoryOpen(player)) {
             Contractor.handleInventoryClose(player)
+            return
+        }
+
+        if (DeathNote.isSelectionInventoryOpen(player)) {
+            DeathNote.handleInventoryClose(player)
             return
         }
 

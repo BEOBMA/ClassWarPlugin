@@ -13,6 +13,10 @@ import org.bukkit.Particle
 import org.bukkit.Sound
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val GENERAL_PERSON_NEARBY_RANGE_SQUARED = 100.0
+private const val GENERAL_PERSON_MOVE_SPEED_BONUS_PERCENT = 20
+
 class GeneralPerson : GameClass() {
     override val name = "<gray>일반인"
     override val rank = Rank.C
@@ -39,12 +43,17 @@ class GeneralPerson : GameClass() {
             val hasNearbyPlayer = game.playerDatas.asSequence()
                 .filterIsInstance<PlayerData>()
                 .filter { it != playerData && !it.entityStatus.isDead && it.player.isOnline }
-                .any { it.player.world == player.world && it.player.location.distanceSquared(player.location) <= 100.0 }
+                .any {
+                    it.player.world == player.world &&
+                        it.player.location.distanceSquared(player.location) <= GENERAL_PERSON_NEARBY_RANGE_SQUARED
+                }
 
-            if (hasNearbyPlayer && (nearbySpeed == null || nearbySpeed?.power != 20)) {
+            if (hasNearbyPlayer &&
+                (nearbySpeed == null || nearbySpeed?.power != GENERAL_PERSON_MOVE_SPEED_BONUS_PERCENT)
+            ) {
                 nearbySpeed?.remove()
                 nearbySpeed = playerData.addStatus(MoveSpeedIncrease(), playerData) as MoveSpeedIncrease
-                nearbySpeed?.applyStatus(powerSet = 20)
+                nearbySpeed?.applyStatus(powerSet = GENERAL_PERSON_MOVE_SPEED_BONUS_PERCENT)
                 particles.spawn(player, Particle.HAPPY_VILLAGER, count = 9, spread = 0.45)
                 sounds.play(player, Sound.ENTITY_VILLAGER_YES, volume = 0.6f, pitch = 1.35f)
             } else if (!hasNearbyPlayer && nearbySpeed != null) {

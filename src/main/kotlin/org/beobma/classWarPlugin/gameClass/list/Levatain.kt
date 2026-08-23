@@ -31,6 +31,15 @@ import kotlin.math.sin
 import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val LEVATAIN_RELEASE_PER_STAGE = 100
+private const val LEVATAIN_FINAL_STAGE = 3
+private const val LEVATAIN_HEALTH_RELEASE_THRESHOLD = 0.5
+private const val LEVATAIN_BLEEDING_DURATION_SECONDS = 3
+private const val LEVATAIN_BLEEDING_POWER = 1
+private const val LEVATAIN_SEALED_DAMAGE_TAKEN_MULTIPLIER = 0.8
+private const val LEVATAIN_RELEASED_DAMAGE_TAKEN_MULTIPLIER = 0.7
+
 class Levatain : GameClass(), GameStatusHandler {
     override val name = "<gray>레바테인"
     override val rank = Rank.L
@@ -228,7 +237,7 @@ class Levatain : GameClass(), GameStatusHandler {
         if (!player.isOnline || playerStatus.isDead || player.health <= 0.0) return
         val maximumHealth = player.getAttribute(Attribute.MAX_HEALTH)?.value ?: 20.0
         val ratio = player.health / maximumHealth
-        if (!belowHalfTriggered && ratio <= 0.5) {
+        if (!belowHalfTriggered && ratio <= LEVATAIN_HEALTH_RELEASE_THRESHOLD) {
             belowHalfTriggered = true
             addRelease(30)
             player.sendMiniMessage("<gold><bold>[해방도]</bold> <gray>체력이 처음으로 50% 이하가 되어 <yellow>+30</yellow>")
@@ -264,7 +273,10 @@ class Levatain : GameClass(), GameStatusHandler {
             if (sealStage < FINAL_STAGE || player.inventory.itemInMainHand.type != Material.NETHERITE_SWORD) return
             context.target.entity.fireTicks = maxOf(context.target.entity.fireTicks, 60)
             context.target.getOrCreateStatus(playerData) { Bleeding() }
-                .applyStatus(duration = 3, powerDelta = 1)
+                .applyStatus(
+                    duration = LEVATAIN_BLEEDING_DURATION_SECONDS,
+                    powerDelta = LEVATAIN_BLEEDING_POWER,
+                )
             val targetCenter = context.target.entity.boundingBox.center.toLocation(context.target.entity.world)
             val slashStart = player.eyeLocation.clone().add(player.location.direction.clone().multiply(0.35))
             particles.line(slashStart, targetCenter, Particle.FLAME, spacing = 0.17)
@@ -316,7 +328,10 @@ class Levatain : GameClass(), GameStatusHandler {
         )
 
         override fun whenHit(context: DamageContext) {
-            context.addDamageTakenMultiplier(if (sealStage >= FINAL_STAGE) 0.7 else 0.8)
+            context.addDamageTakenMultiplier(
+                if (sealStage >= FINAL_STAGE) LEVATAIN_RELEASED_DAMAGE_TAKEN_MULTIPLIER
+                else LEVATAIN_SEALED_DAMAGE_TAKEN_MULTIPLIER
+            )
         }
     }
 
@@ -350,8 +365,8 @@ class Levatain : GameClass(), GameStatusHandler {
     }
 
     companion object {
-        private const val MAX_RELEASE = 100
-        private const val FINAL_STAGE = 3
+        private const val MAX_RELEASE = LEVATAIN_RELEASE_PER_STAGE
+        private const val FINAL_STAGE = LEVATAIN_FINAL_STAGE
 
         fun handleKill(killerId: java.util.UUID?) {
             val id = killerId ?: return
@@ -370,14 +385,14 @@ private class LevatainReleaseStatus : StatusAbnormality() {
     override val canRemove = false
     override val isClassMechanic = true
     override var power = 0
-    override var maxPower: Int? = 100
+    override var maxPower: Int? = LEVATAIN_RELEASE_PER_STAGE
     override var duration: Int? = null
 
     private var stage = 0
 
     fun updateState(stage: Int, release: Int) {
-        this.stage = stage.coerceIn(0, 3)
-        updatePower(release.coerceIn(0, 100))
+        this.stage = stage.coerceIn(0, LEVATAIN_FINAL_STAGE)
+        updatePower(release.coerceIn(0, LEVATAIN_RELEASE_PER_STAGE))
     }
 
     override fun actionBarText(): String {

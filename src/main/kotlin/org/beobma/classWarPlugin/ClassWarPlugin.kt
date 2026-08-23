@@ -34,6 +34,7 @@ import org.bukkit.scheduler.BukkitTask
 class ClassWarPlugin : JavaPlugin() {
 
     companion object {
+        const val LUNAR_APOLLO_CHANNEL = "lunar:apollo"
         lateinit var instance: ClassWarPlugin
     }
 
@@ -45,6 +46,7 @@ class ClassWarPlugin : JavaPlugin() {
         GameSettings.load(config)
         DamageIndicatorManager.start()
 
+        registerClientDetectionChannel()
         registerEvents()
         startStatusActionBarTask()
         loggerInfo("플러그인이 정상적으로 활성화되었습니다.")
@@ -58,7 +60,12 @@ class ClassWarPlugin : JavaPlugin() {
         }
         StealthVisibilityManager.showAll()
         DamageIndicatorManager.shutdown()
+        server.messenger.unregisterIncomingPluginChannel(this)
         loggerInfo("플러그인이 정상적으로 비활성화되었습니다.")
+    }
+
+    private fun registerClientDetectionChannel() {
+        server.messenger.registerIncomingPluginChannel(this, LUNAR_APOLLO_CHANNEL) { _, _, _ -> }
     }
 
     private fun registerEvents() {
@@ -78,7 +85,7 @@ class ClassWarPlugin : JavaPlugin() {
         server.pluginManager.registerEvents(OnFoodChangeEvent(), this)
         server.pluginManager.registerEvents(OnPlayerSkillUseEvent(), this)
         server.pluginManager.registerEvents(OnPlayerMoveEvent(), this)
-        server.pluginManager.registerEvents(OnPlayerConnectionEvent(), this)
+        server.pluginManager.registerEvents(OnPlayerConnectionEvent(this), this)
         server.pluginManager.registerEvents(OnPlayerSwapHandItemsEvent(), this)
         server.pluginManager.registerEvents(OnPlayerToggleSneakEvent(), this)
         server.pluginManager.registerEvents(OnPlayerInputEvent(), this)

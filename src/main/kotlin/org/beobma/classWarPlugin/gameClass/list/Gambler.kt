@@ -20,6 +20,15 @@ import org.beobma.classWarPlugin.util.DamageType
 import org.bukkit.*
 import java.util.ArrayDeque
 
+// 밸런스 조정 상수
+private const val GAMBLER_HIT_COOLDOWN_SECONDS = 5
+private const val GAMBLER_STAND_COOLDOWN_SECONDS = 20
+private const val GAMBLER_DOUBLE_COOLDOWN_SECONDS = 70
+private const val GAMBLER_EFFECT_DURATION_SECONDS = 8
+private const val GAMBLER_SHIELD_POWER = 4
+private const val GAMBLER_MOVE_SPEED_BONUS_PERCENT = 15
+private const val GAMBLER_MOVE_SPEED_PENALTY_PERCENT = 10
+
 class Gambler : GameClass(), GameStatusHandler {
     override val name = "<gray>도박사"
     override val rank = Rank.B
@@ -82,14 +91,21 @@ class Gambler : GameClass(), GameStatusHandler {
         when (outcome) {
             Outcome.JACKPOT -> {
                 playerData.heal(4.0 * factor, DamageType.Normal, playerData)
-                playerData.addStatus(Shield(), playerData).applyStatus(duration = 8, powerDelta = 4 * factor)
-                playerData.addStatus(MoveSpeedIncrease(), playerData).applyStatus(duration = 8, powerSet = 15 * factor)
+                playerData.addStatus(Shield(), playerData)
+                    .applyStatus(duration = GAMBLER_EFFECT_DURATION_SECONDS, powerDelta = GAMBLER_SHIELD_POWER * factor)
+                playerData.addStatus(MoveSpeedIncrease(), playerData).applyStatus(
+                    duration = GAMBLER_EFFECT_DURATION_SECONDS,
+                    powerSet = GAMBLER_MOVE_SPEED_BONUS_PERCENT * factor,
+                )
                 setDamageMultiplier(1.0 + 0.2 * factor, 8)
                 sounds.play(player, Sound.UI_TOAST_CHALLENGE_COMPLETE, volume = 1.2f, pitch = 1.25f)
                 particles.spawn(player, Particle.TOTEM_OF_UNDYING, count = 35, spread = 0.7, speed = 0.2)
             }
             Outcome.BUST -> {
-                playerData.addStatus(MoveSpeedDecrease(), playerData).applyStatus(duration = 8 * factor, powerSet = 10)
+                playerData.addStatus(MoveSpeedDecrease(), playerData).applyStatus(
+                    duration = GAMBLER_EFFECT_DURATION_SECONDS * factor,
+                    powerSet = GAMBLER_MOVE_SPEED_PENALTY_PERCENT,
+                )
                 setDamageMultiplier(0.85, 8 * factor)
                 sounds.play(player, Sound.ENTITY_VILLAGER_NO, pitch = 0.65f)
                 particles.spawn(player, Particle.SMOKE, count = 20, spread = 0.5)
@@ -119,7 +135,7 @@ class Gambler : GameClass(), GameStatusHandler {
         override val description = listOf(
             "<gray>덱에서 {keyword:Card}를 1장 뽑는다."
         )
-        override val cooldown = 5
+        override val cooldown = GAMBLER_HIT_COOLDOWN_SECONDS
 
         override fun use() {
             drawCard()
@@ -133,7 +149,7 @@ class Gambler : GameClass(), GameStatusHandler {
             "<gray>5초간 덱으로 되돌린 {keyword:Card}의 숫자 합계 1당 가하는 피해가 1% 증가한다.",
             "{keyword:Card}의 숫자 합계 5당 체력을 1 회복한다.",
         )
-        override val cooldown = 20
+        override val cooldown = GAMBLER_STAND_COOLDOWN_SECONDS
 
         override fun use() {
             stand()
@@ -148,7 +164,7 @@ class Gambler : GameClass(), GameStatusHandler {
             "<gray>이 스킬로 버스트가 발동하면 버스트의 지속 시간이 2배로 증가한다.",
             "<gray>두 효과 모두 발동하지 않았다면 스탠드의 효과를 2배로 적용하여 발동한다."
         )
-        override val cooldown = 70
+        override val cooldown = GAMBLER_DOUBLE_COOLDOWN_SECONDS
 
         override fun use() {
             val outcome = drawCard(doubled = true)

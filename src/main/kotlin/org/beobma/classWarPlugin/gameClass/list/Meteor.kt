@@ -26,6 +26,12 @@ import org.beobma.classWarPlugin.damage.DamageContext
 import org.bukkit.scheduler.BukkitRunnable
 import kotlin.math.sqrt
 
+// 밸런스 조정 상수
+private const val METEOR_FALL_COOLDOWN_SECONDS = 40
+private const val METEOR_MAX_IMPACT_DAMAGE = 10.0
+private const val METEOR_MIN_IMPACT_DAMAGE = 5.0
+private const val METEOR_BURN_DAMAGE = 1.0
+
 class Meteor : GameClass() {
     override val name = "<gray>메테오"
     override val rank = Rank.B
@@ -46,7 +52,7 @@ class Meteor : GameClass() {
             "",
             "<dark_gray>웅크린 상태에서 사용하면 자신의 위치에 시전할 수도 있다."
         )
-        override val cooldown = 40
+        override val cooldown = METEOR_FALL_COOLDOWN_SECONDS
 
         override fun use() {
             val location = if (player.isSneaking) {
@@ -107,7 +113,11 @@ class Meteor : GameClass() {
                         val targets = playerData.radius(location, TargetType.Enemy, 5.0, false)
                         targets.forEach {
                             val distance = sqrt(HitboxUtil.distanceSquared(it.entity.boundingBox, location.toVector())).coerceAtMost(5.0)
-                            it.damage((10.0 - distance).coerceAtLeast(5.0), DamageType.Normal, playerData)
+                            it.damage(
+                                (METEOR_MAX_IMPACT_DAMAGE - distance).coerceAtLeast(METEOR_MIN_IMPACT_DAMAGE),
+                                DamageType.Normal,
+                                playerData,
+                            )
                             it.entity.fireTicks += 100
                         }
                         var seconds = 0
@@ -119,7 +129,7 @@ class Meteor : GameClass() {
                                 particles.spawn(location.clone().add(0.0, 0.25, 0.0), Particle.SMOKE, count = 28, spread = 4.0, speed = 0.018)
                                 particles.spawn(location.clone().add(0.0, 0.18, 0.0), Particle.LAVA, count = 8, spread = 3.6, speed = 0.02)
                                 playerData.radius(location, TargetType.Enemy, 5.0, false).forEach {
-                                    it.damage(1.0, DamageType.StatusAbnormality, playerData)
+                                    it.damage(METEOR_BURN_DAMAGE, DamageType.StatusAbnormality, playerData)
                                     it.entity.fireTicks = maxOf(it.entity.fireTicks, 40)
                                 }
                             }

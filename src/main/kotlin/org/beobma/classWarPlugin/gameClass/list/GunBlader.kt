@@ -26,6 +26,16 @@ import org.bukkit.event.player.PlayerInteractEvent
 import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val GUN_BLADER_BREAKTHROUGH_COOLDOWN_SECONDS = 12
+private const val GUN_BLADER_FULL_BURST_COOLDOWN_SECONDS = 55
+private const val GUN_BLADER_BASIC_DAMAGE = 2.0
+private const val GUN_BLADER_BREAKTHROUGH_DAMAGE = 4.0
+private const val GUN_BLADER_FULL_BURST_DAMAGE = 2.0
+private const val GUN_BLADER_VIBRATION_DURATION_SECONDS = 10
+private const val GUN_BLADER_BREAKTHROUGH_VIBRATION_POWER = 3
+private const val GUN_BLADER_VIBRATION_POWER = 1
+
 class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUseHandler {
     override val name = "<gray>총검사"
     override val rank = Rank.A
@@ -64,7 +74,7 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
         particles.line(start, end, Particle.SMOKE, 0.25)
         sounds.play(player, Sound.ENTITY_FIREWORK_ROCKET_BLAST, pitch = 1.5f)
         target?.let {
-            it.damage(2.0, DamageType.Normal, playerData)
+            it.damage(GUN_BLADER_BASIC_DAMAGE, DamageType.Normal, playerData)
             it.addStatus(VibrationExplosion(), playerData).applyStatus(duration = 1, powerDelta = 1)
         }
     }
@@ -88,7 +98,7 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
             "",
             "<gray>처음 충돌한 적을 베어 4의 피해를 입히고 10초간 {keyword:Vibration}을 3 부여한다."
         )
-        override val cooldown = 12
+        override val cooldown = GUN_BLADER_BREAKTHROUGH_COOLDOWN_SECONDS
 
         override fun use() {
             val bullets = bulletStatus()
@@ -98,8 +108,11 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
             player.velocity = player.location.direction.normalize().multiply(if (boosted) 1.8 else 1.05).setY(0.12)
             val target = playerData.getConeTargets(if (boosted) 6.0 else 3.0, 45.0, TargetType.Enemy, false).firstOrNull()
             target?.let {
-                it.damage(4.0, DamageType.Normal, playerData)
-                it.getOrCreateStatus(playerData) { Vibration() }.applyStatus(duration = 10, powerDelta = 3)
+                it.damage(GUN_BLADER_BREAKTHROUGH_DAMAGE, DamageType.Normal, playerData)
+                it.getOrCreateStatus(playerData) { Vibration() }.applyStatus(
+                    duration = GUN_BLADER_VIBRATION_DURATION_SECONDS,
+                    powerDelta = GUN_BLADER_BREAKTHROUGH_VIBRATION_POWER,
+                )
                 particles.spawn(it.entity, Particle.SWEEP_ATTACK, count = 2, spread = 0.2)
             }
             sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_SWEEP, pitch = 0.8f)
@@ -113,7 +126,7 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
             "<gray>{keyword:Bullet}마다 2의 피해를 입히고, 10초간 {keyword:Vibration}을 1 부여한다.",
             "<gray>마지막 {keyword:Bullet}이 적중하면 {keyword:VibrationExplosion}을 적용한다."
         )
-        override val cooldown = 55
+        override val cooldown = GUN_BLADER_FULL_BURST_COOLDOWN_SECONDS
 
         override fun use() {
             val target = playerData.shotLaserGetEntityData(16.0, TargetType.Enemy, false) ?: return
@@ -121,8 +134,11 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
             val shots = bullets.power
             bullets.updatePower(0); idleSeconds = 0
             repeat(shots) { index ->
-                target.damage(2.0, DamageType.Normal, playerData)
-                target.getOrCreateStatus(playerData) { Vibration() }.applyStatus(duration = 10, powerDelta = 1)
+                target.damage(GUN_BLADER_FULL_BURST_DAMAGE, DamageType.Normal, playerData)
+                target.getOrCreateStatus(playerData) { Vibration() }.applyStatus(
+                    duration = GUN_BLADER_VIBRATION_DURATION_SECONDS,
+                    powerDelta = GUN_BLADER_VIBRATION_POWER,
+                )
                 if (index == shots - 1) target.addStatus(VibrationExplosion(), playerData).applyStatus(duration = 1, powerDelta = 1)
             }
             particles.line(player.eyeLocation, target.entity.location.add(0.0, target.entity.height / 2, 0.0), Particle.ELECTRIC_SPARK, 0.2)
@@ -148,7 +164,10 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
 
         override fun onAttackHit(context: DamageContext) {
             idleSeconds = 0
-            context.target.getOrCreateStatus(playerData) { Vibration() }.applyStatus(duration = 10, powerDelta = 1)
+            context.target.getOrCreateStatus(playerData) { Vibration() }.applyStatus(
+                duration = GUN_BLADER_VIBRATION_DURATION_SECONDS,
+                powerDelta = GUN_BLADER_VIBRATION_POWER,
+            )
             if (++basicHits >= 3) {
                 basicHits = 0;
                 bulletStatus().increasePower(1)

@@ -28,6 +28,10 @@ import java.util.IdentityHashMap
 import org.beobma.classWarPlugin.status.handler.StatusPlayerMoveHandler
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val GRAVE_ROBBER_ROB_COOLDOWN_SECONDS = 360
+private const val GRAVE_ROBBER_INTERACTION_RANGE_SQUARED = 4.0
+
 class GraveRobber : GameClass(), GameStatusHandler, OnSkillUseHandler, EnvironmentalDamageHandler,
     MovementInputHandler, SneakInputHandler, StatusPlayerMoveHandler, WeaponInputHandler {
     override val name = "<gray>도굴꾼"
@@ -80,7 +84,7 @@ class GraveRobber : GameClass(), GameStatusHandler, OnSkillUseHandler, Environme
             "",
             "<gray>사망한 플레이어를 도굴하여 해당 플레이어의 능력, 패시브를 모두 얻는다."
         )
-        override val cooldown = 360
+        override val cooldown = GRAVE_ROBBER_ROB_COOLDOWN_SECONDS
 
         private var selectedRecord: DeathRecord? = null
 
@@ -88,7 +92,7 @@ class GraveRobber : GameClass(), GameStatusHandler, OnSkillUseHandler, Environme
             selectedRecord = recordsFor(game)
                 .filter { it.location.world == player.world && it.victimId != player.uniqueId }
                 .minByOrNull { it.location.distanceSquared(player.location) }
-                ?.takeIf { it.location.distanceSquared(player.location) <= 4.0 }
+                ?.takeIf { it.location.distanceSquared(player.location) <= GRAVE_ROBBER_INTERACTION_RANGE_SQUARED }
             if (selectedRecord == null) {
                 player.sendMiniMessage("<red><bold>[!] 다른 플레이어가 사망한 위치에서만 사용할 수 있습니다.")
                 return false

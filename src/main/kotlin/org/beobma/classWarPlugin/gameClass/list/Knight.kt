@@ -33,6 +33,12 @@ import org.bukkit.entity.ItemDisplay
 import org.bukkit.inventory.ItemStack
 import java.util.UUID
 
+// 밸런스 조정 상수
+private const val KNIGHT_HORIZONTAL_SLASH_COOLDOWN_SECONDS = 12
+private const val KNIGHT_SLASH_DAMAGE = 4.0
+private const val KNIGHT_BLEEDING_DURATION_SECONDS = 4
+private const val KNIGHT_BLEEDING_POWER = 4
+
 class Knight : GameClass(), WeaponInputHandler {
     override val name = "<gray>기사"
     override val rank = Rank.B
@@ -79,7 +85,7 @@ class Knight : GameClass(), WeaponInputHandler {
             "<gray>바라보는 방향으로 검을 휘두른다.",
             "<gray>적중한 모든 적에게 4의 피해를 입히고 4초간 {keyword:Bleeding}을 4 부여한다."
         )
-        override val cooldown = 12
+        override val cooldown = KNIGHT_HORIZONTAL_SLASH_COOLDOWN_SECONDS
 
         override fun use() {
             val center = player.location.clone().add(0.0, 1.15, 0.0)
@@ -114,9 +120,12 @@ class Knight : GameClass(), WeaponInputHandler {
                                 expansion = 0.2,
                             )) return@forEach
                         hit += target.entity.uniqueId
-                        target.damage(4.0, DamageType.Normal, playerData)
+                        target.damage(KNIGHT_SLASH_DAMAGE, DamageType.Normal, playerData)
                         target.getOrCreateStatus(playerData) { Bleeding() }
-                            .applyStatus(duration = 4, powerSet = 4)
+                            .applyStatus(
+                                duration = KNIGHT_BLEEDING_DURATION_SECONDS,
+                                powerSet = KNIGHT_BLEEDING_POWER,
+                            )
                         particles.spawn(target.entity, Particle.SWEEP_ATTACK, count = 1)
                     }
                     if (tick % 2 == 0) particles.line(bladeStart, bladeEnd, Particle.SWEEP_ATTACK, spacing = 1.4)

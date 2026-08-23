@@ -6,6 +6,10 @@ import org.beobma.classWarPlugin.skill.Skill
 import org.bukkit.Material
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val DUMMY_RED_SKILL_COOLDOWN_SECONDS = 35
+private const val DUMMY_BLUE_SKILL_COOLDOWN_SECONDS = 35
+
 class Dummy : GameClass() {
     override val name = "<gray>더미"
     override val rank = Rank.C
@@ -24,7 +28,7 @@ class Dummy : GameClass() {
         override val description = listOf(
             "<gray>더미 설명"
         )
-        override val cooldown = 35
+        override val cooldown = DUMMY_RED_SKILL_COOLDOWN_SECONDS
 
         override fun use() {
         }
@@ -35,7 +39,7 @@ class Dummy : GameClass() {
         override val description = listOf(
             "<gray>더미 설명"
         )
-        override val cooldown = 35
+        override val cooldown = DUMMY_BLUE_SKILL_COOLDOWN_SECONDS
 
         override fun use() {
         }

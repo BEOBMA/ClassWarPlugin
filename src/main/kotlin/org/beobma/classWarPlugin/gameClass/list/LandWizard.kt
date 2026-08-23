@@ -27,6 +27,16 @@ import org.bukkit.Particle
 import org.bukkit.Sound
 import org.beobma.classWarPlugin.effect.ParticleOptions
 
+// 밸런스 조정 상수
+private const val LAND_WIZARD_EARTHQUAKE_COOLDOWN_SECONDS = 3
+private const val LAND_WIZARD_RESONANCE_COOLDOWN_SECONDS = 18
+private const val LAND_WIZARD_EARTHQUAKE_DAMAGE = 2.0
+private const val LAND_WIZARD_VIBRATION_DURATION_SECONDS = 10
+private const val LAND_WIZARD_VIBRATION_POWER = 2
+private const val LAND_WIZARD_SHIELD_DURATION_SECONDS = 5
+private const val LAND_WIZARD_SHIELD_POWER = 8
+private const val LAND_WIZARD_SHIELD_DAMAGE_TAKEN_MULTIPLIER = 0.7
+
 class LandWizard : GameClass(), GameStatusHandler {
     override val name = "<gray>지맥술사"
     override val rank = Rank.B
@@ -58,7 +68,7 @@ class LandWizard : GameClass(), GameStatusHandler {
             "",
             "<gray>사용 시 주위 모든 적에게 2의 피해를 입히고 10초간 {keyword:Vibration}을 2 부여한다."
         )
-        override val cooldown = 3
+        override val cooldown = LAND_WIZARD_EARTHQUAKE_COOLDOWN_SECONDS
 
         override fun use() {
             val mana = playerData.getOrCreateStatus(playerData) { Mana() }
@@ -66,8 +76,11 @@ class LandWizard : GameClass(), GameStatusHandler {
             val targets = playerData.radius(player.location, TargetType.Enemy, 4.0, false)
             targets.forEach {
                 val vibration = it.getOrCreateStatus(playerData) { Vibration() }
-                vibration.applyStatus(duration = 10, powerDelta = 2)
-                it.damage(2.0, DamageType.Normal, playerData)
+                vibration.applyStatus(
+                    duration = LAND_WIZARD_VIBRATION_DURATION_SECONDS,
+                    powerDelta = LAND_WIZARD_VIBRATION_POWER,
+                )
+                it.damage(LAND_WIZARD_EARTHQUAKE_DAMAGE, DamageType.Normal, playerData)
             }
             listOf(1.5, 2.7, 4.0).forEachIndexed { index, radius ->
                 particles.circle(player.location.clone().add(0.0, 0.08 + index * 0.03, 0.0), Particle.DUST_PLUME, radius, 24 + index * 8)
@@ -99,14 +112,17 @@ class LandWizard : GameClass(), GameStatusHandler {
             "",
             "<gray>사용 시 5초간 <aqua><bold>8의 피해를 막는 {keyword:Shield}을 얻고 주위 모든 적에게 {keyword:VibrationExplosion}을 적용한다."
         )
-        override val cooldown = 18
+        override val cooldown = LAND_WIZARD_RESONANCE_COOLDOWN_SECONDS
 
         override fun use() {
             val mana = playerData.getOrCreateStatus(playerData) { Mana() }
             val shield = playerData.addStatus(Shield(), playerData)
 
             mana.decreasePower(60)
-            shield.applyStatus(duration = 5, powerDelta = 8)
+            shield.applyStatus(
+                duration = LAND_WIZARD_SHIELD_DURATION_SECONDS,
+                powerDelta = LAND_WIZARD_SHIELD_POWER,
+            )
 
             val targets = playerData.radius(player.location, TargetType.Enemy, 4.0, false)
             targets.forEach {
@@ -138,7 +154,9 @@ class LandWizard : GameClass(), GameStatusHandler {
         )
 
         override fun whenAttackHit(event: DamageContext) {
-            if (playerData.hasStatus<Shield>()) event.addDamageTakenMultiplier(0.7)
+            if (playerData.hasStatus<Shield>()) {
+                event.addDamageTakenMultiplier(LAND_WIZARD_SHIELD_DAMAGE_TAKEN_MULTIPLIER)
+            }
         }
     }
 }

@@ -17,6 +17,7 @@ import org.beobma.classWarPlugin.manager.ConfigCategory
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.list.Contractor
+import org.beobma.classWarPlugin.gameClass.list.DeathNote
 import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -52,6 +53,13 @@ class OnInventoryClickEvent : Listener {
             event.isCancelled = true
             if (event.rawSlot !in 0 until inventory.topInventory.size) return
             Contractor.handleInventoryClick(player, event.rawSlot)
+            return
+        }
+
+        if (DeathNote.isSelectionInventoryOpen(player)) {
+            event.isCancelled = true
+            if (event.rawSlot !in 0 until inventory.topInventory.size) return
+            DeathNote.handleInventoryClick(player, event.rawSlot)
             return
         }
 

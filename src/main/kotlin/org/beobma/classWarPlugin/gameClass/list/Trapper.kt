@@ -22,6 +22,10 @@ import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val TRAPPER_TRAP_COOLDOWN_SECONDS = 5
+private const val TRAPPER_TRAP_DAMAGE = 4.0
+
 class Trapper : GameClass() {
     override val name = "<gray>트래퍼"
     override val rank = Rank.B
@@ -39,7 +43,7 @@ class Trapper : GameClass() {
             "<dark_gray>선은 최대 10개까지 만들 수 있으며, 최대치를 초과한 경우 오래된 선을 제거하고 만든다.",
             "<dark_gray>선을 만들 때 기준점 사이의 거리가 10칸을 초과하거나 장애물로 막힌 경우 실패한다.",
         )
-        override val cooldown = 5
+        override val cooldown = TRAPPER_TRAP_COOLDOWN_SECONDS
 
         private data class TrapLine(val start: Location, val end: Location)
 
@@ -149,7 +153,7 @@ class Trapper : GameClass() {
         }
 
         private fun trigger(line: TrapLine, target: EntityData) {
-            target.damage(4.0, DamageType.Normal, playerData)
+            target.damage(TRAPPER_TRAP_DAMAGE, DamageType.Normal, playerData)
             particles.line(
                 line.start,
                 line.end,

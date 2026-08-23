@@ -13,6 +13,13 @@ import org.bukkit.Sound
 import kotlin.random.Random
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val ROULETTE_JACKPOT_CHANCE = 0.02
+private const val ROULETTE_JACKPOT_DAMAGE_MULTIPLIER = 2.5
+private const val ROULETTE_HIGH_DAMAGE_MULTIPLIER = 1.5
+private const val ROULETTE_LOW_DAMAGE_MULTIPLIER = 0.5
+private const val ROULETTE_MIRACLE_DAMAGE = 0.0
+
 class Roulette : GameClass() {
     override val name = "<gray>룰렛"
     override val rank = Rank.B
@@ -31,11 +38,11 @@ class Roulette : GameClass() {
         )
 
         override fun onHit(context: DamageContext) {
-            val jackpot = Random.nextDouble() < 0.02
+            val jackpot = Random.nextDouble() < ROULETTE_JACKPOT_CHANCE
             val multiplier = when {
-                jackpot -> 2.5
-                Random.nextBoolean() -> 1.5
-                else -> 0.5
+                jackpot -> ROULETTE_JACKPOT_DAMAGE_MULTIPLIER
+                Random.nextBoolean() -> ROULETTE_HIGH_DAMAGE_MULTIPLIER
+                else -> ROULETTE_LOW_DAMAGE_MULTIPLIER
             }
             context.addDamageDealtMultiplier(multiplier)
             val color = when {
@@ -58,9 +65,12 @@ class Roulette : GameClass() {
         }
 
         override fun whenHit(context: DamageContext) {
-            val miracle = Random.nextDouble() < 0.02
-            if (miracle) context.capDamage(0.0)
-            else context.addDamageTakenMultiplier(if (Random.nextBoolean()) 0.5 else 1.5)
+            val miracle = Random.nextDouble() < ROULETTE_JACKPOT_CHANCE
+            if (miracle) context.capDamage(ROULETTE_MIRACLE_DAMAGE)
+            else context.addDamageTakenMultiplier(
+                if (Random.nextBoolean()) ROULETTE_LOW_DAMAGE_MULTIPLIER
+                else ROULETTE_HIGH_DAMAGE_MULTIPLIER
+            )
 
             particles.spawn(
                 player,

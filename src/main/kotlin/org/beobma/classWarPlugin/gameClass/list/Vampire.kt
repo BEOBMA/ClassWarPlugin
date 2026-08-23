@@ -52,6 +52,12 @@ import kotlin.math.cos
 import kotlin.math.sin
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val VAMPIRE_BAT_COOLDOWN_SECONDS = 60
+private const val VAMPIRE_BLOOD_PLAGUE_COOLDOWN_SECONDS = 120
+private const val VAMPIRE_REFLECTED_DAMAGE_MULTIPLIER = 2.0
+private const val VAMPIRE_BLOOD_PLAGUE_DURATION_SECONDS = 4
+
 class Vampire : GameClass() {
     override val name = "<gray>흡혈귀"
     override val rank = Rank.S
@@ -82,7 +88,7 @@ class Vampire : GameClass() {
             "<dark_gray>박쥐로 변신한 상태에서는 {keyword:Silence} 상태가 되며, 기본 공격을 사용할 수 없다.",
             "<dark_gray>변신이 해제된 후 부터 재사용 대기 시간이 감소한다."
         )
-        override val cooldown = 60
+        override val cooldown = VAMPIRE_BAT_COOLDOWN_SECONDS
         override val isOnOffSKill = true
         override val canUseWhileSilenced: Boolean
             get() = transformed
@@ -214,7 +220,12 @@ class Vampire : GameClass() {
         playerStatus.isAttackable = true
         playerStatus.isSkillTargeting = true
         try {
-            playerData.damage(incoming * 2.0, DamageType.Normal, attackerData, damagePath = path)
+            playerData.damage(
+                incoming * VAMPIRE_REFLECTED_DAMAGE_MULTIPLIER,
+                DamageType.Normal,
+                attackerData,
+                damagePath = path,
+            )
         } finally {
             if (transformed) {
                 playerStatus.isAttackable = wasAttackable
@@ -235,7 +246,7 @@ class Vampire : GameClass() {
             "<gray>지속 시간동안 범위 내의 모든 적은 {keyword:Bleeding} 수치가 감소하지 않는다.",
             "<gray>지속 시간 종료 시 한 번이라도 혈사병의 영향을 받은 모든 적의 {keyword:Bleeding}은 제거된다."
         )
-        override val cooldown = 120
+        override val cooldown = VAMPIRE_BLOOD_PLAGUE_COOLDOWN_SECONDS
 
         override fun use() {
             val affected = mutableMapOf<UUID, EntityData>()
@@ -309,7 +320,7 @@ class Vampire : GameClass() {
 
         override fun onAttackHit(context: DamageContext) {
             context.target.getOrCreateStatus(playerData) { Bleeding() }
-                .applyStatus(duration = 4, powerDelta = 1)
+                .applyStatus(duration = VAMPIRE_BLOOD_PLAGUE_DURATION_SECONDS, powerDelta = 1)
             particles.spawn(context.target.entity.location.clone().add(0.0, context.target.entity.height * 0.5, 0.0), Particle.FALLING_DUST, Material.REDSTONE_BLOCK.createBlockData(), org.beobma.classWarPlugin.effect.ParticleOptions.spread(6, 0.3, 0.04))
             sounds.play(context.target.entity, Sound.ENTITY_PLAYER_HURT, volume = 0.35f, pitch = 0.65f)
         }

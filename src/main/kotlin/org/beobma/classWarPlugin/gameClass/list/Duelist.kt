@@ -24,6 +24,16 @@ import org.bukkit.*
 import org.bukkit.scheduler.BukkitRunnable
 import java.util.UUID
 
+// 밸런스 조정 상수
+private const val DUELIST_FENTE_COOLDOWN_SECONDS = 5
+private const val DUELIST_EN_GARDE_COOLDOWN_SECONDS = 70
+private const val DUELIST_FENTE_DAMAGE = 2.0
+private const val DUELIST_FENTE_FINISH_DAMAGE = 6.0
+private const val DUELIST_MARK_DURATION_SECONDS = 15
+private const val DUELIST_OPPONENT_DAMAGE_MULTIPLIER = 1.3
+private const val DUELIST_OUTSIDER_DAMAGE_MULTIPLIER = 0.7
+private const val DUELIST_DISRUPTED_DAMAGE_TAKEN_MULTIPLIER = 1.25
+
 class Duelist : GameClass() {
     override val name = "<gray>결투가"
     override val rank = Rank.C
@@ -49,11 +59,14 @@ class Duelist : GameClass() {
         override val description = listOf("<gray>결투 중 받는 피해가 공격자에 따라 변경된다.")
         override val canRemove = true
         override var power = 1
-        override var duration: Int? = 15
+        override var duration: Int? = DUELIST_MARK_DURATION_SECONDS
         override val showPower = false
         override val showMaxPower = false
         override fun whenHit(context: DamageContext) {
-            context.addDamageTakenMultiplier(if (context.attacker.uniqueId == duelistId) 1.3 else 0.7)
+            context.addDamageTakenMultiplier(
+                if (context.attacker.uniqueId == duelistId) DUELIST_OPPONENT_DAMAGE_MULTIPLIER
+                else DUELIST_OUTSIDER_DAMAGE_MULTIPLIER
+            )
         }
     }
 
@@ -65,7 +78,7 @@ class Duelist : GameClass() {
             "",
             "<dark_gray>결투 상대를 우선으로 공격한다."
         )
-        override val cooldown = 5
+        override val cooldown = DUELIST_FENTE_COOLDOWN_SECONDS
 
         override fun use() {
             player.velocity = player.location.direction.normalize().multiply(1.15).setY(0.18)
@@ -80,14 +93,14 @@ class Duelist : GameClass() {
                         sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_NODAMAGE, pitch = 0.8f)
                         return
                     }
-                    target.damage(2.0, DamageType.Normal, playerData)
+                    target.damage(DUELIST_FENTE_DAMAGE, DamageType.Normal, playerData)
                     particles.line(player.eyeLocation, target.entity.location.add(0.0, target.entity.height / 2.0, 0.0), Particle.CRIT, 0.2)
                     if (inDuel() && target.entity.uniqueId == opponentId) {
                         disrupted = false
                         fenteChain++
                         CooldownManager.reduceCooldown(player, this@RedSkill, 40)
                         if (fenteChain >= 3) {
-                            target.damage(6.0, DamageType.Normal, playerData)
+                            target.damage(DUELIST_FENTE_FINISH_DAMAGE, DamageType.Normal, playerData)
                             fenteChain = 0
                             sounds.play(target.entity, Sound.ENTITY_PLAYER_ATTACK_CRIT, pitch = 0.7f)
                         }
@@ -108,14 +121,15 @@ class Duelist : GameClass() {
             "<gray>결투 상대에게 팡트를 3번 연속 적중시키면 추가로 6의 피해를 입힌다.",
             "<gray>결투 중, 팡트를 적중시키는데 성공하면 재사용 대기 시간이 2초 감소한다."
         )
-        override val cooldown = 70
+        override val cooldown = DUELIST_EN_GARDE_COOLDOWN_SECONDS
 
         override fun use() {
             val target = playerData.shotLaserGetEntityData(10.0, TargetType.Enemy, false) ?: return
             opponentId = target.entity.uniqueId
             duelUntil = player.world.fullTime + 300L
             fenteChain = 0; disrupted = false
-            target.addStatus(DuelMark(player.uniqueId), playerData).applyStatus(duration = 15, powerSet = 1)
+            target.addStatus(DuelMark(player.uniqueId), playerData)
+                .applyStatus(duration = DUELIST_MARK_DURATION_SECONDS, powerSet = 1)
             particles.line(player.eyeLocation, target.entity.location.add(0.0, target.entity.height / 2.0, 0.0), Particle.ENCHANT, 0.25)
             sounds.play(player, Sound.ENTITY_ENDER_DRAGON_GROWL, volume = 0.6f, pitch = 1.5f)
         }
@@ -139,15 +153,17 @@ class Duelist : GameClass() {
         )
 
         override fun onHit(context: DamageContext) {
-            if (inDuel() && context.target.entity.uniqueId == opponentId) context.addDamageDealtMultiplier(1.3)
+            if (inDuel() && context.target.entity.uniqueId == opponentId) {
+                context.addDamageDealtMultiplier(DUELIST_OPPONENT_DAMAGE_MULTIPLIER)
+            }
         }
 
         override fun whenHit(context: DamageContext) {
             if (!inDuel()) { disrupted = false; opponentId = null; return }
             if (context.attacker.uniqueId == opponentId) {
-                if (disrupted) context.addDamageTakenMultiplier(1.25)
+                if (disrupted) context.addDamageTakenMultiplier(DUELIST_DISRUPTED_DAMAGE_TAKEN_MULTIPLIER)
                 disrupted = false
-            } else context.addDamageTakenMultiplier(0.7)
+            } else context.addDamageTakenMultiplier(DUELIST_OUTSIDER_DAMAGE_MULTIPLIER)
         }
     }
 }

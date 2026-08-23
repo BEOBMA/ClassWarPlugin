@@ -22,6 +22,14 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.math.PI
 
+// 밸런스 조정 상수
+private const val GEOMETER_COORDINATE_COOLDOWN_SECONDS = 1
+private const val GEOMETER_COMPRESSION_COOLDOWN_SECONDS = 18
+private const val GEOMETER_MAX_AXIS_LENGTH = 8.0
+private const val GEOMETER_MAX_VOLUME = 125.0
+private const val GEOMETER_MAX_COMPRESSION_DAMAGE = 16.0
+private const val GEOMETER_MIN_COMPRESSION_DAMAGE = 5.0
+
 class Geometer : GameClass() {
     override val name = "<gray>기하학자"
     override val rank = Rank.A
@@ -49,9 +57,13 @@ class Geometer : GameClass() {
         max(1.0, abs(a.x - b.x)) * max(1.0, abs(a.y - b.y)) * max(1.0, abs(a.z - b.z))
 
     private fun validBox(a: Location, b: Location): Boolean = a.world == b.world &&
-        abs(a.x - b.x) <= 8.0 && abs(a.y - b.y) <= 8.0 && abs(a.z - b.z) <= 8.0 && volume(a, b) <= 125.0
+        abs(a.x - b.x) <= GEOMETER_MAX_AXIS_LENGTH &&
+        abs(a.y - b.y) <= GEOMETER_MAX_AXIS_LENGTH &&
+        abs(a.z - b.z) <= GEOMETER_MAX_AXIS_LENGTH &&
+        volume(a, b) <= GEOMETER_MAX_VOLUME
 
-    private fun compressionDamage(a: Location, b: Location): Double = max(5.0, 16.0 - sqrt(volume(a, b)))
+    private fun compressionDamage(a: Location, b: Location): Double =
+        max(GEOMETER_MIN_COMPRESSION_DAMAGE, GEOMETER_MAX_COMPRESSION_DAMAGE - sqrt(volume(a, b)))
 
     private fun showBox(a: Location, b: Location) {
         val minX = minOf(a.x, b.x); val maxX = maxOf(a.x, b.x)
@@ -112,7 +124,7 @@ class Geometer : GameClass() {
             "",
             "<dark_gray>웅크린 상태에서 사용하면 모든 좌표를 제거한다."
         )
-        override val cooldown = 1
+        override val cooldown = GEOMETER_COORDINATE_COOLDOWN_SECONDS
 
         override fun use() {
             if (player.isSneaking) { clearCoordinates(); return }
@@ -148,7 +160,7 @@ class Geometer : GameClass() {
             "<dark_gray>피해량은 최대 (5)와 (16 - √부피) 중 큰 값으로 결정된다.",
             "<dark_gray>"
         )
-        override val cooldown = 18
+        override val cooldown = GEOMETER_COMPRESSION_COOLDOWN_SECONDS
 
         override fun use() {
             val a = first ?: return

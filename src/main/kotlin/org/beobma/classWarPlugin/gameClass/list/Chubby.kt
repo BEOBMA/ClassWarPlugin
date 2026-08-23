@@ -25,6 +25,26 @@ import kotlin.math.max
 import kotlin.math.min
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val CHUBBY_MAX_HEALTH_MULTIPLIER = 2.0
+private const val CHUBBY_JUMP_STRENGTH_MULTIPLIER = 0.68
+private const val CHUBBY_SCALE_MULTIPLIER = 1.35
+private const val CHUBBY_MOVE_SPEED_REDUCTION_PERCENT = 20
+private const val CHUBBY_MIN_FALL_HEIGHT = 3.0
+private const val CHUBBY_MAX_IMPACT_RADIUS = 5.0
+private const val CHUBBY_BASE_IMPACT_RADIUS = 2.8
+private const val CHUBBY_RADIUS_PER_FALL_BLOCK = 0.14
+private const val CHUBBY_DAMAGE_FALL_OFFSET = 2.0
+private const val CHUBBY_DAMAGE_PER_FALL_BLOCK = 1.4
+private const val CHUBBY_MIN_IMPACT_DAMAGE = 2.0
+private const val CHUBBY_MAX_IMPACT_DAMAGE = 18.0
+private const val CHUBBY_BASE_HORIZONTAL_KNOCKBACK = 0.75
+private const val CHUBBY_HORIZONTAL_KNOCKBACK_PER_BLOCK = 0.035
+private const val CHUBBY_MAX_HORIZONTAL_KNOCKBACK = 1.5
+private const val CHUBBY_BASE_VERTICAL_KNOCKBACK = 0.45
+private const val CHUBBY_VERTICAL_KNOCKBACK_PER_BLOCK = 0.025
+private const val CHUBBY_MAX_VERTICAL_KNOCKBACK = 0.95
+
 class Chubby : GameClass(), GameStatusHandler, EnvironmentalDamageHandler, StatusPlayerMoveHandler {
     override val name = "<gray>뚱땡이"
     override val rank = Rank.A
@@ -41,12 +61,13 @@ class Chubby : GameClass(), GameStatusHandler, EnvironmentalDamageHandler, Statu
         if (initialized) return
         initialized = true
         player.getAttribute(Attribute.MAX_HEALTH)?.let { attribute ->
-            attribute.baseValue *= 2.0
+            attribute.baseValue *= CHUBBY_MAX_HEALTH_MULTIPLIER
             player.health = attribute.value
         }
-        player.getAttribute(Attribute.JUMP_STRENGTH)?.let { it.baseValue *= 0.68 }
-        player.getAttribute(Attribute.SCALE)?.let { it.baseValue *= 1.35 }
-        playerData.addStatus(MoveSpeedDecrease(), playerData).applyStatus(powerSet = 20)
+        player.getAttribute(Attribute.JUMP_STRENGTH)?.let { it.baseValue *= CHUBBY_JUMP_STRENGTH_MULTIPLIER }
+        player.getAttribute(Attribute.SCALE)?.let { it.baseValue *= CHUBBY_SCALE_MULTIPLIER }
+        playerData.addStatus(MoveSpeedDecrease(), playerData)
+            .applyStatus(powerSet = CHUBBY_MOVE_SPEED_REDUCTION_PERCENT)
         particles.spawn(player, Particle.CLOUD, count = 26, spread = 0.8, speed = 0.08)
         sounds.play(player, Sound.ENTITY_HOGLIN_AMBIENT, volume = 0.75f, pitch = 0.7f)
     }
@@ -76,12 +97,13 @@ class Chubby : GameClass(), GameStatusHandler, EnvironmentalDamageHandler, Statu
     }
 
     private fun triggerImpact(fallHeight: Double) {
-        if (fallHeight < 3.0) return
+        if (fallHeight < CHUBBY_MIN_FALL_HEIGHT) return
         val currentTick = player.world.fullTime
         if (lastImpactTick != Long.MIN_VALUE && currentTick - lastImpactTick <= 1L) return
         lastImpactTick = currentTick
-        val radius = min(5.0, 2.8 + fallHeight * 0.14)
-        val damage = ((fallHeight - 2.0) * 1.4).coerceIn(2.0, 18.0)
+        val radius = min(CHUBBY_MAX_IMPACT_RADIUS, CHUBBY_BASE_IMPACT_RADIUS + fallHeight * CHUBBY_RADIUS_PER_FALL_BLOCK)
+        val damage = ((fallHeight - CHUBBY_DAMAGE_FALL_OFFSET) * CHUBBY_DAMAGE_PER_FALL_BLOCK)
+            .coerceIn(CHUBBY_MIN_IMPACT_DAMAGE, CHUBBY_MAX_IMPACT_DAMAGE)
         val impactPower = ((fallHeight - 3.0) / 14.0).coerceIn(0.0, 1.5)
         val ringPoints = (16 + fallHeight * 1.8).toInt().coerceIn(18, 54)
         val dustCount = (18 + fallHeight * 3.4).toInt().coerceIn(24, 110)
@@ -95,8 +117,10 @@ class Chubby : GameClass(), GameStatusHandler, EnvironmentalDamageHandler, Statu
             var direction = target.entity.boundingBox.center.clone().subtract(player.boundingBox.center).setY(0.0)
             if (direction.lengthSquared() < 1.0E-8) direction = Vector(1.0, 0.0, 0.0)
             target.entity.velocity = direction.normalize()
-                .multiply((0.75 + fallHeight * 0.035).coerceAtMost(1.5))
-                .setY((0.45 + fallHeight * 0.025).coerceAtMost(0.95))
+                .multiply((CHUBBY_BASE_HORIZONTAL_KNOCKBACK + fallHeight * CHUBBY_HORIZONTAL_KNOCKBACK_PER_BLOCK)
+                    .coerceAtMost(CHUBBY_MAX_HORIZONTAL_KNOCKBACK))
+                .setY((CHUBBY_BASE_VERTICAL_KNOCKBACK + fallHeight * CHUBBY_VERTICAL_KNOCKBACK_PER_BLOCK)
+                    .coerceAtMost(CHUBBY_MAX_VERTICAL_KNOCKBACK))
         }
         particles.circle(impact.clone().add(0.0, 0.12, 0.0), Particle.EXPLOSION, radius, ringPoints)
         particles.spawn(impact, Particle.DUST_PLUME, count = dustCount, spread = radius * (0.5 + impactPower * 0.18), speed = particleSpeed)

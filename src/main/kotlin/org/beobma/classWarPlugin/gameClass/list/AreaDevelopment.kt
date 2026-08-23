@@ -4,15 +4,19 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.effect.ParticleOptions
+import org.beobma.classWarPlugin.entity.EntityData
+import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
+import org.beobma.classWarPlugin.entity.mob.MobEntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
-import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
+import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.TemporaryDisplayManager
+import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.beobma.classWarPlugin.status.handler.StatusPlayerMoveHandler
@@ -25,7 +29,11 @@ import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.entity.BlockDisplay
 import org.bukkit.entity.Display
+import org.bukkit.entity.LivingEntity
+import org.bukkit.entity.Player
 import org.bukkit.event.player.PlayerMoveEvent
+import org.bukkit.potion.PotionEffect
+import org.bukkit.potion.PotionEffectType
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.Transformation
@@ -39,6 +47,12 @@ import kotlin.math.sin
 import kotlin.random.Random
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val AREA_DEVELOPMENT_COOLDOWN_SECONDS = 120
+private const val AREA_DEVELOPMENT_DOMAIN_DURATION_SECONDS = 60
+private const val AREA_DEVELOPMENT_CHAIN_DAMAGE = 1.0
+private const val AREA_DEVELOPMENT_EXECUTION_DAMAGE = 10.0
+
 class AreaDevelopment : GameClass() {
     override val name = "<gray>영역전개"
     override val rank = Rank.S
@@ -47,24 +61,26 @@ class AreaDevelopment : GameClass() {
     override var skills: List<Skill> = listOf(domainSkill)
     override var passives: List<BasePassive> = listOf()
 
-    private inner class RedSkill : Skill(), OnHitHandler {
+    private inner class RedSkill : Skill() {
         override val name = "<bold>영역전개"
         override val description = listOf(
-            "<gray>자신의 위치에 60초간 지름 20칸 크기의 영역을 전개한다.", "",
+            "<gray>자신의 위치에 60초간 지름 20칸 크기의 영역을 전개한다.",
+            "",
             "<gray>원래 영역 안에 있던 플레이어를 제외한 다른 플레이어는 접근할 수 없다.",
             "<gray>원래 영역 안에 있던 플레이어는 영역 밖으로 나갈 수 없다.",
             "<gray>영역 안의 플레이어는 영역 밖의 플레이어로부터 피해를 받지 않는다.",
-            "<gray>영역 내에서 적에게 피해를 입히면 무작위 사선에서 사슬 하나가 내리꽂힌다.",
-            "<gray>사슬에 실제로 적중한 적에게만 4의 피해를 입힌다.",
+            "<gray>영역 내 모든 적과 아군은 실명 상태가 된다.",
+            "<gray>영역 내의 적은 4틱마다 무작위 사선에서 사슬이 내리꽂힌다.",
+            "<gray>사슬에 실제로 적중한 적에게만 1의 피해를 입힌다.",
             "<gray>자신이 영역 내의 적을 하나라도 처치하면 영역이 파괴되며 영역 내 모든 적이 10의 피해를 입는다."
         )
-        override val cooldown = 120
+        override val cooldown = AREA_DEVELOPMENT_COOLDOWN_SECONDS
 
         private var center: Location? = null
         private var active = false
         private var domainTask: BukkitTask? = null
         private val boundaryStatuses = mutableListOf<DomainBoundaryStatus>()
-        private val chainTargets = mutableSetOf<UUID>()
+        private val blindnessStatuses = mutableListOf<DomainBlindnessStatus>()
         private val allowedInsideIds = mutableSetOf<UUID>()
 
         override fun use() {
@@ -88,8 +104,15 @@ class AreaDevelopment : GameClass() {
                         radius = RADIUS,
                     )
                     target.addStatus(status, playerData)
-                    status.applyStatus(duration = 60, powerSet = 1)
+                    status.applyStatus(duration = AREA_DEVELOPMENT_DOMAIN_DURATION_SECONDS, powerSet = 1)
                     boundaryStatuses += status
+
+                    if (target.uniqueId in originallyInside) {
+                        val blindness = DomainBlindnessStatus()
+                        target.addStatus(blindness, playerData)
+                        blindness.applyStatus(duration = AREA_DEVELOPMENT_DOMAIN_DURATION_SECONDS, powerSet = 1)
+                        blindnessStatuses += blindness
+                    }
                 }
 
             game.playerDatas.filterIsInstance<PlayerData>()
@@ -108,23 +131,18 @@ class AreaDevelopment : GameClass() {
                         finishDomain(collapse = false, naturalExpiration = true)
                         return
                     }
+                    blindnessStatuses.forEach(DomainBlindnessStatus::refreshEffect)
                     drawDomain(origin, elapsedTicks)
+                    if (elapsedTicks % CHAIN_INTERVAL_TICKS == 0) {
+                        domainEnemies(origin).forEach { target -> launchFallingChain(target, origin) }
+                    }
                     elapsedTicks += 2
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 2L))
         }
 
-        override fun onHit(context: DamageContext) {
-            val origin = center ?: return
-            val targetCenter = context.target.entity.boundingBox.center.toLocation(origin.world)
-            if (!active || context.target == playerData || !isInside(origin, targetCenter)) return
-            val targetId = context.target.entity.uniqueId
-            if (!chainTargets.add(targetId)) return
-            launchFallingChain(context, origin, targetId)
-        }
-
-        private fun launchFallingChain(context: DamageContext, origin: Location, targetId: UUID) {
-            val target = context.target.entity
+        private fun launchFallingChain(targetData: EntityData, origin: Location) {
+            val target = targetData.entity
             val initialBox = target.boundingBox
             val initialGround = initialBox.center.clone().also { it.y = initialBox.minY + 0.1 }.toLocation(target.world)
             val landingAngle = Random.nextDouble(0.0, 2.0 * PI)
@@ -182,8 +200,8 @@ class AreaDevelopment : GameClass() {
                         )
                     ) {
                         damageApplied = true
-                        context.target.damage(
-                            4.0,
+                        targetData.damage(
+                            AREA_DEVELOPMENT_CHAIN_DAMAGE,
                             DamageType.Normal,
                             playerData,
                             damagePath = DamagePath.SKILL,
@@ -208,15 +226,14 @@ class AreaDevelopment : GameClass() {
                             spread = 0.3,
                             speed = 0.07,
                         )
-                        sounds.play(landing, Sound.BLOCK_ANVIL_LAND, volume = 0.75f, pitch = 1.45f)
-                        sounds.play(landing, Sound.BLOCK_CHAIN_PLACE, volume = 1.0f, pitch = 0.72f)
+                        sounds.play(landing, Sound.ITEM_TRIDENT_HIT_GROUND, volume = 0.72f, pitch = 0.68f)
+                        sounds.play(landing, Sound.BLOCK_CHAIN_PLACE, volume = 0.9f, pitch = 0.62f)
                     }
                     animationTick++
                 }
 
                 private fun stopAnimation() {
                     displays.forEach(BlockDisplay::remove)
-                    chainTargets.remove(targetId)
                     cancel()
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
@@ -266,16 +283,15 @@ class AreaDevelopment : GameClass() {
             domainTask = null
             boundaryStatuses.toList().forEach(StatusAbnormality::remove)
             boundaryStatuses.clear()
-            chainTargets.clear()
+            blindnessStatuses.toList().forEach(StatusAbnormality::remove)
+            blindnessStatuses.clear()
             allowedInsideIds.clear()
 
             if (collapse) {
                 playCollapseEffect(origin)
-                game.playerDatas.filterIsInstance<PlayerData>()
-                    .filter { it != playerData && !it.entityStatus.isDead && containsIgnoringActive(origin, it.player.location) }
-                    .forEach { target ->
-                        target.damage(10.0, DamageType.Normal, playerData, damagePath = DamagePath.SKILL)
-                    }
+                domainEnemies(origin).forEach { target ->
+                        target.damage(AREA_DEVELOPMENT_EXECUTION_DAMAGE, DamageType.Normal, playerData, damagePath = DamagePath.SKILL)
+                }
             } else if (naturalExpiration) {
                 playNaturalExpirationEffect(origin)
             } else {
@@ -283,6 +299,42 @@ class AreaDevelopment : GameClass() {
                 sounds.play(origin, Sound.BLOCK_BEACON_DEACTIVATE, volume = 0.8f, pitch = 0.55f)
             }
             center = null
+        }
+
+        private fun domainEnemies(origin: Location): List<EntityData> {
+            val isTraining = PlayerTagManager.hasTag(player, "isTraining")
+            if (isTraining) registerTrainingEntities()
+
+            return game.playerDatas.asSequence()
+                .filter { target ->
+                    target != playerData &&
+                        !target.entityStatus.isDead &&
+                        target.entityStatus.isSkillTargeting &&
+                        target.entity.isValid &&
+                        target.entity.world == origin.world &&
+                        (target !is PlayerData || target.player.isOnline) &&
+                        (target is PlayerData && playerData.isEnemyOf(target) || target !is PlayerData && isTraining)
+                }
+                .filter { target ->
+                    val targetCenter = target.entity.boundingBox.center.toLocation(origin.world)
+                    containsIgnoringActive(origin, targetCenter)
+                }
+                .distinctBy { it.entity.uniqueId }
+                .toList()
+        }
+
+        private fun registerTrainingEntities() {
+            val knownIds = game.playerDatas.mapTo(HashSet()) { it.entity.uniqueId }
+            player.world.livingEntities.forEach { livingEntity ->
+                if (livingEntity == player || livingEntity is Player || livingEntity.uniqueId in knownIds) return@forEach
+                val entityData = if (livingEntity.isMannequin()) {
+                    DummyEntityData(livingEntity, game)
+                } else {
+                    MobEntityData(livingEntity, game)
+                }
+                game.playerDatas.add(entityData)
+                knownIds.add(livingEntity.uniqueId)
+            }
         }
 
         private fun playCollapseEffect(origin: Location) {
@@ -526,6 +578,7 @@ class AreaDevelopment : GameClass() {
         private const val CHAIN_LINK_COUNT = 16
         private const val CHAIN_LINK_SPACING = 0.92
         private const val CHAIN_HITBOX_EXPANSION = 0.5
+        private const val CHAIN_INTERVAL_TICKS = 4
         private const val CHAIN_FALL_TICKS = 9
         private const val CHAIN_HOLD_TICKS = 5
         private val DEEP_PURPLE = Color.fromRGB(92, 12, 150)
@@ -578,7 +631,7 @@ private class DomainBoundaryStatus(
     override var maxPower: Int? = 1
     override val showPower = false
     override val showMaxPower = false
-    override var duration: Int? = 60
+    override var duration: Int? = AREA_DEVELOPMENT_DOMAIN_DURATION_SECONDS
 
     override fun onPlayerMove(event: PlayerMoveEvent, playerData: PlayerData) {
         if (event.to.world != center.world) return
@@ -609,5 +662,63 @@ private class DomainBoundaryStatus(
         val dx = location.x - center.x
         val dz = location.z - center.z
         return dx * dx + dz * dz <= radius * radius
+    }
+}
+
+private class DomainBlindnessStatus : StatusAbnormality() {
+    override val name = "<dark_gray><bold>영역 실명</bold><gray>"
+    override val description = listOf("<gray>영역전개 안에 갇혀 시야가 차단되었다.")
+    override val canRemove = true
+    override var power = 1
+    override var maxPower: Int? = 1
+    override val showPower = false
+    override val showMaxPower = false
+    override var duration: Int? = null
+
+    private var ownsBlindnessEffect = false
+    private var cleanupCompleted = false
+
+    override fun onDurationChanged() {
+        refreshEffect()
+        super.onDurationChanged()
+    }
+
+    fun refreshEffect() {
+        if (cleanupCompleted || power <= 0) return
+        val livingEntity = entity as? LivingEntity ?: return
+        val currentEffect = livingEntity.getPotionEffect(PotionEffectType.BLINDNESS)
+        if (currentEffect != null && currentEffect.amplifier > DOMAIN_BLINDNESS_AMPLIFIER) return
+
+        val applied = livingEntity.addPotionEffect(
+            PotionEffect(
+                PotionEffectType.BLINDNESS,
+                DOMAIN_BLINDNESS_EFFECT_TICKS,
+                DOMAIN_BLINDNESS_AMPLIFIER,
+                false,
+                false,
+                true,
+            )
+        )
+        ownsBlindnessEffect = ownsBlindnessEffect || applied
+    }
+
+    override fun onRemoveStatusAbnormality() {
+        if (cleanupCompleted) return
+        cleanupCompleted = true
+        val livingEntity = entity as? LivingEntity
+        val currentEffect = livingEntity?.getPotionEffect(PotionEffectType.BLINDNESS)
+        if (
+            ownsBlindnessEffect &&
+            currentEffect?.amplifier == DOMAIN_BLINDNESS_AMPLIFIER &&
+            currentEffect.duration <= DOMAIN_BLINDNESS_EFFECT_TICKS
+        ) {
+            livingEntity.removePotionEffect(PotionEffectType.BLINDNESS)
+        }
+        super.onRemoveStatusAbnormality()
+    }
+
+    private companion object {
+        const val DOMAIN_BLINDNESS_AMPLIFIER = 0
+        const val DOMAIN_BLINDNESS_EFFECT_TICKS = 10
     }
 }

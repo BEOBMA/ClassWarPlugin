@@ -11,6 +11,11 @@ import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val FEATHER_EFFECT_DURATION_TICKS = 40
+private const val FEATHER_JUMP_BOOST_AMPLIFIER = 1
+private const val FEATHER_SLOW_FALLING_AMPLIFIER = 0
+
 class Feather : GameClass() {
     override val name = "<gray>깃털"
     override val rank = Rank.C
@@ -40,8 +45,22 @@ class Feather : GameClass() {
         }
 
         private fun refreshEffects() {
-            player.addPotionEffect(PotionEffect(PotionEffectType.JUMP_BOOST, 40, 1, false, false, true))
-            player.addPotionEffect(PotionEffect(PotionEffectType.SLOW_FALLING, 40, 0, false, false, true))
+            player.addPotionEffect(PotionEffect(
+                PotionEffectType.JUMP_BOOST,
+                FEATHER_EFFECT_DURATION_TICKS,
+                FEATHER_JUMP_BOOST_AMPLIFIER,
+                false,
+                false,
+                true,
+            ))
+            player.addPotionEffect(PotionEffect(
+                PotionEffectType.SLOW_FALLING,
+                FEATHER_EFFECT_DURATION_TICKS,
+                FEATHER_SLOW_FALLING_AMPLIFIER,
+                false,
+                false,
+                true,
+            ))
         }
     }
 }

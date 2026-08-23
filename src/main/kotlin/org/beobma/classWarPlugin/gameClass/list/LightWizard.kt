@@ -25,6 +25,13 @@ import org.joml.Vector3f
 import java.util.ArrayDeque
 import kotlin.math.max
 
+// 밸런스 조정 상수
+private const val LIGHT_WIZARD_PRISM_COOLDOWN_SECONDS = 1
+private const val LIGHT_WIZARD_SPECTRUM_COOLDOWN_SECONDS = 20
+private const val LIGHT_WIZARD_PRIMARY_BEAM_DAMAGE = 8.0
+private const val LIGHT_WIZARD_SPLIT_BEAM_DAMAGE = 4.0
+private const val LIGHT_WIZARD_MIN_BEAM_DAMAGE = 1.0
+
 class LightWizard : GameClass() {
     override val name = "<gray>프리즘"
     override val rank = Rank.A
@@ -124,7 +131,15 @@ class LightWizard : GameClass() {
         playerData.getTargetCandidates().filter { it != playerData && it.entityStatus.isSkillTargeting }.forEach { target ->
             if (target is PlayerData && !playerData.isEnemyOf(target)) return@forEach
             if (!HitboxUtil.intersectsSegment(target.entity.boundingBox, start, finish, expansion = 0.25)) return@forEach
-            target.damage(max(1.0, if (beam.depth == 0) 8.0 else 4.0 / (1 shl (beam.depth - 1))), DamageType.Normal, playerData)
+            target.damage(
+                max(
+                    LIGHT_WIZARD_MIN_BEAM_DAMAGE,
+                    if (beam.depth == 0) LIGHT_WIZARD_PRIMARY_BEAM_DAMAGE
+                    else LIGHT_WIZARD_SPLIT_BEAM_DAMAGE / (1 shl (beam.depth - 1)),
+                ),
+                DamageType.Normal,
+                playerData,
+            )
             if (beam.depth > 0) target.getOrCreateStatus(playerData) { Brightness() }.applyStatus(powerDelta = 1)
         }
     }
@@ -135,7 +150,7 @@ class LightWizard : GameClass() {
             "<gray>10칸 내의 바라보는 블럭에 프리즘을 설치한다. (최대 3개)",
             "<gray>최대 개수를 초과하여 설치할 경우 가장 오래된 프리즘을 제거하고 설치한다."
         )
-        override val cooldown = 1
+        override val cooldown = LIGHT_WIZARD_PRISM_COOLDOWN_SECONDS
 
         override fun use() {
             placePrism()
@@ -163,7 +178,7 @@ class LightWizard : GameClass() {
             "<dark_gray>적은 처음 발사한 광선을 포함하여 여러 광선에 적중될 수 있다.",
             "<dark_gray>적중한 모든 적은 4의 피해를 입으나, 반사된 횟수에 따라 피해량이 절반으로 감소한다. (최소 1)"
         )
-        override val cooldown = 20
+        override val cooldown = LIGHT_WIZARD_SPECTRUM_COOLDOWN_SECONDS
 
         override fun use() {
             fireBeams()

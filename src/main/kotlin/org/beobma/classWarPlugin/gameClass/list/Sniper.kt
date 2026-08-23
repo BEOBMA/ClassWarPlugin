@@ -34,6 +34,13 @@ import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.util.Vector
 import kotlin.random.Random
 
+// 밸런스 조정 상수
+private const val SNIPER_RELOAD_COOLDOWN_SECONDS = 1
+private const val SNIPER_RIFLE_DAMAGE = 7.0
+private const val SNIPER_CLOSE_RANGE_BLOCKS = 5.0
+private const val SNIPER_CLOSE_SLOW_PERCENT = 20
+private const val SNIPER_LONG_SLOW_PERCENT = 5
+
 class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
     override val name = "<gray>저격수"
     override val rank = Rank.B
@@ -150,7 +157,7 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
             }
         }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
         sounds.play(player, Sound.ENTITY_FIREWORK_ROCKET_BLAST, volume = 1.4f, pitch = 0.65f)
-        target?.damage(7.0, DamageType.Normal, playerData, damagePath = DamagePath.RANGED_ATTACK)
+        target?.damage(SNIPER_RIFLE_DAMAGE, DamageType.Normal, playerData, damagePath = DamagePath.RANGED_ATTACK)
     }
 
     private fun reload() {
@@ -209,7 +216,7 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
             "<gray>사용 시 저격총을 재장전한다.",
             "<gray>재장전하는 동안 <gold><bold>이동 속도가 40% 감소</bold><gold>한다."
         )
-        override val cooldown = 1
+        override val cooldown = SNIPER_RELOAD_COOLDOWN_SECONDS
 
         override fun use() {
             this@Sniper.reload()
@@ -230,7 +237,14 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
         override fun onAttackHit(context: DamageContext) {
             val distance = kotlin.math.sqrt(HitboxUtil.distanceSquared(player.boundingBox, context.target.entity.boundingBox))
             val slow = context.target.addStatus(MoveSpeedDecrease(), playerData)
-            slow.applyStatus(duration = 1, powerSet = if (distance <= 5.0) 20 else 5)
+            slow.applyStatus(
+                duration = 1,
+                powerSet = if (distance <= SNIPER_CLOSE_RANGE_BLOCKS) {
+                    SNIPER_CLOSE_SLOW_PERCENT
+                } else {
+                    SNIPER_LONG_SLOW_PERCENT
+                },
+            )
             particles.spawn(context.target.entity, Particle.CRIT, count = 5, spread = 0.25)
         }
     }

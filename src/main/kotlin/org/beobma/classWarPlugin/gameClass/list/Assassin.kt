@@ -45,6 +45,12 @@ import org.beobma.classWarPlugin.status.handler.StatusPlayerMoveHandler
 import kotlin.math.max
 import kotlin.math.min
 
+// 밸런스 조정 상수
+private const val ASSASSIN_DAGGER_COOLDOWN_SECONDS = 30
+private const val ASSASSIN_STEALTH_DURATION_SECONDS = 6
+private const val ASSASSIN_DAGGER_DAMAGE = 5.0
+private const val ASSASSIN_BACKSTAB_BONUS_DAMAGE = 2.0
+
 class Assassin : GameClass(), EnvironmentalDamageHandler, StatusPlayerMoveHandler, SneakInputHandler,
     MovementInputHandler {
     override val name = "<gray>암살자"
@@ -128,7 +134,7 @@ class Assassin : GameClass(), EnvironmentalDamageHandler, StatusPlayerMoveHandle
         if (keepStealth) {
             stealth?.continueWhile = null
             (stealth ?: playerData.getOrCreateStatus(playerData) { Stealth() })
-                .applyStatus(duration = 6, powerSet = 1)
+                .applyStatus(duration = ASSASSIN_STEALTH_DURATION_SECONDS, powerSet = 1)
         } else {
             stealth?.remove()
             removeEmbeddedDagger()
@@ -229,7 +235,7 @@ class Assassin : GameClass(), EnvironmentalDamageHandler, StatusPlayerMoveHandle
             "",
             "<dark_gray>이 스킬을 사용한 후, 최초 1회의 낙하 피해는 무효화되며, 벽에서 떨어진 후 6초간 {keyword:Stealth}<dark_gray> 상태가 유지된다.",
         )
-        override val cooldown = 30
+        override val cooldown = ASSASSIN_DAGGER_COOLDOWN_SECONDS
 
         override fun use() {
             ignoreNextFallDamage = true
@@ -253,7 +259,7 @@ class Assassin : GameClass(), EnvironmentalDamageHandler, StatusPlayerMoveHandle
             val toAssassin = player.location.toVector().subtract(target.location.toVector()).normalize()
             val targetFacing = target.location.direction.normalize()
             if (targetFacing.dot(toAssassin) < 0.0) {
-                context.addBaseDamage(2.0)
+                context.addBaseDamage(ASSASSIN_BACKSTAB_BONUS_DAMAGE)
                 particles.spawn(target, Particle.CRIT, count = 10, spread = 0.25)
                 sounds.play(target, Sound.ENTITY_PLAYER_ATTACK_CRIT, pitch = 1.25f)
             }
@@ -286,7 +292,7 @@ class Assassin : GameClass(), EnvironmentalDamageHandler, StatusPlayerMoveHandle
             val hitEntity = hitEntityData.entity
             val hitEntityLocation = hitEntity.location
             val behind = hitEntityLocation.clone().add(hitEntityLocation.direction.normalize().multiply(-1.5))
-            hitEntityData.damage(5.0, DamageType.Normal, playerData)
+            hitEntityData.damage(ASSASSIN_DAGGER_DAMAGE, DamageType.Normal, playerData)
             particles.spawn(player.location, Particle.SMOKE, count = 10)
             particles.spawn(behind, Particle.SMOKE, count = 10)
             player.teleport(behind)
@@ -313,7 +319,7 @@ class Assassin : GameClass(), EnvironmentalDamageHandler, StatusPlayerMoveHandle
 
             val stealth = playerData.getOrCreateStatus(playerData) { Stealth() }
             stealth.applyStatus(
-                duration = 6,
+                duration = ASSASSIN_STEALTH_DURATION_SECONDS,
                 powerDelta = 1
             )
             placeEmbeddedDagger(wallSurface, outward, flightDirection)

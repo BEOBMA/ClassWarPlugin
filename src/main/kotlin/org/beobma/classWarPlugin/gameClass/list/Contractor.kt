@@ -22,6 +22,10 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val CONTRACTOR_CONTRACT_COOLDOWN_SECONDS = 40
+private const val CONTRACTOR_SUCCESS_DAMAGE = 5.0
+
 class Contractor : GameClass() {
     override val name = "<gray>청부업자"
     override val rank = Rank.B
@@ -37,7 +41,7 @@ class Contractor : GameClass() {
             "<gray>사용 시 무작위 플레이어의 직업을 맞출 수 있는 인벤토리가 열린다.",
             "<gray>성공적으로 직업을 맞추면 해당 적의 위치로 즉시 이동하고 5의 피해를 입힌다."
         )
-        override val cooldown = 40
+        override val cooldown = CONTRACTOR_CONTRACT_COOLDOWN_SECONDS
 
         private var pendingTarget: PlayerData? = null
 
@@ -121,7 +125,7 @@ class Contractor : GameClass() {
         particles.spawn(targetCenter, Particle.PORTAL, count = 52, spread = 0.7, speed = 0.16)
         particles.spawn(targetCenter, Particle.CRIT, count = 18, spread = 0.42, speed = 0.1)
         sounds.play(targetCenter, Sound.ENTITY_PLAYER_ATTACK_CRIT, volume = 1.0f, pitch = 0.72f)
-        target.damage(5.0, DamageType.Normal, playerData, damagePath = DamagePath.SKILL)
+        target.damage(CONTRACTOR_SUCCESS_DAMAGE, DamageType.Normal, playerData, damagePath = DamagePath.SKILL)
         player.sendMiniMessage(
             "<green><bold>[청부 성공]</bold> <white>${target.player.name}<gray>님의 직업을 맞혔습니다."
         )

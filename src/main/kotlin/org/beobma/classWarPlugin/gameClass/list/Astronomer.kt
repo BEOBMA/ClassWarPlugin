@@ -38,6 +38,15 @@ import kotlin.math.sin
 import kotlin.random.Random
 import org.beobma.classWarPlugin.manager.SkillManager.radius
 
+// 밸런스 조정 상수
+private const val ASTRONOMER_SKILL_COOLDOWN_SECONDS = 30
+private const val ASTRONOMER_STAR_DAMAGE = 2.0
+private const val ASTRONOMER_TRUE_DAMAGE = 1.0
+private const val ASTRONOMER_MANA_PER_METEOR = 20
+private const val ASTRONOMER_MAX_METEOR_COUNT = 5
+private const val ASTRONOMER_MANA_STEAL = 2
+private const val ASTRONOMER_METEOR_EXPLOSION_RADIUS = 1.75
+
 class Astronomer : GameClass(), GameStatusHandler {
     override val name = "<gray>천문학자"
     override val rank = Rank.B
@@ -70,7 +79,7 @@ class Astronomer : GameClass(), GameStatusHandler {
             "",
             "<dark_gray>웅크린 상태에서 사용하면 자신의 위치에 블랙홀을 만들 수도 있다."
         )
-        override val cooldown = 30
+        override val cooldown = ASTRONOMER_SKILL_COOLDOWN_SECONDS
 
         override fun use() {
             val origin = player.location
@@ -115,7 +124,7 @@ class Astronomer : GameClass(), GameStatusHandler {
         override fun onSkillAttackHit(context: DamageContext) {
             if (context.damageType == DamageType.True) return
             val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-            val count = (mana.power / 20).coerceIn(1, 5)
+            val count = (mana.power / ASTRONOMER_MANA_PER_METEOR).coerceIn(1, ASTRONOMER_MAX_METEOR_COUNT)
             val targetLoc = context.target.entity.location.clone()
             val classData = playerData.gameClass as? Astronomer
             val soundAndDisplayEndTick = minOf(
@@ -182,10 +191,10 @@ class Astronomer : GameClass(), GameStatusHandler {
             val hitEntity = hitEntityData.entity
             val dir = location.clone().subtract(hitEntity.location).toVector().normalize().multiply(0.1)
             hitEntity.velocity = dir
-            hitEntityData.damage(2.0, DamageType.Normal, playerData, false)
+            hitEntityData.damage(ASTRONOMER_STAR_DAMAGE, DamageType.Normal, playerData, false)
             val victimMana = (hitEntityData as? PlayerData)?.getOrCreateStatus(playerData) { Mana() }
             if (victimMana != null && victimMana.power > 0) {
-                val stolen = minOf(2, victimMana.power)
+                val stolen = minOf(ASTRONOMER_MANA_STEAL, victimMana.power)
                 victimMana.decreasePower(stolen)
                 playerData.getOrCreateStatus(playerData) { Mana() }.increasePower(stolen)
             }
@@ -201,7 +210,7 @@ class Astronomer : GameClass(), GameStatusHandler {
         override var time: Int? = 5
 
         override fun onFlooringEntityHit(hitEntityData: EntityData, location: Location) {
-            hitEntityData.damage(2.0, DamageType.Normal, playerData, false)
+            hitEntityData.damage(ASTRONOMER_STAR_DAMAGE, DamageType.Normal, playerData, false)
             if (affected.add(hitEntityData)) {
                 val moveSpeedDecrease = hitEntityData.addStatus(MoveSpeedDecrease(), playerData)
                 val whenDamageIncrease = hitEntityData.addStatus(WhenDamageIncreased(), playerData)
@@ -286,7 +295,7 @@ class Astronomer : GameClass(), GameStatusHandler {
         }
 
         override fun onMeteorEntityHit(hitEntityData: EntityData, location: Location) {
-            hitEntityData.damage(1.0, DamageType.True, playerData)
+            hitEntityData.damage(ASTRONOMER_TRUE_DAMAGE, DamageType.True, playerData)
             particles.spawn(location, Particle.FLASH, count = 1)
             sounds.play(location, Sound.BLOCK_AMETHYST_BLOCK_CHIME, pitch = 1.9f)
         }
@@ -295,8 +304,8 @@ class Astronomer : GameClass(), GameStatusHandler {
             particles.spawn(location, Particle.FLASH, count = 1)
             particles.spawn(location, Particle.END_ROD, count = 18, spread = 1.0, speed = 0.12)
             sounds.play(location, Sound.BLOCK_AMETHYST_CLUSTER_BREAK, volume = 0.65f, pitch = 1.7f)
-            playerData.radius(location, TargetType.Enemy, 1.75, false).forEach {
-                it.damage(1.0, DamageType.True, playerData)
+            playerData.radius(location, TargetType.Enemy, ASTRONOMER_METEOR_EXPLOSION_RADIUS, false).forEach {
+                it.damage(ASTRONOMER_TRUE_DAMAGE, DamageType.True, playerData)
             }
         }
 

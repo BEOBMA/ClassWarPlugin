@@ -29,6 +29,14 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val HACKER_HACKING_COOLDOWN_SECONDS = 240
+private const val HACKER_SNARE_DURATION_SECONDS = 10
+private const val HACKER_CORRUPTION_DAMAGE_DEALT_MULTIPLIER = 0.8
+private const val HACKER_CORRUPTION_DAMAGE_TAKEN_MULTIPLIER = 1.2
+private const val HACKER_ROOT_DAMAGE_DEALT_MULTIPLIER = 1.5
+private const val HACKER_ROOT_DAMAGE_TAKEN_MULTIPLIER = 0.7
+
 private const val MAX_HACK_STAGE = 3
 private val hackTimeLimits = intArrayOf(35, 32, 28)
 
@@ -61,7 +69,7 @@ class Hacker : GameClass(), GameStatusHandler {
             "<gray>3단계: 자신에게 영구적인 루트 권한 버프를 적용한다.",
             "<gray>  - 가하는 피해 50% 증가, 받는 피해 30% 감소",
         )
-        override val cooldown = 240
+        override val cooldown = HACKER_HACKING_COOLDOWN_SECONDS
 
         private var completedHacks = 0
 
@@ -190,7 +198,8 @@ class Hacker : GameClass(), GameStatusHandler {
 
         private fun applyBreach(targets: List<PlayerData>) {
             targets.forEach { target ->
-                target.getOrCreateStatus(playerData) { Snare() }.applyStatus(duration = 10, powerSet = 1)
+                target.getOrCreateStatus(playerData) { Snare() }
+                    .applyStatus(duration = HACKER_SNARE_DURATION_SECONDS, powerSet = 1)
                 if (target.player.isOnline) {
                     target.player.addPotionEffect(
                         PotionEffect(PotionEffectType.GLOWING, 10 * 20, 0, false, false, true)
@@ -293,11 +302,11 @@ private class HackerSystemCorruptionStatus : StatusAbnormality(), OnHitHandler, 
     override var duration: Int? = null
 
     override fun onHit(context: DamageContext) {
-        context.addDamageDealtMultiplier(0.8)
+        context.addDamageDealtMultiplier(HACKER_CORRUPTION_DAMAGE_DEALT_MULTIPLIER)
     }
 
     override fun whenHit(context: DamageContext) {
-        context.addDamageTakenMultiplier(1.2)
+        context.addDamageTakenMultiplier(HACKER_CORRUPTION_DAMAGE_TAKEN_MULTIPLIER)
     }
 }
 
@@ -316,11 +325,11 @@ private class HackerRootAccessStatus : StatusAbnormality(), OnHitHandler, WhenHi
     override var duration: Int? = null
 
     override fun onHit(context: DamageContext) {
-        context.addDamageDealtMultiplier(1.5)
+        context.addDamageDealtMultiplier(HACKER_ROOT_DAMAGE_DEALT_MULTIPLIER)
     }
 
     override fun whenHit(context: DamageContext) {
-        context.addDamageTakenMultiplier(0.7)
+        context.addDamageTakenMultiplier(HACKER_ROOT_DAMAGE_TAKEN_MULTIPLIER)
     }
 }
 

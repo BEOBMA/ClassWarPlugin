@@ -21,6 +21,11 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val MATHEMATICIAN_CALCULATION_COOLDOWN_SECONDS = 1
+private const val MATHEMATICIAN_PROOF_COOLDOWN_SECONDS = 120
+private const val MATHEMATICIAN_DAMAGE_PERCENT_PER_STACK = 1.0
+
 class Mathematician : GameClass(), GameStatusHandler {
     override val name = "<gray>수학자"
     override val rank = Rank.A
@@ -288,7 +293,7 @@ class Mathematician : GameClass(), GameStatusHandler {
         override val description = listOf(
             "<gray>출제되는 수학 문제의 난이도를 상승시킨다."
         )
-        override val cooldown = 1
+        override val cooldown = MATHEMATICIAN_CALCULATION_COOLDOWN_SECONDS
         override fun isUseSuccess(): Boolean {
             if (difficulty < MAX_DIFFICULTY) return true
             player.sendMiniMessage("<red><bold>[!] 이미 최고 난이도입니다.")
@@ -300,7 +305,7 @@ class Mathematician : GameClass(), GameStatusHandler {
     private inner class OrangeSkill : Skill() {
         override val name = "<bold>난이도 하락"
         override val description = listOf("<gray>출제되는 수학 문제의 난이도를 하락시킨다.")
-        override val cooldown = 120
+        override val cooldown = MATHEMATICIAN_PROOF_COOLDOWN_SECONDS
         override fun isUseSuccess(): Boolean {
             if (difficulty > 1) return true
             player.sendMiniMessage("<red><bold>[!] 이미 최저 난이도입니다.")
@@ -322,7 +327,9 @@ class Mathematician : GameClass(), GameStatusHandler {
 
         override fun onHit(context: DamageContext) {
             val stacks = stackStatus().power
-            if (stacks > 0) context.addDamageDealtMultiplier(1.0 + stacks / 100.0)
+            if (stacks > 0) {
+                context.addDamageDealtMultiplier(1.0 + stacks * MATHEMATICIAN_DAMAGE_PERCENT_PER_STACK / 100.0)
+            }
         }
     }
 

@@ -17,6 +17,12 @@ import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.util.Vector
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val PACIFIST_ATTACK_DAMAGE = 0.0
+private const val PACIFIST_HORIZONTAL_KNOCKBACK = 2.15
+private const val PACIFIST_VERTICAL_KNOCKBACK = 0.62
+private const val PACIFIST_BORDER_CHECK_TICKS = 50
+
 class Pacifist : GameClass() {
     override val name = "<gray>평화주의자"
     override val rank = Rank.A
@@ -34,7 +40,7 @@ class Pacifist : GameClass() {
         )
 
         override fun onAttackHit(context: DamageContext) {
-            context.capDamage(0.0)
+            context.capDamage(PACIFIST_ATTACK_DAMAGE)
             val target = context.target.entity
             val attackerCenter = player.boundingBox.center
             val targetCenter = target.boundingBox.center
@@ -43,7 +49,9 @@ class Pacifist : GameClass() {
                 direction.copy(player.location.direction).setY(0.0)
             }
             if (direction.lengthSquared() < 1.0E-8) direction.copy(Vector(1.0, 0.0, 0.0))
-            target.velocity = direction.normalize().multiply(2.15).setY(0.62)
+            target.velocity = direction.normalize()
+                .multiply(PACIFIST_HORIZONTAL_KNOCKBACK)
+                .setY(PACIFIST_VERTICAL_KNOCKBACK)
 
             particles.line(
                 player.eyeLocation,
@@ -76,7 +84,7 @@ class Pacifist : GameClass() {
                         cancel()
                         return
                     }
-                    if (++elapsedTicks >= 50) cancel()
+                    if (++elapsedTicks >= PACIFIST_BORDER_CHECK_TICKS) cancel()
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 1L, 1L))
         }

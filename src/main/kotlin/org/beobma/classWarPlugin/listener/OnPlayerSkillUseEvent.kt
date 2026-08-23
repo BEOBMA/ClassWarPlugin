@@ -30,7 +30,7 @@ class OnPlayerSkillUseEvent : Listener {
             if (event.isCancelled) return
         }
         // 상태이상
-        for (status in playerData.statusAbnormalitys) {
+        for (status in playerData.statusAbnormalitys.toList()) {
             if (status !is OnSkillUseHandler) continue
             status.onSkillUse(event)
             if (event.isCancelled) return

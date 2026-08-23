@@ -19,6 +19,11 @@ import org.joml.Vector3f
 import kotlin.math.PI
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val BARRIER_SHIELD_COOLDOWN_SECONDS = 30
+private const val BARRIER_SHIELD_DURATION_TICKS = 80L
+private const val BARRIER_DAMAGE_TAKEN_MULTIPLIER = 0.4
+
 class Barrier : GameClass() {
     override val name = "<gray>방벽"
     override val rank = Rank.C
@@ -31,13 +36,13 @@ class Barrier : GameClass() {
         override val description = listOf(
             "<gray>4초간 방패를 들어 바라보는 방향에서 <gold><bold>받는 피해를 60% 감소</bold><gray>시킨다."
         )
-        override val cooldown = 30
+        override val cooldown = BARRIER_SHIELD_COOLDOWN_SECONDS
 
         private var activeUntilTick = 0L
         private var lastBlockSoundTick = Long.MIN_VALUE
 
         override fun use() {
-            activeUntilTick = player.world.fullTime + 80L
+            activeUntilTick = player.world.fullTime + BARRIER_SHIELD_DURATION_TICKS
             val display = player.world.spawn(player.location, ItemDisplay::class.java).apply {
                 setItemStack(ItemStack(Material.SHIELD))
                 itemDisplayTransform = ItemDisplay.ItemDisplayTransform.FIXED
@@ -93,7 +98,7 @@ class Barrier : GameClass() {
             if (facing.lengthSquared() < 1.0E-8 || incoming.lengthSquared() < 1.0E-8) return
             if (facing.normalize().dot(incoming.normalize()) < 0.0) return
 
-            context.addDamageTakenMultiplier(0.4)
+            context.addDamageTakenMultiplier(BARRIER_DAMAGE_TAKEN_MULTIPLIER)
             particles.spawn(player.location.clone().add(0.0, 1.0, 0.0), Particle.CRIT, count = 10, spread = 0.45)
             if (now != lastBlockSoundTick) {
                 lastBlockSoundTick = now

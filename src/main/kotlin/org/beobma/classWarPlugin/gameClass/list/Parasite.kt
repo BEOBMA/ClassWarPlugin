@@ -27,6 +27,10 @@ import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import kotlin.math.cos
 import kotlin.math.sin
 
+// 밸런스 조정 상수
+private const val PARASITE_HATCH_COOLDOWN_SECONDS = 360
+private const val PARASITE_HATCH_DAMAGE = 10.0
+
 private const val THIRD_PERSON_FOLLOW_DISTANCE = 3.0
 private const val THIRD_PERSON_MINIMUM_DISTANCE = 0.45
 private const val THIRD_PERSON_WALL_PADDING = 0.35
@@ -143,7 +147,7 @@ class Parasite : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
             "<gray>숙주가 생존해있다면 10의 피해를 입힌다.",
             "<gray>숙주가 사망해있다면 자신은 10의 피해를 입는다."
         )
-        override val cooldown = 360
+        override val cooldown = PARASITE_HATCH_COOLDOWN_SECONDS
 
         override fun isUseSuccess(): Boolean {
             if (isParasitizing()) return true
@@ -170,7 +174,7 @@ class Parasite : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
 
             if (hostWasAlive) {
                 currentHost.damage(
-                    10.0,
+                    PARASITE_HATCH_DAMAGE,
                     DamageType.Normal,
                     playerData,
                     bypassShield = true,
@@ -180,7 +184,7 @@ class Parasite : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
                 sounds.play(currentHost.player, Sound.ENTITY_PLAYER_ATTACK_CRIT, volume = 1.0f, pitch = 0.55f)
             } else {
                 playerData.damage(
-                    10.0,
+                    PARASITE_HATCH_DAMAGE,
                     DamageType.True,
                     playerData,
                     bypassShield = true,

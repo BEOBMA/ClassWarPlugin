@@ -17,6 +17,13 @@ import org.bukkit.*
 import org.bukkit.attribute.Attribute
 import org.bukkit.scheduler.BukkitRunnable
 
+// 밸런스 조정 상수
+private const val TIME_MANIPULATOR_CHECKPOINT_COOLDOWN_SECONDS = 35
+private const val TIME_MANIPULATOR_REWIND_COOLDOWN_SECONDS = 1
+private const val TIME_MANIPULATOR_CHECKPOINT_DURATION_SECONDS = 15
+private const val TIME_MANIPULATOR_DEATH_THRESHOLD_HEALTH = 1.0
+private const val TIME_MANIPULATOR_PARADOX_HEALTH_MULTIPLIER = 0.5
+
 class TimeManiqulator : GameClass() {
     override val name = "<gray>시간 조작자"
     override val rank = Rank.A
@@ -35,7 +42,7 @@ class TimeManiqulator : GameClass() {
         playerData.getStatus<CheckpointStatus>()?.remove()
         val status = CheckpointStatus(player.location.clone(), player.health)
         playerData.addStatus(status, playerData)
-        status.applyStatus(duration = 15, powerSet = 1)
+        status.applyStatus(duration = TIME_MANIPULATOR_CHECKPOINT_DURATION_SECONDS, powerSet = 1)
         val savedLocation = status.savedLocation.clone()
         particles.spawn(savedLocation.clone().add(0.0, 1.0, 0.0), Particle.FLASH, count = 1)
         particles.spawn(savedLocation.clone().add(0.0, 1.0, 0.0), Particle.PORTAL, count = 20, spread = 0.7, speed = 0.12)
@@ -77,7 +84,7 @@ class TimeManiqulator : GameClass() {
             "",
             "<gray>{keyword:Checkpoint}가 유지되는 동안 회귀를 사용하여 저장한 위치와 체력으로 돌아갈 수 있다."
         )
-        override val cooldown = 35
+        override val cooldown = TIME_MANIPULATOR_CHECKPOINT_COOLDOWN_SECONDS
 
         override fun use() {
             saveCheckpoint()
@@ -92,7 +99,7 @@ class TimeManiqulator : GameClass() {
             "<gray>{keyword:Checkpoint}를 불러온다.",
             "<gray>사용 후 {keyword:Checkpoint}는 제거된다."
         )
-        override val cooldown = 1
+        override val cooldown = TIME_MANIPULATOR_REWIND_COOLDOWN_SECONDS
 
         override fun use() {
             restoreCheckpoint()
@@ -116,9 +123,11 @@ class TimeManiqulator : GameClass() {
         )
 
         override fun whenHit(context: DamageContext) {
-            if (playerData.getStatus<CheckpointStatus>() == null || player.health - context.damage >= 1.0) return
+            if (playerData.getStatus<CheckpointStatus>() == null ||
+                player.health - context.damage >= TIME_MANIPULATOR_DEATH_THRESHOLD_HEALTH
+            ) return
             context.isCancelled = true
-            restoreCheckpoint(0.5)
+            restoreCheckpoint(TIME_MANIPULATOR_PARADOX_HEALTH_MULTIPLIER)
         }
     }
 }

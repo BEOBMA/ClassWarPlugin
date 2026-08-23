@@ -63,7 +63,7 @@ object GameManager {
         ::GraveRobber, ::Hacker, ::SpiderMan, ::Trapper,
         ::Mathematician, ::PortalGun, ::Tour, ::Pacifist, ::Roulette,
         ::AreaDevelopment, ::Parasite, ::Chubby, ::Vampire,
-        ::Contractor, ::Levatain, ::WeaponMaster,
+        ::Contractor, ::Levatain, ::WeaponMaster, ::DeathNote, ::Swordplay,
     )
 
     private val miniMessageTagPattern = Regex("<[^>]+>")
@@ -587,6 +587,7 @@ object GameManager {
         if (currentGame.phase == GamePhase.WAITING || currentGame.phase == GamePhase.FINISHED) return
         val playerData = currentGame.findParticipant(player.uniqueId) ?: return
         Contractor.clearSessions(listOf(player.uniqueId))
+        DeathNote.clearSessions(listOf(player.uniqueId))
         Hacker.clearSessions(listOf(player.uniqueId))
         Mathematician.clearSessions(listOf(player.uniqueId))
         Vampire.clearForms(listOf(player.uniqueId))
@@ -766,6 +767,7 @@ object GameManager {
         val participantIds = activePlayers().map { it.uniqueId }
         GraveRobber.clearDeathRecords(this)
         Contractor.clearSessions(participantIds)
+        DeathNote.clearSessions(participantIds)
         Hacker.clearSessions(participantIds)
         Mathematician.clearSessions(participantIds)
         Vampire.clearForms(participantIds)
@@ -860,6 +862,7 @@ object GameManager {
     fun Player.stopTraining() {
         val trainingGame = trainingInstance.find { it.activePlayers().any { data -> data.player == this } } ?: return
         Contractor.clearSessions(listOf(uniqueId))
+        DeathNote.clearSessions(listOf(uniqueId))
         Hacker.clearSessions(listOf(uniqueId))
         Mathematician.clearSessions(listOf(uniqueId))
         Vampire.clearForms(listOf(uniqueId))
@@ -886,6 +889,7 @@ object GameManager {
     fun stopAllTraining() {
         val trainingPlayerIds = trainingInstance.flatMap { it.activePlayers() }.map { it.uniqueId }
         Contractor.clearSessions(trainingPlayerIds)
+        DeathNote.clearSessions(trainingPlayerIds)
         CombatManager.clear(trainingPlayerIds)
         CooldownManager.clear(trainingPlayerIds)
         DamageIndicatorManager.clearForPlayers(trainingPlayerIds)

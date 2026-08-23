@@ -16,6 +16,11 @@ import org.bukkit.Sound
 import org.bukkit.SoundCategory
 import org.bukkit.scheduler.BukkitRunnable
 
+// 밸런스 조정 상수
+private const val LIGHTNING_WIZARD_CUMULONIMBUS_COOLDOWN_SECONDS = 8
+private const val LIGHTNING_WIZARD_OVERLOAD_COOLDOWN_SECONDS = 50
+private const val LIGHTNING_WIZARD_LIGHTNING_DAMAGE = 4.0
+
 class LightningWizard : GameClass() {
     private val markers: MutableList<Marker> = mutableListOf()
     override val name = "<gray>뇌운술사"
@@ -75,7 +80,13 @@ class LightningWizard : GameClass() {
             category = SoundCategory.MASTER,
         )
         playerData.radius(location, org.beobma.classWarPlugin.util.TargetType.Enemy, 3.0, false)
-            .forEach { it.damage(4.0, org.beobma.classWarPlugin.util.DamageType.Normal, playerData) }
+            .forEach {
+                it.damage(
+                    LIGHTNING_WIZARD_LIGHTNING_DAMAGE,
+                    org.beobma.classWarPlugin.util.DamageType.Normal,
+                    playerData,
+                )
+            }
         particles.spawn(location, Particle.ELECTRIC_SPARK, count = 30, spread = 1.4, speed = 0.12)
     }
 
@@ -87,7 +98,7 @@ class LightningWizard : GameClass() {
             "",
             "<dark_gray>웅크린 상태에서 사용하면 자신의 위치에 적란운을 생성할 수도 있다."
         )
-        override val cooldown = 8
+        override val cooldown = LIGHTNING_WIZARD_CUMULONIMBUS_COOLDOWN_SECONDS
 
         override fun use() {
             val location = if (player.isSneaking) {
@@ -123,7 +134,7 @@ class LightningWizard : GameClass() {
             "<gray>적란운을 5초간 과부하시킨다.",
             "<gray>과부하된 적란운은 매초 낙뢰를 발생시키며, 지속시간 종료 후 적란운은 소멸한다."
         )
-        override val cooldown = 50
+        override val cooldown = LIGHTNING_WIZARD_OVERLOAD_COOLDOWN_SECONDS
 
         override fun use() {
             val gameClass = playerData.gameClass

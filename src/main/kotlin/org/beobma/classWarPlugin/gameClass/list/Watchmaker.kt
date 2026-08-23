@@ -32,6 +32,13 @@ import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
 
+// 밸런스 조정 상수
+private const val WATCHMAKER_HAND_COOLDOWN_SECONDS = 12
+private const val WATCHMAKER_MIDNIGHT_DAMAGE = 4.0
+private const val WATCHMAKER_NOON_DAMAGE = 8.0
+private const val WATCHMAKER_SHIELD_DURATION_SECONDS = 5
+private const val WATCHMAKER_SHIELD_POWER = 4
+
 class Watchmaker : GameClass(), GameStatusHandler {
     override val name = "<gray>시계공"
     override val rank = Rank.B
@@ -80,7 +87,7 @@ class Watchmaker : GameClass(), GameStatusHandler {
             "<gray>정오 - 8의 피해를 입힌다.",
             "<gray>자정 - 4의 피해를 입히고 자신은 체력을 4 회복한다."
         )
-        override val cooldown = 12
+        override val cooldown = WATCHMAKER_HAND_COOLDOWN_SECONDS
 
         override fun use()  {
             val center = player.location.clone()
@@ -142,12 +149,15 @@ class Watchmaker : GameClass(), GameStatusHandler {
                         hit += target.entity.uniqueId
                         when (phase) {
                             Phase.DAWN -> {
-                                target.damage(4.0, DamageType.Normal, playerData)
-                                playerData.addStatus(Shield(), playerData).applyStatus(duration = 5, powerDelta = 4)
+                                target.damage(WATCHMAKER_MIDNIGHT_DAMAGE, DamageType.Normal, playerData)
+                                playerData.addStatus(Shield(), playerData).applyStatus(
+                                    duration = WATCHMAKER_SHIELD_DURATION_SECONDS,
+                                    powerDelta = WATCHMAKER_SHIELD_POWER,
+                                )
                             }
-                            Phase.NOON -> target.damage(8.0, DamageType.Normal, playerData)
+                            Phase.NOON -> target.damage(WATCHMAKER_NOON_DAMAGE, DamageType.Normal, playerData)
                             Phase.MIDNIGHT -> {
-                                target.damage(4.0, DamageType.Normal, playerData)
+                                target.damage(WATCHMAKER_MIDNIGHT_DAMAGE, DamageType.Normal, playerData)
                                 playerData.heal(4.0, DamageType.Normal, playerData)
                             }
                         }

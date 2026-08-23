@@ -15,6 +15,12 @@ import org.bukkit.Sound
 import org.bukkit.scheduler.BukkitRunnable
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
+// 밸런스 조정 상수
+private const val TOUR_START_COOLDOWN_SECONDS = 60
+private const val TOUR_TARGET_RANGE = 6.0
+private const val TOUR_MIN_VISITS = 8
+private const val TOUR_VISIT_INTERVAL_TICKS = 60L
+
 class Tour : GameClass() {
     override val name = "<gray>순회공연"
     override val rank = Rank.C
@@ -30,12 +36,12 @@ class Tour : GameClass() {
             "<gray>순회공연이 종료되면 원래 위치로 돌아온다.", "",
             "<dark_gray>생존한 플레이어가 8명 이하라면 8번 이동할 때까지 반복된다."
         )
-        override val cooldown = 60
+        override val cooldown = TOUR_START_COOLDOWN_SECONDS
 
         private var selectedTarget: PlayerData? = null
 
         override fun isUseSuccess(): Boolean {
-            selectedTarget = playerData.shotLaserGetEntityData(6.0, TargetType.Enemy, false) as? PlayerData
+            selectedTarget = playerData.shotLaserGetEntityData(TOUR_TARGET_RANGE, TargetType.Enemy, false) as? PlayerData
             if (selectedTarget != null) return true
             player.sendMiniMessage("<red><bold>[!] 6칸 내에 바라보는 적 플레이어가 없습니다.")
             return false
@@ -48,7 +54,7 @@ class Tour : GameClass() {
             val performers = game.playerDatas.filterIsInstance<PlayerData>()
                 .filter { !it.entityStatus.isDead && it.player.isOnline }
             if (performers.isEmpty()) return
-            val totalVisits = if (performers.size <= 8) 8 else performers.size
+            val totalVisits = if (performers.size <= TOUR_MIN_VISITS) TOUR_MIN_VISITS else performers.size
 
             game.playerDatas.filterIsInstance<PlayerData>()
                 .filter { it.player.isOnline }
@@ -99,7 +105,7 @@ class Tour : GameClass() {
                     )
                     visits++
                 }
-            }.runTaskTimer(ClassWarPlugin.instance, 0L, 60L))
+            }.runTaskTimer(ClassWarPlugin.instance, 0L, TOUR_VISIT_INTERVAL_TICKS))
         }
     }
 }

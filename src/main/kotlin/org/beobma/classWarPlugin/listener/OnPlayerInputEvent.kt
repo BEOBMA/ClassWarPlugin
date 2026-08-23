@@ -16,7 +16,10 @@ class OnPlayerInputEvent : Listener {
         if (!isGaming() && !PlayerTagManager.hasTag(player, "isTraining")) return
         val playerData = findGameForPlayer(player)?.playerDatas?.filterIsInstance<PlayerData>()
             ?.find { it.uniqueId == player.uniqueId } ?: return
-        val gameClass = playerData.gameClass as? MovementInputHandler ?: return
-        gameClass.onPlayerInput(event)
+        val gameClass = playerData.gameClass ?: return
+        (gameClass as? MovementInputHandler)?.onPlayerInput(event)
+        playerData.statusAbnormalitys.toList()
+            .filterIsInstance<MovementInputHandler>()
+            .forEach { it.onPlayerInput(event) }
     }
 }
