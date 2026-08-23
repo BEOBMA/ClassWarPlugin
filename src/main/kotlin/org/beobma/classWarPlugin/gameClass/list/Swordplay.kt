@@ -44,7 +44,7 @@ private const val SWORDPLAY_BLOSSOM_DAMAGE = 4.0
 class Swordplay : GameClass(), GameStatusHandler {
     override val name = "<gray>이기어검"
     override val rank = Rank.S
-    override val classItemMaterial = Material.IRON_SWORD
+    override val classItemMaterial = Material.GOLDEN_SWORD
 
     private val blossomSkill = BlossomSkill()
     private val infiniteSkill = InfiniteSkill()
