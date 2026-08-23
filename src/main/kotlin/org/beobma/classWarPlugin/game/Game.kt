@@ -4,6 +4,7 @@ import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.gameClass.GameClass
 import net.kyori.adventure.bossbar.BossBar
 import org.bukkit.Location
+import org.bukkit.entity.BlockDisplay
 import org.bukkit.map.MapRenderer
 import org.bukkit.map.MapView
 import org.bukkit.scheduler.BukkitTask
@@ -28,6 +29,7 @@ data class Game(
     var borderBossBar: BossBar? = null,
     var originalBorderCenter: Location? = null,
     var originalBorderSize: Double? = null,
+    val finalBorderDisplays: MutableList<BlockDisplay> = mutableListOf(),
 ) {
     var isPaused: Boolean = false
     var roundCenterX: Double = settings.centerX

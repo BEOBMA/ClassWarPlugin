@@ -31,13 +31,19 @@ import org.bukkit.block.Block
 import org.bukkit.block.data.type.Door
 import org.bukkit.block.data.type.Gate
 import org.bukkit.block.data.type.TrapDoor
+import org.bukkit.entity.BlockDisplay
+import org.bukkit.entity.Display
 import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
+import org.bukkit.util.Transformation
+import org.joml.Quaternionf
+import org.joml.Vector3f
 import java.util.Locale
 import java.util.UUID
 import java.util.ArrayDeque
 import kotlin.math.PI
+import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.sin
@@ -49,6 +55,10 @@ object GameManager {
     private const val RECONNECT_GRACE_TICKS = 5L * 60L * 20L
     private const val SPAWN_ESCAPE_DISTANCE = 16
     private const val SPAWN_ESCAPE_MAX_VISITED_NODES = 2_500
+    private const val FINAL_BORDER_DESCENT_SECONDS = 180
+    private const val FINAL_BORDER_DISPLAY_TILE_SIZE = 4.0
+    private const val FINAL_BORDER_MAX_TILES_PER_AXIS = 20
+    private const val FINAL_BORDER_UPDATE_INTERVAL_TICKS = 2L
     private val pendingPostGameCleanup: MutableMap<UUID, PlayerSnapshot> = mutableMapOf()
 
     private data class SpawnPathNode(val x: Int, val y: Int, val z: Int)
@@ -369,8 +379,7 @@ object GameManager {
                     if (shrinkTicks <= 0L) {
                         border.size = targetBorderSize
                         border.setCenter(shrinkTargetX, shrinkTargetZ)
-                        activePlayers().filter { it.player.isOnline }.forEach { it.player.hideBossBar(bossBar) }
-                        borderBossBar = null
+                        startFinalBorderDescent(shrinkTargetX, shrinkTargetZ, targetBorderSize, bossBar)
                         cancel()
                         return
                     }
@@ -396,8 +405,7 @@ object GameManager {
                     bossBar.progress((remainingTicks.toFloat() / shrinkTicks).coerceIn(0.0F, 1.0F))
                     if (elapsedTicks >= shrinkTicks) {
                         border.setCenter(shrinkTargetX, shrinkTargetZ)
-                        activePlayers().filter { it.player.isOnline }.forEach { it.player.hideBossBar(bossBar) }
-                        borderBossBar = null
+                        startFinalBorderDescent(shrinkTargetX, shrinkTargetZ, targetBorderSize, bossBar)
                         cancel()
                         return
                     }
@@ -406,6 +414,139 @@ object GameManager {
             }
         }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L)
         track(task)
+    }
+
+    private fun Game.startFinalBorderDescent(
+        centerX: Double,
+        centerZ: Double,
+        borderSize: Double,
+        bossBar: BossBar,
+    ) {
+        clearFinalBorderDisplays()
+
+        val world = gameWorld
+        val coveredSize = borderSize.coerceAtLeast(1.0)
+        val tilesPerAxis = ceil(coveredSize / FINAL_BORDER_DISPLAY_TILE_SIZE).toInt()
+            .coerceIn(1, FINAL_BORDER_MAX_TILES_PER_AXIS)
+        val tileSpan = coveredSize / tilesPerAxis
+        val visibleTileSpan = (tileSpan * 0.965).toFloat()
+        val tileInset = ((tileSpan - visibleTileSpan) * 0.5).toFloat()
+        val startY = (world.maxHeight - 1).toDouble()
+        val endY = (world.minHeight + 1).toDouble()
+        val minimumX = centerX - coveredSize * 0.5
+        val minimumZ = centerZ - coveredSize * 0.5
+
+        repeat(tilesPerAxis) { xIndex ->
+            repeat(tilesPerAxis) { zIndex ->
+                val location = Location(
+                    world,
+                    minimumX + xIndex * tileSpan,
+                    startY,
+                    minimumZ + zIndex * tileSpan,
+                )
+                val display = world.spawn(location, BlockDisplay::class.java).apply {
+                    block = Material.RED_STAINED_GLASS.createBlockData()
+                    isPersistent = false
+                    brightness = Display.Brightness(15, 15)
+                    viewRange = 6.0F
+                    shadowStrength = 0.0F
+                    interpolationDuration = FINAL_BORDER_UPDATE_INTERVAL_TICKS.toInt()
+                    teleportDuration = FINAL_BORDER_UPDATE_INTERVAL_TICKS.toInt()
+                    transformation = Transformation(
+                        Vector3f(tileInset, -0.16F, tileInset),
+                        Quaternionf(),
+                        Vector3f(visibleTileSpan, 0.32F, visibleTileSpan),
+                        Quaternionf(),
+                    )
+                }
+                finalBorderDisplays += display
+            }
+        }
+
+        borderBossBar = bossBar
+        bossBar.color(BossBar.Color.RED)
+        bossBar.progress(1.0F)
+        bossBar.name(miniMessage.deserialize("<dark_red><bold>상공 자기장 하강 중 ${formatTime(FINAL_BORDER_DESCENT_SECONDS)}"))
+        sendNotification("<dark_red><bold>최종 자기장이 상공에서 하강하기 시작합니다.")
+        activePlayers().filter { it.player.isOnline }.forEach { playerData ->
+            playerData.player.playSound(
+                playerData.player.location,
+                Sound.ENTITY_ELDER_GUARDIAN_CURSE,
+                SoundCategory.MASTER,
+                0.65F,
+                0.62F,
+            )
+            playerData.player.playSound(
+                playerData.player.location,
+                Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE,
+                SoundCategory.MASTER,
+                0.8F,
+                0.55F,
+            )
+        }
+
+        val totalTicks = FINAL_BORDER_DESCENT_SECONDS * 20L
+        var elapsedTicks = 0L
+        val descentTask = object : BukkitRunnable() {
+            override fun run() {
+                if (phase != GamePhase.RUNNING) {
+                    clearFinalBorderDisplays()
+                    activePlayers().filter { it.player.isOnline }.forEach { it.player.hideBossBar(bossBar) }
+                    if (borderBossBar === bossBar) borderBossBar = null
+                    cancel()
+                    return
+                }
+                if (isPaused) return
+
+                val progress = (elapsedTicks.toDouble() / totalTicks).coerceIn(0.0, 1.0)
+                val currentY = startY + (endY - startY) * progress
+                finalBorderDisplays.toList().forEach { display ->
+                    if (!display.isValid) {
+                        finalBorderDisplays.remove(display)
+                        return@forEach
+                    }
+                    display.teleport(display.location.apply { y = currentY })
+                }
+
+                val remainingTicks = (totalTicks - elapsedTicks).coerceAtLeast(0L)
+                bossBar.progress((1.0 - progress).toFloat().coerceIn(0.0F, 1.0F))
+                if (elapsedTicks % 20L == 0L) {
+                    val remainingSeconds = ((remainingTicks + 19L) / 20L).toInt()
+                    bossBar.name(miniMessage.deserialize(
+                        "<dark_red><bold>상공 자기장 하강 중 ${formatTime(remainingSeconds)}"
+                    ))
+                }
+
+                if (elapsedTicks >= totalTicks) {
+                    bossBar.progress(0.0F)
+                    bossBar.name(miniMessage.deserialize("<red><bold>최종 자기장이 맵 전체를 덮었습니다"))
+                    activePlayers().filter { it.player.isOnline }.forEach { playerData ->
+                        playerData.player.playSound(
+                            playerData.player.location,
+                            Sound.BLOCK_BEACON_DEACTIVATE,
+                            SoundCategory.MASTER,
+                            0.9F,
+                            0.5F,
+                        )
+                    }
+                    cancel()
+                    return
+                }
+                elapsedTicks = (elapsedTicks + FINAL_BORDER_UPDATE_INTERVAL_TICKS).coerceAtMost(totalTicks)
+            }
+        }.runTaskTimer(
+            ClassWarPlugin.instance,
+            0L,
+            FINAL_BORDER_UPDATE_INTERVAL_TICKS,
+        )
+        track(descentTask)
+    }
+
+    private fun Game.clearFinalBorderDisplays() {
+        finalBorderDisplays.toList().forEach { display ->
+            if (display.isValid) display.remove()
+        }
+        finalBorderDisplays.clear()
     }
 
     private fun Game.selectRandomRoundCenter() {
@@ -798,6 +939,7 @@ object GameManager {
         disconnectTasks.clear()
         tasks.toList().forEach { it.cancel() }
         tasks.clear()
+        clearFinalBorderDisplays()
         borderBossBar?.let { bar -> activePlayers().filter { it.player.isOnline }.forEach { it.player.hideBossBar(bar) } }
         borderBossBar = null
         gameWorld.worldBorder.reset()
