@@ -6,6 +6,7 @@ import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.EnvironmentalDamageHandler
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.handler.MovementInputHandler
+import org.beobma.classWarPlugin.manager.UtilManager.isActuallyGrounded
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Skill
 import org.bukkit.Material
@@ -39,13 +40,13 @@ class HighJumper : GameClass(), GameStatusHandler, MovementInputHandler, Environ
                     return
                 }
                 if (fallImmunity) {
-                    if (!player.isOnGround) becameAirborne = true
+                    if (!player.isActuallyGrounded()) becameAirborne = true
                     else if (becameAirborne) {
                         fallImmunity = false
                         becameAirborne = false
                     }
                 }
-                if (player.isSneaking && player.isOnGround) {
+                if (player.isSneaking && player.isActuallyGrounded()) {
                     chargeTicks = (chargeTicks + 2).coerceAtMost(200)
                     if (chargeTicks >= 60 && chargeTicks % 10 == 0) {
                         particles.spawn(player.location.clone().add(0.0, 0.1, 0.0), Particle.CLOUD, count = 6, spread = 0.45, speed = 0.025)
@@ -61,7 +62,7 @@ class HighJumper : GameClass(), GameStatusHandler, MovementInputHandler, Environ
 
     override fun onPlayerInput(event: PlayerInputEvent) {
         val jump = event.input.isJump
-        if (jump && !lastJumpInput && player.isSneaking && player.isOnGround && chargeTicks >= 60) {
+        if (jump && !lastJumpInput && player.isSneaking && player.isActuallyGrounded() && chargeTicks >= 60) {
             val normalizedCharge = ((chargeTicks - 60) / 140.0).coerceIn(0.0, 1.0)
             val horizontal = player.eyeLocation.direction.setY(0.0).let {
                 if (it.lengthSquared() > 1.0E-6) it.normalize().multiply(0.28 + normalizedCharge * 0.18) else Vector()

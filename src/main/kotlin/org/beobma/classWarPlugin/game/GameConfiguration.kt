@@ -30,6 +30,7 @@ data class GameConfiguration(
     val borderDelaySeconds: Int = 300,
     val borderShrinkSeconds: Int = 600,
     val borderMinimumSize: Double = 40.0,
+    val finalBorderDescentSeconds: Int = 180,
 )
 
 object GameSettings {
@@ -55,10 +56,19 @@ object GameSettings {
             borderDelaySeconds = config.getInt("border.delay-seconds", 300).coerceAtLeast(0),
             borderShrinkSeconds = config.getInt("border.shrink-seconds", 600).coerceAtLeast(0),
             borderMinimumSize = config.getDouble("border.minimum-size", 40.0).coerceAtLeast(0.0),
+            finalBorderDescentSeconds = config.getInt("border.final-descent-seconds", 180).coerceAtLeast(0),
         ).normalized()
 
+        var configChanged = false
+        if (!config.contains("border.final-descent-seconds")) {
+            config.set("border.final-descent-seconds", current.finalBorderDescentSeconds)
+            configChanged = true
+        }
         if (config.contains("training")) {
             config.set("training", null)
+            configChanged = true
+        }
+        if (configChanged) {
             ClassWarPlugin.instance.saveConfig()
         }
     }
@@ -81,6 +91,7 @@ object GameSettings {
             40 -> current.copy(borderMinimumSize = current.borderMinimumSize + direction * 5.0 * multiplier)
             44 -> current.copy(borderCenterMinimumDistance = current.borderCenterMinimumDistance + direction * 5.0 * multiplier)
             46 -> current.copy(borderCenterMaximumDistance = current.borderCenterMaximumDistance + direction * 10.0 * multiplier)
+            48 -> current.copy(finalBorderDescentSeconds = current.finalBorderDescentSeconds + direction * 10 * multiplier)
             37 -> current.withRankWeight(Rank.SPECIAL, direction * multiplier)
             38 -> current.withRankWeight(Rank.L, direction * multiplier)
             39 -> current.withRankWeight(Rank.S, direction * multiplier)
@@ -105,6 +116,7 @@ object GameSettings {
             borderDelaySeconds = borderDelaySeconds.coerceAtLeast(0),
             borderShrinkSeconds = borderShrinkSeconds.coerceAtLeast(0),
             borderMinimumSize = borderMinimumSize.coerceAtLeast(0.0),
+            finalBorderDescentSeconds = finalBorderDescentSeconds.coerceAtLeast(0),
             rankWeights = rankWeights.mapValues { (_, weight) -> weight.coerceIn(0, 10_000) },
         )
     }
@@ -135,6 +147,7 @@ object GameSettings {
         plugin.config.set("border.delay-seconds", current.borderDelaySeconds)
         plugin.config.set("border.shrink-seconds", current.borderShrinkSeconds)
         plugin.config.set("border.minimum-size", current.borderMinimumSize)
+        plugin.config.set("border.final-descent-seconds", current.finalBorderDescentSeconds)
         plugin.saveConfig()
     }
 }

@@ -32,3 +32,4 @@ border:
   delay-seconds: 300
   shrink-seconds: 600
   minimum-size: 40.0
+  final-descent-seconds: 180

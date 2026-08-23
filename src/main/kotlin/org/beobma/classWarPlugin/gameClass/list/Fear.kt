@@ -12,7 +12,7 @@ import org.beobma.classWarPlugin.manager.TemporaryDisplayManager
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.util.DamageType
-import org.bukkit.GameRule
+import org.bukkit.GameRules
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
@@ -47,9 +47,9 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler {
     override fun onBattleStart() {
         val world = player.world
         previousTime = world.time
-        previousDaylightCycle = world.getGameRuleValue(GameRule.DO_DAYLIGHT_CYCLE)
+        previousDaylightCycle = world.getGameRuleValue(GameRules.ADVANCE_TIME)
         world.time = 18000L
-        world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, false)
+        world.setGameRule(GameRules.ADVANCE_TIME, false)
         nightLocked = true
         sanity.clear(); lastHealth.clear(); knownDead.clear(); shadowCooldown.clear()
         game.playerDatas.filterIsInstance<PlayerData>().filter { it != playerData }.forEach {
@@ -88,7 +88,7 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler {
     override fun onGameEnd() {
         if (!nightLocked) return
         player.world.time = previousTime
-        player.world.setGameRule(GameRule.DO_DAYLIGHT_CYCLE, previousDaylightCycle)
+        player.world.setGameRule(GameRules.ADVANCE_TIME, previousDaylightCycle)
         nightLocked = false
     }
 

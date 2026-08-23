@@ -10,19 +10,19 @@ import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.beobma.classWarPlugin.status.list.Snare
+import org.beobma.classWarPlugin.status.list.Radiation
 import org.bukkit.Color
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.entity.Player
-import org.bukkit.potion.PotionEffect
-import org.bukkit.potion.PotionEffectType
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import java.util.UUID
@@ -210,10 +210,9 @@ class Hacker : GameClass(), GameStatusHandler {
             targets.forEach { target ->
                 target.getOrCreateStatus(playerData) { Snare() }
                     .applyStatus(duration = HACKER_SNARE_DURATION_SECONDS, powerSet = 1)
+                target.addStatus(Radiation(), playerData)
+                    .applyStatus(duration = HACKER_SNARE_DURATION_SECONDS, powerSet = 1)
                 if (target.player.isOnline) {
-                    target.player.addPotionEffect(
-                        PotionEffect(PotionEffectType.GLOWING, 10 * 20, 0, false, false, true)
-                    )
                     target.player.sendMiniMessage(
                         "<red><bold>[시스템 침입]</bold> <gray>해커에 의해 10초간 위치가 노출되고 속박됩니다."
                     )

@@ -18,6 +18,7 @@ import org.beobma.classWarPlugin.status.list.Mana
 import org.beobma.classWarPlugin.status.list.Erosion
 import org.beobma.classWarPlugin.status.list.Silence
 import org.beobma.classWarPlugin.status.list.Stealth
+import org.beobma.classWarPlugin.status.list.Radiation
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.damage.DamageContext
@@ -114,7 +115,7 @@ class AbyssalVeil : GameClass() {
 
 
     private class Smoke : Flooring() {
-        private val applied = mutableListOf<PlayerData>()
+        private val appliedRadiation = mutableMapOf<PlayerData, Radiation>()
         private var ownerStealth: Stealth? = null
 
         override lateinit var location: Location
@@ -157,8 +158,12 @@ class AbyssalVeil : GameClass() {
                 }
                 return
             }
-            hitPlayerData.player.isGlowing = true
-            applied.add(hitPlayerData)
+            if (hitPlayerData !in appliedRadiation) {
+                val radiation = Radiation()
+                hitPlayerData.addStatus(radiation, playerData)
+                radiation.applyStatus(powerSet = 1)
+                appliedRadiation[hitPlayerData] = radiation
+            }
         }
 
         override fun onFlooringEntityOut(hitEntityData: EntityData, location: Location) {
@@ -167,14 +172,12 @@ class AbyssalVeil : GameClass() {
                 ownerStealth?.remove(); ownerStealth = null
                 return
             }
-            hitPlayerData.player.isGlowing = false
-            applied.remove(hitPlayerData)
+            appliedRadiation.remove(hitPlayerData)?.remove()
         }
 
         override fun onFlooringEnd() {
-            applied.forEach { playerData ->
-                playerData.player.isGlowing = false
-            }
+            appliedRadiation.values.forEach(Radiation::remove)
+            appliedRadiation.clear()
             ownerStealth?.remove()
         }
     }

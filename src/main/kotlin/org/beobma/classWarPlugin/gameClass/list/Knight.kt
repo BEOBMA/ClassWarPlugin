@@ -143,8 +143,8 @@ class Knight : GameClass(), WeaponInputHandler {
             "<gray>이후 대상의 {keyword:Bleeding} 수치가 절반으로 감소한다."
         )
 
-        override fun onAttackHit(event: DamageContext) {
-            val entityData = event.target
+        override fun onAttackHit(context: DamageContext) {
+            val entityData = context.target
             val status = entityData.getOrCreateStatus(playerData) { Bleeding() }
             status.applyStatus(duration = 3, powerSet = 1)
 

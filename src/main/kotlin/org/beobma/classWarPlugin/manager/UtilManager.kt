@@ -3,10 +3,12 @@ package org.beobma.classWarPlugin.manager
 import net.kyori.adventure.text.minimessage.MiniMessage
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.bukkit.Material
+import org.bukkit.FluidCollisionMode
 import org.bukkit.attribute.Attribute
 import org.bukkit.entity.Entity
 import org.bukkit.entity.Player
 import org.bukkit.entity.EntityType
+import org.bukkit.util.Vector
 
 object UtilManager {
     val miniMessage = MiniMessage.miniMessage()
@@ -53,6 +55,30 @@ object UtilManager {
     fun Player.resetDyeCooldowns() {
         dyeMaterials.forEach { dye ->
             setCooldown(dye, 0)
+        }
+    }
+
+    fun Player.isActuallyGrounded(): Boolean {
+        val box = boundingBox
+        val insetX = ((box.maxX - box.minX) * 0.15).coerceAtMost(0.08)
+        val insetZ = ((box.maxZ - box.minZ) * 0.15).coerceAtMost(0.08)
+        val sampleY = box.minY + 0.05
+        val samples = arrayOf(
+            box.center.x to box.center.z,
+            box.minX + insetX to box.minZ + insetZ,
+            box.minX + insetX to box.maxZ - insetZ,
+            box.maxX - insetX to box.minZ + insetZ,
+            box.maxX - insetX to box.maxZ - insetZ,
+        )
+
+        return samples.any { (x, z) ->
+            world.rayTraceBlocks(
+                org.bukkit.Location(world, x, sampleY, z),
+                Vector(0.0, -1.0, 0.0),
+                0.12,
+                FluidCollisionMode.NEVER,
+                true,
+            ) != null
         }
     }
 }

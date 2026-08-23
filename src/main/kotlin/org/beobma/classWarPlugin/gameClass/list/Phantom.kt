@@ -92,10 +92,10 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
             isCollidable = false
             setArms(true)
             setBasePlate(false)
-            equipment.setHelmet(player.inventory.helmet?.clone())
-            equipment.setChestplate(player.inventory.chestplate?.clone())
-            equipment.setLeggings(player.inventory.leggings?.clone())
-            equipment.setBoots(player.inventory.boots?.clone())
+            equipment.setHelmet(player.inventory.helmet.clone())
+            equipment.setChestplate(player.inventory.chestplate.clone())
+            equipment.setLeggings(player.inventory.leggings.clone())
+            equipment.setBoots(player.inventory.boots.clone())
             equipment.setItemInMainHand(player.inventory.itemInMainHand.clone())
         }
         stealth = (playerData.addStatus(Stealth(), playerData) as Stealth).also { it.applyStatus(duration = 20, powerSet = 1) }

@@ -28,8 +28,8 @@ class Stun : StatusAbnormality(), StatusOnHitHandler, StatusPlayerMoveHandler {
     override val showMaxPower: Boolean = false
     override val showPower: Boolean = false
 
-    override fun onAttackHit(event: DamageContext) {
-        event.isCancelled = true
+    override fun onAttackHit(context: DamageContext) {
+        context.isCancelled = true
     }
 
     override fun onPlayerMove(

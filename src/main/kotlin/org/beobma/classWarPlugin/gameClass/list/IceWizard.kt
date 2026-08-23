@@ -157,8 +157,8 @@ class IceWizard : GameClass(), GameStatusHandler {
             "<gray>이 효과는 영역 당 같은 대상에게 1번만 발동할 수 있다."
         )
 
-        override fun onSkillAttackHit(event: DamageContext) {
-            FrostZone(event.target.entity.location.clone()).spawnFlooring(playerData)
+        override fun onSkillAttackHit(context: DamageContext) {
+            FrostZone(context.target.entity.location.clone()).spawnFlooring(playerData)
         }
     }
 

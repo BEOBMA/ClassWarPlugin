@@ -154,9 +154,10 @@ object ParticleApi {
         }
     }
 
-    /** Paper 26.2에서 일부 파티클(END_ROD 등)에 새로 요구되는 기본 데이터를 제공한다. */
+    /** Paper 26.2에서 데이터가 필수가 된 파티클에 안전한 기본값을 제공한다. */
     private fun defaultData(particle: Particle): Any? = when (particle.dataType) {
         Color::class.java -> Color.WHITE
+        Particle.Spell::class.java -> Particle.Spell(Color.WHITE, 1.0f)
         else -> null
     }
 }

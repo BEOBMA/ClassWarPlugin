@@ -32,4 +32,13 @@ abstract class GameClass : EffectApiAccess {
         this.playerStatus = playerData.entityStatus
         this.game = playerData.initGame
     }
+
+    fun isInjectedFor(expected: PlayerData): Boolean =
+        this::playerData.isInitialized &&
+            this::player.isInitialized &&
+            this::playerStatus.isInitialized &&
+            this::game.isInitialized &&
+            playerData === expected &&
+            player.uniqueId == expected.uniqueId &&
+            game === expected.initGame
 }

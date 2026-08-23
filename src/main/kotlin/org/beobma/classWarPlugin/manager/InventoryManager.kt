@@ -181,6 +181,7 @@ object InventoryManager {
                 inventory.setItem(14, createSettingItem(Material.IRON_BARS, "월드보더 최소 크기", settings.borderMinimumSize, "블록"))
                 inventory.setItem(15, createSettingItem(Material.COMPASS, "중심 최소 이동 거리", settings.borderCenterMinimumDistance, "블록"))
                 inventory.setItem(16, createSettingItem(Material.RECOVERY_COMPASS, "중심 최대 이동 거리", settings.borderCenterMaximumDistance, "블록"))
+                inventory.setItem(22, createSettingItem(Material.RED_STAINED_GLASS, "최종 자기장 하강 시간", settings.finalBorderDescentSeconds, "초"))
             }
 
             ConfigCategory.COMBAT -> {

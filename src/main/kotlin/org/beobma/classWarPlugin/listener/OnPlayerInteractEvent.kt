@@ -3,6 +3,7 @@ package org.beobma.classWarPlugin.listener
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
+import org.beobma.classWarPlugin.manager.GameManager.canDispatchClassHandlers
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.SkillManager.getSkillId
 import org.beobma.classWarPlugin.manager.SkillManager.use
@@ -35,6 +36,7 @@ class OnPlayerInteractEvent : Listener {
         val currentGame = findGameForPlayer(player) ?: return
         val playerData = currentGame.playerDatas.filterIsInstance<PlayerData>()
             .find { it.player.uniqueId == player.uniqueId } ?: return
+        if (!playerData.canDispatchClassHandlers()) return
         val skillId = getSkillId(clickedItem, player.uniqueId)
         if (skillId == null) {
             val gameClass = playerData.gameClass

@@ -87,14 +87,14 @@ class Berserker : GameClass() {
                 "<gray>기본 공격 적중 시 가하는 피해가 잃은 체력에 비례하여 증가한다. (최대 50%)"
             )
 
-        override fun onAttackHit(event: DamageContext) {
+        override fun onAttackHit(context: DamageContext) {
             val missingHealth = player.getPlayerMaxHealth() - player.health
             val damageBoost = (missingHealth * BERSERKER_MISSING_HEALTH_DAMAGE_RATIO)
                 .coerceAtMost(BERSERKER_MAX_BONUS_DAMAGE)
-            event.addBaseDamage(damageBoost)
+            context.addBaseDamage(damageBoost)
 
             if (player.getPlayerMaxHealth() * BERSERKER_LOW_HEALTH_RATIO > player.health) {
-                playerData.heal(event.damage * BERSERKER_LIFESTEAL_RATIO, DamageType.Normal, playerData)
+                playerData.heal(context.damage * BERSERKER_LIFESTEAL_RATIO, DamageType.Normal, playerData)
             }
         }
 

@@ -56,10 +56,10 @@ class DeathNote : GameClass() {
         override val description = listOf(
             "<gray>생존한 적 중 한 명을 선택해 데스노트에 적는다.",
             "",
-            "<gray>데스노트에 적힌 적은 30초 동안 특정 행동을 할 때마다 점점 죽음에 가까워진다.",
-            "<gray>특정 행동을 총 10회 하면 해당 플레이어는 심장마비로 사망한다.",
+            "<gray>아래 행동 중 하나가 무작위로 죽음의 조건으로 지정된다.",
+            "<gray>데스노트에 적힌 적이 30초 동안 지정된 행동을 총 10회 하면 심장마비로 사망한다.",
             "",
-            "<gray>특정 행동에 포함되는 행동은 다음과 같다.",
+            "<gray>무작위로 지정될 수 있는 행동은 다음과 같다.",
             "<gray>  - 이동 입력",
             "<gray>  - 기본 공격",
             "<gray>  - 스킬 사용",
@@ -145,10 +145,8 @@ class DeathNote : GameClass() {
         activeMarks[player.uniqueId] = mark
 
         player.sendMiniMessage(
-            "<dark_red><bold>[기명 완료]</bold> <white>${target.player.name}<gray>님의 이름을 데스노트에 기록했습니다."
-        )
-        target.player.sendMiniMessage(
-            "<dark_red><bold>[죽음의 예고]</bold> <gray>당신의 이름이 데스노트에 기록되었습니다."
+            "<dark_red><bold>[기명 완료]</bold> <white>${target.player.name}<gray>님의 이름을 기록했습니다. " +
+                "<dark_red>죽음의 조건: <white>${mark.requiredActionName}"
         )
         ParticleApi.spawn(target.player, Particle.SQUID_INK, count = 45, spread = 0.72, speed = 0.08)
         ParticleApi.spawn(target.player, Particle.WITCH, count = 32, spread = 0.58, speed = 0.06)
@@ -158,9 +156,21 @@ class DeathNote : GameClass() {
 
     private class DeathNoteMarkStatus : StatusAbnormality(), MovementInputHandler, SneakInputHandler,
         OnHitHandler, OnSkillUseHandler {
+        private enum class RequiredAction(val displayName: String) {
+            MOVEMENT("이동 입력"),
+            JUMP("점프"),
+            SNEAK("웅크리기"),
+            ATTACK("기본 또는 원거리 공격"),
+            SKILL("스킬 사용"),
+        }
+
+        private val requiredAction = RequiredAction.entries.random()
+        val requiredActionName: String
+            get() = requiredAction.displayName
+
         override val name = "<dark_red><bold>데스노트</bold><gray>"
         override val description = listOf(
-            "<gray>특정 행동을 할 때마다 죽음의 진행도가 오른다.",
+            "<gray>지정된 행동을 할 때마다 죽음의 진행도가 오른다.",
             "<gray>진행도가 10에 도달하면 심장마비로 사망한다.",
         )
         override val canRemove = true
@@ -168,6 +178,7 @@ class DeathNote : GameClass() {
         override var maxPower: Int? = 1
         override val showPower = false
         override val showMaxPower = false
+        override val showInActionBar = false
         override var duration: Int? = null
 
         private var actions = 0
@@ -179,42 +190,48 @@ class DeathNote : GameClass() {
             if (executed || power <= 0) return
             val input = event.input
             val hasMovement = input.isForward || input.isBackward || input.isLeft || input.isRight
-            if (hasMovement && !movementHeld) recordAction("이동")
-            if (input.isJump && !jumpHeld) recordAction("점프")
+            if (requiredAction == RequiredAction.MOVEMENT && hasMovement && !movementHeld) {
+                recordAction()
+            }
+            if (requiredAction == RequiredAction.JUMP && input.isJump && !jumpHeld) {
+                recordAction()
+            }
             movementHeld = hasMovement
             jumpHeld = input.isJump
         }
 
         override fun onPlayerToggleSneak(event: PlayerToggleSneakEvent) {
-            if (event.isSneaking) recordAction("웅크리기")
+            if (requiredAction == RequiredAction.SNEAK && event.isSneaking) {
+                recordAction()
+            }
         }
 
         override fun onAttackHit(context: DamageContext) {
-            recordAction("기본 공격")
+            if (requiredAction == RequiredAction.ATTACK) recordAction()
         }
 
         override fun onSkillUse(event: PlayerSkillUseEvent) {
-            recordAction("스킬 사용")
+            if (requiredAction == RequiredAction.SKILL) recordAction()
         }
 
-        private fun recordAction(actionName: String) {
+        private fun recordAction() {
             if (executed || power <= 0 || entityStatus.isDead) return
             actions++
-            notifyStatusChanged()
 
             val target = entityData as? PlayerData ?: return
             val progress = actions.toDouble() / DEATH_ACTION_THRESHOLD
             val pitch = (0.62 + progress * 0.65).toFloat()
+            val center = target.player.boundingBox.center.toLocation(target.player.world)
             SoundApi.playTo(target.player, Sound.ENTITY_WARDEN_HEARTBEAT, volume = 0.8f, pitch = pitch)
+            SoundApi.play(center, Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE, volume = 0.55f, pitch = pitch)
             ParticleApi.spawn(
-                target.player.boundingBox.center.toLocation(target.player.world),
+                center,
                 Particle.DUST,
                 Particle.DustOptions(Color.fromRGB(125 + (110 * progress).toInt(), 0, 0), 1.45f),
                 org.beobma.classWarPlugin.effect.ParticleOptions.spread(12, 0.34, 0.025),
             )
-            target.player.sendMiniMessage(
-                "<dark_red><bold>[죽음 $actions/$DEATH_ACTION_THRESHOLD]</bold> <gray>$actionName 감지"
-            )
+            ParticleApi.spawn(center, Particle.SCULK_SOUL, count = 9, spread = 0.42, speed = 0.045)
+            ParticleApi.spawn(center, Particle.SQUID_INK, count = 7, spread = 0.3, speed = 0.035)
 
             if (actions >= DEATH_ACTION_THRESHOLD) triggerHeartAttack(target)
         }
@@ -228,7 +245,6 @@ class DeathNote : GameClass() {
             ParticleApi.spawn(center, Particle.FLASH, count = 1)
             SoundApi.play(target.player, Sound.ENTITY_WARDEN_HEARTBEAT, volume = 1.5f, pitch = 0.45f)
             SoundApi.play(target.player, Sound.ENTITY_WITHER_DEATH, volume = 0.65f, pitch = 0.55f)
-            target.player.sendMiniMessage("<dark_red><bold>[심장마비]</bold> <gray>죽음의 조건이 완성되었습니다.")
             casterData.player.takeIf(Player::isOnline)?.sendMiniMessage(
                 "<dark_red><bold>[데스노트]</bold> <white>${target.player.name}<gray>님의 죽음이 완성되었습니다."
             )
@@ -240,18 +256,6 @@ class DeathNote : GameClass() {
                 damagePath = DamagePath.SKILL,
             )
             remove()
-        }
-
-        private fun notifyStatusChanged() {
-            (entityData as? PlayerData)?.let {
-                org.beobma.classWarPlugin.manager.StatusAbnormalityManager.run { it.updateStatusActionBar() }
-            }
-        }
-
-        override fun actionBarText(): String {
-            val durationText = duration?.let { "${it}s" } ?: "∞"
-            return "$name: <red>$actions</red><dark_gray>/</dark_gray><red>$DEATH_ACTION_THRESHOLD</red>" +
-                " <dark_gray>|</dark_gray><yellow>$durationText</yellow>"
         }
 
         override fun onRemoveStatusAbnormality() {

@@ -14,17 +14,24 @@ import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.manager.CooldownManager
+import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.hasStatus
 import org.beobma.classWarPlugin.manager.UtilManager.getPlayerMaxHealth
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.beobma.classWarPlugin.status.list.Silence
 import org.beobma.classWarPlugin.status.list.Snare
+import org.beobma.classWarPlugin.status.list.Stealth
+import org.beobma.classWarPlugin.status.list.Disarm
+import org.beobma.classWarPlugin.status.list.Radiation
+import org.beobma.classWarPlugin.status.list.Invincibility
 import org.beobma.classWarPlugin.util.CourtroomMidiPlayer
+import org.beobma.classWarPlugin.util.HitboxUtil
 import org.beobma.classWarPlugin.util.TargetType
 import org.bukkit.Color
 import org.bukkit.Location
@@ -104,12 +111,20 @@ class Referee : GameClass(), GameStatusHandler {
                 return false
             }
             if (training) {
-                seedTrainingEvidence()
-                selectedDefendant = playerData
-                player.sendMiniMessage("<gold><bold>[모의 재판]</bold> <gray>자신이 판사와 모의 피고인을 겸합니다.")
+                val trainingTarget = findTrainingDefendantInSight()
+                val defendant = trainingTarget ?: playerData
+                seedTrainingEvidence(defendant)
+                selectedDefendant = defendant
+                if (trainingTarget == null) {
+                    player.sendMiniMessage("<gold><bold>[모의 재판]</bold> <gray>자신이 판사와 모의 피고인을 겸합니다.")
+                } else {
+                    player.sendMiniMessage(
+                        "<gold><bold>[모의 재판]</bold> <white>${trainingTarget.player.name}<gray>님을 피고인으로 기소합니다."
+                    )
+                }
                 return true
             }
-            val target = playerData.shotLaserGetEntityData(10.0, TargetType.Enemy, false) as? PlayerData
+            val target = playerData.shotLaserGetEntityData(PROSECUTION_RANGE, TargetType.Enemy, false) as? PlayerData
             if (target == null) {
                 player.sendMiniMessage("<red><bold>[!] 10칸 안에서 바라보는 생존 플레이어가 없습니다.")
                 return false
@@ -235,14 +250,48 @@ class Referee : GameClass(), GameStatusHandler {
         evidenceByAccused[accusedId]?.get(crime)?.takeIf { it.isNotEmpty() }?.removeFirst()
     }
 
-    private fun seedTrainingEvidence() {
-        val ledger = evidenceByAccused.getOrPut(playerData.uniqueId) { mutableMapOf() }
+    private fun seedTrainingEvidence(accused: PlayerData) {
+        val ledger = evidenceByAccused.getOrPut(accused.uniqueId) { mutableMapOf() }
         Crime.entries.forEach { crime ->
             val records = ledger.getOrPut(crime) { ArrayDeque() }
             if (records.isEmpty()) {
                 records.addLast(Evidence(System.currentTimeMillis(), "훈련용 ${crime.displayName} 모의 증거"))
             }
         }
+    }
+
+    private fun findTrainingDefendantInSight(): PlayerData? {
+        val start = player.eyeLocation
+        val direction = start.direction
+        val targetAndDistance = player.world.players.asSequence()
+            .filter { candidate ->
+                candidate.uniqueId != player.uniqueId &&
+                    candidate.isOnline && PlayerTagManager.hasTag(candidate, "isTraining")
+            }
+            .mapNotNull { candidate ->
+                val target = findGameForPlayer(candidate)?.playerDatas
+                    ?.filterIsInstance<PlayerData>()
+                    ?.find { it.player.uniqueId == candidate.uniqueId }
+                    ?: return@mapNotNull null
+                if (target.entityStatus.isDead || !target.entityStatus.isSkillTargeting || target.hasStatus<Stealth>()) {
+                    return@mapNotNull null
+                }
+                HitboxUtil.rayIntersectionDistance(
+                    candidate.boundingBox,
+                    start.toVector(),
+                    direction,
+                    PROSECUTION_RANGE,
+                    expansion = 1.0,
+                )?.let { distance -> target to distance }
+            }
+            .minByOrNull { it.second }
+            ?: return null
+
+        val blockHit = player.world.rayTraceBlocks(start, direction, PROSECUTION_RANGE)?.hitPosition
+        if (blockHit != null && blockHit.distanceSquared(start.toVector()) <= targetAndDistance.second * targetAndDistance.second) {
+            return null
+        }
+        return targetAndDistance.first
     }
 
     private fun playerDataFor(id: UUID): PlayerData? = game.playerDatas.filterIsInstance<PlayerData>()
@@ -282,7 +331,7 @@ class Referee : GameClass(), GameStatusHandler {
         val isAttackable: Boolean,
         val isSkillTargeting: Boolean,
         val glowing: Boolean,
-        val courtStatus: StatusAbnormality,
+        val courtStatuses: List<StatusAbnormality>,
     )
 
     private class TrialSession(private val owner: Referee, private val defendant: PlayerData) {
@@ -291,8 +340,15 @@ class Referee : GameClass(), GameStatusHandler {
         private val judge = owner.playerData
         private val isTrainingTrial = PlayerTagManager.hasTag(judge.player, "isTraining")
         private val isSoloTrial = judge == defendant
-        private val participants = game.playerDatas.filterIsInstance<PlayerData>()
+        private val participants = (game.playerDatas.filterIsInstance<PlayerData>() + defendant)
+            .distinctBy(PlayerData::uniqueId)
             .filter { it.player.isOnline && !it.entityStatus.isDead }
+        private val sessionGames = mutableListOf<Game>().apply {
+            participants.forEach { participant ->
+                if (none { it === participant.initGame }) add(participant.initGame)
+            }
+        }
+        private val priorPauseStates = IdentityHashMap<Game, Boolean>()
         private val participantPlayers = participants.map(PlayerData::player)
         private val snapshots = mutableMapOf<UUID, CourtSnapshot>()
         private val bar = BossBar.bossBar(
@@ -311,9 +367,12 @@ class Referee : GameClass(), GameStatusHandler {
 
         fun start() {
             if (participants.none { it == judge } || participants.none { it == defendant }) return
-            activeTrials[game] = this
+            sessionGames.forEach { participantGame ->
+                priorPauseStates[participantGame] = participantGame.isPaused
+                participantGame.isPaused = true
+                activeTrials[participantGame] = this
+            }
             participants.forEach { activeTrialPlayers[it.uniqueId] = this }
-            game.isPaused = true
             moveToCourtroom()
             pauseCooldowns()
             broadcast("<dark_gray>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
@@ -484,7 +543,7 @@ class Referee : GameClass(), GameStatusHandler {
             participants.forEach { data ->
                 data.player.hideBossBar(bar)
                 val snapshot = snapshots[data.uniqueId] ?: return@forEach
-                snapshot.courtStatus.remove()
+                snapshot.courtStatuses.forEach(StatusAbnormality::remove)
                 data.entityStatus.canAttack = snapshot.canAttack
                 data.entityStatus.canSkillUse = snapshot.canSkillUse
                 data.entityStatus.canMove = snapshot.canMove
@@ -494,9 +553,11 @@ class Referee : GameClass(), GameStatusHandler {
                 if (data.player.isOnline) data.player.teleport(snapshot.location)
                 data.gameClass?.skills?.forEach { CooldownManager.resumeCooldown(data.player, it) }
             }
-            activeTrials.remove(game, this)
+            sessionGames.forEach { participantGame ->
+                activeTrials.remove(participantGame, this)
+                participantGame.isPaused = priorPauseStates[participantGame] ?: false
+            }
             participants.forEach { activeTrialPlayers.remove(it.uniqueId, this) }
-            game.isPaused = false
             broadcast("<dark_gray>━━━━━━━━━━━━ <gray>재판 종료 <dark_gray>━━━━━━━━━━━━")
             if (applyPunishment) selectedCrime?.let { owner.applyPunishment(defendant, it, verdictPerjury) }
         }
@@ -505,12 +566,20 @@ class Referee : GameClass(), GameStatusHandler {
             val world = judge.player.world
             val audience = participants.filter { it != judge && it != defendant }
             participants.forEach { data ->
-                val courtStatus = CourtOrderStatus()
-                data.addStatus(courtStatus, judge); courtStatus.applyStatus(powerSet = 1)
+                val courtStatuses = listOf(
+                    CourtOrderStatus(),
+                    Silence(),
+                    Disarm(),
+                    Snare(),
+                    Invincibility(),
+                ).onEach { status ->
+                    data.addStatus(status, judge)
+                    status.applyStatus(powerSet = 1)
+                }
                 val status = data.entityStatus
                 snapshots[data.uniqueId] = CourtSnapshot(data.player.location.clone(), status.canAttack,
                     status.canSkillUse, status.canMove, status.isAttackable, status.isSkillTargeting,
-                    data.player.isGlowing, courtStatus)
+                    data.player.isGlowing, courtStatuses)
                 status.canAttack = false; status.canSkillUse = false; status.canMove = false
                 status.isAttackable = false; status.isSkillTargeting = false
                 data.player.fireTicks = 0
@@ -659,118 +728,320 @@ class Referee : GameClass(), GameStatusHandler {
         private fun buildDefenseOptions(crime: Crime): List<DefenseOption> {
             val truth = when (crime) {
                 Crime.ASSAULT -> listOf(
-                    "나는 즉시 공격을 멈추고 더 큰 피해가 발생하지 않도록 물러났다.",
-                    "나는 치명적인 공격을 피했고 상황을 끝내기 위해 거리를 벌렸다.",
-                    "나는 상대의 위협을 저지한 직후 무기를 거두고 추가 공격을 하지 않았다.",
-                    "나는 교전을 끝내려 했으며 기록된 한 번의 공격 이후에는 추격하지 않았다.",
-                    "나는 상대가 안전하게 후퇴할 수 있도록 공격 경로에서 벗어났다.",
-                )
+                    "나는 공격이 이어지면 피해가 커질 수 있다고 판단해 바로 거리를 벌렸다.",
+                    "나는 상대의 움직임을 저지한 뒤 추가적인 공격은 하지 않았다.",
+                    "나는 교전이 시작된 직후 상황을 끝내기 위해 먼저 공격을 멈췄다.",
+                    "나는 한 차례 충돌 이후 상대를 계속 추격하지 않았다.",
+                    "나는 상대가 물러난 뒤에는 더 이상 공격하지 않았다.",
+                    "나는 공격 이후 전투를 이어가기보다 안전한 거리를 확보했다.",
+                    "나는 상대에게 피해가 발생한 것을 확인한 뒤 공격을 중단했다.",
+                    "나는 상대를 쓰러뜨리는 것보다 교전을 종료하는 것을 우선했다.",
+                    "나는 필요한 만큼만 대응한 뒤 무기를 거두었다.",
+                    "나는 상대가 더 이상 접근하지 않자 공격을 계속하지 않았다.",
+                    "나는 충돌 이후 상대의 이동을 방해하지 않고 물러났다.",
+                    "나는 첫 공격 이후 상황이 정리되었다고 판단해 추가 행동을 하지 않았다.",
+                    "나는 상대가 후퇴하는 것을 보고 공격을 멈췄다.",
+                    "나는 교전을 길게 이어갈 의도가 없어 바로 전투에서 벗어났다.",
+                    "나는 상대에게 피해를 준 뒤에도 공격 기회가 있었지만 이용하지 않았다.",
+                    "나는 위협이 사라진 뒤에는 상대에게 다시 접근하지 않았다.",
+                    "나는 공격 직후 상황을 살핀 뒤 더 이상의 충돌을 피했다.",
+                    "나는 상대와의 거리를 유지하면서 전투를 끝내려고 했다.",
+                    "나는 상대를 계속 몰아붙이지 않고 공격을 한 차례에서 끝냈다.",
+                    "나는 상대의 반응을 확인한 뒤 추가 피해가 없도록 물러났다."
+                ).random()
+
                 Crime.INJURY -> listOf(
-                    "나는 충돌 직후 공격을 중단하고 상대의 상태를 확인했다.",
-                    "나는 더 이상의 상해를 막기 위해 즉시 교전을 끝냈다.",
-                    "나는 피해가 발생한 것을 확인하자마자 상대와 거리를 두었다.",
-                    "나는 상처를 악화시키지 않도록 공격을 한 차례에서 멈췄다.",
-                    "나는 상대를 쓰러뜨릴 의도가 없었고 즉시 전투 자세를 풀었다.",
-                )
+                    "나는 피해가 발생한 것을 확인하자 즉시 공격을 중단했다.",
+                    "나는 상대의 상태가 악화되지 않도록 교전을 끝냈다.",
+                    "나는 상대가 다친 것을 본 뒤 더 이상 공격하지 않았다.",
+                    "나는 상해가 발생한 직후 상대와 거리를 두었다.",
+                    "나는 상대를 쓰러뜨리는 것을 목적으로 공격을 이어가지 않았다.",
+                    "나는 상대가 피해를 입은 뒤에는 추격하지 않았다.",
+                    "나는 피해가 예상보다 컸다는 것을 확인하고 즉시 물러났다.",
+                    "나는 상대의 상태를 확인한 이후 공격 자세를 풀었다.",
+                    "나는 추가적인 상해를 막기 위해 공격을 멈췄다.",
+                    "나는 상대가 부상을 입은 시점부터 교전을 계속하지 않았다.",
+                    "나는 한 번의 충돌 이후 전투를 확대하지 않았다.",
+                    "나는 상대가 위험한 상태라고 판단해 더 이상 접근하지 않았다.",
+                    "나는 피해가 발생한 이후 상대에게 추가 능력을 사용하지 않았다.",
+                    "나는 상대의 체력이 감소한 것을 확인하고 전투에서 이탈했다.",
+                    "나는 부상이 발생한 뒤에는 상대의 후퇴를 방해하지 않았다.",
+                    "나는 상대에게 더 큰 피해를 줄 기회가 있었지만 공격하지 않았다.",
+                    "나는 공격 이후 즉시 상황을 종료하려고 했다.",
+                    "나는 피해가 발생한 것을 인지한 뒤 공격 대상을 바꾸거나 교전에서 빠졌다.",
+                    "나는 상대의 상태가 좋지 않다는 것을 보고 더 이상 싸우지 않았다.",
+                    "나는 공격을 계속하면 위험하다고 판단해 교전을 중단했다."
+                ).random()
+
                 Crime.ABUSE -> listOf(
-                    "나는 급박한 위협에 대응하려고 연속해서 능력을 사용했다.",
-                    "나는 같은 상황을 해결하기 위해 제한된 시간에 능력을 집중 사용했다.",
-                    "나는 여러 적에게 포위되어 각각의 위협에 대응하려고 능력을 사용했다.",
-                    "나는 전투를 끝내기 위한 하나의 연계 과정에서 능력을 연속 사용했다.",
-                    "나는 생존이 위태로운 순간에 방어 목적으로 능력을 집중 사용했다.",
-                )
+                    "나는 급박한 상황에서 여러 위협에 대응하기 위해 능력을 연속으로 사용했다.",
+                    "나는 하나의 교전을 해결하는 과정에서 짧은 시간 동안 능력을 집중해서 사용했다.",
+                    "나는 여러 방향에서 공격을 받고 있었기 때문에 각각 대응할 필요가 있었다.",
+                    "나는 생존이 어려운 상황에서 방어 수단으로 능력을 반복해서 사용했다.",
+                    "나는 전투를 빠르게 종료하기 위해 짧은 시간 안에 능력을 연계했다.",
+                    "나는 서로 다른 대상에게 대응하는 과정에서 능력 사용이 연속해서 발생했다.",
+                    "나는 당시 공격을 피하면서 동시에 반격해야 하는 상황이었다.",
+                    "나는 능력을 사용할 때마다 서로 다른 위협에 대응하고 있었다.",
+                    "나는 한 번의 전투 과정에서 필요한 행동을 연속적으로 수행했다.",
+                    "나는 상대의 공격이 계속되어 능력을 여러 번 사용할 수밖에 없었다.",
+                    "나는 위협이 이어지는 동안 대응 수단을 반복해서 사용했다.",
+                    "나는 능력 사용 사이마다 전투 상황을 확인하고 있었다.",
+                    "나는 단순히 능력을 소모하려고 사용한 것이 아니라 실제 교전에 대응하고 있었다.",
+                    "나는 주변에 여러 적이 있어 한 번의 능력만으로는 대응하기 어려웠다.",
+                    "나는 전투에서 벗어나기 위한 과정에서도 능력을 사용했다.",
+                    "나는 공격과 방어를 번갈아 수행하면서 능력을 여러 번 사용했다.",
+                    "나는 능력을 연속으로 사용했지만 하나의 교전을 해결하기 위한 과정이었다.",
+                    "나는 공격을 피하고 거리를 확보하기 위해 여러 능력을 조합했다.",
+                    "나는 상대의 지속적인 압박 때문에 짧은 간격으로 대응했다.",
+                    "나는 위협이 사라진 뒤에는 더 이상 능력을 연속해서 사용하지 않았다."
+                ).random()
+
                 Crime.ESCAPE -> listOf(
-                    "나는 전투를 포기한 것이 아니라 더 유리한 위치로 이동했다.",
-                    "나는 상대의 공격을 피하며 시야를 확보하려고 거리를 벌렸다.",
-                    "나는 교전을 이어가기 위해 장애물 뒤로 전술적인 이동을 했다.",
-                    "나는 회복할 시간을 확보한 뒤 다시 싸우기 위해 잠시 후퇴했다.",
-                    "나는 상대의 사거리에서 벗어나 다음 공격을 준비하려고 이동했다.",
-                )
+                    "나는 교전을 포기한 것이 아니라 더 유리한 위치를 확보하기 위해 이동했다.",
+                    "나는 상대의 공격 범위에서 벗어난 뒤 다시 대응할 생각이었다.",
+                    "나는 시야를 확보하기 위해 잠시 거리를 벌렸다.",
+                    "나는 장애물을 이용해 상대의 공격을 피하려고 이동했다.",
+                    "나는 공격을 피한 뒤 반격할 공간을 확보하기 위해 물러났다.",
+                    "나는 교전을 계속하기 어려운 위치에서 벗어나려고 했다.",
+                    "나는 상대와 정면으로 충돌하는 대신 위치를 바꾸었다.",
+                    "나는 상대의 공격을 피하면서 다음 행동을 준비했다.",
+                    "나는 단순히 멀어지려 한 것이 아니라 다른 방향에서 접근하려고 했다.",
+                    "나는 불리한 지형에서 벗어나기 위해 이동했다.",
+                    "나는 상대의 시야에서 잠시 벗어난 뒤 다시 교전할 생각이었다.",
+                    "나는 공격을 회피하면서 안전한 위치를 확보했다.",
+                    "나는 상대의 사거리 밖에서 다음 공격을 준비하려 했다.",
+                    "나는 상대의 움직임을 확인하기 위해 거리를 확보했다.",
+                    "나는 정면 교전을 피하고 다른 각도에서 싸우기 위해 이동했다.",
+                    "나는 회복하거나 재정비할 시간을 확보하기 위해 잠시 물러났다.",
+                    "나는 교전 자체를 포기하지 않고 위치만 변경했다.",
+                    "나는 상대의 공격이 계속되는 상황에서 회피를 우선했다.",
+                    "나는 계속 맞서 싸우기보다 한 차례 공격을 피한 뒤 다시 대응하려 했다.",
+                    "나는 상대와 거리를 벌인 이후에도 교전 상황을 계속 확인하고 있었다."
+                ).random()
+
                 Crime.MURDER -> listOf(
-                    "나는 생존을 위한 교전 중 마지막 공격을 가했으며 계획된 살해는 아니었다.",
-                    "나는 먼저 시작된 치명적 공격에서 살아남기 위해 맞서 싸웠다.",
-                    "나는 피해자가 공격을 멈추지 않아 불가피하게 마지막 일격을 가했다.",
-                    "나는 즉각적인 생명의 위협에서 벗어나기 위해 방어적으로 대응했다.",
-                    "나는 살해를 계획하지 않았으며 전투의 결과로 우발적인 죽음이 발생했다.",
-                )
-            }.random()
+                    "나는 생존을 위한 교전 과정에서 마지막 공격을 가했으며 살해를 계획하지 않았다.",
+                    "나는 상대의 공격이 계속되는 상황에서 살아남기 위해 대응했다.",
+                    "나는 상대가 교전을 멈추지 않아 마지막까지 공격을 주고받았다.",
+                    "나는 즉각적인 위협에서 벗어나기 위한 과정에서 공격했다.",
+                    "나는 상대를 죽이는 것을 목표로 교전을 시작한 것이 아니었다.",
+                    "나는 전투가 그렇게 끝날 것이라고 예상하지 못했다.",
+                    "나는 공격을 멈추면 내가 먼저 쓰러질 수 있다고 판단했다.",
+                    "나는 당시 상대도 계속해서 나를 공격하고 있었다.",
+                    "나는 상대의 체력 상태를 정확히 알지 못한 상태에서 공격했다.",
+                    "나는 마지막 공격이 치명적일 것이라고 확신하지 못했다.",
+                    "나는 전투 과정에서 살아남기 위해 공격을 이어갔다.",
+                    "나는 계획적으로 상대를 추적해 살해한 것이 아니라 교전 중 사망이 발생했다.",
+                    "나는 상대의 공격에 대응하는 과정에서 마지막 일격을 가했다.",
+                    "나는 상황이 종료되기 전에 상대가 다시 공격할 수 있다고 판단했다.",
+                    "나는 전투 중 발생한 결과였으며 사전에 살해를 준비하지 않았다.",
+                    "나는 상대가 계속 위협적인 행동을 하고 있어 대응을 중단하지 못했다.",
+                    "나는 마지막 순간까지 서로 공격을 주고받고 있었다.",
+                    "나는 상대가 죽을 정도의 피해를 입었다는 사실을 즉시 알지 못했다.",
+                    "나는 상대를 제거하는 것보다 전투에서 살아남는 것을 우선하고 있었다.",
+                    "나는 교전이 끝나기 전에 발생한 공격으로 인해 사망이 발생했다."
+                ).random()
+            }
+
             val crimeSpecificLies = when (crime) {
                 Crime.ASSAULT -> listOf(
-                    "나는 그 플레이어에게 어떠한 피해도 입히지 않았다.",
-                    "그 피해는 전부 다른 플레이어가 가한 것이다.",
-                    "나는 사건 당시 전혀 다른 장소에 있었다.",
-                    "상대의 최대 체력 절반을 넘는 피해는 기록 오류다.",
-                    "내가 들고 있던 무기는 피해를 줄 수 없는 장식품이었다.",
-                    "상대가 받은 충격은 높은 곳에서 떨어졌기 때문에 발생했다.",
-                    "나는 상대를 향해 공격한 적이 없고 허공만 타격했다.",
-                    "대천칭이 기록한 공격자는 내 모습을 한 환영이었다.",
+                    "내가 가한 공격은 상대에게 실제 피해로 적용되지 않았다.",
+                    "나는 상대에게 접근했지만 직접 공격한 것은 아니었다.",
+                    "기록된 피해가 발생한 시점에는 나는 이미 공격을 멈춘 상태였다.",
+                    "나는 상대를 향해 공격했지만 실제로 적중하지는 않았다.",
+                    "상대가 받은 피해 중 내가 직접 가한 피해는 없었다.",
+                    "나는 상대와 가까이 있었지만 공격 행동은 하지 않았다.",
+                    "내 공격으로 보이는 행동은 다른 대상을 향한 것이었다.",
+                    "상대에게 피해가 발생하기 직전에 나는 이미 거리를 두고 있었다.",
+                    "나는 상대를 견제했을 뿐 실제 피해를 주지는 않았다.",
+                    "기록된 공격 직후 상대의 체력에는 변화가 없었다.",
+                    "나는 상대와 교전했지만 문제로 지적된 공격은 내가 한 것이 아니다.",
+                    "상대가 받은 큰 피해는 내가 공격하기 전에 이미 발생해 있었다.",
+                    "나는 상대에게 직접적인 공격 판정을 발생시키지 않았다.",
+                    "내가 사용한 행동은 상대에게 피해를 주는 종류가 아니었다.",
+                    "상대와 충돌한 것은 사실이지만 공격으로 이어지지는 않았다.",
+                    "나는 공격하려다 중단했기 때문에 실제 적중은 발생하지 않았다.",
+                    "기록된 시점에 상대를 공격한 사람은 나만 있었던 것이 아니다.",
+                    "내 공격 직후 발생한 피해는 다른 공격의 결과였다.",
+                    "나는 상대의 이동을 막았을 뿐 직접적인 피해를 주지는 않았다.",
+                    "상대가 받은 피해량은 내가 가할 수 있는 피해량과 일치하지 않는다.",
+                    "내가 공격 동작을 한 것은 맞지만 상대를 대상으로 한 것은 아니었다.",
+                    "상대에게 발생한 피해는 내가 공격 범위에서 벗어난 이후의 일이다.",
+                    "나는 교전에 참여했지만 해당 피해를 발생시킨 공격에는 관여하지 않았다.",
+                    "상대가 피해를 입은 순간 나는 다른 플레이어를 상대하고 있었다."
                 )
+
                 Crime.INJURY -> listOf(
-                    "나는 그 플레이어와 교전한 사실 자체가 없다.",
-                    "상대는 나를 만나기 전부터 이미 다쳐 있었다.",
-                    "내 공격은 한 번도 상대에게 닿지 않았다.",
-                    "기록된 피해는 다른 사람의 공격이다.",
-                    "상대가 입은 상처는 자신의 능력 때문에 생긴 것이다.",
-                    "나는 회복 능력만 사용했으므로 상해를 입힐 수 없었다.",
-                    "사건 당시 상대와 나는 서로 다른 좌표에 있었다.",
-                    "대천칭이 내 공격과 자연 피해를 혼동한 것이다.",
+                    "상대가 입은 상해는 나와 교전하기 전에 이미 발생해 있었다.",
+                    "내 공격 이후 상대의 상태가 악화된 것은 아니다.",
+                    "내가 가한 피해만으로는 기록된 정도의 상해가 발생할 수 없었다.",
+                    "상대가 크게 다친 시점에는 나는 더 이상 공격하고 있지 않았다.",
+                    "내 공격이 적중한 것은 맞지만 상해를 발생시킬 정도의 피해는 아니었다.",
+                    "상대의 체력 감소 대부분은 다른 원인으로 발생했다.",
+                    "나는 상대에게 직접적인 피해를 주는 능력을 사용하지 않았다.",
+                    "문제가 된 상처는 내가 공격하기 전부터 존재했다.",
+                    "내가 마지막으로 공격했을 때 상대는 아직 정상적인 상태였다.",
+                    "상대에게 발생한 큰 피해는 내 공격과 시간적으로 일치하지 않는다.",
+                    "나는 상대를 공격했지만 기록된 상해와는 관련이 없다.",
+                    "내 공격 이후 추가적인 피해가 발생하면서 상태가 악화된 것이다.",
+                    "상대가 부상을 입은 순간 나는 공격 범위 밖에 있었다.",
+                    "내가 가한 피해는 상대가 입은 전체 피해 중 극히 일부였다.",
+                    "나는 상대와 충돌했지만 직접적인 상해를 입히지는 않았다.",
+                    "상대의 상태가 악화된 원인은 내가 사용한 공격이 아니었다.",
+                    "나는 피해를 발생시킨 공격이 아니라 그보다 이전의 공격만 했다.",
+                    "상대가 다친 원인은 다른 플레이어와의 교전이었다.",
+                    "내 행동과 상대의 부상이 거의 동시에 발생했을 뿐 직접적인 관계는 없다.",
+                    "나는 상대의 체력이 충분한 상태에서 이미 교전을 중단했다.",
+                    "문제가 된 피해가 발생했을 때 나는 다른 대상을 상대하고 있었다.",
+                    "상대가 받은 피해량은 내 공격으로 발생할 수 있는 범위를 넘어선다.",
+                    "나는 해당 시점에 상대에게 피해 판정을 발생시키지 않았다.",
+                    "내 공격 이후 상대가 받은 추가 피해가 실제 상해의 원인이었다."
                 )
+
                 Crime.ABUSE -> listOf(
-                    "나는 10초 동안 능력을 한 번도 사용하지 않았다.",
-                    "능력 사용 기록은 모두 다른 플레이어의 것이다.",
-                    "나는 사건 당시 침묵 상태여서 능력을 쓸 수 없었다.",
-                    "세 번의 능력 사용은 전부 하나의 능력으로 계산된 오류다.",
-                    "나는 재사용 대기 중이어서 연속으로 능력을 사용할 수 없었다.",
-                    "기록된 능력은 실제 발동하지 않고 취소된 행동이었다.",
-                    "능력 사용음만 들렸을 뿐 나는 아무것도 발동하지 않았다.",
-                    "대천칭이 다른 사람의 능력을 내 기록에 합산했다.",
+                    "기록된 능력 사용 중 일부는 실제 발동까지 이어지지 않았다.",
+                    "나는 짧은 시간 동안 여러 번 시도했지만 실제 발동 횟수는 그보다 적었다.",
+                    "연속된 기록 가운데 일부는 같은 능력 사용을 중복해서 기록한 것이다.",
+                    "나는 능력을 사용한 것이 아니라 사용 준비 상태에 들어갔을 뿐이다.",
+                    "기록된 횟수에는 다른 플레이어의 능력 사용도 포함되어 있다.",
+                    "나는 해당 시간 동안 능력을 세 번 이상 사용하지 않았다.",
+                    "능력 사용으로 기록된 행동 중 하나는 재사용에 실패한 행동이었다.",
+                    "같은 효과가 여러 번 발생했지만 실제 능력 사용은 한 번이었다.",
+                    "나는 능력을 연속해서 사용한 것이 아니라 서로 충분한 간격을 두고 사용했다.",
+                    "기록된 마지막 능력 사용은 내가 한 행동이 아니다.",
+                    "나는 해당 시간 구간이 시작되기 전에 이미 첫 능력을 사용했다.",
+                    "문제가 된 사용 횟수 중 하나는 지속 중인 효과가 다시 발생한 것이다.",
+                    "나는 능력을 발동하려 했지만 실제 효과는 발생하지 않았다.",
+                    "내 능력 사용 기록에는 자동으로 발생한 효과도 포함되어 있다.",
+                    "나는 같은 능력을 반복해서 사용하지 않았다.",
+                    "기록된 능력 중 일부는 장비 효과였으며 직접 사용한 능력이 아니다.",
+                    "문제가 된 시간 동안 실제로 내가 조작해 사용한 능력은 두 번뿐이었다.",
+                    "능력 효과가 여러 차례 발생했지만 입력한 횟수는 그보다 적었다.",
+                    "내가 사용한 능력 하나가 여러 개의 효과를 발생시킨 것이다.",
+                    "마지막 사용 기록은 이미 종료된 능력의 후속 효과였다.",
+                    "나는 능력 사용 사이에 충분한 재사용 간격을 두었다.",
+                    "기록상 연속 사용으로 보이지만 실제로는 서로 다른 시점의 행동이다.",
+                    "일부 효과는 다른 플레이어가 내게 적용한 것이었다.",
+                    "나는 문제로 지적된 횟수만큼 능력을 직접 발동하지 않았다."
                 )
+
                 Crime.ESCAPE -> listOf(
-                    "나는 교전 내내 한 블록도 움직이지 않았다.",
-                    "상대가 멀어진 것이며 나는 제자리에 있었다.",
-                    "나는 사건 당시 다른 차원에 있었다.",
-                    "기록된 거리는 순간이동 오류로 생겼다.",
-                    "나는 상대를 추격했을 뿐 반대 방향으로 도망치지 않았다.",
-                    "월드보더가 나를 강제로 밀어냈기 때문에 이동한 것이다.",
-                    "상대와의 거리는 처음부터 열네 칸보다 멀었다.",
-                    "내 위치가 움직여 보인 것은 잔상 때문이었다.",
+                    "나는 상대에게서 멀어진 것이 아니라 옆 방향으로 위치를 바꾼 것이다.",
+                    "교전 종료 시점의 거리는 교전 시작 시점과 크게 다르지 않았다.",
+                    "나는 상대에게서 도망친 것이 아니라 공격을 피하기 위해 이동했다.",
+                    "문제가 된 이동 대부분은 상대가 내게서 멀어진 결과였다.",
+                    "나는 일정 거리 이상 상대에게서 벗어난 적이 없다.",
+                    "나는 상대를 시야에서 놓치지 않은 채 위치만 변경했다.",
+                    "내 이동 방향은 상대와 정확히 반대 방향이 아니었다.",
+                    "나는 오히려 다른 경로로 상대에게 다시 접근하고 있었다.",
+                    "거리가 벌어진 시점에는 이미 교전이 종료된 상태였다.",
+                    "상대와의 거리가 크게 벌어진 것은 상대가 이동했기 때문이다.",
+                    "나는 교전 중 상대에게서 지속적으로 멀어지지 않았다.",
+                    "문제가 된 이동은 공격을 피하기 위한 짧은 회피였다.",
+                    "나는 상대에게 등을 돌린 채 계속 이동한 적이 없다.",
+                    "거리 변화는 순간적인 것이었고 곧 다시 상대에게 접근했다.",
+                    "나는 도주 경로가 아니라 상대의 측면으로 이동하고 있었다.",
+                    "교전 중 가장 멀어진 순간에도 상대를 계속 공격할 수 있는 위치였다.",
+                    "나는 상대가 접근하자 위치를 조정했을 뿐 전장을 벗어나지 않았다.",
+                    "상대와의 거리가 벌어지기 시작한 것은 내가 아니라 상대가 먼저 이동한 이후였다.",
+                    "나는 교전 장소를 떠난 것이 아니라 같은 구역 안에서 이동했다.",
+                    "문제로 지적된 거리만큼 실제로 이동하지 않았다.",
+                    "나는 상대에게서 멀어졌다가 즉시 다시 접근했다.",
+                    "상대와 멀어진 순간에도 다른 적과 계속 교전하고 있었다.",
+                    "나는 후퇴한 것이 아니라 공격 각도를 바꾸기 위해 이동했다.",
+                    "내 이동은 상대와 거리를 벌리기 위한 행동이 아니었다."
                 )
+
                 Crime.MURDER -> listOf(
-                    "나는 그 플레이어를 살해하지 않았다.",
-                    "결정적인 공격은 다른 플레이어가 가했다.",
-                    "피해자는 나와 싸우기 전에 이미 사망했다.",
-                    "나는 사건 당시 피해자와 같은 월드에 없었다.",
-                    "피해자는 내 공격이 아니라 월드보더 때문에 사망했다.",
-                    "마지막 일격으로 기록된 공격은 실제 피해가 없었다.",
-                    "피해자의 사망 메시지에 표시된 이름은 내 이름이 아니었다.",
-                    "나는 피해자를 살리려고 했지만 대천칭이 행동을 반대로 기록했다.",
+                    "내 공격이 마지막으로 적중한 것은 맞지만 직접적인 사망 원인은 아니었다.",
+                    "피해자가 사망한 순간에는 내가 공격하고 있지 않았다.",
+                    "내 마지막 공격 이후에도 피해자는 생존한 상태였다.",
+                    "결정적인 피해는 내가 아닌 다른 공격에서 발생했다.",
+                    "나는 피해자의 체력을 사망할 정도까지 감소시키지 않았다.",
+                    "피해자는 내 공격 이후 다른 피해를 추가로 받았다.",
+                    "내 공격과 피해자의 사망 사이에는 다른 교전이 있었다.",
+                    "나는 피해자에게 마지막으로 피해를 준 플레이어가 아니다.",
+                    "피해자가 사망할 당시 나는 이미 교전에서 벗어난 상태였다.",
+                    "내 공격은 피해자의 사망 직전 공격이 아니었다.",
+                    "피해자는 나와 교전한 뒤에도 계속 움직이며 다른 플레이어와 싸웠다.",
+                    "내가 마지막으로 본 피해자는 아직 충분한 체력을 가지고 있었다.",
+                    "피해자를 쓰러뜨린 최종 공격은 내 공격이 아니었다.",
+                    "나는 피해자와 싸운 것은 맞지만 사망까지 이어지지는 않았다.",
+                    "피해자가 받은 치명적인 피해는 내가 공격을 중단한 이후 발생했다.",
+                    "내 공격 직후 피해자가 사망한 것이 아니라 일정 시간이 지난 뒤 사망했다.",
+                    "나는 피해자의 마지막 교전 상대가 아니었다.",
+                    "피해자의 체력이 치명적인 수준으로 감소한 것은 내 공격 이후였다.",
+                    "사망 직전 발생한 피해는 내가 사용할 수 없는 종류의 공격이었다.",
+                    "나는 피해자가 사망하기 전에 이미 다른 장소로 이동했다.",
+                    "내가 가한 마지막 피해만으로는 피해자가 사망할 수 없었다.",
+                    "피해자가 사망한 시점에는 다른 플레이어도 피해자와 교전하고 있었다.",
+                    "내 공격으로 피해자가 쓰러진 것이 아니라 이후 발생한 피해 때문에 사망했다.",
+                    "나는 피해자에게 피해를 준 적은 있지만 마지막 일격은 가하지 않았다."
                 )
             }
+
             val genericLies = listOf(
-                "모든 증거는 판사가 조작한 것이므로 인정할 수 없다.",
-                "목격자들의 기억이 모두 틀렸고 내 기억만 정확하다.",
-                "대천칭의 기록은 나와 이름이 같은 다른 사람에 대한 것이다.",
-                "나는 그 순간 아무 행동도 하지 않았다고 확신한다.",
-                "기록에 남은 시간은 내가 접속하기 전의 시간이다.",
-                "사건 현장에 보인 것은 내가 아니라 완벽하게 닮은 분신이었다.",
-                "증거에 기록된 좌표는 존재하지 않는 장소다.",
-                "내 장비에는 공격이나 능력 사용 기능이 전혀 없었다.",
-                "사건 당시 나는 인벤토리를 정리하고 있었을 뿐이다.",
-                "모든 파티클과 소리는 다른 사람의 행동에서 나온 것이다.",
-                "내 이름이 기록된 것은 서버의 표시 오류 때문이다.",
-                "나는 사건 직전부터 사건이 끝날 때까지 움직이지 않았다.",
-                "증거에 등장하는 플레이어를 지금까지 한 번도 본 적이 없다.",
-                "대천칭이 과거 라운드의 기록을 현재 기록과 혼동했다.",
-                "당시 내 시야에는 어떠한 적도 보이지 않았다.",
-                "나는 재판에 오기 전까지 사건이 발생한 사실조차 몰랐다.",
-                "기록된 행동은 내가 아니라 소환된 객체가 수행한 것이다.",
-                "사건의 모든 결과는 우연히 동시에 발생했을 뿐이다.",
+                "기록된 행동 중 일부는 내가 한 행동이지만 문제로 지적된 행동은 아니다.",
+                "사건 당시 나는 기록에 표시된 대상과 다른 플레이어를 상대하고 있었다.",
+                "내 행동과 사건의 결과가 같은 시점에 발생했을 뿐 직접적인 관계는 없다.",
+                "기록된 순서와 실제로 행동한 순서는 다르다.",
+                "문제가 된 행동이 발생했을 때 나는 이미 다른 행동을 하고 있었다.",
+                "기록에 포함된 행동 중 일부만 내가 직접 수행한 것이다.",
+                "내가 현장에 있었던 것은 맞지만 해당 행동에는 관여하지 않았다.",
+                "나는 사건을 목격했을 뿐 직접적인 원인을 제공하지 않았다.",
+                "기록된 대상과 내가 실제로 상대한 대상은 서로 다르다.",
+                "내 행동 직후 사건이 발생했지만 내 행동 때문에 발생한 것은 아니다.",
+                "나는 해당 플레이어와 접촉했지만 문제로 지적된 행동은 하지 않았다.",
+                "문제가 된 시점에 나는 이미 해당 플레이어와의 교전을 끝낸 상태였다.",
+                "나는 비슷한 행동을 한 것은 맞지만 기록된 시점의 행동은 내가 한 것이 아니다.",
+                "내 행동은 기록되어 있지만 사건의 직접적인 원인은 아니었다.",
+                "나는 사건 직전에 현장을 벗어나고 있었다.",
+                "기록된 시간에는 내가 다른 플레이어와 행동하고 있었다.",
+                "내가 사용한 행동과 증거에 기록된 행동은 종류가 다르다.",
+                "나는 사건에 관여했지만 기록에서 주장하는 방식으로 관여한 것은 아니다.",
+                "문제가 된 결과는 내가 행동을 끝낸 이후에 발생했다.",
+                "나는 해당 상황에 참여했지만 직접적인 피해를 발생시키지는 않았다.",
+                "기록된 행동과 내가 실제로 한 행동 사이에는 시간 차이가 있다.",
+                "나는 해당 플레이어를 대상으로 행동하지 않았다.",
+                "내가 현장에 있었기 때문에 행동의 주체로 오해된 것이다.",
+                "나는 비슷한 위치에 있었지만 증거가 가리키는 행동은 수행하지 않았다.",
+                "문제가 된 행동 직전에는 내가 같은 종류의 행동을 한 적이 없다.",
+                "내 행동으로 보이는 기록 중 일부는 다른 전투에서 발생한 것이다.",
+                "기록된 결과가 발생하기 전에 나는 이미 행동을 중단했다.",
+                "나는 해당 사건과 같은 시간대에 다른 교전에 참여하고 있었다.",
+                "증거에 기록된 행동의 대상은 내가 상대하던 대상과 일치하지 않는다.",
+                "나는 사건에 영향을 줄 수 있는 위치에 있지 않았다.",
+                "내가 행동한 시점과 사건이 발생한 시점은 서로 일치하지 않는다.",
+                "나는 문제의 결과가 발생하기 전에 이미 상대와 거리를 두고 있었다.",
+                "해당 결과가 발생한 것은 사실이지만 그것을 발생시킨 행동은 내가 하지 않았다.",
+                "나는 사건 현장을 지나갔지만 교전에는 참여하지 않았다.",
+                "기록에 등장하는 행동 중 내가 인정할 수 있는 것은 일부뿐이다.",
+                "나는 해당 상황에 있었지만 증거에서 주장하는 행동은 하지 않았다.",
+                "내가 수행한 행동은 사건의 결과와 직접 연결되지 않는다.",
+                "기록된 결과가 발생할 당시 나는 다른 방향을 보고 있었다.",
+                "문제가 된 행동 이전에 나는 이미 해당 행동을 끝낸 상태였다.",
+                "나는 사건의 일부를 목격했지만 직접 개입하지는 않았다.",
+                "몰랐다."
             )
-            val lies = (crimeSpecificLies + genericLies).distinct().shuffled().take(REFEREE_DEFENSE_LIE_COUNT)
+
+            val lies = (crimeSpecificLies + genericLies)
+                .distinct()
+                .shuffled()
+                .take(REFEREE_DEFENSE_LIE_COUNT)
+
             return buildList {
                 add(DefenseOption(truth, DefenseKind.TRUTH))
-                lies.forEach { add(DefenseOption(it, DefenseKind.LIE)) }
-                add(DefenseOption("해당 죄목의 사실을 인정하고 판결을 받아들이겠다.", DefenseKind.ADMISSION))
+
+                lies.forEach {
+                    add(DefenseOption(it, DefenseKind.LIE))
+                }
+
+                add(
+                    DefenseOption(
+                        "해당 죄목의 사실을 인정하고 판결을 받아들이겠다.",
+                        DefenseKind.ADMISSION
+                    )
+                )
             }.shuffled()
         }
     }
@@ -791,7 +1062,7 @@ class Referee : GameClass(), GameStatusHandler {
                 val duration = 10 * multiplier
                 target.addStatus(Snare(), playerData).applyStatus(duration = duration, powerSet = 1)
                 target.addStatus(Silence(), playerData).applyStatus(duration = duration, powerSet = 1)
-                applyTemporaryDisarm(target, duration)
+                target.addStatus(Disarm(), playerData).applyStatus(duration = duration, powerSet = 1)
             }
             Crime.ABUSE -> {
                 val cooldownMultiplier = if (perjury) 4.0 else 2.0
@@ -800,7 +1071,7 @@ class Referee : GameClass(), GameStatusHandler {
             Crime.ESCAPE -> {
                 val duration = 10 * multiplier
                 target.addStatus(Snare(), playerData).applyStatus(duration = duration, powerSet = 1)
-                applyRadiation(target, duration)
+                target.addStatus(Radiation(), playerData).applyStatus(duration = duration, powerSet = 1)
             }
             Crime.MURDER -> {
                 target.player.sendMiniMessage(if (perjury) "<dark_red><bold>위증이 확인되어 즉시 처형합니다." else "<red><bold>사형을 집행합니다.")
@@ -813,24 +1084,6 @@ class Referee : GameClass(), GameStatusHandler {
         }
     }
 
-    private fun applyTemporaryDisarm(target: PlayerData, seconds: Int) {
-        val prior = target.entityStatus.canAttack
-        target.entityStatus.canAttack = false
-        target.addStatus(CourtDisarmStatus(), playerData).applyStatus(duration = seconds, powerSet = 1)
-        object : BukkitRunnable() {
-            override fun run() { if (!target.entityStatus.isDead) target.entityStatus.canAttack = prior }
-        }.runTaskLater(ClassWarPlugin.instance, seconds * 20L).also(target::trackTask)
-    }
-
-    private fun applyRadiation(target: PlayerData, seconds: Int) {
-        val prior = target.player.isGlowing
-        target.player.isGlowing = true
-        target.addStatus(RadiationStatus(), playerData).applyStatus(duration = seconds, powerSet = 1)
-        object : BukkitRunnable() {
-            override fun run() { if (target.player.isOnline) target.player.isGlowing = prior }
-        }.runTaskLater(ClassWarPlugin.instance, seconds * 20L).also(target::trackTask)
-    }
-
     private class CourtOrderStatus : StatusAbnormality() {
         override val name = "<gold><bold>재판 명령</bold><gray>"
         override val description = listOf("<gray>침묵 · 무장해제 · 무적 상태이며 게임 시간이 정지한다.")
@@ -841,27 +1094,8 @@ class Referee : GameClass(), GameStatusHandler {
         override val showMaxPower = false
     }
 
-    private class CourtDisarmStatus : StatusAbnormality() {
-        override val name = "<dark_gray><bold>무장해제</bold><gray>"
-        override val description = listOf("<gray>기본 공격을 사용할 수 없다.")
-        override val canRemove = true
-        override var power = 1
-        override var maxPower: Int? = 1
-        override val showPower = false
-        override val showMaxPower = false
-    }
-
-    private class RadiationStatus : StatusAbnormality() {
-        override val name = "<white><bold>발광</bold><gray>"
-        override val description = listOf("<gray>주변 플레이어에게 위치가 드러난다.")
-        override val canRemove = true
-        override var power = 1
-        override var maxPower: Int? = 1
-        override val showPower = false
-        override val showMaxPower = false
-    }
-
     companion object {
+        private const val PROSECUTION_RANGE = 10.0
         private val activeReferees = mutableMapOf<UUID, Referee>()
         private val activeTrials = IdentityHashMap<Game, TrialSession>()
         private val activeTrialPlayers = mutableMapOf<UUID, TrialSession>()

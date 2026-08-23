@@ -3,6 +3,7 @@ package org.beobma.classWarPlugin.listener
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.info.Info
 import org.beobma.classWarPlugin.manager.GameManager.trainingInstance
+import org.beobma.classWarPlugin.manager.GameManager.canDispatchClassHandlers
 import org.beobma.classWarPlugin.status.handler.StatusPlayerMoveHandler
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -35,6 +36,7 @@ class OnPlayerMoveEvent : Listener {
                 return
             }
         }
+        if (!playerData.canDispatchClassHandlers()) return
         val gameClass = playerData.gameClass ?: return
 
         if (gameClass is StatusPlayerMoveHandler) {

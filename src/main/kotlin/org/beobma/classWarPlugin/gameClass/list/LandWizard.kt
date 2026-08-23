@@ -153,9 +153,9 @@ class LandWizard : GameClass(), GameStatusHandler {
             "{keyword:Shield}을 보유한 동안 <gold><bold>기본 공격으로 받는 피해가 30% 감소</bold><gray>한다."
         )
 
-        override fun whenAttackHit(event: DamageContext) {
+        override fun whenAttackHit(context: DamageContext) {
             if (playerData.hasStatus<Shield>()) {
-                event.addDamageTakenMultiplier(LAND_WIZARD_SHIELD_DAMAGE_TAKEN_MULTIPLIER)
+                context.addDamageTakenMultiplier(LAND_WIZARD_SHIELD_DAMAGE_TAKEN_MULTIPLIER)
             }
         }
     }

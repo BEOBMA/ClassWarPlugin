@@ -57,13 +57,30 @@ object GameManager {
     private const val RECONNECT_GRACE_TICKS = 5L * 60L * 20L
     private const val SPAWN_ESCAPE_DISTANCE = 16
     private const val SPAWN_ESCAPE_MAX_VISITED_NODES = 2_500
-    private const val FINAL_BORDER_DESCENT_SECONDS = 180
+    private const val SPAWN_SEARCH_ATTEMPTS = 750
+    private const val SPAWN_BORDER_FALLBACK_ATTEMPTS = 1_500
+    private const val SPAWN_BORDER_MARGIN = 0.35
+    private const val SPAWN_BORDER_FALLBACK_MAX_RADIUS = 1_024.0
     private const val FINAL_BORDER_DISPLAY_TILE_SIZE = 4.0
     private const val FINAL_BORDER_MAX_TILES_PER_AXIS = 20
     private const val FINAL_BORDER_UPDATE_INTERVAL_TICKS = 2L
+    private const val FINAL_BORDER_DAMAGE_INTERVAL_TICKS = 20L
+    private const val FINAL_BORDER_DAMAGE = 2.0
     private val pendingPostGameCleanup: MutableMap<UUID, PlayerSnapshot> = mutableMapOf()
 
     private data class SpawnPathNode(val x: Int, val y: Int, val z: Int)
+
+    private data class SpawnBoundary(
+        val minX: Double,
+        val maxX: Double,
+        val minZ: Double,
+        val maxZ: Double,
+    ) {
+        fun contains(x: Double, z: Double): Boolean =
+            x in minX..maxX && z in minZ..maxZ
+
+        fun contains(location: Location): Boolean = contains(location.x, location.z)
+    }
 
     private val gameClassFactories: List<() -> GameClass> = listOf(
         ::Berserker, ::Sniper, ::Meteor, ::TimeManiqulator, ::LandWizard,
@@ -219,7 +236,7 @@ object GameManager {
         selectRandomRoundCenter()
         val spawnPoints = findSpawnLocations(gameWorld, participants.size)
         if (spawnPoints == null) {
-            sendNotification("설정된 범위에서 안전한 시작 지점을 충분히 찾지 못했습니다. 산개 설정을 확인해 주세요.")
+            sendNotification("월드보더 내부에서 안전한 시작 지점을 충분히 찾지 못했습니다. 산개 및 월드보더 설정을 확인해 주세요.")
             stop()
             return
         }
@@ -262,8 +279,18 @@ object GameManager {
     private fun Game.scatterAndBegin() {
         phase = GamePhase.SCATTERING
         val participants = contenders()
-        if (spawnLocations.size < participants.size) {
-            sendNotification("산개 위치가 부족하여 게임을 종료합니다.")
+        if (spawnLocations.size < participants.size || spawnLocations.any { !isAbsoluteSpawnLocation(it) }) {
+            val replacementLocations = findSpawnLocations(gameWorld, participants.size)
+            if (replacementLocations == null) {
+                sendNotification("월드보더 내부에서 안전한 산개 위치를 확보하지 못해 게임을 종료합니다.")
+                stop()
+                return
+            }
+            spawnLocations.clear()
+            spawnLocations.addAll(replacementLocations)
+        }
+        if (spawnLocations.any { !isAbsoluteSpawnLocation(it) }) {
+            sendNotification("월드보더 외부 산개가 감지되어 게임을 종료합니다.")
             stop()
             return
         }
@@ -273,9 +300,14 @@ object GameManager {
             val playerId = playerData.player.uniqueId
             assignedSpawnLocations[playerId] = location.clone()
             if (!playerData.player.isOnline) return@forEach
-            playerData.player.teleport(location)
+            if (!isAbsoluteSpawnLocation(location) || !playerData.player.teleport(location)) {
+                sendNotification("월드보더 내부 산개에 실패하여 게임을 종료합니다.")
+                stop()
+                return
+            }
             initializeBattlePlayer(playerData)
         }
+        if (phase == GamePhase.FINISHED) return
         beginBattle()
     }
 
@@ -430,16 +462,17 @@ object GameManager {
         clearFinalBorderDisplays()
 
         val world = gameWorld
-        val coveredSize = borderSize.coerceAtLeast(1.0)
-        val tilesPerAxis = ceil(coveredSize / FINAL_BORDER_DISPLAY_TILE_SIZE).toInt()
+        val initialCoveredSize = borderSize.coerceAtLeast(1.0)
+        val targetCoveredSize = settings.borderInitialSize.coerceAtLeast(initialCoveredSize)
+        val tilesPerAxis = ceil(targetCoveredSize / FINAL_BORDER_DISPLAY_TILE_SIZE).toInt()
             .coerceIn(1, FINAL_BORDER_MAX_TILES_PER_AXIS)
-        val tileSpan = coveredSize / tilesPerAxis
+        val tileSpan = initialCoveredSize / tilesPerAxis
         val visibleTileSpan = (tileSpan * 0.965).toFloat()
         val tileInset = ((tileSpan - visibleTileSpan) * 0.5).toFloat()
         val startY = (world.maxHeight - 1).toDouble()
         val endY = (world.minHeight + 1).toDouble()
-        val minimumX = centerX - coveredSize * 0.5
-        val minimumZ = centerZ - coveredSize * 0.5
+        val minimumX = centerX - initialCoveredSize * 0.5
+        val minimumZ = centerZ - initialCoveredSize * 0.5
 
         repeat(tilesPerAxis) { xIndex ->
             repeat(tilesPerAxis) { zIndex ->
@@ -471,8 +504,9 @@ object GameManager {
         borderBossBar = bossBar
         bossBar.color(BossBar.Color.RED)
         bossBar.progress(1.0F)
-        bossBar.name(miniMessage.deserialize("<dark_red><bold>상공 자기장 하강 중 ${formatTime(FINAL_BORDER_DESCENT_SECONDS)}"))
-        sendNotification("<dark_red><bold>최종 자기장이 상공에서 하강하기 시작합니다.")
+        val descentSeconds = settings.finalBorderDescentSeconds
+        bossBar.name(miniMessage.deserialize("<dark_red><bold>상공 자기장 확장·하강 중 ${formatTime(descentSeconds)}"))
+        sendNotification("<dark_red><bold>최종 자기장이 맵 전체로 확장되며 상공에서 하강하기 시작합니다.")
         activePlayers().filter { it.player.isOnline }.forEach { playerData ->
             playerData.player.playSound(
                 playerData.player.location,
@@ -490,8 +524,10 @@ object GameManager {
             )
         }
 
-        val totalTicks = FINAL_BORDER_DESCENT_SECONDS * 20L
+        val totalTicks = descentSeconds * 20L
         var elapsedTicks = 0L
+        var descentCompleted = false
+        val lastDamageTicks = mutableMapOf<UUID, Long>()
         val descentTask = object : BukkitRunnable() {
             override fun run() {
                 if (phase != GamePhase.RUNNING) {
@@ -503,26 +539,52 @@ object GameManager {
                 }
                 if (isPaused) return
 
-                val progress = (elapsedTicks.toDouble() / totalTicks).coerceIn(0.0, 1.0)
+                val progress = if (totalTicks == 0L) {
+                    1.0
+                } else {
+                    (elapsedTicks.toDouble() / totalTicks).coerceIn(0.0, 1.0)
+                }
+                val easedProgress = progress * progress * (3.0 - 2.0 * progress)
                 val currentY = startY + (endY - startY) * progress
-                finalBorderDisplays.toList().forEach { display ->
-                    if (!display.isValid) {
-                        finalBorderDisplays.remove(display)
-                        return@forEach
-                    }
-                    display.teleport(display.location.apply { y = currentY })
+                val currentCenterX = centerX + (roundCenterX - centerX) * easedProgress
+                val currentCenterZ = centerZ + (roundCenterZ - centerZ) * easedProgress
+                val currentCoveredSize = initialCoveredSize +
+                    (targetCoveredSize - initialCoveredSize) * easedProgress
+                if (!descentCompleted) {
+                    updateFinalBorderDisplays(
+                        currentCenterX,
+                        currentCenterZ,
+                        currentY,
+                        currentCoveredSize,
+                        tilesPerAxis,
+                    )
+                }
+                applyFinalBorderDamage(
+                    currentCenterX,
+                    currentCenterZ,
+                    currentY,
+                    currentCoveredSize,
+                    lastDamageTicks,
+                    descentCompleted,
+                )
+                if (phase != GamePhase.RUNNING) {
+                    cancel()
+                    return
                 }
 
                 val remainingTicks = (totalTicks - elapsedTicks).coerceAtLeast(0L)
-                bossBar.progress((1.0 - progress).toFloat().coerceIn(0.0F, 1.0F))
-                if (elapsedTicks % 20L == 0L) {
+                if (!descentCompleted) {
+                    bossBar.progress((1.0 - progress).toFloat().coerceIn(0.0F, 1.0F))
+                }
+                if (!descentCompleted && elapsedTicks % 20L == 0L) {
                     val remainingSeconds = ((remainingTicks + 19L) / 20L).toInt()
                     bossBar.name(miniMessage.deserialize(
-                        "<dark_red><bold>상공 자기장 하강 중 ${formatTime(remainingSeconds)}"
+                        "<dark_red><bold>상공 자기장 확장·하강 중 ${formatTime(remainingSeconds)}"
                     ))
                 }
 
-                if (elapsedTicks >= totalTicks) {
+                if (!descentCompleted && elapsedTicks >= totalTicks) {
+                    descentCompleted = true
                     bossBar.progress(0.0F)
                     bossBar.name(miniMessage.deserialize("<red><bold>최종 자기장이 맵 전체를 덮었습니다"))
                     activePlayers().filter { it.player.isOnline }.forEach { playerData ->
@@ -534,10 +596,10 @@ object GameManager {
                             0.5F,
                         )
                     }
-                    cancel()
-                    return
                 }
-                elapsedTicks = (elapsedTicks + FINAL_BORDER_UPDATE_INTERVAL_TICKS).coerceAtMost(totalTicks)
+                if (!descentCompleted) {
+                    elapsedTicks = (elapsedTicks + FINAL_BORDER_UPDATE_INTERVAL_TICKS).coerceAtMost(totalTicks)
+                }
             }
         }.runTaskTimer(
             ClassWarPlugin.instance,
@@ -545,6 +607,109 @@ object GameManager {
             FINAL_BORDER_UPDATE_INTERVAL_TICKS,
         )
         track(descentTask)
+    }
+
+    private fun Game.updateFinalBorderDisplays(
+        centerX: Double,
+        centerZ: Double,
+        y: Double,
+        coveredSize: Double,
+        tilesPerAxis: Int,
+    ) {
+        val tileSpan = coveredSize / tilesPerAxis
+        val visibleTileSpan = (tileSpan * 0.965).toFloat()
+        val tileInset = ((tileSpan - visibleTileSpan) * 0.5).toFloat()
+        val minimumX = centerX - coveredSize * 0.5
+        val minimumZ = centerZ - coveredSize * 0.5
+        finalBorderDisplays.forEachIndexed { index, display ->
+            if (!display.isValid) return@forEachIndexed
+            val xIndex = index / tilesPerAxis
+            val zIndex = index % tilesPerAxis
+            display.transformation = Transformation(
+                Vector3f(tileInset, -0.16F, tileInset),
+                Quaternionf(),
+                Vector3f(visibleTileSpan, 0.32F, visibleTileSpan),
+                Quaternionf(),
+            )
+            display.teleport(
+                Location(
+                    gameWorld,
+                    minimumX + xIndex * tileSpan,
+                    y,
+                    minimumZ + zIndex * tileSpan,
+                )
+            )
+        }
+    }
+
+    private fun Game.applyFinalBorderDamage(
+        centerX: Double,
+        centerZ: Double,
+        fieldY: Double,
+        coveredSize: Double,
+        lastDamageTicks: MutableMap<UUID, Long>,
+        fieldCompleted: Boolean,
+    ) {
+        val halfSize = coveredSize * 0.5
+        val minimumX = centerX - halfSize
+        val maximumX = centerX + halfSize
+        val minimumZ = centerZ - halfSize
+        val maximumZ = centerZ + halfSize
+        val currentTick = Bukkit.getCurrentTick().toLong()
+        val insidePlayers = mutableSetOf<UUID>()
+
+        contenders().filter { it.player.isOnline && it.player.world == gameWorld }.forEach { playerData ->
+            if (phase != GamePhase.RUNNING) return
+            val player = playerData.player
+            val box = player.boundingBox
+            val insideField = fieldCompleted ||
+                (box.maxX >= minimumX && box.minX <= maximumX &&
+                    box.maxZ >= minimumZ && box.minZ <= maximumZ &&
+                    box.maxY >= fieldY - 0.16)
+            if (!insideField) return@forEach
+
+            insidePlayers += player.uniqueId
+            val lastDamageTick = lastDamageTicks[player.uniqueId]
+            if (lastDamageTick != null && currentTick - lastDamageTick < FINAL_BORDER_DAMAGE_INTERVAL_TICKS) {
+                return@forEach
+            }
+            lastDamageTicks[player.uniqueId] = currentTick
+            if (fieldCompleted) {
+                applyFixedFinalBorderDamage(playerData)
+            } else {
+                player.damage(FINAL_BORDER_DAMAGE)
+            }
+            player.world.spawnParticle(
+                org.bukkit.Particle.BLOCK,
+                player.boundingBox.center.toLocation(player.world),
+                14,
+                0.45,
+                0.75,
+                0.45,
+                0.04,
+                Material.RED_STAINED_GLASS.createBlockData(),
+            )
+            player.playSound(
+                player.location,
+                Sound.BLOCK_RESPAWN_ANCHOR_AMBIENT,
+                SoundCategory.MASTER,
+                0.32F,
+                0.62F,
+            )
+            if (phase != GamePhase.RUNNING) return
+        }
+        lastDamageTicks.keys.retainAll(insidePlayers)
+    }
+
+    private fun Game.applyFixedFinalBorderDamage(playerData: PlayerData) {
+        val player = playerData.player
+        val appliedDamage = FINAL_BORDER_DAMAGE.coerceAtMost(player.health)
+        if (appliedDamage <= 0.0) return
+        (playerData.gameClass as? Grass)?.suppressStealthFromDamage()
+        CombatManager.recordDamageTaken(playerData)
+        DamageIndicatorManager.show(player, appliedDamage, settings.damageIndicatorsEnabled)
+        player.playHurtAnimation(0.0F)
+        player.health = (player.health - appliedDamage).coerceAtLeast(0.0)
     }
 
     private fun Game.clearFinalBorderDisplays() {
@@ -574,10 +739,12 @@ object GameManager {
     }
 
     private fun Game.findSpawnLocations(world: World, count: Int): List<Location>? {
+        val boundary = absoluteSpawnBoundary(world) ?: return null
+        val fallbackBoundary = fallbackSpawnBoundary(boundary)
         val result = mutableListOf<Location>()
         repeat(count) {
             var selected: Location? = null
-            repeat(750) {
+            repeat(SPAWN_SEARCH_ATTEMPTS) {
                 if (selected != null) return@repeat
                 val angle = Random.nextDouble(0.0, PI * 2.0)
                 val minimumRadius = minOf(settings.scatterMinRadius, settings.scatterMaxRadius)
@@ -590,15 +757,89 @@ object GameManager {
                 val x = floor(roundCenterX + cos(angle) * radius).toInt()
                 val z = floor(roundCenterZ + sin(angle) * radius).toInt()
                 val candidate = safeSurfaceLocation(world, x, z) ?: return@repeat
-                if (result.any { it.distanceSquared(candidate) < settings.minimumPlayerDistance * settings.minimumPlayerDistance }) {
-                    return@repeat
-                }
-                if (!hasSpawnEscapeRoute(world, candidate)) return@repeat
+                if (!isValidSpawnCandidate(world, candidate, result, boundary)) return@repeat
                 selected = candidate
+            }
+            if (selected == null) {
+                repeat(SPAWN_BORDER_FALLBACK_ATTEMPTS) {
+                    if (selected != null) return@repeat
+                    val x = randomBlockCoordinate(fallbackBoundary.minX, fallbackBoundary.maxX) ?: return@repeat
+                    val z = randomBlockCoordinate(fallbackBoundary.minZ, fallbackBoundary.maxZ) ?: return@repeat
+                    val candidate = safeSurfaceLocation(world, x, z) ?: return@repeat
+                    if (!isValidSpawnCandidate(world, candidate, result, boundary)) return@repeat
+                    selected = candidate
+                }
             }
             result.add(selected ?: return null)
         }
         return result
+    }
+
+    private fun Game.fallbackSpawnBoundary(boundary: SpawnBoundary): SpawnBoundary {
+        val configuredRadius = maxOf(settings.scatterMinRadius, settings.scatterMaxRadius)
+        val searchRadius = maxOf(configuredRadius, SPAWN_ESCAPE_DISTANCE * 2.0)
+            .coerceAtMost(SPAWN_BORDER_FALLBACK_MAX_RADIUS)
+        val anchorX = roundCenterX.coerceIn(boundary.minX, boundary.maxX)
+        val anchorZ = roundCenterZ.coerceIn(boundary.minZ, boundary.maxZ)
+        return SpawnBoundary(
+            minX = maxOf(boundary.minX, anchorX - searchRadius),
+            maxX = minOf(boundary.maxX, anchorX + searchRadius),
+            minZ = maxOf(boundary.minZ, anchorZ - searchRadius),
+            maxZ = minOf(boundary.maxZ, anchorZ + searchRadius),
+        )
+    }
+
+    private fun Game.absoluteSpawnBoundary(world: World): SpawnBoundary? {
+        val currentBorder = world.worldBorder
+        val currentCenter = currentBorder.center
+        val currentHalfSize = currentBorder.size / 2.0
+        var minX = currentCenter.x - currentHalfSize + SPAWN_BORDER_MARGIN
+        var maxX = currentCenter.x + currentHalfSize - SPAWN_BORDER_MARGIN
+        var minZ = currentCenter.z - currentHalfSize + SPAWN_BORDER_MARGIN
+        var maxZ = currentCenter.z + currentHalfSize - SPAWN_BORDER_MARGIN
+
+        if (settings.borderEnabled) {
+            val initialHalfSize = settings.borderInitialSize.coerceAtLeast(1.0) / 2.0
+            minX = maxOf(minX, roundCenterX - initialHalfSize + SPAWN_BORDER_MARGIN)
+            maxX = minOf(maxX, roundCenterX + initialHalfSize - SPAWN_BORDER_MARGIN)
+            minZ = maxOf(minZ, roundCenterZ - initialHalfSize + SPAWN_BORDER_MARGIN)
+            maxZ = minOf(maxZ, roundCenterZ + initialHalfSize - SPAWN_BORDER_MARGIN)
+        }
+
+        return if (minX <= maxX && minZ <= maxZ) {
+            SpawnBoundary(minX, maxX, minZ, maxZ)
+        } else {
+            null
+        }
+    }
+
+    private fun Game.isAbsoluteSpawnLocation(location: Location): Boolean {
+        if (location.world != gameWorld) return false
+        val boundary = absoluteSpawnBoundary(gameWorld) ?: return false
+        return gameWorld.worldBorder.isInside(location) && boundary.contains(location)
+    }
+
+    private fun Game.isValidSpawnCandidate(
+        world: World,
+        candidate: Location,
+        existing: List<Location>,
+        boundary: SpawnBoundary,
+    ): Boolean {
+        if (candidate.world != world || !world.worldBorder.isInside(candidate) || !boundary.contains(candidate)) return false
+        val minimumDistanceSquared = settings.minimumPlayerDistance * settings.minimumPlayerDistance
+        if (existing.any { it.distanceSquared(candidate) < minimumDistanceSquared }) return false
+        return hasSpawnEscapeRoute(world, candidate, boundary)
+    }
+
+    private fun randomBlockCoordinate(minimum: Double, maximum: Double): Int? {
+        val minimumBlock = ceil(minimum - 0.5).toInt()
+        val maximumBlock = floor(maximum - 0.5).toInt()
+        if (minimumBlock > maximumBlock) return null
+        return if (minimumBlock == maximumBlock) {
+            minimumBlock
+        } else {
+            Random.nextInt(minimumBlock, maximumBlock + 1)
+        }
     }
 
     private fun safeSurfaceLocation(world: World, x: Int, z: Int): Location? {
@@ -612,9 +853,9 @@ object GameManager {
         return Location(world, x + 0.5, y + 1.0, z + 0.5)
     }
 
-    private fun hasSpawnEscapeRoute(world: World, spawn: Location): Boolean {
+    private fun Game.hasSpawnEscapeRoute(world: World, spawn: Location, boundary: SpawnBoundary): Boolean {
         val start = SpawnPathNode(spawn.blockX, spawn.blockY, spawn.blockZ)
-        if (!isSafeStandingNode(world, start)) return false
+        if (!boundary.contains(spawn) || !isSafeStandingNode(world, start)) return false
 
         val queue = ArrayDeque<SpawnPathNode>()
         val visited = HashSet<SpawnPathNode>()
@@ -644,7 +885,8 @@ object GameManager {
                 if (horizontalX * horizontalX + horizontalZ * horizontalZ > requiredDistanceSquared + SPAWN_ESCAPE_DISTANCE) {
                     return@forEach
                 }
-                val nextY = findReachableStandingY(world, current, nextX, nextZ) ?: return@forEach
+                if (!boundary.contains(nextX + 0.5, nextZ + 0.5)) return@forEach
+                val nextY = findReachableStandingY(world, current, nextX, nextZ, boundary) ?: return@forEach
                 val next = SpawnPathNode(nextX, nextY, nextZ)
                 if (visited.add(next)) queue.addLast(next)
             }
@@ -652,7 +894,14 @@ object GameManager {
         return false
     }
 
-    private fun findReachableStandingY(world: World, current: SpawnPathNode, x: Int, z: Int): Int? {
+    private fun findReachableStandingY(
+        world: World,
+        current: SpawnPathNode,
+        x: Int,
+        z: Int,
+        boundary: SpawnBoundary,
+    ): Int? {
+        if (!boundary.contains(x + 0.5, z + 0.5)) return null
         for (verticalOffset in intArrayOf(1, 0, -1, -2, -3)) {
             val candidateY = current.y + verticalOffset
             val candidate = SpawnPathNode(x, candidateY, z)
@@ -848,7 +1097,16 @@ object GameManager {
 
             GamePhase.SCATTERING, GamePhase.RUNNING -> {
                 if (!currentGame.battleInitializedPlayers.contains(player.uniqueId)) {
-                    currentGame.assignedSpawnLocations[player.uniqueId]?.let { player.teleport(it) }
+                    val assigned = currentGame.assignedSpawnLocations[player.uniqueId]
+                    val destination = assigned?.takeIf { currentGame.isAbsoluteSpawnLocation(it) }
+                        ?: currentGame.findSpawnLocations(gameWorld, 1)?.firstOrNull()
+                    if (destination == null || !currentGame.isAbsoluteSpawnLocation(destination) || !player.teleport(destination)) {
+                        currentGame.disablePlayerInteraction(playerData)
+                        player.gameMode = GameMode.SPECTATOR
+                        player.sendMessage(miniMessage.deserialize("<red><bold>[!] 월드보더 내부의 안전한 복귀 지점을 찾지 못했습니다."))
+                        return
+                    }
+                    currentGame.assignedSpawnLocations[player.uniqueId] = destination.clone()
                     currentGame.initializeBattlePlayer(playerData)
                 }
                 playerData.entityStatus.canAttack = true
@@ -928,6 +1186,7 @@ object GameManager {
         val participantIds = activePlayers().map { it.uniqueId }
         activePlayers().forEach { data ->
             val assigned = data.gameClass ?: return@forEach
+            if (!assigned.isInjectedFor(data)) return@forEach
             assigned.passives.filterIsInstance<GameEndHandler>().forEach { it.onGameEnd() }
             (assigned as? GameEndHandler)?.onGameEnd()
         }
@@ -1004,6 +1263,13 @@ object GameManager {
             game
         }
 
+    fun PlayerData.canDispatchClassHandlers(): Boolean {
+        val assignedClass = gameClass ?: return false
+        if (!assignedClass.isInjectedFor(this)) return false
+        if (!initGame.battleInitializedPlayers.contains(uniqueId)) return false
+        return PlayerTagManager.hasTag(player, "isTraining") || initGame.phase == GamePhase.RUNNING
+    }
+
     fun Player.startTraining(gameClass: GameClass) {
         val trainingGame = Game(mutableListOf())
         val playerData = PlayerData(this, trainingGame)
@@ -1013,6 +1279,7 @@ object GameManager {
         trainingInstance.add(trainingGame)
         PlayerTagManager.addTag(this, "isTraining")
         playerData.classSet()
+        trainingGame.battleInitializedPlayers.add(uniqueId)
         inventory.heldItemSlot = 0
         showTitle(Title.title(miniMessage.deserialize("<bold>훈련 시작"), Component.empty()))
         playerData.entityStatus.canAttack = true
@@ -1033,6 +1300,7 @@ object GameManager {
         val trainingGame = trainingInstance.find { it.activePlayers().any { data -> data.player == this } } ?: return
         trainingGame.activePlayers().forEach { data ->
             val assigned = data.gameClass ?: return@forEach
+            if (!assigned.isInjectedFor(data)) return@forEach
             assigned.passives.filterIsInstance<GameEndHandler>().forEach { it.onGameEnd() }
             (assigned as? GameEndHandler)?.onGameEnd()
         }
@@ -1076,6 +1344,7 @@ object GameManager {
                     playerData.player.stopTraining()
                 } else {
                     playerData.gameClass?.let { assigned ->
+                        if (!assigned.isInjectedFor(playerData)) return@let
                         assigned.passives.filterIsInstance<GameEndHandler>().forEach { it.onGameEnd() }
                         (assigned as? GameEndHandler)?.onGameEnd()
                     }
@@ -1129,8 +1398,9 @@ object GameManager {
     }
 
     private fun Game.initializeBattlePlayer(playerData: PlayerData) {
-        if (!battleInitializedPlayers.add(playerData.uniqueId)) return
+        if (battleInitializedPlayers.contains(playerData.uniqueId)) return
         playerData.classSet()
+        battleInitializedPlayers.add(playerData.uniqueId)
         playerData.player.inventory.heldItemSlot = 0
     }
 

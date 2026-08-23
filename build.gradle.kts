@@ -43,7 +43,14 @@ val verifyShadowJarContents = tasks.register("verifyShadowJarContents") {
             .asFile
         val requiredEntries = listOf(
             "org/beobma/classWarPlugin/gameClass/list/TimeManiqulator.class",
+            "org/beobma/classWarPlugin/gameClass/list/GunBlader\$BulletStatus.class",
             "org/beobma/classWarPlugin/status/list/CheckpointStatus.class",
+            "org/beobma/classWarPlugin/status/list/GunBulletStatus.class",
+            "org/beobma/classWarPlugin/status/list/GamblerCardStatus.class",
+            "org/beobma/classWarPlugin/status/list/TimePhaseStatus.class",
+            "org/beobma/classWarPlugin/status/list/SniperAmmoStatus.class",
+            "org/beobma/classWarPlugin/status/list/SpiderWebChargeStatus.class",
+            "org/beobma/classWarPlugin/status/list/MathAnswerStackStatus.class",
         )
 
         ZipFile(shadowArchive).use { archive ->

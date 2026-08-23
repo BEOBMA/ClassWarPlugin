@@ -27,10 +27,11 @@ import kotlin.math.max
 
 // 밸런스 조정 상수
 private const val LIGHT_WIZARD_PRISM_COOLDOWN_SECONDS = 1
-private const val LIGHT_WIZARD_SPECTRUM_COOLDOWN_SECONDS = 20
+private const val LIGHT_WIZARD_SPECTRUM_COOLDOWN_SECONDS = 10
 private const val LIGHT_WIZARD_PRIMARY_BEAM_DAMAGE = 8.0
 private const val LIGHT_WIZARD_SPLIT_BEAM_DAMAGE = 4.0
 private const val LIGHT_WIZARD_MIN_BEAM_DAMAGE = 1.0
+private const val LIGHT_WIZARD_MAX_PRISMS = 5
 
 class LightWizard : GameClass() {
     override val name = "<gray>프리즘"
@@ -56,7 +57,7 @@ class LightWizard : GameClass() {
         val surfaceNormal = hitFace.direction.normalize()
         val scale = 0.72
         val location = hitPosition.toLocation(player.world).add(surfaceNormal.clone().multiply(scale / 2.0 + 0.04))
-        if (prisms.size >= 3) prisms.removeFirst().display.remove()
+        if (prisms.size >= LIGHT_WIZARD_MAX_PRISMS) prisms.removeFirst().display.remove()
         val displayLocation = location.clone().add(-scale / 2.0, -scale / 2.0, -scale / 2.0)
         val display = location.world.spawn(displayLocation, BlockDisplay::class.java)
         display.block = Material.AMETHYST_BLOCK.createBlockData()
@@ -147,7 +148,7 @@ class LightWizard : GameClass() {
     private inner class RedSkill : Skill() {
         override val name = "<bold>프리즘"
         override val description = listOf(
-            "<gray>10칸 내의 바라보는 블럭에 프리즘을 설치한다. (최대 3개)",
+            "<gray>10칸 내의 바라보는 블럭에 프리즘을 설치한다. (최대 5개)",
             "<gray>최대 개수를 초과하여 설치할 경우 가장 오래된 프리즘을 제거하고 설치한다."
         )
         override val cooldown = LIGHT_WIZARD_PRISM_COOLDOWN_SECONDS

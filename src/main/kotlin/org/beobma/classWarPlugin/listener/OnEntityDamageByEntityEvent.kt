@@ -9,6 +9,7 @@ import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.manager.DamageManager
 import org.beobma.classWarPlugin.manager.DamageIndicatorManager
 import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
+import org.beobma.classWarPlugin.manager.GameManager.canDispatchClassHandlers
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
@@ -55,6 +56,10 @@ class OnEntityDamageByEntityEvent : Listener {
             event.isCancelled = true
             return
         }
+        if (!attackerData.canDispatchClassHandlers()) {
+            event.isCancelled = true
+            return
+        }
 
         val targetData = if (isMannequin) {
             attackerGame.playerDatas.find { it.entity.uniqueId == targetEntity.uniqueId }
@@ -74,6 +79,10 @@ class OnEntityDamageByEntityEvent : Listener {
                 event.isCancelled = true
                 return
             }
+        }
+        if (targetData is PlayerData && !targetData.canDispatchClassHandlers()) {
+            event.isCancelled = true
+            return
         }
 
         val context = DamageContext(

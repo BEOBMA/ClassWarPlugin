@@ -70,7 +70,7 @@ enum class Keyword(val string: String, val description: String? = null) {
     ),
     Brightness(
         "<white><bold>광휘</bold><gray>",
-        "{keyword:Brightness}: 수치가 10이 되면 {keyword:Brightness}를 제거하고 2초간 {keyword:Snare}된다."
+        "{keyword:Brightness}: 수치가 5가 되면 {keyword:Brightness}를 제거하고 2초간 {keyword:Snare}된다."
     ),
     Radiation(
         "<white><bold>발광</bold><gray>",

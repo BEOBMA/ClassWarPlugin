@@ -8,11 +8,14 @@ import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.DamageIndicatorManager
 import org.beobma.classWarPlugin.manager.CombatManager
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.hasStatus
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.status.list.Shield
+import org.beobma.classWarPlugin.status.list.Invincibility
 import org.beobma.classWarPlugin.gameClass.handler.EnvironmentalDamageHandler
 import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
+import org.beobma.classWarPlugin.manager.GameManager.canDispatchClassHandlers
 import org.beobma.classWarPlugin.gameClass.list.Vampire
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -31,8 +34,10 @@ class OnEntityDamageEvent : Listener {
         val player = event.entity as? Player ?: return
         val handlerData = findGameForPlayer(player)?.playerDatas?.filterIsInstance<PlayerData>()
             ?.find { it.uniqueId == player.uniqueId }
-        (handlerData?.gameClass as? EnvironmentalDamageHandler)?.onEnvironmentalDamage(event)
-        if (event.isCancelled) return
+        if (handlerData?.hasStatus<Invincibility>() == true) {
+            event.isCancelled = true
+            return
+        }
         val activeGame = game
         if (activeGame != null) {
             val playerData = activeGame.playerDatas.filterIsInstance<PlayerData>()
@@ -42,6 +47,12 @@ class OnEntityDamageEvent : Listener {
                 return
             }
         }
+        if (handlerData != null && !handlerData.canDispatchClassHandlers()) {
+            event.isCancelled = true
+            return
+        }
+        (handlerData?.gameClass as? EnvironmentalDamageHandler)?.onEnvironmentalDamage(event)
+        if (event.isCancelled) return
         if (!PlayerTagManager.hasTag(player, "isTraining")) {
             if (handlerData != null && event.finalDamage > 0.0) {
                 CombatManager.recordDamageTaken(handlerData)

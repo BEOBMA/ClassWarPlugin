@@ -158,8 +158,8 @@ class Meteor : GameClass() {
             "<gray>기본 공격 피격 시 공격자를 2초간 {keyword:Burn} 상태로 만든다."
         )
 
-        override fun whenAttackHit(event: DamageContext) {
-            event.attacker.player.fireTicks += 40
+        override fun whenAttackHit(context: DamageContext) {
+            context.attacker.player.fireTicks += 40
         }
     }
 }

@@ -13,6 +13,7 @@ import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
+import org.beobma.classWarPlugin.manager.UtilManager.isActuallyGrounded
 import org.beobma.classWarPlugin.skill.MovementSkill
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Skill
@@ -162,8 +163,7 @@ class DevastatingBlow : GameClass(), EnvironmentalDamageHandler, GameEndHandler,
                 if (falling) {
                     lockDescentPosition(true)
                     particles.spawn(player, Particle.LARGE_SMOKE, count = 8, spread = 0.35, speed = 0.04)
-                    val belowSolid = !player.location.clone().subtract(0.0, 0.3, 0.0).block.isPassable
-                    if (player.isOnGround || belowSolid || ticks >= 130) {
+                    if (player.isActuallyGrounded() || ticks >= 130) {
                         impact()
                         if (automatic) CooldownManager.setCooldown(
                             player, blowSkill, cooldownItem ?: ItemStack(Material.RED_DYE), blowSkill.cooldown * 20,

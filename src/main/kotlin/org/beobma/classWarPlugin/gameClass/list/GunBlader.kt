@@ -16,9 +16,10 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Skill
+import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.beobma.classWarPlugin.status.list.Vibration
 import org.beobma.classWarPlugin.status.list.VibrationExplosion
-import org.beobma.classWarPlugin.status.list.GunBulletStatus
+import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.TargetType
 import org.bukkit.*
@@ -54,8 +55,17 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
     private var basicHits = 0
     private var idleSeconds = 0
 
-    private fun bulletStatus(): GunBulletStatus =
-        playerData.getOrCreateStatus(playerData) { GunBulletStatus() }
+    private fun bulletStatus(): BulletStatus =
+        playerData.getOrCreateStatus(playerData) { BulletStatus() }
+
+    private class BulletStatus : StatusAbnormality() {
+        override val name = Keyword.Bullet.string
+        override val description = listOf(Keyword.Bullet.description ?: "")
+        override val canRemove = false
+        override val isClassMechanic = true
+        override var maxPower: Int? = 4
+        override var duration: Int? = null
+    }
 
     override fun onBattleStart() { bulletStatus().updatePower(4); idleSeconds = 0 }
     override fun onGameTimePasses() {

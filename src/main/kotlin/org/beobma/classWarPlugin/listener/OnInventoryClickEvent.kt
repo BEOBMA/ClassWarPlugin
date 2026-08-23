@@ -232,6 +232,7 @@ class OnInventoryClickEvent : Listener {
             14 -> 40
             15 -> 44
             16 -> 46
+            22 -> 48
             else -> null
         }
 

@@ -8,9 +8,12 @@ import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getDamageTakenModifier
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.hasStatus
 import org.beobma.classWarPlugin.status.handler.StatusOnHitHandler
 import org.beobma.classWarPlugin.status.handler.StatusWhenHitHandler
 import org.beobma.classWarPlugin.status.list.Shield
+import org.beobma.classWarPlugin.status.list.Disarm
+import org.beobma.classWarPlugin.status.list.Invincibility
 import org.bukkit.entity.Entity
 import java.util.UUID
 import kotlin.math.roundToInt
@@ -31,11 +34,13 @@ object DamageManager {
         if (context.damage <= 0.0) return false
         if ((context.attacker.gameClass as? Parasite)?.isParasitizing() == true) return false
         if (((context.target as? PlayerData)?.gameClass as? Parasite)?.isParasitizing() == true) return false
+        if (context.target.hasStatus<Invincibility>()) return false
 
         val attackerStatus = context.attacker.entityStatus
         val targetStatus = context.target.entityStatus
         val canDamage = when {
-            context.path.isBasicAttack -> attackerStatus.canAttack && targetStatus.isAttackable
+            context.path.isBasicAttack ->
+                attackerStatus.canAttack && !context.attacker.hasStatus<Disarm>() && targetStatus.isAttackable
             context.path == DamagePath.SKILL -> attackerStatus.canSkillUse && targetStatus.isSkillTargeting
             else -> targetStatus.isSkillTargeting
         }

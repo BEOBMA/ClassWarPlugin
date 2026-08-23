@@ -23,6 +23,7 @@ abstract class StatusAbnormality {
     open var maxPower: Int? = null
     open val showMaxPower = true
     open val showPower = true
+    open val showInActionBar = true
     open val isClassMechanic = false
     open var duration: Int? = null
     open val durationMode: StatusDurationMode = StatusDurationMode.Refresh

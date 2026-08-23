@@ -186,7 +186,7 @@ object StatusAbnormalityManager {
 
     private fun buildStatusActionBarMessage(statuses: List<StatusAbnormality>): String {
         if (statuses.isEmpty()) return ""
-        fun List<StatusAbnormality>.line(): String = sortedBy { it.name }
+        fun List<StatusAbnormality>.line(): String = filter { it.showInActionBar }.sortedBy { it.name }
             .joinToString(" <dark_gray> | </dark_gray> ") { it.actionBarText() }
 
         val mechanics = statuses.filter { it.isClassMechanic }.line()
