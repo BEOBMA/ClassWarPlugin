@@ -32,6 +32,7 @@ object GameClassManager {
         }
     }
 
-    fun getWeaponClassId(item: ItemStack): String? = item.itemMeta.persistentDataContainer
-        .get(weaponClassKey, PersistentDataType.STRING)
+    fun getWeaponClassId(item: ItemStack): String? = item.itemMeta
+        ?.persistentDataContainer
+        ?.get(weaponClassKey, PersistentDataType.STRING)
 }

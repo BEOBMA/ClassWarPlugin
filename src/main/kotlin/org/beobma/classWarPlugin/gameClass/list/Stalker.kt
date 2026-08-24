@@ -79,11 +79,13 @@ class Stalker : GameClass(), GameStatusHandler {
             block = Material.SCULK.createBlockData()
             brightness = Display.Brightness(8, 8)
             isPersistent = false
+            isVisibleByDefault = false
             transformation = Transformation(
                 Vector3f(-0.3f, 0f, -0.3f), Quaternionf(), Vector3f(0.6f, 0.035f, 0.6f), Quaternionf()
             )
         }
         TemporaryDisplayManager.mark(display, player.uniqueId)
+        player.showEntity(ClassWarPlugin.instance, display)
         trails += Trail(location, player.world.fullTime, display)
     }
 

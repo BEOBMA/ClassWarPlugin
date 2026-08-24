@@ -27,10 +27,10 @@ import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
 // 밸런스 조정 상수
 private const val CHUBBY_MAX_HEALTH_MULTIPLIER = 2.0
-private const val CHUBBY_JUMP_STRENGTH_MULTIPLIER = 0.68
+private const val CHUBBY_JUMP_STRENGTH_MULTIPLIER = 1.0
 private const val CHUBBY_SCALE_MULTIPLIER = 1.35
 private const val CHUBBY_MOVE_SPEED_REDUCTION_PERCENT = 20
-private const val CHUBBY_MIN_FALL_HEIGHT = 3.0
+private const val CHUBBY_MIN_FALL_HEIGHT = 2.0
 private const val CHUBBY_MAX_IMPACT_RADIUS = 5.0
 private const val CHUBBY_BASE_IMPACT_RADIUS = 2.8
 private const val CHUBBY_RADIUS_PER_FALL_BLOCK = 0.14
@@ -143,9 +143,9 @@ class Chubby : GameClass(), GameStatusHandler, EnvironmentalDamageHandler, Statu
         override val description = listOf(
             "<gray>패시브", "",
             "<gray>최대 체력이 100% 증가한다.",
-            "<gray>이동 속도가 20% 감소하고 점프 높이가 감소한다.",
+            "<gray>이동 속도가 20% 감소한다.",
             "<gray>플레이어의 크기가 증가한다.",
-            "<gray>3칸 이상 높이에서 낙하 시 주변 적을 공중에 띄우고 밀쳐내며 낙하 높이에 비례한 피해를 입힌다."
+            "<gray>2칸 이상 높이에서 낙하 시 주변 적을 공중에 띄우고 밀쳐내며 낙하 높이에 비례한 피해를 입힌다."
         )
     }
 }

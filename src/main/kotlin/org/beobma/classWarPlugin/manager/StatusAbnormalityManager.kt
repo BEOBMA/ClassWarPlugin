@@ -71,23 +71,25 @@ object StatusAbnormalityManager {
     }
 
     fun EntityData.attackSpeedChanged() {
-        var attackSpeedModifier = 0
+        var increaseFactor = 1.0
+        var decreaseFactor = 1.0
         for (status in statusAbnormalitys) {
-            if (status is AttackSpeedIncrease) {
-                attackSpeedModifier += status.power
+            when (status) {
+                is AttackSpeedIncrease -> increaseFactor *= (1 + status.power / 100.0)
+                is AttackSpeedDecrease -> decreaseFactor *= (1 - status.power / 100.0)
             }
         }
 
         val entity = entity
         if (entity is LivingEntity) {
             val attributeInstance = entity.getAttribute(Attribute.ATTACK_SPEED) ?: return
-            val hasModifier = statusAbnormalitys.any { it is AttackSpeedIncrease }
+            val hasModifier = statusAbnormalitys.any { it is AttackSpeedIncrease || it is AttackSpeedDecrease }
             if (!hasModifier) {
                 originalAttackSpeeds.remove(entity.uniqueId)?.let { attributeInstance.baseValue = it }
                 return
             }
             val baseValue = originalAttackSpeeds.getOrPut(entity.uniqueId) { attributeInstance.baseValue }
-            val newValue = baseValue * (1 + attackSpeedModifier / 100.0)
+            val newValue = baseValue * increaseFactor * decreaseFactor.coerceAtLeast(0.0)
             attributeInstance.baseValue = newValue
             return
         }

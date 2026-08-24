@@ -29,7 +29,7 @@ class Conflict : GameClass() {
         override val name = "<bold>불화"
         override val description = listOf(
             "<gray>바라보는 방향으로 순간이동한다.",
-            "<gray>8초 내에 다시 사용하면 자신은 피해를 2 받는다.",
+            "<gray>3초 내에 다시 사용하면 자신은 피해를 2 받는다.",
             "<gray>여러번 사용할 때마다 피해량이 증가한다."
         )
         override val cooldown = 0
@@ -60,7 +60,7 @@ class Conflict : GameClass() {
 
             val chain = playerData.getOrCreateStatus(playerData) { ConflictChainStatus() }
             val repeatedDamage = chain.power
-            chain.applyStatus(duration = 8, powerSet = repeatedDamage + 2)
+            chain.applyStatus(duration = 3, powerSet = repeatedDamage + 2)
             if (repeatedDamage > 0) {
                 playerData.damage(repeatedDamage.toDouble(), DamageType.True, playerData, damagePath = DamagePath.STATUS_EFFECT)
                 particles.spawn(player, Particle.DAMAGE_INDICATOR, count = (repeatedDamage / 2) * 5, spread = 0.35, speed = 0.08)

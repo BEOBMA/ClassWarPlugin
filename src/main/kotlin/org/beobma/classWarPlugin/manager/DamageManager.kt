@@ -4,6 +4,7 @@ import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.list.Parasite
+import org.beobma.classWarPlugin.gameClass.list.Reverse
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getDamageTakenModifier
@@ -60,6 +61,7 @@ object DamageManager {
         }
         context.addDamageTakenMultiplier(context.target.getDamageTakenModifier().combinedMultiplier)
         applyShield(context)
+        if (Reverse.invertDamageIfNeeded(context)) return false
         return !context.isCancelled && context.damage > 0.0
     }
 

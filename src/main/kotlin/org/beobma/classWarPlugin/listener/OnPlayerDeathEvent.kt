@@ -21,6 +21,7 @@ import org.beobma.classWarPlugin.gameClass.list.DeathNote
 import org.beobma.classWarPlugin.gameClass.list.Levatain
 import org.beobma.classWarPlugin.gameClass.list.Referee
 import org.beobma.classWarPlugin.gameClass.handler.PlayerDeathHandler
+import org.beobma.classWarPlugin.gameClass.list.HideAndSeek
 
 class OnPlayerDeathEvent : Listener{
     private val miniMessage = MiniMessage.miniMessage()
@@ -28,6 +29,7 @@ class OnPlayerDeathEvent : Listener{
     @EventHandler
     fun onPlayerDeathEvent(event: PlayerDeathEvent) {
         val player = event.player
+        HideAndSeek.handlePlayerDeath(player.uniqueId)
         val currentGame = game ?: return
         val playerData = currentGame.playerDatas.filterIsInstance<PlayerData>()
             .find { it.player.uniqueId == player.uniqueId } ?: return

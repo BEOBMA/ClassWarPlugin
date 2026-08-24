@@ -17,6 +17,7 @@ import org.beobma.classWarPlugin.gameClass.handler.EnvironmentalDamageHandler
 import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
 import org.beobma.classWarPlugin.manager.GameManager.canDispatchClassHandlers
 import org.beobma.classWarPlugin.gameClass.list.Vampire
+import org.beobma.classWarPlugin.gameClass.list.Reverse
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
@@ -56,6 +57,7 @@ class OnEntityDamageEvent : Listener {
             if (event.isCancelled) return
         }
         if (event.isCancelled) return
+        if (handlerData != null && Reverse.invertEnvironmentalDamageIfNeeded(event, handlerData)) return
         if (!PlayerTagManager.hasTag(player, "isTraining")) {
             if (handlerData != null && event.finalDamage > 0.0) {
                 CombatManager.recordDamageTaken(handlerData)

@@ -70,7 +70,7 @@ private const val WEAPON_MASTER_NEEDLE_BAT_MAX_COMBO = 3
 private const val WEAPON_MASTER_MASTERY_DAMAGE_PER_STACK = 0.1
 private const val WEAPON_MASTER_MAX_MASTERY_STACKS = 8
 private const val WEAPON_MASTER_MASTERY_DURATION_SECONDS = 6
-private const val WEAPON_MASTER_CHAIN_SHIELD_DURATION_SECONDS = 2
+private const val WEAPON_MASTER_CHAIN_SHIELD_DURATION_SECONDS = 4
 private const val WEAPON_MASTER_CHAIN_SHIELD_POWER = 2
 private const val WEAPON_MASTER_CHAIN_BURST_DAMAGE = 4.0
 
@@ -567,7 +567,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             "<gray>패시브", "",
             "<gray>기본 공격 적중 후 1초 이내에 스킬을 사용하면 6초간 달인 스택을 1 얻는다.",
             "<gray>달인 스택 1당 스킬의 최종 피해량이 10% 증가한다. (최대 80%)",
-            "<gray>달인 스택을 얻을 때, 2초 동안 <aqua><bold>2의 피해를 막는 {keyword:Shield}을 얻는다.", "",
+            "<gray>달인 스택을 얻을 때, 4초 동안 <aqua><bold>2의 피해를 막는 {keyword:Shield}을 얻는다.", "",
             "<gray>달인 스택이 최대치일 때 달인 스택을 얻으면",
             "<gray>주변에 사슬을 던진 후 회수하여 적중한 모든 적에게 4의 피해를 입힌다.", "",
             "<dark_gray>달인 스택을 얻을 때마다 지속 시간이 갱신된다."

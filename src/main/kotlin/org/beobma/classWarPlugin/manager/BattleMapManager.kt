@@ -6,6 +6,7 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.game.GamePhase
+import org.beobma.classWarPlugin.gameClass.list.TrainCarriage
 import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.NamespacedKey
@@ -25,7 +26,6 @@ import kotlin.math.roundToInt
 
 object BattleMapManager {
     private const val MAP_SIZE = 128
-    private const val PREFERRED_HOTBAR_SLOT = 8
     private val miniMessage = MiniMessage.miniMessage()
     private val mapItemKey: NamespacedKey
         get() = NamespacedKey(ClassWarPlugin.instance, "battle-map")
@@ -37,13 +37,11 @@ object BattleMapManager {
         val player = playerData.player
         val mapView = game.battleMapView ?: createMap(game).also { game.battleMapView = it }
         val mapItem = createMapItem(mapView)
-        val currentSlot = player.inventory.storageContents.indexOfFirst(::isBattleMap)
-
-        when {
-            currentSlot >= 0 -> player.inventory.setItem(currentSlot, mapItem)
-            isBattleMap(player.inventory.itemInOffHand) -> player.inventory.setItemInOffHand(mapItem)
-            else -> player.inventory.setItem(findMapSlot(player), mapItem)
-        }
+        player.inventory.storageContents
+            .indexOfFirst(::isBattleMap)
+            .takeIf { it >= 0 }
+            ?.let { player.inventory.setItem(it, null) }
+        player.inventory.setItemInOffHand(mapItem)
     }
 
     fun isBattleMap(item: ItemStack?): Boolean {
@@ -88,15 +86,6 @@ object BattleMapManager {
             )
             persistentDataContainer.set(mapItemKey, PersistentDataType.BYTE, 1)
         }
-    }
-
-    private fun findMapSlot(player: Player): Int {
-        for (slot in PREFERRED_HOTBAR_SLOT downTo 1) {
-            if (player.inventory.getItem(slot)?.type?.isAir != false) return slot
-        }
-        return player.inventory.storageContents.indexOfFirst { it == null || it.type.isAir }
-            .takeIf { it >= 0 }
-            ?: PREFERRED_HOTBAR_SLOT
     }
 
     private fun chooseScale(game: Game): MapView.Scale {
@@ -187,6 +176,25 @@ object BattleMapManager {
                     Component.text("내 위치"),
                 )
             )
+            game.playerDatas.asSequence().filterIsInstance<PlayerData>()
+                .filter { target ->
+                    target.uniqueId != player.uniqueId && target.player.isOnline && !target.entityStatus.isDead &&
+                        target.player.world == mapView.world && target.gameClasses.any { it is TrainCarriage }
+                }
+                .forEach { target ->
+                    val targetX = ((target.player.location.x - mapView.centerX) * 2.0 / blocksPerPixel).roundToInt()
+                    val targetZ = ((target.player.location.z - mapView.centerZ) * 2.0 / blocksPerPixel).roundToInt()
+                    val targetOutside = targetX !in -128..127 || targetZ !in -128..127
+                    val targetDirection = (floor(target.player.location.yaw * 16.0 / 360.0 + 0.5).toInt() and 15).toByte()
+                    cursors.addCursor(MapCursor(
+                        targetX.coerceIn(-128, 127).toByte(),
+                        targetZ.coerceIn(-128, 127).toByte(),
+                        targetDirection,
+                        if (targetOutside) MapCursor.Type.PLAYER_OFF_MAP else MapCursor.Type.PLAYER,
+                        true,
+                        Component.text("기차화통: ${target.player.name}"),
+                    ))
+                }
             canvas.cursors = cursors
         }
 

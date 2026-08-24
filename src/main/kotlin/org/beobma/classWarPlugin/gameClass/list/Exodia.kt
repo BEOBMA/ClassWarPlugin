@@ -11,11 +11,11 @@ import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.beobma.classWarPlugin.util.HitboxUtil
+import org.beobma.classWarPlugin.util.PlayerNavigation
 import org.bukkit.Material
 import org.bukkit.Location
 import org.bukkit.Particle
 import org.bukkit.Sound
-import org.bukkit.World
 import org.bukkit.entity.Display
 import org.bukkit.entity.ItemDisplay
 import org.bukkit.inventory.ItemStack
@@ -23,11 +23,6 @@ import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.util.Transformation
 import org.joml.Quaternionf
 import org.joml.Vector3f
-import java.util.ArrayDeque
-import java.util.PriorityQueue
-import kotlin.math.abs
-import kotlin.math.floor
-import kotlin.random.Random
 
 class Exodia : GameClass(), GameStatusHandler {
     override val name = "<gray>엑조디아"
@@ -36,11 +31,6 @@ class Exodia : GameClass(), GameStatusHandler {
     override var skills: List<Skill> = emptyList()
     override var passives: List<BasePassive> = listOf(Passive())
     private data class Part(val label: String, val material: Material, val display: ItemDisplay, val baseY: Double)
-    private data class WalkNode(val x: Int, val y: Int, val z: Int)
-    private data class PathStep(val node: WalkNode, val cost: Int, val estimate: Int) : Comparable<PathStep> {
-        override fun compareTo(other: PathStep): Int =
-            compareValuesBy(this, other, { it.cost + it.estimate }, { it.estimate })
-    }
 
     private val parts = mutableListOf<Part>()
     private var collected = 0
@@ -100,134 +90,61 @@ class Exodia : GameClass(), GameStatusHandler {
     private fun findPartLocations(count: Int): List<Location> {
         val world = player.world
         val half = (game.settings.borderInitialSize * 0.45).coerceAtLeast(6.0)
-        val start = standingNodeAt(player.location) ?: WalkNode(player.location.blockX, player.location.blockY, player.location.blockZ)
+        val bounds = PlayerNavigation.Bounds(
+            minX = game.roundCenterX - half,
+            maxX = game.roundCenterX + half,
+            minZ = game.roundCenterZ - half,
+            maxZ = game.roundCenterZ + half,
+        )
+        val start = PlayerNavigation.nearestNode(world, player.location)
+            ?: PlayerNavigation.surfaceNode(world, player.location.blockX, player.location.blockZ)
+            ?: return List(count) { player.location.clone() }
         val locations = mutableListOf<Location>()
 
-        repeat(PART_LOCATION_ATTEMPTS) {
-            if (locations.size >= count) return locations
-            val x = game.roundCenterX + Random.nextDouble(-half, half)
-            val z = game.roundCenterZ + Random.nextDouble(-half, half)
-            val standing = surfaceStandingNode(world, floor(x).toInt(), floor(z).toInt()) ?: return@repeat
-            val location = partDisplayLocation(world, standing)
-            if (locations.none { it.distanceSquared(location) < MINIMUM_PART_DISTANCE_SQUARED } &&
-                hasWalkingPath(world, start, standing, half)
-            ) locations += location
-        }
+        // Use the same player-sized graph as game scattering. Surface nodes must be reachable
+        // from the player's spawn and must still have a normal route back to the magnetic center;
+        // this excludes isolated roofs, cliff shelves, islands, and one-way drop traps.
+        val reachableSurfaceNodes = PlayerNavigation.collectReachable(
+            world = world,
+            start = start,
+            bounds = bounds,
+            maxVisitedNodes = PART_REACHABLE_MAX_VISITED_NODES,
+        ).asSequence()
+            .filter { node -> PlayerNavigation.surfaceNode(world, node.x, node.z) == node }
+            .filter { node -> world.worldBorder.isInside(PlayerNavigation.displayLocation(world, node)) }
+            .shuffled()
+            .take(PART_CANDIDATE_PATH_CHECKS)
+            .toList()
 
-        // Random targets can fail on maps split by cliffs or buildings. Fill the remainder only
-        // from nodes reached by an actual player-sized walk starting at the Exodia player.
-        val reachable = collectNearbyWalkableNodes(world, start, half)
-        reachable.shuffled().forEach { node ->
+        val centerReachableNodes = mutableListOf<PlayerNavigation.Node>()
+        reachableSurfaceNodes.forEach { node ->
             if (locations.size >= count) return@forEach
-            val location = partDisplayLocation(world, node)
+            if (!PlayerNavigation.hasPathToArea(
+                    world = world,
+                    start = node,
+                    centerX = game.roundCenterX,
+                    centerZ = game.roundCenterZ,
+                    targetRadius = PART_CENTER_TARGET_RADIUS,
+                    bounds = bounds,
+                    maxVisitedNodes = PART_PATH_MAX_VISITED_NODES,
+                )
+            ) return@forEach
+            centerReachableNodes += node
+            val location = PlayerNavigation.displayLocation(world, node)
             if (locations.none { it.distanceSquared(location) < MINIMUM_PART_DISTANCE_SQUARED }) locations += location
         }
-        reachable.forEach { node ->
+        centerReachableNodes.forEach { node ->
             if (locations.size >= count) return@forEach
-            val location = partDisplayLocation(world, node)
+            val location = PlayerNavigation.displayLocation(world, node)
             if (locations.none { it.blockX == location.blockX && it.blockY == location.blockY && it.blockZ == location.blockZ }) {
                 locations += location
             }
         }
 
-        val safeFallback = partDisplayLocation(world, start)
+        val safeFallback = PlayerNavigation.displayLocation(world, start)
         while (locations.size < count) locations += safeFallback.clone()
         return locations
     }
-
-    private fun hasWalkingPath(world: World, start: WalkNode, target: WalkNode, half: Double): Boolean {
-        if (!isSafeStandingNode(world, start) || !isSafeStandingNode(world, target)) return false
-        if (start == target) return true
-        val open = PriorityQueue<PathStep>()
-        val costs = hashMapOf(start to 0)
-        open += PathStep(start, 0, walkingHeuristic(start, target))
-        var visited = 0
-
-        while (open.isNotEmpty() && visited++ < PATH_MAX_VISITED_NODES) {
-            val step = open.poll()
-            if (costs[step.node] != step.cost) continue
-            if (step.node == target) return true
-            walkingNeighbours(world, step.node, half).forEach { next ->
-                val nextCost = step.cost + 1 + abs(next.y - step.node.y)
-                if (nextCost >= (costs[next] ?: Int.MAX_VALUE)) return@forEach
-                costs[next] = nextCost
-                open += PathStep(next, nextCost, walkingHeuristic(next, target))
-            }
-        }
-        return false
-    }
-
-    private fun collectNearbyWalkableNodes(world: World, start: WalkNode, half: Double): List<WalkNode> {
-        if (!isSafeStandingNode(world, start)) return emptyList()
-        val queue = ArrayDeque<WalkNode>()
-        val visited = linkedSetOf(start)
-        queue += start
-        while (queue.isNotEmpty() && visited.size < FALLBACK_MAX_VISITED_NODES) {
-            val current = queue.removeFirst()
-            walkingNeighbours(world, current, half).forEach { next ->
-                if (visited.add(next)) queue += next
-            }
-        }
-        return visited.toList()
-    }
-
-    private fun walkingNeighbours(world: World, current: WalkNode, half: Double): List<WalkNode> {
-        val result = ArrayList<WalkNode>(4)
-        WALK_DIRECTIONS.forEach { (dx, dz) ->
-            val x = current.x + dx
-            val z = current.z + dz
-            if (!isInsidePartArea(world, x, z, half)) return@forEach
-            for (offsetY in WALKABLE_VERTICAL_OFFSETS) {
-                val candidate = WalkNode(x, current.y + offsetY, z)
-                if (!isSafeStandingNode(world, candidate)) continue
-                if (offsetY > 0 && !isWalkThrough(world, current.x, current.y + 2, current.z)) continue
-                if (offsetY < 0 && (candidate.y + 2..current.y + 1).any { y -> !isWalkThrough(world, x, y, z) }) continue
-                result += candidate
-                break
-            }
-        }
-        return result
-    }
-
-    private fun standingNodeAt(location: Location): WalkNode? {
-        val world = location.world
-        val direct = WalkNode(location.blockX, location.blockY, location.blockZ)
-        if (isSafeStandingNode(world, direct)) return direct
-        return (-2..2).firstNotNullOfOrNull { offset ->
-            WalkNode(location.blockX, location.blockY + offset, location.blockZ).takeIf { isSafeStandingNode(world, it) }
-        }
-    }
-
-    private fun surfaceStandingNode(world: World, x: Int, z: Int): WalkNode? {
-        val groundY = world.getHighestBlockYAt(x, z)
-        val node = WalkNode(x, groundY + 1, z)
-        return node.takeIf { isSafeStandingNode(world, it) }
-    }
-
-    private fun isSafeStandingNode(world: World, node: WalkNode): Boolean {
-        if (node.y - 1 < world.minHeight || node.y + 1 >= world.maxHeight) return false
-        val ground = world.getBlockAt(node.x, node.y - 1, node.z)
-        return ground.type.isSolid && ground.type !in UNSAFE_WALK_MATERIALS &&
-            isWalkThrough(world, node.x, node.y, node.z) &&
-            isWalkThrough(world, node.x, node.y + 1, node.z)
-    }
-
-    private fun isWalkThrough(world: World, x: Int, y: Int, z: Int): Boolean {
-        val block = world.getBlockAt(x, y, z)
-        return block.isPassable && !block.isLiquid && block.type !in UNSAFE_WALK_MATERIALS
-    }
-
-    private fun isInsidePartArea(world: World, x: Int, z: Int, half: Double): Boolean {
-        val location = Location(world, x + 0.5, world.minHeight.toDouble(), z + 0.5)
-        return abs(location.x - game.roundCenterX) <= half &&
-            abs(location.z - game.roundCenterZ) <= half && world.worldBorder.isInside(location)
-    }
-
-    private fun walkingHeuristic(from: WalkNode, to: WalkNode): Int =
-        abs(from.x - to.x) + abs(from.z - to.z) + abs(from.y - to.y)
-
-    private fun partDisplayLocation(world: World, node: WalkNode): Location =
-        Location(world, node.x + 0.5, node.y + 0.3, node.z + 0.5)
 
     private fun collect(part: Part) {
         if (!parts.remove(part)) return
@@ -255,17 +172,11 @@ class Exodia : GameClass(), GameStatusHandler {
     }
 
     companion object {
-        private const val PART_LOCATION_ATTEMPTS = 100
-        private const val PATH_MAX_VISITED_NODES = 12_000
-        private const val FALLBACK_MAX_VISITED_NODES = 4_000
+        private const val PART_REACHABLE_MAX_VISITED_NODES = 40_000
+        private const val PART_PATH_MAX_VISITED_NODES = 60_000
+        private const val PART_CANDIDATE_PATH_CHECKS = 192
+        private const val PART_CENTER_TARGET_RADIUS = 4.0
         private const val MINIMUM_PART_DISTANCE_SQUARED = 100.0
-        private val WALK_DIRECTIONS = arrayOf(1 to 0, -1 to 0, 0 to 1, 0 to -1)
-        private val WALKABLE_VERTICAL_OFFSETS = intArrayOf(1, 0, -1, -2, -3)
-        private val UNSAFE_WALK_MATERIALS = setOf(
-            Material.LAVA, Material.FIRE, Material.SOUL_FIRE, Material.POWDER_SNOW,
-            Material.CACTUS, Material.MAGMA_BLOCK, Material.CAMPFIRE, Material.SOUL_CAMPFIRE,
-            Material.SWEET_BERRY_BUSH, Material.WITHER_ROSE, Material.POINTED_DRIPSTONE,
-        )
     }
 }
 

@@ -10,6 +10,7 @@ import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.game.GamePhase
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.list.Referee
+import org.beobma.classWarPlugin.gameClass.list.Reverse
 import org.beobma.classWarPlugin.manager.GameClassManager.toWeaponItemStack
 import org.beobma.classWarPlugin.manager.SkillManager.markSkillItem
 import org.beobma.classWarPlugin.manager.InventoryManager.skillDyeMaterial
@@ -57,10 +58,15 @@ object PlayerManager {
             player.inventory.setItem(8, assignedClasses[1].toWeaponItemStack())
         }
 
-        val contentSlots = ((1..7) + (9..35)).iterator()
+        val hotbarSkillSlots = (1..if (assignedClasses.size > 1) 7 else 8).iterator()
+        val inventorySlots = (9..35).iterator()
         val allSkills = assignedClasses.flatMap { it.skills }
         allSkills.forEachIndexed { index, skill ->
-            if (!contentSlots.hasNext()) return@forEachIndexed
+            val slot = when {
+                hotbarSkillSlots.hasNext() -> hotbarSkillSlots.next()
+                inventorySlots.hasNext() -> inventorySlots.next()
+                else -> return@forEachIndexed
+            }
             val name = UtilManager.applyKeywords(skill.name)
             val type = skillDyeMaterial(index)
             val displayItem = ItemStack(type, 1).apply {
@@ -77,11 +83,11 @@ object PlayerManager {
                 skill,
                 player.uniqueId,
             )
-            player.inventory.setItem(contentSlots.next(), item)
+            player.inventory.setItem(slot, item)
         }
 
         assignedClasses.flatMap { it.passives }.forEach { passive ->
-            if (!contentSlots.hasNext()) return@forEach
+            if (!inventorySlots.hasNext()) return@forEach
             val name = UtilManager.applyKeywords(passive.name)
             val type = Material.WHITE_DYE
             val item = ItemDescriptionManager.apply(ItemStack(type, 1).apply {
@@ -89,12 +95,12 @@ object PlayerManager {
                     displayName(miniMessage.deserialize(name))
                 }
             }, passive.description)
-            player.inventory.setItem(contentSlots.next(), item)
+            player.inventory.setItem(inventorySlots.next(), item)
         }
 
         assignedClasses.flatMap { it.extraItemMaterials }.forEach { item ->
-            if (!contentSlots.hasNext()) return@forEach
-            player.inventory.setItem(contentSlots.next(), item)
+            if (!inventorySlots.hasNext()) return@forEach
+            player.inventory.setItem(inventorySlots.next(), item)
         }
 
         if (initializeHandlers) {
@@ -162,6 +168,7 @@ object PlayerManager {
         if (finalDamage < 0) {
             return
         }
+        if (Reverse.invertHealingIfNeeded(this, finalDamage)) return
         player.heal(finalDamage)
     }
 
@@ -231,6 +238,7 @@ object PlayerManager {
     }
 
     fun EntityData.heal(damage: Double, damageType: DamageType, healer: PlayerData) {
+        if (Reverse.invertHealingIfNeeded(this, damage)) return
         when (this) {
             is PlayerData -> this.heal(damage, damageType, healer)
             is DummyEntityData -> return

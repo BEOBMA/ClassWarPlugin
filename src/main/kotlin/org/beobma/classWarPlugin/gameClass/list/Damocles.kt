@@ -21,7 +21,7 @@ import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.util.Vector
 import kotlin.random.Random
 
-private const val DAMOCLES_SWORD_SCALE = 3.0f
+private const val DAMOCLES_SWORD_SCALE = 1.0f
 
 class Damocles : GameClass(), GameStatusHandler {
     override val name = "<gray>다모클레스"
@@ -37,7 +37,7 @@ class Damocles : GameClass(), GameStatusHandler {
         sword?.remove()
         deathCheckStarted = false
         executionChance = 0.0002
-        val swordLocation = player.location.clone().add(0.0, 6.2, 0.0).apply {
+        val swordLocation = player.location.clone().add(0.0, 3.2, 0.0).apply {
             yaw = 0f
             pitch = 0f
         }
@@ -62,7 +62,7 @@ class Damocles : GameClass(), GameStatusHandler {
                     return
                 }
                 val nextLocation = player.location.clone()
-                    .add(0.0, 6.2 + kotlin.math.sin(tick * 0.09) * 0.18, 0.0)
+                    .add(0.0, 3.2 + kotlin.math.sin(tick * 0.09) * 0.18, 0.0)
                     .apply {
                         // 플레이어의 시선 회전을 표시 엔티티에 전달하지 않는다.
                         yaw = 0f

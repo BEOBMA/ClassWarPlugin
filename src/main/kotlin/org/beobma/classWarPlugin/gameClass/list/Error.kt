@@ -44,18 +44,18 @@ class Error : GameClass(), GameStatusHandler, GameEndHandler {
     }
 
     private fun randomizeStats() {
-        dealtMultiplier = Random.nextDouble(0.55, 1.65)
-        takenMultiplier = Random.nextDouble(0.55, 1.65)
+        dealtMultiplier = Random.nextDouble(0.25, 2.5)
+        takenMultiplier = Random.nextDouble(0.25, 2.5)
         fun factor(min: Double, max: Double) = Random.nextDouble(min, max)
         originalAttributes[Attribute.MAX_HEALTH]?.let { base ->
             player.getAttribute(Attribute.MAX_HEALTH)?.let {
-                it.baseValue = (base * factor(0.55, 1.55)).coerceAtLeast(1.0)
+                it.baseValue = (base * factor(0.3, 2.2)).coerceAtLeast(1.0)
                 player.health = player.health.coerceAtMost(it.value)
             }
         }
-        originalAttributes[Attribute.MOVEMENT_SPEED]?.let { player.getAttribute(Attribute.MOVEMENT_SPEED)?.baseValue = it * factor(0.65, 1.45) }
-        originalAttributes[Attribute.JUMP_STRENGTH]?.let { player.getAttribute(Attribute.JUMP_STRENGTH)?.baseValue = it * factor(0.65, 1.5) }
-        originalAttributes[Attribute.SCALE]?.let { player.getAttribute(Attribute.SCALE)?.baseValue = (it * factor(0.65, 1.4)).coerceAtLeast(0.3) }
+        originalAttributes[Attribute.MOVEMENT_SPEED]?.let { player.getAttribute(Attribute.MOVEMENT_SPEED)?.baseValue = it * factor(0.35, 2.0) }
+        originalAttributes[Attribute.JUMP_STRENGTH]?.let { player.getAttribute(Attribute.JUMP_STRENGTH)?.baseValue = it * factor(0.4, 2.1) }
+        originalAttributes[Attribute.SCALE]?.let { player.getAttribute(Attribute.SCALE)?.baseValue = (it * factor(0.35, 1.9)).coerceAtLeast(0.3) }
         particles.spawn(player, Particle.WITCH, count = 55, spread = 0.9, speed = 0.16)
         particles.spawn(player, Particle.ELECTRIC_SPARK, count = 28, spread = 0.75, speed = 0.12)
         sounds.play(player, Sound.BLOCK_RESPAWN_ANCHOR_CHARGE, volume = 0.65f, pitch = Random.nextDouble(0.5, 1.8).toFloat())

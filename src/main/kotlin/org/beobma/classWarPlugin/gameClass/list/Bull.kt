@@ -22,6 +22,8 @@ import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.util.Vector
 import kotlin.math.min
 
+private const val BULL_MAX_MOVE_SPEED_BONUS_PERCENT = 200
+
 class Bull : GameClass(), GameStatusHandler {
     override val name = "<gray>황소"
     override val rank = Rank.B
@@ -56,7 +58,8 @@ class Bull : GameClass(), GameStatusHandler {
                     inactiveTicks++
                     if (inactiveTicks < 12) {
                         if (chargeTicks >= 60) {
-                            val currentPower = ((chargeTicks - 60) / 3 + 10).coerceAtMost(70)
+                            val currentPower = ((chargeTicks - 60) / 3 + 10)
+                                .coerceAtMost(BULL_MAX_MOVE_SPEED_BONUS_PERCENT)
                             playerData.getOrCreateStatus(playerData) { BullChargeSpeedStatus() }
                                 .applyStatus(duration = 2, powerSet = currentPower)
                         }
@@ -68,7 +71,8 @@ class Bull : GameClass(), GameStatusHandler {
                 inactiveTicks = 0
                 chargeTicks++
                 if (chargeTicks < 60) return
-                val speedPower = ((chargeTicks - 60) / 3 + 10).coerceAtMost(70)
+                val speedPower = ((chargeTicks - 60) / 3 + 10)
+                    .coerceAtMost(BULL_MAX_MOVE_SPEED_BONUS_PERCENT)
                 playerData.getOrCreateStatus(playerData) { BullChargeSpeedStatus() }
                     .applyStatus(duration = 2, powerSet = speedPower)
                 if (chargeTicks % 4 == 0) {

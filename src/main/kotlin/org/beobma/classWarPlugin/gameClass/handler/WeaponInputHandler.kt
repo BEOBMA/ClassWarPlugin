@@ -7,5 +7,7 @@ import org.bukkit.event.player.PlayerSwapHandItemsEvent
 interface WeaponInputHandler {
     fun onWeaponRightClick(event: PlayerInteractEvent) {}
 
+    fun onWeaponLeftClick(event: PlayerInteractEvent) {}
+
     fun onWeaponSwapHand(event: PlayerSwapHandItemsEvent) {}
 }

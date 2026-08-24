@@ -16,6 +16,8 @@ import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.gameClass.list.Vampire
 import org.beobma.classWarPlugin.gameClass.list.Referee
+import org.beobma.classWarPlugin.gameClass.list.Chameleon
+import org.beobma.classWarPlugin.gameClass.list.HideAndSeek
 import org.bukkit.entity.Player
 import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Projectile
@@ -26,6 +28,8 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent
 class OnEntityDamageByEntityEvent : Listener {
     @EventHandler
     fun onPlayerDamage(event: EntityDamageByEntityEvent) {
+        if (HideAndSeek.handleDamage(event)) return
+        if (Chameleon.handleDisguiseDamage(event)) return
         if (Vampire.handleBatDamage(event)) return
         if (event.damage < 1.0) {
             event.isCancelled = true

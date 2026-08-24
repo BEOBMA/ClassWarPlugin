@@ -8,6 +8,9 @@ import org.beobma.classWarPlugin.manager.GameClassManager.getWeaponClassId
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.SkillManager.getSkillId
 import org.beobma.classWarPlugin.manager.SkillManager.use
+import org.beobma.classWarPlugin.gameClass.list.Referee
+import org.beobma.classWarPlugin.gameClass.list.HideAndSeek
+import org.beobma.classWarPlugin.gameClass.list.WoundsWind
 import org.beobma.classWarPlugin.gameClass.handler.WeaponInputHandler
 import org.beobma.classWarPlugin.gameClass.handler.SkillInputHandler
 import org.bukkit.event.EventHandler
@@ -15,12 +18,39 @@ import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.block.Action
 import org.bukkit.event.player.PlayerInteractEvent
+import org.bukkit.event.player.PlayerAnimationEvent
+import org.bukkit.event.player.PlayerAnimationType
 import org.bukkit.inventory.EquipmentSlot
 
 class OnPlayerInteractEvent : Listener {
 
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    fun onPlayerAnimation(event: PlayerAnimationEvent) {
+        if (event.animationType != PlayerAnimationType.ARM_SWING) return
+        val player = event.player
+        if (!isGaming() && !PlayerTagManager.hasTag(player, "isTraining")) return
+        val item = player.inventory.itemInMainHand
+        if (item.type.isAir) return
+        val currentGame = findGameForPlayer(player) ?: return
+        val playerData = currentGame.playerDatas.filterIsInstance<PlayerData>()
+            .find { it.player.uniqueId == player.uniqueId } ?: return
+        if (!playerData.canDispatchClassHandlers()) return
+        val taggedClassId = getWeaponClassId(item)
+        playerData.gameClasses.filterIsInstance<WoundsWind>()
+            .filter { gameClass ->
+                if (taggedClassId != null) gameClass.javaClass.name == taggedClassId
+                else item.type == gameClass.weapon.material
+            }
+            .forEach(WoundsWind::launchSlashFromSwing)
+    }
+
     @EventHandler(priority = EventPriority.HIGH)
     fun onPlayerInteract(event: PlayerInteractEvent) {
+        if (HideAndSeek.handleInteract(event)) return
+        if (event.action == Action.RIGHT_CLICK_BLOCK && Referee.hasActiveTrial(event.player.uniqueId)) {
+            event.isCancelled = true
+            return
+        }
         if (event.hand != EquipmentSlot.HAND) return
         val isRightClick = event.action == Action.RIGHT_CLICK_AIR || event.action == Action.RIGHT_CLICK_BLOCK
         val isLeftClick = event.action == Action.LEFT_CLICK_AIR || event.action == Action.LEFT_CLICK_BLOCK
@@ -40,19 +70,17 @@ class OnPlayerInteractEvent : Listener {
         if (!playerData.canDispatchClassHandlers()) return
         val skillId = getSkillId(clickedItem, player.uniqueId)
         if (skillId == null) {
-            if (isRightClick) {
-                val taggedClassId = getWeaponClassId(clickedItem)
-                playerData.gameClasses
-                    .filter { gameClass ->
-                        if (taggedClassId != null) gameClass.javaClass.name == taggedClassId
-                        else clickedItem.type == gameClass.weapon.material
-                    }
-                    .filterIsInstance<WeaponInputHandler>()
-                    .forEach { handler ->
-                        handler.onWeaponRightClick(event)
-                        if (event.isCancelled) return
-                    }
-            }
+            val taggedClassId = getWeaponClassId(clickedItem)
+            playerData.gameClasses
+                .filter { gameClass ->
+                    if (taggedClassId != null) gameClass.javaClass.name == taggedClassId
+                    else clickedItem.type == gameClass.weapon.material
+                }
+                .filterIsInstance<WeaponInputHandler>()
+                .forEach { handler ->
+                    if (isRightClick) handler.onWeaponRightClick(event) else handler.onWeaponLeftClick(event)
+                    if (event.isCancelled) return
+                }
             return
         }
         val ownerClass = playerData.gameClasses.find { gameClass -> gameClass.skills.any { it.id == skillId } } ?: return
