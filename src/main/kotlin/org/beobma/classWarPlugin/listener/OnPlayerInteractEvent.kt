@@ -10,6 +10,7 @@ import org.beobma.classWarPlugin.manager.SkillManager.getSkillId
 import org.beobma.classWarPlugin.manager.SkillManager.use
 import org.beobma.classWarPlugin.gameClass.list.Referee
 import org.beobma.classWarPlugin.gameClass.list.HideAndSeek
+import org.beobma.classWarPlugin.gameClass.list.Brave
 import org.beobma.classWarPlugin.gameClass.list.WoundsWind
 import org.beobma.classWarPlugin.gameClass.handler.WeaponInputHandler
 import org.beobma.classWarPlugin.gameClass.handler.SkillInputHandler
@@ -18,11 +19,18 @@ import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.block.Action
 import org.bukkit.event.player.PlayerInteractEvent
+import org.bukkit.event.player.PlayerInteractEntityEvent
 import org.bukkit.event.player.PlayerAnimationEvent
 import org.bukkit.event.player.PlayerAnimationType
 import org.bukkit.inventory.EquipmentSlot
 
 class OnPlayerInteractEvent : Listener {
+
+    @EventHandler(priority = EventPriority.HIGH)
+    fun onPlayerInteractEntity(event: PlayerInteractEntityEvent) {
+        if (event.hand != EquipmentSlot.HAND) return
+        if (Brave.handlePullInteract(event.player, event.rightClicked)) event.isCancelled = true
+    }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     fun onPlayerAnimation(event: PlayerAnimationEvent) {
@@ -47,6 +55,7 @@ class OnPlayerInteractEvent : Listener {
     @EventHandler(priority = EventPriority.HIGH)
     fun onPlayerInteract(event: PlayerInteractEvent) {
         if (HideAndSeek.handleInteract(event)) return
+        if (Brave.handlePullInteract(event)) return
         if (event.action == Action.RIGHT_CLICK_BLOCK && Referee.hasActiveTrial(event.player.uniqueId)) {
             event.isCancelled = true
             return

@@ -68,6 +68,9 @@ val verifyShadowJarContents = tasks.register("verifyShadowJarContents") {
             "org/beobma/classWarPlugin/gameClass/list/Train.class",
             "org/beobma/classWarPlugin/gameClass/list/TrainCarriage.class",
             "org/beobma/classWarPlugin/gameClass/list/WoundsWind.class",
+            "org/beobma/classWarPlugin/gameClass/list/Blacksmith.class",
+            "org/beobma/classWarPlugin/gameClass/list/Brave.class",
+            "org/beobma/classWarPlugin/gameClass/list/BurningPainStatus.class",
             "org/beobma/classWarPlugin/status/list/AttackSpeedDecrease.class",
         )
 
