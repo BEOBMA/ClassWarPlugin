@@ -15,6 +15,8 @@ import org.beobma.classWarPlugin.status.list.Silence
 import org.beobma.classWarPlugin.status.list.Stealth
 import org.beobma.classWarPlugin.status.list.Stun
 import org.beobma.classWarPlugin.status.list.Enchantment
+import org.beobma.classWarPlugin.status.list.Fix
+import org.beobma.classWarPlugin.skill.MovementSkill
 import org.beobma.classWarPlugin.util.TargetType
 import org.beobma.classWarPlugin.util.HitboxUtil
 import org.beobma.classWarPlugin.util.TargetType.*
@@ -87,6 +89,10 @@ object SkillManager {
         }
         if (CooldownManager.hasCooldown(playerData.player, skill)) {
             playerData.player.sendMiniMessage("<red><bold>[!] 재사용 대기 중입니다.")
+            return false
+        }
+        if (skill is MovementSkill && playerData.hasStatus<Fix>()) {
+            playerData.player.sendMiniMessage("<red><bold>[!] 고정 상태에서는 이동 스킬을 사용할 수 없습니다.")
             return false
         }
 

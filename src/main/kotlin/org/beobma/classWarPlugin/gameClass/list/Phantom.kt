@@ -230,10 +230,10 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
         speed?.remove(); speed = null
         restoreReturnState()
         marks.toMap().forEach { (target, status) ->
-            val amount = status.power
+            val amount = (status.power / 10)
             status.remove()
             if (releaseMarks && amount > 0 && !target.entityStatus.isDead) {
-                target.damage(amount.toDouble(), DamageType.True, playerData, damagePath = DamagePath.SKILL)
+                target.damage((amount.toDouble() / 10), DamageType.True, playerData, damagePath = DamagePath.SKILL)
                 renderReleasedSlashes(target, amount)
             }
         }
@@ -288,7 +288,7 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
         override val description = listOf(
             "<gray>패시브", "", "<gray>이탈 스킬 사용 중, 적에게 피해를 입히면 피해량이 0으로 고정된다.",
             "<gray>대신 피해를 입힐 때마다 검흔을 1 부여한다.",
-            "<gray>이탈 스킬 종료 후 몸으로 돌아온 뒤, 검흔을 베어 수치당 1의 고정 피해를 입힌다."
+            "<gray>이탈 스킬 종료 후 몸으로 돌아온 뒤, 검흔을 베어 수치당 0.1의 고정 피해를 입힌다."
         )
         override fun onHit(context: DamageContext) {
             if (!active || returning || context.target == playerData) return

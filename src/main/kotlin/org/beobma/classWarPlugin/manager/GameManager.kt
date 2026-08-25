@@ -102,7 +102,7 @@ object GameManager {
         ::BackRoom, ::Chameleon, ::Dwarf, ::HideAndSeek, ::JustLight, ::LuckyOne,
         ::PatAndMatt, ::Peanuts, ::RainbowBridge, ::Reverse, ::Sagittarius, ::ShyPerson,
         ::Terrorist, ::ThunderclapFlash, ::Train, ::TrainCarriage, ::WoundsWind,
-        ::Blacksmith, ::Brave,
+        ::Blacksmith, ::Brave, ::Charger, ::Elementalist,
         ::SolarSystem, ::Sol, ::Luna, ::Mercurius, ::Venus, ::Terra,
         ::Mars, ::Jupiter, ::Saturnus, ::Uranus, ::Neptune, ::Pluto,
     )

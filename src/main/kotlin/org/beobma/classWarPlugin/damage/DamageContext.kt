@@ -11,6 +11,7 @@ class DamageContext(
     val damageType: DamageType,
     baseDamage: Double,
     val bypassShield: Boolean = false,
+    val armorIgnoreRatio: Double = 0.0,
 ) {
     val originalDamage: Double = baseDamage
     var damage: Double = baseDamage

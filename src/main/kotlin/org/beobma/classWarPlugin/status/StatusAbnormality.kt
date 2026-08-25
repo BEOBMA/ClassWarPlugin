@@ -135,6 +135,9 @@ abstract class StatusAbnormality {
 
     open fun onRemoveStatusAbnormality() {}
 
+    /** 영역 효과처럼 상태를 제거하지 않고 남은 지속시간만 일시 정지할 때 재정의한다. */
+    open fun isDurationPaused(): Boolean = false
+
     open fun actionBarText(): String {
         val durationText = duration?.let { "${it}s" } ?: "∞"
         val durationLabel = "<dark_gray>|</dark_gray><yellow>$durationText</yellow>"
@@ -189,6 +192,7 @@ abstract class StatusAbnormality {
 
         val currentDuration = duration
         if (currentDuration != null) {
+            if (isDurationPaused()) return
             val nextDuration = currentDuration - 1
             duration = nextDuration
             if (nextDuration <= 0) {

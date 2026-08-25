@@ -8,7 +8,12 @@ import kotlin.math.min
 object DamageCalculator {
     data class Result(val finalDamage: Double, val absorbed: Double)
 
-    fun calculate(baseDamage: Double, target: LivingEntity, damageType: DamageType): Result {
+    fun calculate(
+        baseDamage: Double,
+        target: LivingEntity,
+        damageType: DamageType,
+        armorIgnoreRatio: Double = 0.0,
+    ): Result {
         if (baseDamage <= 0.0) {
             return Result(0.0, 0.0)
         }
@@ -19,7 +24,7 @@ object DamageCalculator {
 
         var damage = baseDamage
 
-        damage = applyArmorAndToughness(damage, target)
+        damage = applyArmorAndToughness(damage, target, armorIgnoreRatio)
         damage = applyResistance(damage, target)
 
         damage = damage.coerceAtLeast(0.0)
@@ -35,8 +40,13 @@ object DamageCalculator {
         return Result(damage, absorbed)
     }
 
-    private fun applyArmorAndToughness(damage: Double, target: LivingEntity): Double {
-        val armor = target.getAttribute(Attribute.ARMOR)?.value ?: 0.0
+    private fun applyArmorAndToughness(
+        damage: Double,
+        target: LivingEntity,
+        armorIgnoreRatio: Double,
+    ): Double {
+        val effectiveIgnoreRatio = armorIgnoreRatio.coerceIn(0.0, 1.0)
+        val armor = (target.getAttribute(Attribute.ARMOR)?.value ?: 0.0) * (1.0 - effectiveIgnoreRatio)
         val toughness = target.getAttribute(Attribute.ARMOR_TOUGHNESS)?.value ?: 0.0
 
         val armorFactor = (armor / 5.0).coerceAtLeast(armor - damage / (2.0 + toughness / 4.0))

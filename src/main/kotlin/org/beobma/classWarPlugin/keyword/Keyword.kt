@@ -87,7 +87,10 @@ enum class Keyword(val string: String, val description: String? = null) {
         "<blue><bold>충전</bold><gray>",
         "{keyword:Charge}: 웅크려서 충전하고, 특정 스킬 사용 시 소모하여 스킬을 강화한다."
     ),
-    Fix("<dark_gray><bold>고정</bold><gray>"),
+    Fix(
+        "<dark_gray><bold>고정</bold><gray>",
+        "{keyword:Fix}: 이동과 관련된 스킬을 사용할 수 없다."
+    ),
     Frostbite(
         "<aqua><bold>동상</bold><gray>",
         "{keyword:Frostbite}: 5초간 <gold><bold>이동 속도가 (수치 x 5)% 만큼 감소</bold><gray>한다. 수치가 10 이상이면 {keyword:Frostbite}을 제거하고 {keyword:Freezing} 상태가 된다."
