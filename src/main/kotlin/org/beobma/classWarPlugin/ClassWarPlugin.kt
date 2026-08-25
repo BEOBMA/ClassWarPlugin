@@ -28,6 +28,7 @@ import org.beobma.classWarPlugin.game.GameSettings
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager
 import org.beobma.classWarPlugin.manager.DamageIndicatorManager
 import org.beobma.classWarPlugin.manager.StealthVisibilityManager
+import org.beobma.classWarPlugin.manager.AttackableObjectManager
 import org.beobma.classWarPlugin.util.CourtroomMidiPlayer
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.scheduler.BukkitRunnable
@@ -47,6 +48,7 @@ class ClassWarPlugin : JavaPlugin() {
         saveDefaultConfig()
         GameSettings.load(config)
         DamageIndicatorManager.start()
+        AttackableObjectManager.start()
         CourtroomMidiPlayer.preload()
 
         registerClientDetectionChannel()
@@ -63,6 +65,7 @@ class ClassWarPlugin : JavaPlugin() {
         }
         StealthVisibilityManager.showAll()
         DamageIndicatorManager.shutdown()
+        AttackableObjectManager.shutdown()
         server.messenger.unregisterIncomingPluginChannel(this)
         loggerInfo("플러그인이 정상적으로 비활성화되었습니다.")
     }

@@ -3,17 +3,23 @@ package org.beobma.classWarPlugin.gameClass.list
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.effect.ParticleOptions
 import org.beobma.classWarPlugin.entity.EntityData
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.EnvironmentalDamageHandler
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
+import org.beobma.classWarPlugin.gameClass.handler.GameEndHandler
 import org.beobma.classWarPlugin.gameClass.handler.MovementInputHandler
 import org.beobma.classWarPlugin.manager.TemporaryDisplayManager
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.hasStatus
+import org.beobma.classWarPlugin.manager.AttackableObjectManager
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Projectile
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.SpiderWebChargeStatus
+import org.beobma.classWarPlugin.status.list.Silence
+import org.beobma.classWarPlugin.status.list.Snare
 import org.beobma.classWarPlugin.util.TargetType
 import org.bukkit.Color
 import org.bukkit.FluidCollisionMode
@@ -27,6 +33,7 @@ import org.bukkit.event.player.PlayerInputEvent
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.Transformation
+import org.bukkit.util.BoundingBox
 import org.bukkit.util.Vector
 import org.joml.Quaternionf
 import org.joml.Vector3f
@@ -40,7 +47,7 @@ private const val SPIDER_MAN_WEB_COOLDOWN_SECONDS = 6
 private const val SPIDER_MAN_MAX_WEB_CHARGES = 5
 private const val SPIDER_MAN_RECHARGE_TICKS = 120
 
-class SpiderMan : GameClass(), GameStatusHandler, MovementInputHandler, EnvironmentalDamageHandler {
+class SpiderMan : GameClass(), GameStatusHandler, GameEndHandler, MovementInputHandler, EnvironmentalDamageHandler {
     private val webSkill = RedSkill()
 
     override val name = "<gray>스파이더맨"
@@ -52,6 +59,8 @@ class SpiderMan : GameClass(), GameStatusHandler, MovementInputHandler, Environm
     override fun onBattleStart() = webSkill.initialize()
 
     override fun onGameTimePasses() = webSkill.initialize()
+
+    override fun onGameEnd() = webSkill.shutdown()
 
     override fun onPlayerInput(event: PlayerInputEvent) = webSkill.updateMovementInput(event)
 
@@ -72,6 +81,7 @@ class SpiderMan : GameClass(), GameStatusHandler, MovementInputHandler, Environm
             "<gray>웅크리면 거미줄을 놓으며 현재 이동 방향과 속도를 유지한 채 날아간다.",
             "",
             "<gray>거미줄이 플레이어에게 닿으면 해당 플레이어에게 날아가며 이 스킬의 충전은 0이 된다.",
+            "<gray>침묵 또는 속박 상태가 되거나, 거미줄이 적의 기본 공격, 스킬 또는 투사체에 맞으면 연결이 끊어진다.",
             "",
             "<dark_gray>이 스킬을 사용하는 중에는 재사용 대기 시간이 감소하지 않는다."
         )
@@ -88,6 +98,13 @@ class SpiderMan : GameClass(), GameStatusHandler, MovementInputHandler, Environm
         private var leftInput = false
         private var rightInput = false
         private var jumpInput = false
+        private var breakRequested = false
+        private var webStart: Location? = null
+        private var webEnd: Location? = null
+        private var webPullsToEntity = false
+        private var webTargetRegistration: AttackableObjectManager.Registration? = null
+        private var activeAnchorDisplay: BlockDisplay? = null
+        private var swingOriginalGravity: Boolean? = null
 
         fun isWebConnected(): Boolean = swinging
 
@@ -106,6 +123,23 @@ class SpiderMan : GameClass(), GameStatusHandler, MovementInputHandler, Environm
                 status.updateState(SPIDER_MAN_MAX_WEB_CHARGES, 0)
             }
             ensureRechargeTask()
+        }
+
+        fun shutdown() {
+            breakRequested = true
+            rechargeTask?.cancel()
+            rechargeTask = null
+            swingTask?.cancel()
+            swingTask = null
+            activeAnchorDisplay?.remove()
+            activeAnchorDisplay = null
+            swingOriginalGravity?.let(player::setGravity)
+            swingOriginalGravity = null
+            webInFlight = false
+            swinging = false
+            clearWebTarget()
+            playerData.getOrCreateStatus(playerData) { SpiderWebChargeStatus() }.setRopeState(null)
+            initialized = false
         }
 
         private fun ensureRechargeTask() {
@@ -162,7 +196,10 @@ class SpiderMan : GameClass(), GameStatusHandler, MovementInputHandler, Environm
             val status = playerData.getOrCreateStatus(playerData) { SpiderWebChargeStatus() }
             status.updateState(status.power - 1, SPIDER_MAN_RECHARGE_TICKS - rechargeProgressTicks)
             status.setRopeState("발사 중")
+            breakRequested = false
             webInFlight = true
+            updateWebLine(ropeHandLocation(), player.eyeLocation, pullsToEntity = false)
+            registerWebTarget()
             WebProjectile().apply {
                 location = player.eyeLocation.clone()
                 setContinueWhileIf { isProjectileActive() }
@@ -176,16 +213,15 @@ class SpiderMan : GameClass(), GameStatusHandler, MovementInputHandler, Environm
             swinging = true
             val firstAnchor = anchorProvider()
             if (firstAnchor == null || firstAnchor.world != player.world) {
-                swinging = false
-                playerData.getOrCreateStatus(playerData) { SpiderWebChargeStatus() }.setRopeState(null)
+                clearActiveWeb()
                 return
             }
-            val originalGravity = player.hasGravity()
+            val originalGravity = player.hasGravity().also { swingOriginalGravity = it }
             val initialDelta = firstAnchor.toVector().subtract(ropeHandLocation().toVector())
             val actualInitialDistance = initialDelta.length()
             if (actualInitialDistance < 0.35) {
-                swinging = false
-                playerData.getOrCreateStatus(playerData) { SpiderWebChargeStatus() }.setRopeState(null)
+                swingOriginalGravity = null
+                clearActiveWeb()
                 return
             }
             val initialDistance = actualInitialDistance.coerceAtLeast(1.8)
@@ -200,6 +236,8 @@ class SpiderMan : GameClass(), GameStatusHandler, MovementInputHandler, Environm
             val ropeStatus = playerData.getOrCreateStatus(playerData) { SpiderWebChargeStatus() }
             ropeStatus.setRopeState(if (pullsToEntity) "대상 추적" else "스윙 연결")
             val anchorDisplay = if (pullsToEntity) null else spawnAnchorDisplay(firstAnchor)
+            activeAnchorDisplay = anchorDisplay
+            updateWebLine(ropeHandLocation(), firstAnchor, pullsToEntity)
 
             player.setGravity(false)
             val initialInward = initialDelta.normalize()
@@ -250,9 +288,12 @@ class SpiderMan : GameClass(), GameStatusHandler, MovementInputHandler, Environm
                     swinging = false
                     swingTask = null
                     anchorDisplay?.remove()
+                    if (activeAnchorDisplay === anchorDisplay) activeAnchorDisplay = null
                     ropeStatus.setRopeState(null)
                     player.setGravity(originalGravity)
+                    swingOriginalGravity = null
                     player.fallDistance = 0f
+                    clearWebTarget()
                     particles.spawn(player, Particle.CLOUD, count = 8, spread = 0.24, speed = 0.05)
                     sounds.play(player, Sound.ENTITY_WIND_CHARGE_WIND_BURST, volume = 0.7f, pitch = 1.55f)
                     cancel()
@@ -260,6 +301,10 @@ class SpiderMan : GameClass(), GameStatusHandler, MovementInputHandler, Environm
 
                 override fun run() {
                     if (!player.isOnline || player.isDead) {
+                        finishSwing()
+                        return
+                    }
+                    if (isWebInterrupted()) {
                         finishSwing()
                         return
                     }
@@ -386,6 +431,7 @@ class SpiderMan : GameClass(), GameStatusHandler, MovementInputHandler, Environm
                     }
                     player.velocity = velocity
                     player.fallDistance = 0f
+                    updateWebLine(hand, anchor, pullsToEntity)
                     drawWeb(hand, anchor, ropeLength)
 
                     val currentSpeed = velocity.length()
@@ -466,6 +512,96 @@ class SpiderMan : GameClass(), GameStatusHandler, MovementInputHandler, Environm
                 TemporaryDisplayManager.mark(this, player.uniqueId)
             }
 
+        private fun registerWebTarget() {
+            webTargetRegistration?.unregister()
+            webTargetRegistration = AttackableObjectManager.register(
+                ownerId = player.uniqueId,
+                world = player.world,
+                acceptsAreaSkills = true,
+                canBeHitBy = ::canWebBeHitBy,
+                hitboxes = ::currentWebHitboxes,
+                onHit = ::requestWebBreak,
+            )
+        }
+
+        private fun canWebBeHitBy(attackerId: java.util.UUID?): Boolean {
+            if (attackerId == null) return true
+            if (attackerId == player.uniqueId) return false
+            val attackerData = game.playerDatas.filterIsInstance<PlayerData>()
+                .firstOrNull { it.uniqueId == attackerId }
+            return attackerData?.isEnemyOf(playerData) ?: true
+        }
+
+        private fun updateWebLine(start: Location, end: Location, pullsToEntity: Boolean) {
+            webStart = start.clone()
+            webEnd = end.clone()
+            webPullsToEntity = pullsToEntity
+        }
+
+        private fun currentWebHitboxes(): List<BoundingBox> {
+            if (!webInFlight && !swinging) return emptyList()
+            val start = webStart ?: return emptyList()
+            val end = webEnd ?: return emptyList()
+            if (start.world != end.world) return emptyList()
+            val difference = end.toVector().subtract(start.toVector())
+            val distance = difference.length()
+            if (distance < 0.2) return emptyList()
+            val steps = ceil(distance / 0.36).toInt().coerceAtLeast(1)
+            val firstStep = ceil(steps * 0.16).toInt().coerceAtMost(steps)
+            val lastStep = if (webPullsToEntity) {
+                (steps * 0.84).toInt().coerceAtLeast(firstStep)
+            } else {
+                steps
+            }
+            val radius = 0.14
+            return (firstStep..lastStep).map { index ->
+                val point = start.toVector().add(difference.clone().multiply(index.toDouble() / steps))
+                BoundingBox(
+                    point.x - radius,
+                    point.y - radius,
+                    point.z - radius,
+                    point.x + radius,
+                    point.y + radius,
+                    point.z + radius,
+                )
+            }
+        }
+
+        private fun requestWebBreak() {
+            if ((!webInFlight && !swinging) || breakRequested) return
+            breakRequested = true
+            val effectLocation = webStart?.clone()?.apply {
+                val end = webEnd
+                if (end != null && end.world == world) {
+                    add(end.toVector().subtract(toVector()).multiply(0.5))
+                }
+            } ?: player.location
+            particles.spawn(effectLocation, Particle.CLOUD, count = 9, spread = 0.22, speed = 0.04)
+            sounds.play(effectLocation, Sound.BLOCK_COBWEB_BREAK, volume = 0.75f, pitch = 1.35f)
+        }
+
+        private fun isWebInterrupted(): Boolean {
+            if (!breakRequested && (playerData.hasStatus<Silence>() || playerData.hasStatus<Snare>())) {
+                requestWebBreak()
+            }
+            return breakRequested
+        }
+
+        private fun clearWebTarget() {
+            webTargetRegistration?.unregister()
+            webTargetRegistration = null
+            webStart = null
+            webEnd = null
+            webPullsToEntity = false
+        }
+
+        private fun clearActiveWeb() {
+            webInFlight = false
+            swinging = false
+            clearWebTarget()
+            playerData.getOrCreateStatus(playerData) { SpiderWebChargeStatus() }.setRopeState(null)
+        }
+
         private fun drawWeb(from: Location, to: Location, ropeLength: Double) {
             val difference = to.toVector().subtract(from.toVector())
             val distance = difference.length()
@@ -506,9 +642,10 @@ class SpiderMan : GameClass(), GameStatusHandler, MovementInputHandler, Environm
             private var moveTicks = 0
             private var previousMoveLocation: Location? = null
 
-            fun isProjectileActive(): Boolean = projectileActive
+            fun isProjectileActive(): Boolean = projectileActive && !isWebInterrupted()
 
             override fun onProjectileMove(location: Location) {
+                updateWebLine(ropeHandLocation(), location, pullsToEntity = false)
                 if (!::flightDirection.isInitialized) flightDirection = location.direction.normalize()
                 val previous = previousMoveLocation ?: this.location.clone()
                 val movement = location.toVector().subtract(previous.toVector())
@@ -563,8 +700,7 @@ class SpiderMan : GameClass(), GameStatusHandler, MovementInputHandler, Environm
 
             override fun onProjectileEnd(location: Location) {
                 if (!attached) {
-                    webInFlight = false
-                    playerData.getOrCreateStatus(playerData) { SpiderWebChargeStatus() }.setRopeState(null)
+                    clearActiveWeb()
                 }
             }
         }

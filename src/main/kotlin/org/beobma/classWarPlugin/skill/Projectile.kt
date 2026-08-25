@@ -8,6 +8,7 @@ import org.beobma.classWarPlugin.entity.mob.MobEntityData
 import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.TemporaryDisplayManager
+import org.beobma.classWarPlugin.manager.AttackableObjectManager
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.entity.player.PlayerStatus
@@ -187,6 +188,17 @@ abstract class Projectile : EffectApiAccess {
                 PortalGun.teleportCustomProjectile(currentLocation, direction, currentSpeed)
                 val previousLocation = currentLocation.clone()
                 val nextLocation = previousLocation.clone().add(direction.clone().multiply(currentSpeed))
+                val projectileExpansion = maxOf(xSize, ySize, zSize).coerceAtLeast(0.0)
+                if (AttackableObjectManager.hitProjectileSegment(
+                        player.uniqueId,
+                        previousLocation,
+                        nextLocation,
+                        projectileExpansion,
+                    )
+                ) {
+                    stop()
+                    return
+                }
                 val speedRatio = if (speed == 0.0) 1.0 else (currentSpeed / speed).coerceIn(0.0, 1.0)
                 val interpolatedLocation = lerpLocation(previousLocation, nextLocation, speedRatio)
                 updateItemDisplay(interpolatedLocation, currentSpeed, elapsedTicks)

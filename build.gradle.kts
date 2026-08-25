@@ -89,6 +89,7 @@ val verifyShadowJarContents = tasks.register("verifyShadowJarContents") {
             "org/beobma/classWarPlugin/status/list/Burn.class",
             "org/beobma/classWarPlugin/status/list/Enchantment.class",
             "org/beobma/classWarPlugin/status/list/AttackSpeedDecrease.class",
+            "org/beobma/classWarPlugin/manager/AttackableObjectManager.class",
         )
 
         ZipFile(shadowArchive).use { archive ->

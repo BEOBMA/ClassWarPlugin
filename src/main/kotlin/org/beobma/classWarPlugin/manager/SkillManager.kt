@@ -116,9 +116,18 @@ object SkillManager {
 
         return true
     }
-    fun EntityData.radius(location: Location, targetType: TargetType, radius: Double, oneself: Boolean): List<EntityData> {
+    fun EntityData.radius(
+        location: Location,
+        targetType: TargetType,
+        radius: Double,
+        oneself: Boolean,
+        hitAttackableObjects: Boolean = true,
+    ): List<EntityData> {
         val isTraining = isTraining()
         val sourcePlayer = this as? PlayerData
+        if (hitAttackableObjects && sourcePlayer != null && targetType == Enemy) {
+            AttackableObjectManager.hitSphere(sourcePlayer.uniqueId, location, radius)
+        }
         val world = entity.world
         val nearbyEntities = world.getNearbyEntities(location, radius, radius, radius)
             .filterIsInstance<LivingEntity>()
@@ -226,6 +235,9 @@ object SkillManager {
     }
     fun EntityData.getConeTargets(radius: Double, angle: Double, targetType: TargetType, includeSelf: Boolean): List<EntityData> {
         val sourcePlayer = this as? PlayerData ?: return emptyList()
+        if (targetType == Enemy) {
+            AttackableObjectManager.hitCone(sourcePlayer.uniqueId, sourcePlayer.player.eyeLocation, radius, angle)
+        }
         val isTraining = isTraining()
         val playerLocation = sourcePlayer.player.location
         val playerDirection = playerLocation.direction.normalize()

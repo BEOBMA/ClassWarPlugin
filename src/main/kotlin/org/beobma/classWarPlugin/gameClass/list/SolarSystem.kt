@@ -5,6 +5,7 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.effect.ParticleOptions
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.GameEndHandler
@@ -21,6 +22,7 @@ import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.updateStatusActionBar
 import org.beobma.classWarPlugin.manager.TemporaryDisplayManager
+import org.beobma.classWarPlugin.manager.AttackableObjectManager
 import org.beobma.classWarPlugin.manager.UtilManager
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
@@ -41,6 +43,7 @@ import org.bukkit.inventory.ItemStack
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.Transformation
+import org.bukkit.util.BoundingBox
 import org.joml.Quaternionf
 import org.joml.Vector3f
 import kotlin.math.PI
@@ -72,6 +75,7 @@ class SolarSystem : GameClass(), GameStatusHandler, GameEndHandler, OnHitHandler
     private val bodies = mutableListOf<OrbitBody>()
     private val destroyedUntil = mutableMapOf<Class<out PlanetClass>, Long>()
     private val planetStatuses = mutableListOf<SolarPlanetStatus>()
+    private val bodyRegistrations = mutableListOf<AttackableObjectManager.Registration>()
     private var orbitTask: BukkitTask? = null
 
     override fun onBattleStart() {
@@ -144,8 +148,42 @@ class SolarSystem : GameClass(), GameStatusHandler, GameEndHandler, OnHitHandler
             BodyDefinition(pluto, Material.ORANGE_CONCRETE_POWDER, 9.7, 0.20f, 0.0055, Color.fromRGB(180, 130, 95)),
         )
         definitions.forEachIndexed { index, definition ->
-            bodies += OrbitBody(definition, index * 2.0 * PI / definitions.size)
+            val body = OrbitBody(definition, index * 2.0 * PI / definitions.size)
+            bodies += body
+            bodyRegistrations += AttackableObjectManager.register(
+                ownerId = player.uniqueId,
+                world = player.world,
+                canBeHitBy = ::canBodyBeHitBy,
+                hitboxes = { bodyHitboxes(body) },
+                onHit = {
+                    body.display?.takeIf { it.isValid }?.location?.clone()?.let { location ->
+                        destroyPlanet(body, location, currentTick())
+                    }
+                },
+            )
         }
+    }
+
+    private fun canBodyBeHitBy(attackerId: java.util.UUID?): Boolean {
+        if (attackerId == null) return true
+        if (attackerId == player.uniqueId) return false
+        val attackerData = game.playerDatas.filterIsInstance<PlayerData>()
+            .firstOrNull { it.uniqueId == attackerId }
+        return attackerData?.isEnemyOf(playerData) ?: true
+    }
+
+    private fun bodyHitboxes(body: OrbitBody): List<BoundingBox> {
+        val display = body.display?.takeIf { it.isValid } ?: return emptyList()
+        val location = display.location
+        val halfSize = body.definition.size / 2.0 + 0.12
+        return listOf(BoundingBox(
+            location.x - halfSize,
+            location.y - halfSize,
+            location.z - halfSize,
+            location.x + halfSize,
+            location.y + halfSize,
+            location.z + halfSize,
+        ))
     }
 
     private fun startOrbitTask() {
@@ -223,10 +261,22 @@ class SolarSystem : GameClass(), GameStatusHandler, GameEndHandler, OnHitHandler
     private fun checkCollision(body: OrbitBody, location: Location, now: Long) {
         val definition = body.definition
         val radius = definition.size * 0.55 + 0.28
-        val target = playerData.radius(location, TargetType.Enemy, radius, false)
+        val target = playerData.radius(
+            location,
+            TargetType.Enemy,
+            radius,
+            false,
+            hitAttackableObjects = false,
+        )
             .firstOrNull { HitboxUtil.intersectsSphere(it.entity.boundingBox, location.toVector(), radius) }
             ?: return
         target.damage(2.0, DamageType.Normal, playerData, damagePath = DamagePath.SKILL)
+        destroyPlanet(body, location, now)
+    }
+
+    private fun destroyPlanet(body: OrbitBody, location: Location, now: Long) {
+        val definition = body.definition
+        if ((destroyedUntil[definition.planet.javaClass] ?: 0L) > now) return
         destroyedUntil[definition.planet.javaClass] = now + 400L
         body.display?.remove()
         body.display = null
@@ -322,6 +372,8 @@ class SolarSystem : GameClass(), GameStatusHandler, GameEndHandler, OnHitHandler
     private fun clearBodies() {
         orbitTask?.cancel()
         orbitTask = null
+        bodyRegistrations.forEach(AttackableObjectManager.Registration::unregister)
+        bodyRegistrations.clear()
         bodies.forEach { it.display?.remove() }
         bodies.clear()
     }
@@ -363,7 +415,8 @@ class SolarSystem : GameClass(), GameStatusHandler, GameEndHandler, OnHitHandler
         override val description = listOf(
             "<gray>패시브", "",
             "<gray>현실의 크기와 순서를 반영한 태양계 천체들이 서로 다른 속도로 자신 주위를 공전한다.",
-            "<gray>공전하는 천체에 충돌한 적은 2의 피해를 입고, 20초간 해당 천체가 파괴된다.", "",
+            "<gray>공전하는 천체에 충돌한 적은 2의 피해를 입고, 20초간 해당 천체가 파괴된다.",
+            "<gray>천체는 적의 기본 공격 또는 투사체에 적중해도 파괴된다.", "",
             "<gray>공전 중인 천체 클래스의 능력, 패시브, 무기를 모두 얻는다.",
             "<gray>파괴된 천체의 능력, 패시브, 무기는 재생될 때까지 제거된다."
         )
