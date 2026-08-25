@@ -18,6 +18,9 @@ import org.beobma.classWarPlugin.gameClass.list.Vampire
 import org.beobma.classWarPlugin.gameClass.list.Referee
 import org.beobma.classWarPlugin.gameClass.list.Chameleon
 import org.beobma.classWarPlugin.gameClass.list.HideAndSeek
+import org.beobma.classWarPlugin.gameClass.list.Uranus
+import org.beobma.classWarPlugin.gameClass.list.Neptune
+import org.beobma.classWarPlugin.gameClass.list.PlanetPowerRegistry
 import org.bukkit.entity.Player
 import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Projectile
@@ -31,11 +34,6 @@ class OnEntityDamageByEntityEvent : Listener {
         if (HideAndSeek.handleDamage(event)) return
         if (Chameleon.handleDisguiseDamage(event)) return
         if (Vampire.handleBatDamage(event)) return
-        if (event.damage < 1.0) {
-            event.isCancelled = true
-            return
-        }
-
         val directDamager = event.damager
         val attacker = when (directDamager) {
             is Player -> directDamager
@@ -64,6 +62,12 @@ class OnEntityDamageByEntityEvent : Listener {
             event.isCancelled = true
             return
         }
+        val neptuneBasicAttack = directDamager is Player &&
+            PlanetPowerRegistry.hasPower(attackerData, Neptune::class.java)
+        if (event.damage < 1.0 && !neptuneBasicAttack) {
+            event.isCancelled = true
+            return
+        }
 
         val targetData = if (isMannequin) {
             attackerGame.playerDatas.find { it.entity.uniqueId == targetEntity.uniqueId }
@@ -89,17 +93,19 @@ class OnEntityDamageByEntityEvent : Listener {
             return
         }
 
+        val isUranusIcicle = Uranus.isIcicle(directDamager)
         val context = DamageContext(
             attacker = attackerData,
             target = targetData,
             path = path,
             damageType = DamageType.Normal,
-            baseDamage = event.damage,
+            baseDamage = if (isUranusIcicle) event.damage * 0.66 else event.damage,
         )
         if (!DamageManager.process(context)) {
             event.isCancelled = true
             return
         }
+        if (isUranusIcicle) Uranus.applySuccessfulIcicleHit(targetData, attackerData)
 
         if (isMannequin) {
             event.isCancelled = true

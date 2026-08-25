@@ -4,6 +4,8 @@ import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
+import org.beobma.classWarPlugin.gameClass.list.PlanetPowerRegistry
+import org.beobma.classWarPlugin.gameClass.list.Terra
 import java.util.UUID
 
 object CombatManager {
@@ -21,7 +23,14 @@ object CombatManager {
 
     fun blocksNaturalRegeneration(player: Player): Boolean {
         val lastCombatTick = lastCombatTickByPlayer[player.uniqueId] ?: return false
-        if (currentTick() - lastCombatTick < COMBAT_TIMEOUT_TICKS) return true
+        val playerData = GameManager.findGameForPlayer(player)?.playerDatas?.filterIsInstance<PlayerData>()
+            ?.find { it.uniqueId == player.uniqueId }
+        val timeout = if (playerData != null && PlanetPowerRegistry.hasPower(playerData, Terra::class.java)) {
+            5L * 20L
+        } else {
+            COMBAT_TIMEOUT_TICKS
+        }
+        if (currentTick() - lastCombatTick < timeout) return true
         lastCombatTickByPlayer.remove(player.uniqueId)
         return false
     }

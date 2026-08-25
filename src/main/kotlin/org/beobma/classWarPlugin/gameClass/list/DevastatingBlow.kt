@@ -79,7 +79,7 @@ class DevastatingBlow : GameClass(), EnvironmentalDamageHandler, GameEndHandler,
             if (active) return
             cooldownItem = player.inventory.itemInMainHand.clone()
             beginAscension()
-            multiplyCurrentCooldown(0.0)
+            multiplyCurrentCooldown(1.0 / cooldown)
         }
         override fun isUseSuccess(): Boolean = !descending
     }

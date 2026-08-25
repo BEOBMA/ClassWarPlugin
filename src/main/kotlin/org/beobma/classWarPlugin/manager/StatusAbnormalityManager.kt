@@ -13,6 +13,8 @@ import org.beobma.classWarPlugin.status.StatusDurationMode
 import org.beobma.classWarPlugin.status.handler.WhenDamageHandler
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
+import org.beobma.classWarPlugin.gameClass.list.Mercurius
+import org.beobma.classWarPlugin.gameClass.list.PlanetPowerRegistry
 
 object StatusAbnormalityManager {
     private val tickingStatuses: MutableSet<StatusAbnormality> = HashSet()
@@ -98,10 +100,13 @@ object StatusAbnormalityManager {
     fun EntityData.moveSpeedChanged() {
         var increaseFactor = 1.0
         var decreaseFactor = 1.0
+        val ignoresDecrease = (this as? PlayerData)?.let {
+            PlanetPowerRegistry.hasPower(it, Mercurius::class.java)
+        } == true
         for (status in statusAbnormalitys) {
             when (status) {
                 is MoveSpeedIncrease -> increaseFactor *= (1 + status.power / 100.0)
-                is MoveSpeedDecrease -> decreaseFactor *= (1 - status.power / 100.0)
+                is MoveSpeedDecrease -> if (!ignoresDecrease) decreaseFactor *= (1 - status.power / 100.0)
             }
         }
 

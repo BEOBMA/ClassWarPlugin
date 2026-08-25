@@ -27,7 +27,11 @@ object GameClassManager {
     fun GameClass.toWeaponItemStack(): ItemStack = weapon.toItemStack().apply {
         if (!type.isAir) {
             itemMeta = itemMeta.apply {
-                persistentDataContainer.set(weaponClassKey, PersistentDataType.STRING, javaClass.name)
+                persistentDataContainer.set(
+                    weaponClassKey,
+                    PersistentDataType.STRING,
+                    this@toWeaponItemStack.javaClass.name,
+                )
             }
         }
     }

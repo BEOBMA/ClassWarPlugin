@@ -22,6 +22,7 @@ import org.beobma.classWarPlugin.listener.OnPlayerToggleSneakEvent
 import org.beobma.classWarPlugin.listener.OnPlayerInputEvent
 import org.beobma.classWarPlugin.listener.OnAsyncChatEvent
 import org.beobma.classWarPlugin.listener.OnProjectileHitEvent
+import org.beobma.classWarPlugin.listener.OnEntityShootBowEvent
 import org.beobma.classWarPlugin.listener.OnBattleMapEvent
 import org.beobma.classWarPlugin.game.GameSettings
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager
@@ -93,6 +94,7 @@ class ClassWarPlugin : JavaPlugin() {
         server.pluginManager.registerEvents(OnPlayerInputEvent(), this)
         server.pluginManager.registerEvents(OnAsyncChatEvent(), this)
         server.pluginManager.registerEvents(OnProjectileHitEvent(), this)
+        server.pluginManager.registerEvents(OnEntityShootBowEvent(), this)
         server.pluginManager.registerEvents(OnBattleMapEvent(), this)
     }
 

@@ -32,7 +32,10 @@ import kotlin.random.Random
 
 private const val BACKROOM_COOLDOWN_SECONDS = 90
 private const val BACKROOM_DURATION_TICKS = 600
-private const val BACKROOM_SIZE = 17
+private const val BACKROOM_LOGICAL_SIZE = 23
+private const val BACKROOM_CELL_SIZE = 3
+private const val BACKROOM_ROOF_Y = 6
+private const val BACKROOM_MINIMUM_BORDER_SIZE = 19.0
 
 class BackRoom : GameClass(), GameEndHandler, PlayerDeathHandler {
     override val name = "<gray>백룸"
@@ -48,6 +51,12 @@ class BackRoom : GameClass(), GameEndHandler, PlayerDeathHandler {
         val exitBox: BoundingBox,
         var task: BukkitTask? = null,
     )
+    private data class MazeCell(val x: Int, val z: Int)
+    private data class MazeLayout(
+        val passages: Array<BooleanArray>,
+        val entrance: MazeCell,
+        val exit: MazeCell,
+    )
 
     private var session: Session? = null
 
@@ -58,13 +67,18 @@ class BackRoom : GameClass(), GameEndHandler, PlayerDeathHandler {
         override val name = "<bold>백룸"
         override val description = listOf(
             "<gray>10칸 내의 바라보는 적을 30초간 백룸으로 보낸다.",
-            "<gray>백룸에는 상당히 복잡한 미로가 있으며, 미로를 탈출하면 원래 자리로 돌아온다.",
+            "<gray>백룸에는 상당히 넓고 복잡한 미로가 있으며, 미로를 탈출하면 원래 자리로 돌아온다.",
+            "<gray>입구와 출구는 매번 무작위로 정해지며 서로 되도록 멀리 배치된다.",
             "<gray>탈출하지 못하면 6의 피해를 입는다."
         )
         override val cooldown = BACKROOM_COOLDOWN_SECONDS
         private var selectedTarget: EntityData? = null
 
         override fun isUseSuccess(): Boolean {
+            if (player.world.worldBorder.size < BACKROOM_MINIMUM_BORDER_SIZE) {
+                player.sendMiniMessage("<red><bold>[!] 현재 월드보더 안에는 백룸을 생성할 공간이 없습니다.")
+                return false
+            }
             if (session != null) {
                 player.sendMiniMessage("<red><bold>[!] 이미 백룸이 사용 중입니다.")
                 return false
@@ -88,35 +102,55 @@ class BackRoom : GameClass(), GameEndHandler, PlayerDeathHandler {
     private fun startSession(target: EntityData) {
         val world = player.world
         val border = world.worldBorder
-        val half = border.size / 2.0 - BACKROOM_SIZE - 2.0
-        val minX = floor(border.center.x - half).toInt()
-        val maxX = floor(border.center.x + half - BACKROOM_SIZE).toInt()
-        val minZ = floor(border.center.z - half).toInt()
-        val maxZ = floor(border.center.z + half - BACKROOM_SIZE).toInt()
-        val desiredX = target.entity.location.blockX - BACKROOM_SIZE / 2
-        val desiredZ = target.entity.location.blockZ - BACKROOM_SIZE / 2
-        val originX = if (minX <= maxX) desiredX.coerceIn(minX, maxX) else target.entity.location.blockX - BACKROOM_SIZE / 2
-        val originZ = if (minZ <= maxZ) desiredZ.coerceIn(minZ, maxZ) else target.entity.location.blockZ - BACKROOM_SIZE / 2
-        val originY = world.maxHeight - 6
-        val passages = generateMaze()
-        val snapshots = ArrayList<BlockState>(BACKROOM_SIZE * BACKROOM_SIZE * 5)
+        val allowedPhysicalSize = floor(border.size - 4.0).toInt()
+        val allowedLogicalSize = (allowedPhysicalSize / BACKROOM_CELL_SIZE).coerceAtMost(BACKROOM_LOGICAL_SIZE)
+        val mazeSize = (if (allowedLogicalSize % 2 == 0) allowedLogicalSize - 1 else allowedLogicalSize)
+            .coerceAtLeast(5)
+        val physicalSize = mazeSize * BACKROOM_CELL_SIZE
+        val minX = floor(border.center.x - border.size / 2.0 + 2.0).toInt()
+        val maxX = floor(border.center.x + border.size / 2.0 - physicalSize - 2.0).toInt()
+        val minZ = floor(border.center.z - border.size / 2.0 + 2.0).toInt()
+        val maxZ = floor(border.center.z + border.size / 2.0 - physicalSize - 2.0).toInt()
+        val desiredX = target.entity.location.blockX - physicalSize / 2
+        val desiredZ = target.entity.location.blockZ - physicalSize / 2
+        val originX = if (minX <= maxX) desiredX.coerceIn(minX, maxX) else minX
+        val originZ = if (minZ <= maxZ) desiredZ.coerceIn(minZ, maxZ) else minZ
+        val originY = world.maxHeight - BACKROOM_ROOF_Y - 2
+        val layout = generateMazeLayout(mazeSize)
+        val snapshots = ArrayList<BlockState>(physicalSize * physicalSize * (BACKROOM_ROOF_Y + 1))
 
-        for (x in 0 until BACKROOM_SIZE) for (z in 0 until BACKROOM_SIZE) for (y in 0..4) {
+        for (x in 0 until physicalSize) for (z in 0 until physicalSize) for (y in 0..BACKROOM_ROOF_Y) {
             val block = world.getBlockAt(originX + x, originY + y, originZ + z)
             snapshots += block.state
+            val mazeX = x / BACKROOM_CELL_SIZE
+            val mazeZ = z / BACKROOM_CELL_SIZE
+            val isPassage = layout.passages[mazeX][mazeZ]
+            val isExit = mazeX == layout.exit.x && mazeZ == layout.exit.z
+            val isCellCenter = x % BACKROOM_CELL_SIZE == BACKROOM_CELL_SIZE / 2 &&
+                z % BACKROOM_CELL_SIZE == BACKROOM_CELL_SIZE / 2
             when {
-                y == 0 -> block.setType(if (x == BACKROOM_SIZE - 2 && z == BACKROOM_SIZE - 2) Material.EMERALD_BLOCK else Material.YELLOW_CONCRETE, false)
-                y == 4 -> block.setType(if (passages[x][z] && (x + z) % 6 == 0) Material.GLOWSTONE else Material.YELLOW_CONCRETE, false)
-                passages[x][z] -> block.setType(Material.AIR, false)
+                y == 0 -> block.setType(if (isExit) Material.EMERALD_BLOCK else Material.YELLOW_CONCRETE, false)
+                y == BACKROOM_ROOF_Y -> block.setType(
+                    if (isPassage && isCellCenter && (mazeX + mazeZ) % 6 == 0) Material.GLOWSTONE
+                    else Material.YELLOW_CONCRETE,
+                    false,
+                )
+                isPassage -> block.setType(Material.AIR, false)
                 else -> block.setType(Material.YELLOW_CONCRETE, false)
             }
         }
 
-        val entrance = Location(world, originX + 1.5, originY + 1.0, originZ + 1.5,
+        val entrance = Location(world,
+            originX + layout.entrance.x * BACKROOM_CELL_SIZE + BACKROOM_CELL_SIZE / 2.0,
+            originY + 1.0,
+            originZ + layout.entrance.z * BACKROOM_CELL_SIZE + BACKROOM_CELL_SIZE / 2.0,
             target.entity.location.yaw, target.entity.location.pitch)
+        val exitMinX = originX + layout.exit.x * BACKROOM_CELL_SIZE
+        val exitMinZ = originZ + layout.exit.z * BACKROOM_CELL_SIZE
         val exitBox = BoundingBox(
-            originX + BACKROOM_SIZE - 2.85, originY + 0.8, originZ + BACKROOM_SIZE - 2.85,
-            originX + BACKROOM_SIZE - 1.15, originY + 3.3, originZ + BACKROOM_SIZE - 1.15,
+            exitMinX + 0.15, originY + 0.8, exitMinZ + 0.15,
+            exitMinX + BACKROOM_CELL_SIZE - 0.15, originY + BACKROOM_ROOF_Y - 0.2,
+            exitMinZ + BACKROOM_CELL_SIZE - 0.15,
         )
         val created = Session(target, target.entity.location.clone(), snapshots, exitBox)
         session = created
@@ -183,21 +217,33 @@ class BackRoom : GameClass(), GameEndHandler, PlayerDeathHandler {
         }
     }
 
-    private fun generateMaze(): Array<BooleanArray> {
-        val passages = Array(BACKROOM_SIZE) { BooleanArray(BACKROOM_SIZE) }
+    private fun generateMazeLayout(size: Int): MazeLayout {
+        val cells = buildList {
+            for (x in 1 until size - 1 step 2) {
+                for (z in 1 until size - 1 step 2) add(MazeCell(x, z))
+            }
+        }
+        val exit = cells.random(Random)
+        val maximumDistance = cells.maxOf { kotlin.math.abs(it.x - exit.x) + kotlin.math.abs(it.z - exit.z) }
+        val distantEntrances = cells.filter { cell ->
+            cell != exit && kotlin.math.abs(cell.x - exit.x) + kotlin.math.abs(cell.z - exit.z) >= maximumDistance * 0.7
+        }
+        val entrance = distantEntrances.randomOrNull(Random)
+            ?: cells.filter { it != exit }.maxBy { kotlin.math.abs(it.x - exit.x) + kotlin.math.abs(it.z - exit.z) }
+        val passages = Array(size) { BooleanArray(size) }
         fun carve(x: Int, z: Int) {
             passages[x][z] = true
             val directions = listOf(2 to 0, -2 to 0, 0 to 2, 0 to -2).shuffled(Random)
             directions.forEach { (dx, dz) ->
                 val nx = x + dx
                 val nz = z + dz
-                if (nx !in 1 until BACKROOM_SIZE - 1 || nz !in 1 until BACKROOM_SIZE - 1 || passages[nx][nz]) return@forEach
+                if (nx !in 1 until size - 1 || nz !in 1 until size - 1 || passages[nx][nz]) return@forEach
                 passages[x + dx / 2][z + dz / 2] = true
                 carve(nx, nz)
             }
         }
-        carve(1, 1)
-        passages[BACKROOM_SIZE - 2][BACKROOM_SIZE - 2] = true
-        return passages
+        carve(entrance.x, entrance.z)
+        passages[exit.x][exit.z] = true
+        return MazeLayout(passages, entrance, exit)
     }
 }

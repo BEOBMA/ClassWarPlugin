@@ -32,4 +32,5 @@ border:
   delay-seconds: 300
   shrink-seconds: 600
   minimum-size: 40.0
+  damage-buffer: 5.0
   final-descent-seconds: 180

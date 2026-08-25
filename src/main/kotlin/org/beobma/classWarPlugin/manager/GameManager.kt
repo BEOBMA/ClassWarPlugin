@@ -23,6 +23,7 @@ import org.beobma.classWarPlugin.manager.UtilManager.getPlayerMaxHealth
 import org.beobma.classWarPlugin.manager.UtilManager.resetDyeCooldowns
 import org.beobma.classWarPlugin.util.PlayerNavigation
 import org.bukkit.Bukkit
+import org.bukkit.GameRules
 import org.bukkit.GameMode
 import org.bukkit.Location
 import org.bukkit.Material
@@ -102,6 +103,8 @@ object GameManager {
         ::PatAndMatt, ::Peanuts, ::RainbowBridge, ::Reverse, ::Sagittarius, ::ShyPerson,
         ::Terrorist, ::ThunderclapFlash, ::Train, ::TrainCarriage, ::WoundsWind,
         ::Blacksmith, ::Brave,
+        ::SolarSystem, ::Sol, ::Luna, ::Mercurius, ::Venus, ::Terra,
+        ::Mars, ::Jupiter, ::Saturnus, ::Uranus, ::Neptune, ::Pluto,
     )
 
     private val miniMessageTagPattern = Regex("<[^>]+>")
@@ -146,6 +149,8 @@ object GameManager {
 
         game = this
         phase = GamePhase.CLASS_SELECTION
+        originalWorldTime = gameWorld.time
+        originalDaylightCycle = gameWorld.getGameRuleValue(GameRules.ADVANCE_TIME)
         PlayerListManager.hideAll()
         NameTagManager.hideAll(participants.map { it.player.name })
         availableClasses.clear()
@@ -482,6 +487,7 @@ object GameManager {
         originalBorderCenter = border.center.clone()
         originalBorderSize = border.size
         border.setCenter(roundCenterX, roundCenterZ)
+        border.damageBuffer = settings.borderDamageBuffer
         val initialBorderSize = settings.borderInitialSize.coerceAtLeast(1.0)
         val targetBorderSize = settings.borderMinimumSize.coerceAtLeast(1.0)
         border.size = initialBorderSize
@@ -1384,6 +1390,8 @@ object GameManager {
                 (assigned as? GameEndHandler)?.onGameEnd()
             }
         }
+        originalWorldTime?.let { gameWorld.time = it }
+        originalDaylightCycle?.let { gameWorld.setGameRule(GameRules.ADVANCE_TIME, it) }
         GraveRobber.clearDeathRecords(this)
         Contractor.clearSessions(participantIds)
         DeathNote.clearSessions(participantIds)

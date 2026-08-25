@@ -8,7 +8,10 @@ enum class Keyword(val string: String, val description: String? = null) {
         "{keyword:Stealth}: 살아있는 적 플레이어에게 자신의 모습과 장비가 보이지 않으며 대상 지정 스킬의 대상이 되지 않는다."
     ),
     Mana("<blue><bold>마나</bold><gray>"),
-    Burn("<red><bold>화상</bold><gray>"),
+    Burn(
+        "<red><bold>화상</bold><gray>",
+        "{keyword:Burn}: 지속 시간 동안 몸에 불이 붙어 화염 피해를 입는다."
+    ),
     Shield("<aqua><bold>보호막</bold><gray>"),
     TrueDamage(
         "<white><bold>고정 피해</bold><gray>",
@@ -75,6 +78,10 @@ enum class Keyword(val string: String, val description: String? = null) {
     Radiation(
         "<white><bold>발광</bold><gray>",
         "{keyword:Radiation}: 주변에 있는 플레이어에게 위치가 드러난다."
+    ),
+    Enchantment(
+        "<bold>매혹</bold><gray>",
+        "{keyword:Enchantment}: {keyword:Stun}과 동일한 효과를 적용하며, 지속 시간동안 매혹을 부여한 플레이어에게로 이동한다.",
     ),
     Charge(
         "<blue><bold>충전</bold><gray>",

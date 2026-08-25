@@ -9,6 +9,7 @@ import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.handler.WeaponInputHandler
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Projectile
 import org.beobma.classWarPlugin.skill.Skill
@@ -21,6 +22,7 @@ import org.bukkit.Sound
 import org.bukkit.block.Block
 import org.bukkit.event.player.PlayerInteractEvent
 import java.util.UUID
+import kotlin.math.ceil
 
 class WoundsWind : GameClass(), OnHitHandler, WeaponInputHandler {
     override val name = "<gray>바람의 상처"
@@ -29,30 +31,27 @@ class WoundsWind : GameClass(), OnHitHandler, WeaponInputHandler {
     override val weapon: BaseWeapon = Weapon()
     override var skills: List<Skill> = emptyList()
     override var passives: List<BasePassive> = listOf(Passive())
-    private var lastSlashTick = Long.MIN_VALUE
+    private var slashReadyTick = 0L
 
-    override fun onWeaponLeftClick(event: PlayerInteractEvent) {
+    override fun onWeaponRightClick(event: PlayerInteractEvent) {
         event.isCancelled = true
-        launchSlashFromSwing()
-    }
-
-    /** 적이나 블록을 실제로 맞히지 않은 팔 휘두르기 입력에서도 검기를 발사한다. */
-    fun launchSlashFromSwing() {
         if (!playerStatus.canAttack || playerStatus.isDead) return
+        val now = player.world.fullTime
+        if (now < slashReadyTick) {
+            player.sendMiniMessage("<red><bold>[!] 기본 공격을 다시 사용할 수 있을 때까지 검기를 발사할 수 없습니다.")
+            return
+        }
+        slashReadyTick = now + ceil(player.cooldownPeriod.toDouble()).toLong().coerceAtLeast(1L)
         launchSlash(player.eyeLocation.clone())
+        player.resetCooldown()
     }
 
     override fun onAttackHit(context: DamageContext) {
         if (context.path != DamagePath.BASIC_ATTACK) return
         context.isCancelled = true
-        val direction = context.target.entity.boundingBox.center.subtract(player.eyeLocation.toVector()).normalize()
-        launchSlash(player.eyeLocation.clone().setDirection(direction))
     }
 
     private fun launchSlash(start: Location) {
-        val now = org.bukkit.Bukkit.getCurrentTick().toLong()
-        if (now - lastSlashTick < 5L) return
-        lastSlashTick = now
         WindSlashProjectile(start).spawnProjectile(playerData)
         sounds.play(player, Sound.ENTITY_BREEZE_SHOOT, volume = 0.8f, pitch = 1.25f)
     }
@@ -89,14 +88,17 @@ class WoundsWind : GameClass(), OnHitHandler, WeaponInputHandler {
     private class Weapon : BaseWeapon() {
         override val name = "<gray>검기검"
         override val material = Material.IRON_SWORD
-        override val description = listOf("<gray>기본 공격 대신 적을 관통하는 검기를 날린다.")
+        override val description = listOf(
+            "<gray>우클릭하면 바라보는 방향으로 적을 관통하는 검기를 날린다.",
+            "<gray>검기 발사 후 기본 공격 재사용 대기 시간이 적용된다."
+        )
     }
 
     private class Passive : BasePassive() {
         override val name = "<bold>검기"
         override val description = listOf(
-            "<gray>패시브", "", "<gray>기본 공격을 할 수 없다.",
-            "<gray>대신 검기가 날아가 적중한 모든 적에게 2의 피해를 입힌다."
+            "<gray>패시브", "", "<gray>기본 공격으로 피해를 입힐 수 없다.",
+            "<gray>검을 우클릭하면 검기가 날아가 적중한 모든 적에게 2의 피해를 입힌다."
         )
     }
 }

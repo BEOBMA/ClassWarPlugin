@@ -11,7 +11,6 @@ import org.beobma.classWarPlugin.manager.SkillManager.use
 import org.beobma.classWarPlugin.gameClass.list.Referee
 import org.beobma.classWarPlugin.gameClass.list.HideAndSeek
 import org.beobma.classWarPlugin.gameClass.list.Brave
-import org.beobma.classWarPlugin.gameClass.list.WoundsWind
 import org.beobma.classWarPlugin.gameClass.handler.WeaponInputHandler
 import org.beobma.classWarPlugin.gameClass.handler.SkillInputHandler
 import org.bukkit.event.EventHandler
@@ -20,8 +19,6 @@ import org.bukkit.event.Listener
 import org.bukkit.event.block.Action
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.event.player.PlayerInteractEntityEvent
-import org.bukkit.event.player.PlayerAnimationEvent
-import org.bukkit.event.player.PlayerAnimationType
 import org.bukkit.inventory.EquipmentSlot
 
 class OnPlayerInteractEvent : Listener {
@@ -30,26 +27,6 @@ class OnPlayerInteractEvent : Listener {
     fun onPlayerInteractEntity(event: PlayerInteractEntityEvent) {
         if (event.hand != EquipmentSlot.HAND) return
         if (Brave.handlePullInteract(event.player, event.rightClicked)) event.isCancelled = true
-    }
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    fun onPlayerAnimation(event: PlayerAnimationEvent) {
-        if (event.animationType != PlayerAnimationType.ARM_SWING) return
-        val player = event.player
-        if (!isGaming() && !PlayerTagManager.hasTag(player, "isTraining")) return
-        val item = player.inventory.itemInMainHand
-        if (item.type.isAir) return
-        val currentGame = findGameForPlayer(player) ?: return
-        val playerData = currentGame.playerDatas.filterIsInstance<PlayerData>()
-            .find { it.player.uniqueId == player.uniqueId } ?: return
-        if (!playerData.canDispatchClassHandlers()) return
-        val taggedClassId = getWeaponClassId(item)
-        playerData.gameClasses.filterIsInstance<WoundsWind>()
-            .filter { gameClass ->
-                if (taggedClassId != null) gameClass.javaClass.name == taggedClassId
-                else item.type == gameClass.weapon.material
-            }
-            .forEach(WoundsWind::launchSlashFromSwing)
     }
 
     @EventHandler(priority = EventPriority.HIGH)
@@ -77,12 +54,14 @@ class OnPlayerInteractEvent : Listener {
         val playerData = currentGame.playerDatas.filterIsInstance<PlayerData>()
             .find { it.player.uniqueId == player.uniqueId } ?: return
         if (!playerData.canDispatchClassHandlers()) return
+        val taggedClassId = getWeaponClassId(clickedItem)
         val skillId = getSkillId(clickedItem, player.uniqueId)
         if (skillId == null) {
-            val taggedClassId = getWeaponClassId(clickedItem)
+            val hasValidWeaponTag = taggedClassId != null &&
+                playerData.gameClasses.any { it.javaClass.name == taggedClassId }
             playerData.gameClasses
                 .filter { gameClass ->
-                    if (taggedClassId != null) gameClass.javaClass.name == taggedClassId
+                    if (hasValidWeaponTag) gameClass.javaClass.name == taggedClassId
                     else clickedItem.type == gameClass.weapon.material
                 }
                 .filterIsInstance<WeaponInputHandler>()

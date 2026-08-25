@@ -31,6 +31,8 @@ data class Game(
     var borderBossBar: BossBar? = null,
     var originalBorderCenter: Location? = null,
     var originalBorderSize: Double? = null,
+    var originalWorldTime: Long? = null,
+    var originalDaylightCycle: Boolean? = null,
     val finalBorderDisplays: MutableList<BlockDisplay> = mutableListOf(),
 ) {
     var isPaused: Boolean = false

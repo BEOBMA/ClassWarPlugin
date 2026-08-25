@@ -14,6 +14,7 @@ import org.beobma.classWarPlugin.skill.SkillContext
 import org.beobma.classWarPlugin.status.list.Silence
 import org.beobma.classWarPlugin.status.list.Stealth
 import org.beobma.classWarPlugin.status.list.Stun
+import org.beobma.classWarPlugin.status.list.Enchantment
 import org.beobma.classWarPlugin.util.TargetType
 import org.beobma.classWarPlugin.util.HitboxUtil
 import org.beobma.classWarPlugin.util.TargetType.*
@@ -76,7 +77,7 @@ object SkillManager {
             playerData.player.sendMiniMessage("<red><bold>[!] 현재 스킬을 사용할 수 없는 상태입니다.")
             return false
         }
-        if (playerData.hasStatus<Stun>()) {
+        if (playerData.hasStatus<Stun>() || playerData.hasStatus<Enchantment>()) {
             playerData.player.sendMiniMessage("<red><bold>[!] 기절 상태에서는 스킬을 사용할 수 없습니다.")
             return false
         }

@@ -237,6 +237,7 @@ object InventoryManager {
                 inventory.setItem(15, createSettingItem(Material.COMPASS, "중심 최소 이동 거리", settings.borderCenterMinimumDistance, "블록"))
                 inventory.setItem(16, createSettingItem(Material.RECOVERY_COMPASS, "중심 최대 이동 거리", settings.borderCenterMaximumDistance, "블록"))
                 inventory.setItem(22, createSettingItem(Material.RED_STAINED_GLASS, "최종 자기장 하강 시간", settings.finalBorderDescentSeconds, "초"))
+                inventory.setItem(23, createSettingItem(Material.MAGMA_BLOCK, "보더 피해 유예 거리", settings.borderDamageBuffer, "블록"))
             }
 
             ConfigCategory.COMBAT -> {
