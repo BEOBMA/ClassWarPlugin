@@ -267,9 +267,10 @@ object InventoryManager {
     fun Player.openGameModeInventory() {
         val inventory = Bukkit.createInventory(null, 27, miniMessage.deserialize("<dark_gray>게임 모드 선택"))
         fillWith(inventory, Material.BLACK_STAINED_GLASS_PANE, " ")
-        inventory.setItem(11, createMatchModeItem(Material.IRON_SWORD, MatchMode.CLASSIC))
-        inventory.setItem(13, createMatchModeItem(Material.AMETHYST_SHARD, MatchMode.DUAL))
-        inventory.setItem(15, createMatchModeItem(Material.RECOVERY_COMPASS, MatchMode.TAIL_TAG))
+        inventory.setItem(10, createMatchModeItem(Material.IRON_SWORD, MatchMode.CLASSIC))
+        inventory.setItem(12, createMatchModeItem(Material.AMETHYST_SHARD, MatchMode.DUAL))
+        inventory.setItem(14, createMatchModeItem(Material.RECOVERY_COMPASS, MatchMode.TAIL_TAG))
+        inventory.setItem(16, createMatchModeItem(Material.ENDER_EYE, MatchMode.TAIL_TAG_DUAL))
         listOf(
             "openGameModeInventory",
             "openConfigInventory",

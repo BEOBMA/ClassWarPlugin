@@ -1,7 +1,6 @@
 package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.ClassWarPlugin
-import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.game.Game
@@ -24,9 +23,7 @@ import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
-import org.bukkit.attribute.Attribute
 import org.bukkit.entity.LivingEntity
-import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.scheduler.BukkitRunnable
 import java.util.Collections
 import java.util.IdentityHashMap
@@ -64,8 +61,7 @@ class Reverse : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
         override val description = listOf(
             "<gray>10초간 자신의 위치에 반전 영역을 설치한다.", "",
             "<gray>자신의 패시브 효과의 대상은 영역 안의 모든 적에게도 적용되게 된다.",
-            "<gray>또한, 영역 안에서 받는 피해는 치유로 전환되고",
-            "<gray>받는 치유는 피해로 전환된다."
+            "<gray>또한, 영역 안에서 받는 치유는 피해로 전환된다."
         )
         override val cooldown = REVERSE_ZONE_COOLDOWN_SECONDS
 
@@ -124,28 +120,6 @@ class Reverse : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
                 if (target is PlayerData && !zone.owner.isEnemyOf(target)) return@any false
                 HitboxUtil.intersectsSphere(target.entity.boundingBox, zone.center.toVector(), REVERSE_ZONE_RADIUS)
             }
-        }
-
-        fun invertDamageIfNeeded(context: DamageContext): Boolean {
-            if (!shouldReverse(context.target) || context.damage <= 0.0) return false
-            val living = context.target.entity as? LivingEntity ?: return false
-            val maximum = living.getAttribute(Attribute.MAX_HEALTH)?.value ?: living.health
-            val amount = context.damage.coerceAtMost((maximum - living.health).coerceAtLeast(0.0))
-            if (amount > 0.0) living.health = (living.health + amount).coerceAtMost(maximum)
-            context.isCancelled = true
-            living.world.spawnParticle(Particle.HEART, living.boundingBox.center.toLocation(living.world), 6, 0.35, 0.45, 0.35, 0.02)
-            living.world.playSound(living.location, Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.55f, 1.65f)
-            return true
-        }
-
-        fun invertEnvironmentalDamageIfNeeded(event: EntityDamageEvent, target: PlayerData): Boolean {
-            if (!shouldReverse(target) || event.finalDamage <= 0.0) return false
-            val maximum = target.player.getAttribute(Attribute.MAX_HEALTH)?.value ?: target.player.health
-            target.player.health = (target.player.health + event.finalDamage).coerceAtMost(maximum)
-            event.isCancelled = true
-            target.player.world.spawnParticle(Particle.HEART, target.player.boundingBox.center.toLocation(target.player.world),
-                6, 0.35, 0.45, 0.35, 0.02)
-            return true
         }
 
         fun invertHealingIfNeeded(target: EntityData, amount: Double): Boolean {

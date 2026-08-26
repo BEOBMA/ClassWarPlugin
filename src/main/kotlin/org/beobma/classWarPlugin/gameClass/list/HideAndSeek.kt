@@ -10,6 +10,7 @@ import org.beobma.classWarPlugin.gameClass.handler.GameEndHandler
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.handler.PlayerDeathHandler
 import org.beobma.classWarPlugin.manager.CooldownManager
+import org.beobma.classWarPlugin.manager.MapTransferBorderManager
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.UtilManager.miniMessage
@@ -173,10 +174,12 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
             var duel = false
             var searchTicks = 0
             var task: BukkitTask? = null
+            private var borderExpansion: MapTransferBorderManager.Expansion? = null
 
             fun start() {
                 activeSession = this
                 game.isPaused = true
+                borderExpansion = MapTransferBorderManager.expandToMaximum(world)
                 pauseCooldowns()
                 prepareMap()
                 if (soloTraining) {
@@ -367,6 +370,8 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
                     snapshot.blindness?.let(player::addPotionEffect)
                     if (player.isOnline) player.teleport(snapshot.location)
                 }
+                borderExpansion?.restore()
+                borderExpansion = null
                 game.isPaused = false
                 resumeCooldowns()
                 val center = seeker.player.location

@@ -46,8 +46,6 @@ data class Game(
     fun threatOf(playerId: UUID): UUID? =
         tailTargets.entries.firstOrNull { (_, targetId) -> targetId == playerId }?.key
 
-    fun areEnemies(attackerId: UUID, targetId: UUID): Boolean = when (mode) {
-        MatchMode.CLASSIC, MatchMode.DUAL -> attackerId != targetId
-        MatchMode.TAIL_TAG -> tailTargets[attackerId] == targetId
-    }
+    fun areEnemies(attackerId: UUID, targetId: UUID): Boolean =
+        if (mode.usesTailTagRules) tailTargets[attackerId] == targetId else attackerId != targetId
 }

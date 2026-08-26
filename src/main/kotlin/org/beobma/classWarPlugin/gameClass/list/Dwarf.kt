@@ -47,16 +47,22 @@ class Dwarf : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler
 
     private fun restoreAttributes() {
         if (!initialized) return
-        originalScale?.let { player.getAttribute(Attribute.SCALE)?.baseValue = it }
-        originalMaxHealth?.let { maximum ->
-            player.getAttribute(Attribute.MAX_HEALTH)?.let { attribute ->
-                attribute.baseValue = maximum
-                player.health = player.health.coerceAtMost(attribute.value)
-            }
-        }
+
         initialized = false
+        val scale = originalScale
+        val maximumHealth = originalMaxHealth
         originalScale = null
         originalMaxHealth = null
+
+        scale?.let { player.getAttribute(Attribute.SCALE)?.baseValue = it }
+        maximumHealth?.let { maximum ->
+            player.getAttribute(Attribute.MAX_HEALTH)?.let { attribute ->
+                attribute.baseValue = maximum
+                if (!player.isDead && player.health > 0.0) {
+                    player.health = player.health.coerceAtMost(attribute.value)
+                }
+            }
+        }
     }
 
     private class Passive : BasePassive() {

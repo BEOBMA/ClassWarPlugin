@@ -10,6 +10,7 @@ import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.GameEndHandler
 import org.beobma.classWarPlugin.gameClass.handler.PlayerDeathHandler
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
+import org.beobma.classWarPlugin.manager.MapTransferBorderManager
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.UtilManager.miniMessage
@@ -49,6 +50,7 @@ class BackRoom : GameClass(), GameEndHandler, PlayerDeathHandler {
         val returnLocation: Location,
         val snapshots: List<BlockState>,
         val exitBox: BoundingBox,
+        val borderExpansion: MapTransferBorderManager.Expansion,
         var task: BukkitTask? = null,
     )
     private data class MazeCell(val x: Int, val z: Int)
@@ -152,7 +154,8 @@ class BackRoom : GameClass(), GameEndHandler, PlayerDeathHandler {
             exitMinX + BACKROOM_CELL_SIZE - 0.15, originY + BACKROOM_ROOF_Y - 0.2,
             exitMinZ + BACKROOM_CELL_SIZE - 0.15,
         )
-        val created = Session(target, target.entity.location.clone(), snapshots, exitBox)
+        val borderExpansion = MapTransferBorderManager.expandToMaximum(world)
+        val created = Session(target, target.entity.location.clone(), snapshots, exitBox, borderExpansion)
         session = created
         target.entity.teleport(entrance)
         (target as? PlayerData)?.player?.showTitle(Title.title(
@@ -205,6 +208,7 @@ class BackRoom : GameClass(), GameEndHandler, PlayerDeathHandler {
         active.snapshots.asReversed().forEach { state -> state.update(true, false) }
         val target = active.target
         if (target.entity.isValid) target.entity.teleport(active.returnLocation)
+        active.borderExpansion.restore()
         if (playEffects) {
             val location = active.returnLocation
             particles.spawn(location.add(0.0, 1.0, 0.0), if (escaped) Particle.TOTEM_OF_UNDYING else Particle.LARGE_SMOKE,

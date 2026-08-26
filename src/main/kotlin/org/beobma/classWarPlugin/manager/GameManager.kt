@@ -348,7 +348,7 @@ object GameManager {
 
     private fun Game.beginBattle() {
         phase = GamePhase.RUNNING
-        if (mode == MatchMode.TAIL_TAG && tailTargets.isEmpty()) {
+        if (mode.usesTailTagRules && tailTargets.isEmpty()) {
             initializeTailTargets(contenders())
         }
         contenders().forEach { playerData ->
@@ -367,7 +367,7 @@ object GameManager {
                 Title.title(
                     miniMessage.deserialize("<red><bold>Fight!"),
                     miniMessage.deserialize(
-                        if (mode == MatchMode.TAIL_TAG) {
+                        if (mode.usesTailTagRules) {
                             val targetName = targetOf(playerData.uniqueId)?.let { findParticipant(it) }?.player?.name
                                 ?: "표적 없음"
                             "<gold>당신의 표적: <white><bold>$targetName"
@@ -377,7 +377,7 @@ object GameManager {
                     )
                 )
             )
-            if (mode == MatchMode.TAIL_TAG) sendTailTargetNotice(playerData)
+            if (mode.usesTailTagRules) sendTailTargetNotice(playerData)
         }
         sendNotification("${mode.displayName} <gray>게임이 시작되었습니다.")
         startClassTickTask()
@@ -387,7 +387,7 @@ object GameManager {
 
     private fun Game.initializeTailTargets(participants: List<PlayerData>) {
         tailTargets.clear()
-        if (mode != MatchMode.TAIL_TAG || participants.size <= 1) return
+        if (!mode.usesTailTagRules || participants.size <= 1) return
         val shuffledIds = participants.map { it.uniqueId }.shuffled()
         shuffledIds.forEachIndexed { index, playerId ->
             tailTargets[playerId] = shuffledIds[(index + 1) % shuffledIds.size]
@@ -406,7 +406,7 @@ object GameManager {
     }
 
     private fun Game.startTailHeartbeatTask() {
-        if (mode != MatchMode.TAIL_TAG) return
+        if (!mode.usesTailTagRules) return
         val nextHeartbeatTicks = mutableMapOf<UUID, Long>()
         var elapsedTicks = 0L
         val task = object : BukkitRunnable() {
@@ -517,7 +517,7 @@ object GameManager {
                     return
                 }
 
-                if (isPaused) {
+                if (isPaused || MapTransferBorderManager.isExpanded(gameWorld)) {
                     if (!borderPaused && shrinking) border.changeSize(border.size, 0L)
                     borderPaused = true
                     return
@@ -663,7 +663,7 @@ object GameManager {
                     cancel()
                     return
                 }
-                if (isPaused) return
+                if (isPaused || MapTransferBorderManager.isExpanded(world)) return
 
                 val progress = if (totalTicks == 0L) {
                     1.0
@@ -1284,7 +1284,7 @@ object GameManager {
                 player.gameMode = GameMode.ADVENTURE
                 currentGame.borderBossBar?.let { player.showBossBar(it) }
                 player.sendMessage(miniMessage.deserialize("<green><bold>[!] 게임에 정상적으로 복귀했습니다."))
-                if (currentGame.mode == MatchMode.TAIL_TAG) currentGame.sendTailTargetNotice(playerData)
+                if (currentGame.mode.usesTailTagRules) currentGame.sendTailTargetNotice(playerData)
             }
 
             GamePhase.WAITING, GamePhase.FINISHED -> Unit
@@ -1324,7 +1324,7 @@ object GameManager {
     }
 
     private fun Game.removeTailParticipant(victimId: UUID) {
-        if (mode != MatchMode.TAIL_TAG || tailTargets.isEmpty()) return
+        if (!mode.usesTailTagRules || tailTargets.isEmpty()) return
         val successorId = tailTargets.remove(victimId)
         val hunterId = tailTargets.entries.firstOrNull { (_, targetId) -> targetId == victimId }?.key
         if (hunterId != null) tailTargets.remove(hunterId)

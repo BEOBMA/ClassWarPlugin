@@ -31,7 +31,7 @@ import kotlin.random.Random
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
 // 밸런스 조정 상수
-private const val HACKER_HACKING_COOLDOWN_SECONDS = 240
+private const val HACKER_HACKING_COOLDOWN_SECONDS = 30
 private const val HACKER_SNARE_DURATION_SECONDS = 10
 private const val HACKER_CORRUPTION_DAMAGE_DEALT_MULTIPLIER = 0.8
 private const val HACKER_CORRUPTION_DAMAGE_TAKEN_MULTIPLIER = 1.2

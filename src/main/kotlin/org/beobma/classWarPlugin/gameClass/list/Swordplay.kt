@@ -73,6 +73,7 @@ class Swordplay : GameClass(), GameStatusHandler {
     )
 
     private val baseSwords = mutableListOf<FlyingSword>()
+    private val passiveHitCounts = mutableMapOf<UUID, Int>()
     private var passiveTask: BukkitTask? = null
     private var passiveTick = 0
     private var blossomActive = false
@@ -196,8 +197,7 @@ class Swordplay : GameClass(), GameStatusHandler {
             )
         ) return
 
-        target.damage(SWORDPLAY_SWORD_DAMAGE, DamageType.Normal, playerData, damagePath = DamagePath.SKILL)
-        playSwordHit(target, strong = false)
+        registerPassiveHit(target)
         beginTargetOrbit(
             sword = sword,
             index = index,
@@ -262,8 +262,20 @@ class Swordplay : GameClass(), GameStatusHandler {
         if (!intersectsTarget) return
 
         sword.targetOrbitHitArmed = false
-        target.damage(SWORDPLAY_SWORD_DAMAGE, DamageType.Normal, playerData, damagePath = DamagePath.SKILL)
+        registerPassiveHit(target)
+    }
+
+    private fun registerPassiveHit(target: EntityData) {
+        val targetId = target.entity.uniqueId
+        val hits = (passiveHitCounts[targetId] ?: 0) + 1
         playSwordHit(target, strong = false)
+        if (hits < PASSIVE_HITS_PER_DAMAGE) {
+            passiveHitCounts[targetId] = hits
+            return
+        }
+
+        passiveHitCounts[targetId] = 0
+        target.damage(SWORDPLAY_SWORD_DAMAGE, DamageType.Normal, playerData, damagePath = DamagePath.SKILL)
     }
 
     private inner class BlossomSkill : Skill() {
@@ -355,7 +367,7 @@ class Swordplay : GameClass(), GameStatusHandler {
             "<gray>20초간 무수한 검이 창조되는 공간을 만든다.",
             "<gray>18자루의 다이아몬드 검이 구형 궤도로 자신 주위를 공전하며 주위의 적을 공격한다.",
             "<gray>타격한 검은 대상을 꿰뚫는 ∞ 궤도로 가속하며 계속 공격한다.",
-            "<gray>적은 인피니트로 소환된 검에 5번 피격될 때마다 1의 피해를 입는다.",
+            "<gray>적은 인피니트로 소환된 검에 9번 피격될 때마다 1의 피해를 입는다.",
             "<gray>인피니트로 소환된 검은 블로섬 스킬의 영향을 받지 않는다.",
         )
         override val cooldown = SWORDPLAY_INFINITE_COOLDOWN_SECONDS
@@ -835,6 +847,7 @@ class Swordplay : GameClass(), GameStatusHandler {
         passiveTask = null
         baseSwords.forEach { it.display.remove() }
         baseSwords.clear()
+        passiveHitCounts.clear()
         blossomActive = false
         clearInfinite(playEndEffect = false)
         passiveTick = 0
@@ -846,13 +859,15 @@ class Swordplay : GameClass(), GameStatusHandler {
             "<gray>패시브",
             "",
             "<gray>자신 주위를 날아다니는 검을 세 자루 생성한다.",
-            "<gray>검은 사선의 구형 궤도로 공전하며, 자신 주위 6칸 내에 적이 접근하면 가속하여 1의 피해를 입힌다.",
+            "<gray>검은 사선의 구형 궤도로 공전하며, 자신 주위 6칸 내에 적이 접근하면 가속하여 공격한다.",
+            "<gray>적은 어검술로 소환된 검에 3번 피격될 때마다 1의 피해를 입는다.",
             "<gray>타격한 검은 대상을 꿰뚫고 돌아오는 ∞ 궤도로 가속하며 계속 타격한다.",
         )
     }
 
     private companion object {
         const val PASSIVE_SWORD_COUNT = 3
+        const val PASSIVE_HITS_PER_DAMAGE = 3
         const val PASSIVE_TARGET_RADIUS = 6.0
         const val PASSIVE_TARGET_LEASH = 8.5
         const val PASSIVE_ORBIT_RADIUS = 1.8
@@ -880,7 +895,7 @@ class Swordplay : GameClass(), GameStatusHandler {
 
         const val INFINITE_SWORD_COUNT = 18
         const val INFINITE_DURATION_TICKS = 20 * 20
-        const val INFINITE_HITS_PER_DAMAGE = 5
+        const val INFINITE_HITS_PER_DAMAGE = 9
         const val INFINITE_TARGET_RADIUS = 7.0
         const val INFINITE_TARGET_LEASH = 9.0
         const val INFINITE_ORBIT_SPEED = 0.052

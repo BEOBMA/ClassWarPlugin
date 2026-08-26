@@ -15,6 +15,7 @@ import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.manager.CooldownManager
 import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
+import org.beobma.classWarPlugin.manager.MapTransferBorderManager
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
@@ -364,6 +365,7 @@ class Referee : GameClass(), GameStatusHandler {
         private var verdictGuilty = false
         private var verdictPerjury = false
         private var task: org.bukkit.scheduler.BukkitTask? = null
+        private var borderExpansion: MapTransferBorderManager.Expansion? = null
 
         fun start() {
             if (participants.none { it == judge } || participants.none { it == defendant }) return
@@ -373,6 +375,7 @@ class Referee : GameClass(), GameStatusHandler {
                 activeTrials[participantGame] = this
             }
             participants.forEach { activeTrialPlayers[it.uniqueId] = this }
+            borderExpansion = MapTransferBorderManager.expandToMaximum(judge.player.world)
             moveToCourtroom()
             pauseCooldowns()
             broadcast("<dark_gray>━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
@@ -553,6 +556,8 @@ class Referee : GameClass(), GameStatusHandler {
                 if (data.player.isOnline) data.player.teleport(snapshot.location)
                 data.gameClasses.flatMap { it.skills }.forEach { CooldownManager.resumeCooldown(data.player, it) }
             }
+            borderExpansion?.restore()
+            borderExpansion = null
             sessionGames.forEach { participantGame ->
                 activeTrials.remove(participantGame, this)
                 participantGame.isPaused = priorPauseStates[participantGame] ?: false
