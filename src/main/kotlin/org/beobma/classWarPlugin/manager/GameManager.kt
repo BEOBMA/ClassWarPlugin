@@ -39,8 +39,10 @@ import org.bukkit.potion.PotionEffectType
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.Transformation
+import org.bukkit.util.Vector
 import org.joml.Quaternionf
 import org.joml.Vector3f
+import java.util.concurrent.CompletableFuture
 import java.util.Locale
 import java.util.UUID
 import kotlin.math.PI
@@ -56,17 +58,27 @@ object GameManager {
     private val miniMessage = MiniMessage.miniMessage()
     private const val RECONNECT_GRACE_TICKS = 5L * 60L * 20L
     private const val SPAWN_CENTER_TARGET_RADIUS = 4.0
-    private const val SPAWN_PATH_MAX_VISITED_NODES = 60_000
-    private const val SPAWN_SEARCH_ATTEMPTS = 750
-    private const val SPAWN_BORDER_FALLBACK_ATTEMPTS = 1_500
-    private const val SPAWN_CENTER_REPLACEMENT_ATTEMPTS = 1_500
+    private const val SPAWN_PATH_MAX_VISITED_NODES = 6_000
+    private const val SPAWN_SEARCH_ATTEMPTS = 64
+    private const val SPAWN_BORDER_FALLBACK_ATTEMPTS = 96
+    private const val SPAWN_CENTER_REPLACEMENT_ATTEMPTS = 96
+    private const val SPAWN_SELECTION_TIME_BUDGET_NANOS = 300_000_000L
+    private const val SPAWN_PATH_TIME_BUDGET_NANOS = 8_000_000L
+    private const val SPAWN_DISTINCT_FALLBACK_ATTEMPTS_PER_PLAYER = 96
     private const val SPAWN_BORDER_MARGIN = 0.35
     private const val SPAWN_BORDER_FALLBACK_MAX_RADIUS = 1_024.0
     private const val SPAWN_RELAXED_MINIMUM_DISTANCE_SQUARED = 2.25
+    private const val SPAWN_COLUMN_SEARCH_DEPTH = 48
+    private const val ROUND_CENTER_SEARCH_ATTEMPTS = 128
+    private const val ROUND_SPAWN_LAYOUT_ATTEMPTS = 3
+    private const val ROUND_CENTER_LAND_CHECK_RADIUS = 12
+    private const val ROUND_CENTER_LAND_CHECK_STEP = 6
+    private const val ROUND_CENTER_MINIMUM_DRY_RATIO = 0.4
     private const val FINAL_BORDER_DISPLAY_TILE_SIZE = 4.0
     private const val FINAL_BORDER_MAX_TILES_PER_AXIS = 20
-    private const val FINAL_BORDER_UPDATE_INTERVAL_TICKS = 2L
-    private const val FINAL_BORDER_DAMAGE_INTERVAL_TICKS = 20L
+private const val FINAL_BORDER_UPDATE_INTERVAL_TICKS = 2L
+private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
+private const val FINAL_BORDER_DAMAGE_INTERVAL_TICKS = 20L
     private const val FINAL_BORDER_DAMAGE = 2.0
     private const val TAIL_HEARTBEAT_RADIUS = 48.0
     private const val TAIL_HEARTBEAT_MIN_INTERVAL_TICKS = 7
@@ -85,6 +97,8 @@ object GameManager {
         fun contains(location: Location): Boolean = contains(location.x, location.z)
     }
 
+    // 이 목록에 등록된 클래스만 실제 배정, 클래스 목록 및 훈련 선택에 노출된다.
+    // 심판자, 숨바꼭질, 공포, 백룸은 비활성화 대상으로 의도적으로 등록하지 않는다.
     private val gameClassFactories: List<() -> GameClass> = listOf(
         ::Berserker, ::Sniper, ::Meteor, ::TimeManiqulator, ::LandWizard,
         ::Gambler, ::Knight, ::LightningWizard, ::LightWizard,
@@ -95,11 +109,11 @@ object GameManager {
         ::GraveRobber, ::Hacker, ::SpiderMan, ::Trapper,
         ::Mathematician, ::PortalGun, ::Tour, ::Pacifist, ::Roulette,
         ::AreaDevelopment, ::Parasite, ::Chubby, ::Vampire,
-        ::Contractor, ::Levatain, ::WeaponMaster, ::DeathNote, ::Swordplay, ::Referee,
+        ::Contractor, ::Levatain, ::WeaponMaster, ::DeathNote, ::Swordplay,
         ::Anchor, ::Avenger, ::Bull, ::ConArtist, ::Conflict, ::Damocles,
-        ::DevastatingBlow, ::Error, ::Exodia, ::Fear, ::Ghost, ::Grass,
+        ::DevastatingBlow, ::Error, ::Exodia, ::Ghost, ::Grass,
         ::Hero, ::HighJumper, ::Hikikomori, ::Phantom, ::Refugees, ::Stalker, ::Tonic,
-        ::BackRoom, ::Chameleon, ::Dwarf, ::HideAndSeek, ::JustLight, ::LuckyOne,
+        ::Chameleon, ::Dwarf, ::JustLight, ::LuckyOne,
         ::PatAndMatt, ::Peanuts, ::RainbowBridge, ::Reverse, ::Sagittarius, ::ShyPerson,
         ::Terrorist, ::ThunderclapFlash, ::Train, ::TrainCarriage, ::WoundsWind,
         ::Blacksmith, ::Brave, ::Charger, ::Elementalist,
@@ -131,7 +145,7 @@ object GameManager {
             .map { PlayerData(it, newGame) }
         if (participants.size <= 1) return "참가자가 2명 이상이여야 게임을 시작할 수 있습니다."
         val requiredClassCount = participants.size * mode.assignedClassCount
-        if (requiredClassCount > gameClassFactories.size) {
+        if (requiredClassCount > availableClassesFor(mode).size) {
             return "사용 가능한 클래스 수보다 참가자가 많아 게임을 시작할 수 없습니다."
         }
 
@@ -142,7 +156,7 @@ object GameManager {
 
     fun Game.start() {
         val participants = activePlayers()
-        if (participants.size * mode.assignedClassCount > gameClassFactories.size) {
+        if (participants.size * mode.assignedClassCount > availableClassesFor(mode).size) {
             sendNotification("사용 가능한 클래스 수보다 참가자가 많아 게임을 시작할 수 없습니다.")
             return
         }
@@ -151,10 +165,10 @@ object GameManager {
         phase = GamePhase.CLASS_SELECTION
         originalWorldTime = gameWorld.time
         originalDaylightCycle = gameWorld.getGameRuleValue(GameRules.ADVANCE_TIME)
-        PlayerListManager.hideAll()
+        if (settings.playerListVisible) PlayerListManager.restoreAll() else PlayerListManager.hideAll()
         NameTagManager.hideAll(participants.map { it.player.name })
         availableClasses.clear()
-        availableClasses.addAll(gameClassFactories.map { it() })
+        availableClasses.addAll(availableClassesFor(mode))
         confirmedPlayers.clear()
         refreshesRemaining.clear()
         playerKillCounts.clear()
@@ -260,6 +274,10 @@ object GameManager {
         return selected
     }
 
+    private fun availableClassesFor(mode: MatchMode): List<GameClass> = gameClassFactories
+        .map { it() }
+        .filterNot { mode.usesTailTagRules && it is Parasite }
+
     private fun Game.beginCountdown() {
         phase = GamePhase.COUNTDOWN
         val participants = contenders()
@@ -270,8 +288,27 @@ object GameManager {
             it.entityStatus.canMove = false
         }
 
-        selectRandomRoundCenter()
-        val spawnPoints = findSpawnLocations(gameWorld, participants.size)
+        var foundCenter = false
+        var spawnPoints: List<Location> = emptyList()
+        for (layoutAttempt in 0 until ROUND_SPAWN_LAYOUT_ATTEMPTS) {
+            if (!selectRandomRoundCenter()) continue
+            foundCenter = true
+            val candidates = findSpawnLocations(gameWorld, participants.size)
+            if (candidates.size == participants.size) {
+                spawnPoints = candidates
+                break
+            }
+        }
+        if (!foundCenter) {
+            sendNotification("바다가 아닌 안전한 자기장 중심을 찾지 못해 게임을 종료합니다.")
+            stop()
+            return
+        }
+        if (spawnPoints.size != participants.size) {
+            sendNotification("자기장 내부에서 서로 겹치지 않는 안전한 스폰 지점을 충분히 찾지 못해 게임을 종료합니다.")
+            stop()
+            return
+        }
         spawnLocations.clear()
         spawnLocations.addAll(spawnPoints)
 
@@ -312,38 +349,67 @@ object GameManager {
         phase = GamePhase.SCATTERING
         val participants = contenders()
         val boundary = absoluteSpawnBoundary(gameWorld)
-        if (spawnLocations.size < participants.size ||
-            boundary == null ||
-            spawnLocations.any { !isValidSpawnCandidate(gameWorld, it, emptyList(), boundary) }
-        ) {
+        if (boundary == null || !areSpawnLocationsValid(gameWorld, spawnLocations, participants.size, boundary)) {
             val replacementLocations = findSpawnLocations(gameWorld, participants.size)
             spawnLocations.clear()
             spawnLocations.addAll(replacementLocations)
         }
 
-        val resolvedBoundary = ensureSpawnBoundary(gameWorld)
-        val absoluteFallback = emergencySpawnLocation(gameWorld, resolvedBoundary)
-        spawnLocations.indices.forEach { index ->
-            if (!isAbsoluteSpawnLocation(spawnLocations[index])) {
-                spawnLocations[index] = absoluteFallback.clone()
-            }
+        val resolvedBoundary = absoluteSpawnBoundary(gameWorld)
+        if (resolvedBoundary == null ||
+            !areSpawnLocationsValid(gameWorld, spawnLocations, participants.size, resolvedBoundary)
+        ) {
+            sendNotification("자기장 내부의 안전한 개별 스폰 지점을 확정하지 못해 게임을 종료합니다.")
+            stop()
+            return
         }
 
         assignedSpawnLocations.clear()
+        val pendingTeleports = mutableListOf<Triple<PlayerData, Player, CompletableFuture<Boolean>>>()
         participants.zip(spawnLocations.shuffled()).forEach { (playerData, location) ->
             val playerId = playerData.player.uniqueId
-            val destination = location.takeIf { isAbsoluteSpawnLocation(it) } ?: absoluteFallback
+            val destination = location
             assignedSpawnLocations[playerId] = destination.clone()
-            if (!playerData.player.isOnline) return@forEach
-            if (!playerData.player.teleport(destination)) {
-                sendNotification("월드보더 내부 산개에 실패하여 게임을 종료합니다.")
-                stop()
-                return
+            val player = playerData.player
+            if (!player.isOnline) return@forEach
+            player.velocity = Vector()
+            player.fallDistance = 0.0F
+            val teleportFuture = player.teleportAsync(destination).exceptionally { error ->
+                ClassWarPlugin.instance.logger.warning(
+                    "[ClassWar] ${player.name} 산개 텔레포트 실패: ${error.message ?: error.javaClass.simpleName}",
+                )
+                false
             }
-            initializeBattlePlayer(playerData)
+            pendingTeleports += Triple(playerData, player, teleportFuture)
         }
-        if (phase == GamePhase.FINISHED) return
-        beginBattle()
+
+        if (pendingTeleports.isEmpty()) {
+            beginBattle()
+            return
+        }
+
+        val scatteringGame = this
+        CompletableFuture.allOf(*pendingTeleports.map { it.third }.toTypedArray()).whenComplete { _, _ ->
+            val plugin = ClassWarPlugin.instance
+            if (!plugin.isEnabled) return@whenComplete
+            Bukkit.getScheduler().runTask(plugin, Runnable {
+                if (game !== scatteringGame || phase != GamePhase.SCATTERING) return@Runnable
+                val failed = pendingTeleports.any { (_, teleportedPlayer, future) ->
+                    teleportedPlayer.isOnline && future.getNow(false) != true
+                }
+                if (failed) {
+                    sendNotification("월드보더 내부 산개에 실패하여 게임을 종료합니다.")
+                    stop()
+                    return@Runnable
+                }
+                pendingTeleports.forEach { (playerData, teleportedPlayer, future) ->
+                    if (teleportedPlayer.isOnline && future.getNow(false) == true) {
+                        initializeBattlePlayer(playerData)
+                    }
+                }
+                beginBattle()
+            })
+        }
     }
 
     private fun Game.beginBattle() {
@@ -553,9 +619,11 @@ object GameManager {
                 if (!shrinking) {
                     val total = delayTicks.coerceAtLeast(1L)
                     val remainingTicks = (delayTicks - elapsedTicks).coerceAtLeast(0L)
-                    val remaining = ((remainingTicks + 19L) / 20L).toInt()
-                    bossBar.name(miniMessage.deserialize("<aqua><bold>월드보더 축소까지 ${formatTime(remaining)}"))
-                    bossBar.progress((remainingTicks.toFloat() / total).coerceIn(0.0F, 1.0F))
+                    if (elapsedTicks % BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS == 0L || remainingTicks == 0L) {
+                        val remaining = ((remainingTicks + 19L) / 20L).toInt()
+                        bossBar.name(miniMessage.deserialize("<aqua><bold>월드보더 축소까지 ${formatTime(remaining)}"))
+                        bossBar.progress((remainingTicks.toFloat() / total).coerceIn(0.0F, 1.0F))
+                    }
                 } else {
                     val progress = (elapsedTicks.toDouble() / shrinkTicks).coerceIn(0.0, 1.0)
                     border.setCenter(
@@ -563,9 +631,11 @@ object GameManager {
                         shrinkStartZ + (shrinkTargetZ - shrinkStartZ) * progress,
                     )
                     val remainingTicks = (shrinkTicks - elapsedTicks).coerceAtLeast(0L)
-                    val remaining = ((remainingTicks + 19L) / 20L).toInt()
-                    bossBar.name(miniMessage.deserialize("<red><bold>월드보더 축소 중 ${formatTime(remaining)}"))
-                    bossBar.progress((remainingTicks.toFloat() / shrinkTicks).coerceIn(0.0F, 1.0F))
+                    if (elapsedTicks % BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS == 0L || remainingTicks == 0L) {
+                        val remaining = ((remainingTicks + 19L) / 20L).toInt()
+                        bossBar.name(miniMessage.deserialize("<red><bold>월드보더 축소 중 ${formatTime(remaining)}"))
+                        bossBar.progress((remainingTicks.toFloat() / shrinkTicks).coerceIn(0.0F, 1.0F))
+                    }
                     if (elapsedTicks >= shrinkTicks) {
                         border.setCenter(shrinkTargetX, shrinkTargetZ)
                         startFinalBorderDescent(shrinkTargetX, shrinkTargetZ, targetBorderSize, bossBar)
@@ -841,42 +911,86 @@ object GameManager {
         finalBorderDisplays.clear()
     }
 
-    private fun Game.selectRandomRoundCenter() {
+    private fun Game.selectRandomRoundCenter(): Boolean {
         roundCenterX = settings.centerX
         roundCenterZ = settings.centerZ
-        if (!settings.borderEnabled) return
+        if (!settings.borderEnabled) return true
 
         val minimumOffset = minOf(settings.borderCenterMinimumDistance, settings.borderCenterMaximumDistance)
         val maximumOffset = maxOf(settings.borderCenterMinimumDistance, settings.borderCenterMaximumDistance)
-        if (maximumOffset == 0.0) return
-
-        val angle = Random.nextDouble(0.0, PI * 2.0)
-        val radius = if (minimumOffset < maximumOffset) {
-            sqrt(Random.nextDouble(minimumOffset * minimumOffset, maximumOffset * maximumOffset))
-        } else {
-            minimumOffset
+        if (maximumOffset == 0.0) {
+            return isSuitableRoundCenter(gameWorld, settings.centerX, settings.centerZ)
         }
-        roundCenterX += cos(angle) * radius
-        roundCenterZ += sin(angle) * radius
+        repeat(ROUND_CENTER_SEARCH_ATTEMPTS) {
+            val angle = Random.nextDouble(0.0, PI * 2.0)
+            val radius = if (minimumOffset < maximumOffset) {
+                sqrt(Random.nextDouble(minimumOffset * minimumOffset, maximumOffset * maximumOffset))
+            } else {
+                minimumOffset
+            }
+            val candidateX = settings.centerX + cos(angle) * radius
+            val candidateZ = settings.centerZ + sin(angle) * radius
+            if (isSuitableRoundCenter(gameWorld, candidateX, candidateZ)) {
+                roundCenterX = candidateX
+                roundCenterZ = candidateZ
+                return true
+            }
+        }
+
+        return isSuitableRoundCenter(gameWorld, settings.centerX, settings.centerZ)
     }
 
     private fun Game.findSpawnLocations(world: World, count: Int): List<Location> {
         if (count <= 0) return emptyList()
+        val selectionDeadline = System.nanoTime() + SPAWN_SELECTION_TIME_BUDGET_NANOS
         val canRecenterRound = phase == GamePhase.COUNTDOWN || phase == GamePhase.SCATTERING
         var boundary = ensureSpawnBoundary(world, canRecenterRound)
-        if (canRecenterRound && centralSpawnLocations(world, boundary).isEmpty()) {
-            findReplacementRoundCenter(world, boundary)?.let { replacement ->
+        var centralNodes = centralSpawnNodes(world, boundary)
+        if (canRecenterRound && centralNodes.isEmpty() && System.nanoTime() < selectionDeadline) {
+            findReplacementRoundCenter(world, boundary, selectionDeadline)?.let { replacement ->
                 roundCenterX = replacement.x
                 roundCenterZ = replacement.z
                 boundary = ensureSpawnBoundary(world, allowRoundRecenter = true)
+                centralNodes = centralSpawnNodes(world, boundary)
             }
         }
+        val centralLocations = centralNodes.map { PlayerNavigation.playerLocation(world, it) }
+        val targetNodes = centralNodes.toHashSet()
         val fallbackBoundary = fallbackSpawnBoundary(boundary)
         val result = mutableListOf<Location>()
+        val relaxedCandidates = mutableListOf<Location>()
+        val minimumDistanceSquared = settings.minimumPlayerDistance * settings.minimumPlayerDistance
+
+        fun evaluateCandidate(x: Int, z: Int): Location? {
+            if (System.nanoTime() >= selectionDeadline) return null
+            val candidate = safeSpawnLocation(world, x, z) ?: return null
+            val start = spawnCandidateNode(world, candidate, result, boundary) ?: return null
+            if ((result + relaxedCandidates).none { it.distanceSquared(candidate) < minimumDistanceSquared }) {
+                relaxedCandidates += candidate.clone()
+            }
+            val pathDeadline = minOf(
+                selectionDeadline,
+                System.nanoTime() + SPAWN_PATH_TIME_BUDGET_NANOS,
+            )
+            return candidate.takeIf {
+                PlayerNavigation.hasPathToArea(
+                    world = world,
+                    start = start,
+                    centerX = roundCenterX,
+                    centerZ = roundCenterZ,
+                    targetRadius = SPAWN_CENTER_TARGET_RADIUS,
+                    targetNodes = targetNodes,
+                    bounds = boundary.toNavigationBounds(),
+                    maxVisitedNodes = SPAWN_PATH_MAX_VISITED_NODES,
+                    deadlineNanos = pathDeadline,
+                )
+            }
+        }
+
         for (index in 0 until count) {
             var selected: Location? = null
-            repeat(SPAWN_SEARCH_ATTEMPTS) {
-                if (selected != null) return@repeat
+            for (attempt in 0 until SPAWN_SEARCH_ATTEMPTS) {
+                if (System.nanoTime() >= selectionDeadline) break
                 val angle = Random.nextDouble(0.0, PI * 2.0)
                 val minimumRadius = minOf(settings.scatterMinRadius, settings.scatterMaxRadius)
                 val maximumRadius = maxOf(settings.scatterMinRadius, settings.scatterMaxRadius)
@@ -887,39 +1001,55 @@ object GameManager {
                 }
                 val x = floor(roundCenterX + cos(angle) * radius).toInt()
                 val z = floor(roundCenterZ + sin(angle) * radius).toInt()
-                val candidate = safeSurfaceLocation(world, x, z) ?: return@repeat
-                if (!isValidSpawnCandidate(world, candidate, result, boundary)) return@repeat
-                selected = candidate
+                selected = evaluateCandidate(x, z)
+                if (selected != null) break
             }
-            if (selected == null) {
-                repeat(SPAWN_BORDER_FALLBACK_ATTEMPTS) {
-                    if (selected != null) return@repeat
-                    val x = randomBlockCoordinate(fallbackBoundary.minX, fallbackBoundary.maxX) ?: return@repeat
-                    val z = randomBlockCoordinate(fallbackBoundary.minZ, fallbackBoundary.maxZ) ?: return@repeat
-                    val candidate = safeSurfaceLocation(world, x, z) ?: return@repeat
-                    if (!isValidSpawnCandidate(world, candidate, result, boundary)) return@repeat
-                    selected = candidate
+            if (selected == null && System.nanoTime() < selectionDeadline) {
+                for (attempt in 0 until SPAWN_BORDER_FALLBACK_ATTEMPTS) {
+                    if (System.nanoTime() >= selectionDeadline) break
+                    val x = randomBlockCoordinate(fallbackBoundary.minX, fallbackBoundary.maxX) ?: continue
+                    val z = randomBlockCoordinate(fallbackBoundary.minZ, fallbackBoundary.maxZ) ?: continue
+                    selected = evaluateCandidate(x, z)
+                    if (selected != null) break
                 }
             }
             if (selected == null) break
             result += selected
         }
 
-        // If strict scatter spacing cannot be satisfied, prefer multiple central surface
-        // nodes and relax only player separation. Reusing a central node is the last resort;
-        // it is still inside both the current border and the configured initial magnetic field.
-        val centralLocations = centralSpawnLocations(world, boundary).shuffled().toMutableList()
-        val emergency = emergencySpawnLocation(world, boundary)
-        if (centralLocations.isEmpty()) centralLocations += emergency
-        centralLocations.forEach { candidate ->
+        // A costly or blocked route may exceed the strict pathfinding budget. Such locations are
+        // still safe walkable positions inside the border, so prefer them over stacking everyone
+        // at the center while keeping the configured player spacing whenever possible.
+        relaxedCandidates.shuffled().forEach { candidate ->
+            if (result.size >= count) return@forEach
+            if (result.none { it.distanceSquared(candidate) < minimumDistanceSquared }) {
+                result += candidate.clone()
+            }
+        }
+
+        // If strict scatter spacing cannot be satisfied, use distinct central walkable
+        // nodes while relaxing only the configured player separation.
+        val centralFallbacks = centralLocations.shuffled()
+        centralFallbacks.forEach { candidate ->
             if (result.size >= count) return@forEach
             if (result.none { it.distanceSquared(candidate) < SPAWN_RELAXED_MINIMUM_DISTANCE_SQUARED }) {
                 result += candidate.clone()
             }
         }
-        var fallbackIndex = 0
-        while (result.size < count) {
-            result += centralLocations[fallbackIndex++ % centralLocations.size].clone()
+
+        // Search the remaining permitted area without requiring the expensive route check.
+        // These are still verified land positions inside both the current border and the
+        // initial magnetic field, and every result remains physically distinct.
+        val fallbackDeadline = maxOf(selectionDeadline, System.nanoTime() + 100_000_000L)
+        val fallbackAttempts = count * SPAWN_DISTINCT_FALLBACK_ATTEMPTS_PER_PLAYER
+        for (attempt in 0 until fallbackAttempts) {
+            if (result.size >= count || System.nanoTime() >= fallbackDeadline) break
+            val x = randomBlockCoordinate(boundary.minX, boundary.maxX) ?: break
+            val z = randomBlockCoordinate(boundary.minZ, boundary.maxZ) ?: break
+            val candidate = safeSpawnLocation(world, x, z) ?: continue
+            if (!world.worldBorder.isInside(candidate) || !boundary.contains(candidate)) continue
+            if (result.any { it.distanceSquared(candidate) < SPAWN_RELAXED_MINIMUM_DISTANCE_SQUARED }) continue
+            result += candidate
         }
         return result
     }
@@ -938,14 +1068,15 @@ object GameManager {
         return currentBorderSpawnBoundary(world)
     }
 
-    private fun Game.centralSpawnLocations(world: World, boundary: SpawnBoundary): List<Location> {
+    private fun Game.centralSpawnNodes(world: World, boundary: SpawnBoundary): List<PlayerNavigation.Node> {
         val radius = SPAWN_CENTER_TARGET_RADIUS
         val radiusSquared = radius * radius
         val minimumX = floor(roundCenterX - radius).toInt()
         val maximumX = floor(roundCenterX + radius).toInt()
         val minimumZ = floor(roundCenterZ - radius).toInt()
         val maximumZ = floor(roundCenterZ + radius).toInt()
-        val result = mutableListOf<Pair<Double, Location>>()
+        val exposed = mutableListOf<Pair<Double, PlayerNavigation.Node>>()
+        val covered = mutableListOf<Pair<Double, PlayerNavigation.Node>>()
 
         for (x in minimumX..maximumX) {
             for (z in minimumZ..maximumZ) {
@@ -955,37 +1086,53 @@ object GameManager {
                 val dz = blockCenterZ - roundCenterZ
                 val distanceSquared = dx * dx + dz * dz
                 if (distanceSquared > radiusSquared || !boundary.contains(blockCenterX, blockCenterZ)) continue
-                val node = PlayerNavigation.surfaceNode(world, x, z) ?: continue
-                val location = PlayerNavigation.playerLocation(world, node)
-                if (world.worldBorder.isInside(location) && boundary.contains(location)) {
-                    result += distanceSquared to location
+                val nodes = PlayerNavigation.spawnableLandNodesInColumn(
+                    world,
+                    x,
+                    z,
+                    SPAWN_COLUMN_SEARCH_DEPTH,
+                )
+                val naturalSurface = nodes.firstOrNull()?.let { isNaturalTerrainNode(world, it) } == true
+                nodes.forEachIndexed { index, node ->
+                    val location = PlayerNavigation.playerLocation(world, node)
+                    if (!world.worldBorder.isInside(location) || !boundary.contains(location)) return@forEachIndexed
+                    if (index == 0) {
+                        exposed += distanceSquared to node
+                    } else if (!naturalSurface) {
+                        covered += distanceSquared to node
+                    }
                 }
             }
         }
-        return result.sortedBy { it.first }.map { it.second }
+        val preferred = covered + exposed
+        return preferred.distinctBy { it.second }
+            .sortedWith(compareBy<Pair<Double, PlayerNavigation.Node>> { it.first }.thenByDescending { it.second.y })
+            .map { it.second }
     }
 
-    private fun Game.findReplacementRoundCenter(world: World, boundary: SpawnBoundary): Location? {
-        repeat(SPAWN_CENTER_REPLACEMENT_ATTEMPTS) {
-            val x = randomBlockCoordinate(boundary.minX, boundary.maxX) ?: return@repeat
-            val z = randomBlockCoordinate(boundary.minZ, boundary.maxZ) ?: return@repeat
-            val natural = safeSurfaceLocation(world, x, z)
+    private fun Game.centralSpawnLocations(world: World, boundary: SpawnBoundary): List<Location> =
+        centralSpawnNodes(world, boundary).map { PlayerNavigation.playerLocation(world, it) }
+
+    private fun Game.findReplacementRoundCenter(
+        world: World,
+        boundary: SpawnBoundary,
+        deadlineNanos: Long,
+    ): Location? {
+        for (attempt in 0 until SPAWN_CENTER_REPLACEMENT_ATTEMPTS) {
+            if (System.nanoTime() >= deadlineNanos) break
+            val x = randomBlockCoordinate(boundary.minX, boundary.maxX) ?: continue
+            val z = randomBlockCoordinate(boundary.minZ, boundary.maxZ) ?: continue
+            if (!isSuitableRoundCenter(world, x + 0.5, z + 0.5)) continue
+            val natural = safeSpawnLocation(world, x, z)
             if (natural != null && world.worldBorder.isInside(natural) && boundary.contains(natural)) return natural
-            val node = PlayerNavigation.surfaceNode(world, x, z) ?: return@repeat
+            if (System.nanoTime() >= deadlineNanos) break
+            val node = PlayerNavigation.surfaceNode(world, x, z) ?: continue
             val navigable = PlayerNavigation.playerLocation(world, node)
-            if (world.worldBorder.isInside(navigable) && boundary.contains(navigable)) return navigable
+            if (PlayerNavigation.isSpawnableLandNode(world, node) &&
+                world.worldBorder.isInside(navigable) && boundary.contains(navigable)
+            ) return navigable
         }
         return null
-    }
-
-    private fun Game.emergencySpawnLocation(world: World, boundary: SpawnBoundary): Location {
-        centralSpawnLocations(world, boundary).firstOrNull()?.let { return it.clone() }
-        val x = roundCenterX.coerceIn(boundary.minX, boundary.maxX)
-        val z = roundCenterZ.coerceIn(boundary.minZ, boundary.maxZ)
-        world.getChunkAt(floor(x).toInt() shr 4, floor(z).toInt() shr 4).load()
-        val surfaceY = world.getHighestBlockYAt(floor(x).toInt(), floor(z).toInt())
-        val y = (surfaceY + 1).coerceIn(world.minHeight + 1, world.maxHeight - 2)
-        return Location(world, x, y.toDouble(), z)
     }
 
     private fun Game.fallbackSpawnBoundary(boundary: SpawnBoundary): SpawnBoundary {
@@ -1045,25 +1192,37 @@ object GameManager {
         return gameWorld.worldBorder.isInside(location) && boundary.contains(location)
     }
 
-    private fun Game.isValidSpawnCandidate(
+    private fun Game.spawnCandidateNode(
         world: World,
         candidate: Location,
         existing: List<Location>,
         boundary: SpawnBoundary,
-    ): Boolean {
-        if (candidate.world != world || !world.worldBorder.isInside(candidate) || !boundary.contains(candidate)) return false
+    ): PlayerNavigation.Node? {
+        if (candidate.world != world || !world.worldBorder.isInside(candidate) || !boundary.contains(candidate)) return null
         val minimumDistanceSquared = settings.minimumPlayerDistance * settings.minimumPlayerDistance
-        if (existing.any { it.distanceSquared(candidate) < minimumDistanceSquared }) return false
-        val start = PlayerNavigation.nearestNode(world, candidate) ?: return false
-        return PlayerNavigation.hasPathToArea(
-            world = world,
-            start = start,
-            centerX = roundCenterX,
-            centerZ = roundCenterZ,
-            targetRadius = SPAWN_CENTER_TARGET_RADIUS,
-            bounds = boundary.toNavigationBounds(),
-            maxVisitedNodes = SPAWN_PATH_MAX_VISITED_NODES,
-        )
+        if (existing.any { it.distanceSquared(candidate) < minimumDistanceSquared }) return null
+        val node = PlayerNavigation.nearestNode(world, candidate, verticalSearch = 0) ?: return null
+        return node.takeIf { PlayerNavigation.isSpawnableLandNode(world, it) }
+    }
+
+    private fun Game.areSpawnLocationsValid(
+        world: World,
+        locations: List<Location>,
+        expectedCount: Int,
+        boundary: SpawnBoundary,
+    ): Boolean {
+        if (locations.size != expectedCount) return false
+        val accepted = mutableListOf<Location>()
+        locations.forEach { candidate ->
+            if (candidate.world != world || !world.worldBorder.isInside(candidate) || !boundary.contains(candidate)) {
+                return false
+            }
+            if (accepted.any { it.distanceSquared(candidate) < SPAWN_RELAXED_MINIMUM_DISTANCE_SQUARED }) return false
+            val node = PlayerNavigation.nearestNode(world, candidate, verticalSearch = 0) ?: return false
+            if (!PlayerNavigation.isSpawnableLandNode(world, node)) return false
+            accepted += candidate
+        }
+        return true
     }
 
     private fun SpawnBoundary.toNavigationBounds(): PlayerNavigation.Bounds = PlayerNavigation.Bounds(
@@ -1084,15 +1243,46 @@ object GameManager {
         }
     }
 
-    private fun safeSurfaceLocation(world: World, x: Int, z: Int): Location? {
+    private fun safeSpawnLocation(world: World, x: Int, z: Int): Location? {
         world.getChunkAt(x shr 4, z shr 4).load()
-        val y = world.getHighestBlockYAt(x, z)
-        if (y - 3 < world.minHeight || y + 2 >= world.maxHeight) return null
-        val surface = world.getBlockAt(x, y, z)
-        if (!isNaturalGround(surface)) return null
-        if (!world.getBlockAt(x, y + 1, z).type.isAir || !world.getBlockAt(x, y + 2, z).type.isAir) return null
-        if ((1..3).any { depth -> !isNaturalGround(world.getBlockAt(x, y - depth, z)) }) return null
-        return Location(world, x + 0.5, y + 1.0, z + 0.5)
+        val nodes = PlayerNavigation.spawnableLandNodesInColumn(world, x, z, SPAWN_COLUMN_SEARCH_DEPTH)
+        val node = nodes.firstOrNull() ?: return null
+        if (isNaturalTerrainNode(world, node)) return PlayerNavigation.playerLocation(world, node)
+
+        // A constructed roof is not a valid scatter surface. If the same column
+        // contains a protected floor, use that floor instead of the rooftop.
+        return nodes.drop(1).firstOrNull()?.let { PlayerNavigation.playerLocation(world, it) }
+    }
+
+    private fun isNaturalTerrainNode(world: World, node: PlayerNavigation.Node): Boolean {
+        val y = node.y - 1
+        return y - 3 >= world.minHeight && y + 2 < world.maxHeight &&
+            isNaturalGround(world.getBlockAt(node.x, y, node.z)) &&
+            world.getBlockAt(node.x, y + 1, node.z).isPassable &&
+            world.getBlockAt(node.x, y + 2, node.z).isPassable &&
+            (1..3).all { depth -> isNaturalGround(world.getBlockAt(node.x, y - depth, node.z)) }
+    }
+
+    private fun isSuitableRoundCenter(world: World, centerX: Double, centerZ: Double): Boolean {
+        val border = world.worldBorder
+        val centerLocation = Location(world, centerX, world.minHeight.toDouble(), centerZ)
+        if (!border.isInside(centerLocation)) return false
+        val centerNode = PlayerNavigation.surfaceNode(world, floor(centerX).toInt(), floor(centerZ).toInt())
+        if (centerNode == null || !PlayerNavigation.isSpawnableLandNode(world, centerNode)) return false
+
+        var sampledColumns = 0
+        var dryColumns = 0
+        for (offsetX in -ROUND_CENTER_LAND_CHECK_RADIUS..ROUND_CENTER_LAND_CHECK_RADIUS step ROUND_CENTER_LAND_CHECK_STEP) {
+            for (offsetZ in -ROUND_CENTER_LAND_CHECK_RADIUS..ROUND_CENTER_LAND_CHECK_RADIUS step ROUND_CENTER_LAND_CHECK_STEP) {
+                if (offsetX * offsetX + offsetZ * offsetZ > ROUND_CENTER_LAND_CHECK_RADIUS * ROUND_CENTER_LAND_CHECK_RADIUS) continue
+                sampledColumns++
+                val x = floor(centerX + offsetX).toInt()
+                val z = floor(centerZ + offsetZ).toInt()
+                val node = PlayerNavigation.surfaceNode(world, x, z) ?: continue
+                if (PlayerNavigation.isSpawnableLandNode(world, node)) dryColumns++
+            }
+        }
+        return sampledColumns > 0 && dryColumns.toDouble() / sampledColumns >= ROUND_CENTER_MINIMUM_DRY_RATIO
     }
 
     private fun isNaturalGround(block: Block): Boolean {
@@ -1266,8 +1456,8 @@ object GameManager {
                 if (!currentGame.battleInitializedPlayers.contains(player.uniqueId)) {
                     val assigned = currentGame.assignedSpawnLocations[player.uniqueId]
                     val destination = assigned?.takeIf { currentGame.isAbsoluteSpawnLocation(it) }
-                        ?: currentGame.findSpawnLocations(gameWorld, 1).first()
-                    if (!currentGame.isAbsoluteSpawnLocation(destination) || !player.teleport(destination)) {
+                        ?: currentGame.findSpawnLocations(gameWorld, 1).firstOrNull()
+                    if (destination == null || !currentGame.isAbsoluteSpawnLocation(destination) || !player.teleport(destination)) {
                         currentGame.disablePlayerInteraction(playerData)
                         player.gameMode = GameMode.SPECTATOR
                         player.sendMessage(miniMessage.deserialize("<red><bold>[!] 월드보더 내부의 안전한 복귀 지점을 찾지 못했습니다."))
@@ -1293,7 +1483,7 @@ object GameManager {
 
     fun refreshPlayerListVisibility() {
         val currentGame = game ?: return
-        PlayerListManager.hideAll()
+        if (currentGame.settings.playerListVisible) PlayerListManager.restoreAll() else PlayerListManager.hideAll()
         NameTagManager.hideAll(currentGame.activePlayers().map { it.player.name })
     }
 

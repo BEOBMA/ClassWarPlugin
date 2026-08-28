@@ -69,10 +69,10 @@ class Damocles : GameClass(), GameStatusHandler {
                         pitch = 0f
                     }
                 current.teleport(nextLocation)
-                if (tick % 5 == 0) particles.spawn(current.location, Particle.ENCHANT, count = 7, spread = 0.55, speed = 0.015)
-                tick++
+                if (tick % 6 == 0) particles.spawn(current.location, Particle.ENCHANT, count = 7, spread = 0.55, speed = 0.015)
+                tick += 2
             }
-        }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
+        }.runTaskTimer(ClassWarPlugin.instance, 0L, 2L))
     }
     override fun onGameTimePasses() = Unit
 

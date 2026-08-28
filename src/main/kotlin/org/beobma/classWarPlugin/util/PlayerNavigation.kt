@@ -4,6 +4,7 @@ import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.World
 import org.bukkit.block.Block
+import org.bukkit.block.data.Bisected
 import org.bukkit.block.data.type.Door
 import org.bukkit.block.data.type.Gate
 import org.bukkit.block.data.type.TrapDoor
@@ -61,18 +62,35 @@ object PlayerNavigation {
         return null
     }
 
+    /**
+     * Finds safe land positions in a column, from the exposed surface down through
+     * covered floors. Closed doors may be considered during pathfinding, but are
+     * deliberately excluded here because a player must never be spawned inside one.
+     */
+    fun spawnableLandNodesInColumn(world: World, x: Int, z: Int, searchDepth: Int): List<Node> {
+        val highestY = world.getHighestBlockYAt(x, z)
+        val minimumY = maxOf(world.minHeight + 1, highestY + 1 - searchDepth.coerceAtLeast(0))
+        return (highestY + 1 downTo minimumY).mapNotNull { y ->
+            Node(x, y, z).takeIf { isSpawnableStanding(world, it) }
+        }
+    }
+
+    fun isSpawnableLandNode(world: World, node: Node): Boolean = isSpawnableStanding(world, node)
+
     fun hasPathToArea(
         world: World,
         start: Node,
         centerX: Double,
         centerZ: Double,
         targetRadius: Double,
+        targetNodes: Set<Node>? = null,
         bounds: Bounds,
         maxVisitedNodes: Int,
+        deadlineNanos: Long = Long.MAX_VALUE,
     ): Boolean {
         if (!bounds.contains(start) || !isNavigable(world, start)) return false
         val radiusSquared = targetRadius * targetRadius
-        if (isInsideTarget(start, centerX, centerZ, radiusSquared)) return true
+        if (isInsideTarget(start, centerX, centerZ, radiusSquared, targetNodes)) return true
 
         val open = PriorityQueue<PathStep>()
         val costs = hashMapOf(start to 0)
@@ -80,12 +98,14 @@ object PlayerNavigation {
         var visited = 0
 
         while (open.isNotEmpty() && visited < maxVisitedNodes) {
+            if (System.nanoTime() >= deadlineNanos) return false
             val step = open.poll()
             if (costs[step.node] != step.cost) continue
             visited++
-            if (isInsideTarget(step.node, centerX, centerZ, radiusSquared)) return true
+            if (isInsideTarget(step.node, centerX, centerZ, radiusSquared, targetNodes)) return true
 
             neighbours(world, step.node, bounds).forEach { next ->
+                if (System.nanoTime() >= deadlineNanos) return false
                 val verticalCost = abs(next.y - step.node.y) * 2
                 val nextCost = step.cost + 10 + verticalCost
                 if (nextCost >= (costs[next] ?: Int.MAX_VALUE)) return@forEach
@@ -173,6 +193,13 @@ object PlayerNavigation {
         return isBodyCellTraversable(feet) && isBodyCellTraversable(head)
     }
 
+    private fun isSpawnableStanding(world: World, node: Node): Boolean {
+        if (!isStanding(world, node)) return false
+        val feet = world.getBlockAt(node.x, node.y, node.z)
+        val head = world.getBlockAt(node.x, node.y + 1, node.z)
+        return feet.isPassable && head.isPassable
+    }
+
     private fun isSwimming(world: World, node: Node): Boolean {
         if (node.y < world.minHeight || node.y + 1 >= world.maxHeight) return false
         val feet = world.getBlockAt(node.x, node.y, node.z)
@@ -184,11 +211,32 @@ object PlayerNavigation {
         if (block.type in UNSAFE_MATERIALS) return false
         if (block.isPassable) return true
         return when (block.blockData) {
-            is Door -> block.type != Material.IRON_DOOR
-            is TrapDoor -> block.type != Material.IRON_TRAPDOOR
+            is Door -> block.type != Material.IRON_DOOR || hasNearbyPlayerActivator(block)
+            is TrapDoor -> block.type != Material.IRON_TRAPDOOR || hasNearbyPlayerActivator(block)
             is Gate -> true
             else -> false
         }
+    }
+
+    /** Iron barriers are usable only when a player-operated control is mounted nearby. */
+    private fun hasNearbyPlayerActivator(barrier: Block): Boolean {
+        val blockData = barrier.blockData
+        val baseY = if (blockData is Door && blockData.half == Bisected.Half.TOP) barrier.y - 1 else barrier.y
+        for (x in barrier.x - ACTIVATOR_SEARCH_RADIUS..barrier.x + ACTIVATOR_SEARCH_RADIUS) {
+            for (y in baseY - 1..baseY + 2) {
+                for (z in barrier.z - ACTIVATOR_SEARCH_RADIUS..barrier.z + ACTIVATOR_SEARCH_RADIUS) {
+                    if (isPlayerActivator(barrier.world.getBlockAt(x, y, z).type)) return true
+                }
+            }
+        }
+        return false
+    }
+
+    private fun isPlayerActivator(material: Material): Boolean {
+        val name = material.name
+        return material == Material.LEVER ||
+            name.endsWith("_BUTTON") ||
+            name.endsWith("_PRESSURE_PLATE")
     }
 
     private fun isWaterCell(block: Block): Boolean {
@@ -196,10 +244,16 @@ object PlayerNavigation {
         return block.type.name.contains("SEAGRASS") || block.type.name.startsWith("KELP")
     }
 
-    private fun isInsideTarget(node: Node, centerX: Double, centerZ: Double, radiusSquared: Double): Boolean {
+    private fun isInsideTarget(
+        node: Node,
+        centerX: Double,
+        centerZ: Double,
+        radiusSquared: Double,
+        targetNodes: Set<Node>?,
+    ): Boolean {
         val dx = node.x + 0.5 - centerX
         val dz = node.z + 0.5 - centerZ
-        return dx * dx + dz * dz <= radiusSquared
+        return dx * dx + dz * dz <= radiusSquared && (targetNodes == null || node in targetNodes)
     }
 
     private fun areaHeuristic(node: Node, centerX: Double, centerZ: Double, radius: Double): Int {
@@ -219,6 +273,7 @@ object PlayerNavigation {
     }
 
     private val DIRECTIONS = arrayOf(1 to 0, -1 to 0, 0 to 1, 0 to -1)
+    private const val ACTIVATOR_SEARCH_RADIUS = 2
     private val WALKING_VERTICAL_OFFSETS = intArrayOf(1, 0, -1, -2, -3)
     private val SWIMMING_VERTICAL_OFFSETS = intArrayOf(2, 1, 0, -1, -2, -3)
     private val UNSAFE_MATERIALS = setOf(

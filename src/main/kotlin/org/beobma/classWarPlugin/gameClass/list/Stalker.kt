@@ -109,7 +109,7 @@ class Stalker : GameClass(), GameStatusHandler {
         var distance = 0.0
         while (distance <= min(length, 48.0)) {
             val point = start.clone().add(direction.clone().multiply(distance)).toLocation(player.world)
-            player.spawnParticle(Particle.SCULK_SOUL, point, 1, 0.0, 0.0, 0.0, 0.0)
+            particles.spawnTo(player, point, Particle.SCULK_SOUL)
             distance += 1.25
         }
     }

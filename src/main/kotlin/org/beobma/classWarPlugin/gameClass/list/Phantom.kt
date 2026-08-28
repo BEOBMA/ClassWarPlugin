@@ -203,7 +203,7 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
         val direction = difference.normalize()
         var distance = 0.0
         while (distance <= min(length, 48.0)) {
-            player.spawnParticle(Particle.SOUL_FIRE_FLAME, start.clone().add(direction.clone().multiply(distance)).toLocation(player.world), 1, 0.0, 0.0, 0.0, 0.0)
+            particles.spawnTo(player, start.clone().add(direction.clone().multiply(distance)).toLocation(player.world), Particle.SOUL_FIRE_FLAME)
             distance += 1.2
         }
     }
@@ -213,8 +213,8 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
             .filter { it != playerData && !it.entityStatus.isDead && it.player.world == player.world }
             .filter { it.player.boundingBox.center.distanceSquared(player.boundingBox.center) <= 36.0 }
             .forEach { enemy ->
-                enemy.player.spawnParticle(Particle.SCULK_SOUL, player.location.clone().add(0.0, 1.0, 0.0), 8, 0.55, 0.75, 0.55, 0.03)
-                enemy.player.playSound(enemy.player.location, Sound.ENTITY_PHANTOM_AMBIENT, 0.35f, 0.55f)
+                particles.spawnTo(enemy.player, player.location.clone().add(0.0, 1.0, 0.0), Particle.SCULK_SOUL, 8, 0.75, 0.03)
+                sounds.playTo(enemy.player, Sound.ENTITY_PHANTOM_AMBIENT, 0.35f, 0.55f)
             }
     }
 
@@ -230,10 +230,10 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
         speed?.remove(); speed = null
         restoreReturnState()
         marks.toMap().forEach { (target, status) ->
-            val amount = (status.power / 10)
+            val amount = status.power
             status.remove()
             if (releaseMarks && amount > 0 && !target.entityStatus.isDead) {
-                target.damage((amount.toDouble() / 10), DamageType.True, playerData, damagePath = DamagePath.SKILL)
+                target.damage(amount * 0.1, DamageType.True, playerData, damagePath = DamagePath.SKILL)
                 renderReleasedSlashes(target, amount)
             }
         }

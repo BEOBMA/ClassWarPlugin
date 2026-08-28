@@ -1,5 +1,6 @@
 package org.beobma.classWarPlugin.util
 
+import org.beobma.classWarPlugin.effect.SoundApi
 import org.bukkit.Sound
 import org.bukkit.SoundCategory
 import org.bukkit.entity.Player
@@ -26,12 +27,12 @@ internal class CourtroomMidiPlayer private constructor(
         listeners.forEach { listener ->
             if (!listener.isOnline) return@forEach
             notes.forEach { note ->
-                listener.playSound(
-                    listener.location,
+                SoundApi.playTo(
+                    listener,
                     note.sound,
-                    SoundCategory.RECORDS,
                     note.volume,
                     note.pitch,
+                    SoundCategory.RECORDS,
                 )
             }
         }

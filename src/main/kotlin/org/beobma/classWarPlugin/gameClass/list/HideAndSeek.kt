@@ -2,6 +2,7 @@ package org.beobma.classWarPlugin.gameClass.list
 
 import net.kyori.adventure.title.Title
 import org.beobma.classWarPlugin.ClassWarPlugin
+import org.beobma.classWarPlugin.effect.EffectSuppressionManager
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.gameClass.GameClass
@@ -13,6 +14,7 @@ import org.beobma.classWarPlugin.manager.CooldownManager
 import org.beobma.classWarPlugin.manager.MapTransferBorderManager
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
+import org.beobma.classWarPlugin.manager.TemporaryDisplayManager
 import org.beobma.classWarPlugin.manager.UtilManager.miniMessage
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Skill
@@ -63,7 +65,7 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
         if (survivors.size != 2 || playerData !in survivors) return
         val target = survivors.first { it != playerData }
         finalPlayTriggered = true
-        startSession(this, target)
+        startSession(this, target, moveDeadSpectatorsOnce = true)
     }
 
     override fun onGameEnd() = endForGame(game)
@@ -73,16 +75,18 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
         override val name = "<bold>하이드 앤 시크"
         override val description = listOf(
             "<gray>10칸 내의 바라보는 플레이어와 숨바꼭질을 시작한다.",
-            "<gray>게임 내 생존한 모든 플레이어는 숨바꼭질 맵으로 이동한다.",
-            "<gray>상대방을 제외한 다른 플레이어는 술래의 시점으로 관전한다.", "",
+            "<gray>자신과 지정한 상대만 숨바꼭질 맵으로 이동한다.",
+            "<gray>다른 플레이어는 원래 위치에 남으며 술래의 시점으로 강제 관전하지 않는다.", "",
             "<gray>자신은 술래가 되고, 상대가 숨을 때까지 행동할 수 없다.",
             "<gray>상대가 숨은 후, 자신은 총 4개의 방이 있는 맵을 돌아니며 상대를 찾아야 한다.",
             "<gray>각 방에는 4개의 문이 있으며, 자신이 열 수 있는 문은 4개로 한정된다.",
             "<gray>문을 열 때마다 사람이 없는 무작위 방 하나의 불이 꺼진다.",
-            "<gray>4번동안 찾지 못하면 상대에게는 자신에게 대적 가능한 무기가 주어진다.",
+            "<gray>문 열기 기회를 모두 소모하면 모든 문이 열리고 상대에게 대적 가능한 무기가 주어진다.",
             "<gray>숨바꼭질 도중 서로가 무기로 피해를 입히면 상대방을 즉시 {keyword:Execution}시킨다.", "",
-            "<dark_gray>종료 후 모든 플레이어는 원래 위치로 복귀한다.",
+            "<dark_gray>종료 후 자신과 상대는 원래 위치로 복귀한다.",
             "<dark_gray>숨바꼭질 중 월드보더, 게임 타이머, 쿨타임과 상태이상 시간이 정지한다.",
+            "<dark_gray>숨바꼭질 중 클래스 파티클, 사운드와 표시 엔티티가 보이지 않는다.",
+            "<dark_gray>상대가 숨는 동안 술래에게는 모든 소리가 들리지 않는다.",
             "<dark_gray>자신과 상대방은 숨바꼭질 중 모든 아이템을 소실한다. (복귀 후 돌려받는다.)"
         )
         override val cooldown = HIDE_AND_SEEK_COOLDOWN_SECONDS
@@ -105,7 +109,7 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
         override fun use() {
             val target = selectedTarget ?: return
             selectedTarget = null
-            startSession(this@HideAndSeek, target)
+            startSession(this@HideAndSeek, target, moveDeadSpectatorsOnce = false)
         }
     }
 
@@ -114,7 +118,8 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
         override val description = listOf(
             "<gray>패시브", "",
             "<gray>자신을 포함하여 생존한 플레이어가 2명일 경우, 즉시 하이드 앤 시크 스킬을 사용한다.",
-            "<gray>이 효과는 재사용 대기 시간을 무시한다."
+            "<gray>이 효과는 재사용 대기 시간을 무시한다.",
+            "<gray>발동 시 사망한 관전자들은 한 번만 술래 위치로 이동하며 시점은 강제로 고정되지 않는다."
         )
     }
 
@@ -133,6 +138,15 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
             val attackable: Boolean,
             val skillTargeting: Boolean,
             val blindness: PotionEffect?,
+            val glowing: Boolean,
+            val fireTicks: Int,
+        )
+
+        private data class DeadSpectatorSnapshot(
+            val player: Player,
+            val location: Location,
+            val gameMode: GameMode,
+            val spectatorTarget: org.bukkit.entity.Entity?,
         )
 
         private val rooms = listOf(
@@ -156,7 +170,11 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
         private val barrierBlocks = listOf(Triple(631, -29, -456), Triple(631, -30, -456))
         private var activeSession: Session? = null
 
-        private class Session(val ownerClass: HideAndSeek, val hider: PlayerData) {
+        private class Session(
+            val ownerClass: HideAndSeek,
+            val hider: PlayerData,
+            moveDeadSpectatorsOnce: Boolean,
+        ) {
             val game: Game = ownerClass.game
             val seeker: PlayerData = ownerClass.playerData
             val soloTraining = seeker == hider && PlayerTagManager.hasTag(seeker.player, "isTraining")
@@ -164,38 +182,68 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
             val snapshots = game.playerDatas.filterIsInstance<PlayerData>()
                 .filter { !it.entityStatus.isDead && it.player.isOnline }
                 .associate { it.uniqueId to snapshot(it) }
+            val deadSpectatorSnapshots = if (moveDeadSpectatorsOnce) {
+                game.playerDatas.filterIsInstance<PlayerData>()
+                    .filter { it.entityStatus.isDead && it.player.isOnline && it.player.gameMode == GameMode.SPECTATOR }
+                    .associate { data ->
+                        data.uniqueId to DeadSpectatorSnapshot(
+                            data.player,
+                            data.player.location.clone(),
+                            data.player.gameMode,
+                            data.player.spectatorTarget,
+                        )
+                    }
+            } else {
+                emptyMap()
+            }
             val blockSnapshots = linkedMapOf<String, BlockState>()
             val hiderOpenedDoors = mutableSetOf<Triple<Int, Int, Int>>()
             val seekerOpenedDoors = mutableSetOf<Triple<Int, Int, Int>>()
+            val extinguishedRoomIds = mutableSetOf<Int>()
             var hidingComplete = false
-            var hiddenRoom: Int? = null
+            var hiddenDoor: Triple<Int, Int, Int>? = null
             var attempts = 4
             var found = false
             var duel = false
             var searchTicks = 0
             var task: BukkitTask? = null
             private var borderExpansion: MapTransferBorderManager.Expansion? = null
+            private var effectSuppression: EffectSuppressionManager.Suppression? = null
+            private var displaySuppression: TemporaryDisplayManager.VisibilitySuppression? = null
 
             fun start() {
                 activeSession = this
                 game.isPaused = true
+                effectSuppression = EffectSuppressionManager.suppress(world)
+                displaySuppression = TemporaryDisplayManager.suppressVisibility(
+                    world,
+                    game.playerDatas.map { it.entity.uniqueId },
+                    snapshots.keys + deadSpectatorSnapshots.keys,
+                )
                 borderExpansion = MapTransferBorderManager.expandToMaximum(world)
                 pauseCooldowns()
                 prepareMap()
                 if (soloTraining) {
                     hidingComplete = true
-                    hiddenRoom = rooms.random().id
+                    hiddenDoor = rooms.flatMap { it.doors }.random()
                     barrierBlocks.forEach { (x, y, z) -> setBlock(world.getBlockAt(x, y, z), Material.AIR) }
                 }
                 snapshots.values.forEach { snapshot ->
                     val data = snapshot.data
                     val participant = data == seeker || data == hider
-                    data.player.closeInventory()
-                    data.player.inventory.clear()
                     data.entityStatus.canSkillUse = false
                     data.entityStatus.canAttack = false
                     data.entityStatus.isAttackable = participant
                     data.entityStatus.isSkillTargeting = participant
+                    if (!participant) {
+                        data.entityStatus.canMove = false
+                        return@forEach
+                    }
+                    data.player.closeInventory()
+                    data.player.stopAllSounds()
+                    data.player.isGlowing = false
+                    data.player.fireTicks = 0
+                    data.player.inventory.clear()
                     if (data == seeker) {
                         data.entityStatus.canMove = soloTraining
                         data.player.gameMode = GameMode.ADVENTURE
@@ -218,19 +266,23 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
                             miniMessage.deserialize("<gray>문을 열고 방에 들어간 뒤 다시 닫으세요."),
                             Title.Times.times(Duration.ofMillis(200), Duration.ofSeconds(3), Duration.ofMillis(500)),
                         ))
-                    } else {
-                        data.entityStatus.canMove = false
-                        data.entityStatus.isAttackable = false
-                        data.entityStatus.isSkillTargeting = false
-                        data.player.gameMode = GameMode.SPECTATOR
-                        data.player.teleport(seeker.player.location)
-                        data.player.spectatorTarget = seeker.player
                     }
                 }
-                world.playSound(Location(world, 631.0, -29.0, -456.0), Sound.BLOCK_TRIAL_SPAWNER_OMINOUS_ACTIVATE,
-                    org.bukkit.SoundCategory.MASTER, 1.2f, 0.65f)
+                deadSpectatorSnapshots.values.forEach { snapshot ->
+                    snapshot.player.spectatorTarget = null
+                    snapshot.player.gameMode = GameMode.SPECTATOR
+                    snapshot.player.teleport(seeker.player.location)
+                }
+                val activationLocation = Location(world, 631.0, -29.0, -456.0)
+                snapshots.values.asSequence()
+                    .map { it.data.player }
+                    .filter { it.isOnline && it.uniqueId != seeker.uniqueId }
+                    .forEach { participant ->
+                        participant.playSound(activationLocation, Sound.BLOCK_TRIAL_SPAWNER_OMINOUS_ACTIVATE,
+                            org.bukkit.SoundCategory.MASTER, 1.2f, 0.65f)
+                    }
                 world.spawnParticle(Particle.TRIAL_SPAWNER_DETECTION_OMINOUS,
-                    Location(world, 631.0, -29.0, -456.0), 65, 2.0, 1.2, 2.0, 0.04)
+                    activationLocation, 65, 2.0, 1.2, 2.0, 0.04)
                 task = object : BukkitRunnable() {
                     var tick = 0
                     override fun run() {
@@ -244,14 +296,8 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
                             return
                         }
                         if (tick == 1) CooldownManager.pauseCooldown(seeker.player, ownerClass.hideAndSeekSkill)
-                        snapshots.values.asSequence().map { it.data }
-                            .filter { it != seeker && it != hider && it.player.isOnline }
-                            .forEach { spectator ->
-                                if (spectator.player.gameMode != GameMode.SPECTATOR) spectator.player.gameMode = GameMode.SPECTATOR
-                                spectator.player.spectatorTarget = seeker.player
-                            }
                         if (!hidingComplete) {
-                            seeker.player.teleport(Location(world, 628.5, -30.0, -455.5, -90f, 0f))
+                            seeker.player.stopAllSounds()
                             if (tick % 20 == 0) {
                                 seeker.player.sendActionBar(miniMessage.deserialize("<yellow><bold>상대가 숨는 중입니다..."))
                                 hider.player.sendActionBar(miniMessage.deserialize("<red><bold>문을 닫아 숨기를 완료하세요."))
@@ -290,8 +336,12 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
                     if (room == null) return true
                     if (!wasOpen) {
                         hiderOpenedDoors += coordinate
-                    } else if (coordinate in hiderOpenedDoors && room.bounds.overlaps(hider.player.boundingBox)) {
-                        completeHiding(room.id)
+                    } else if (coordinate in hiderOpenedDoors) {
+                        if (room.bounds.contains(hider.player.boundingBox.center)) {
+                            completeHiding(coordinate)
+                        } else {
+                            hider.player.sendMiniMessage("<red><bold>[!] 방 안으로 완전히 들어간 뒤 문을 닫으세요.")
+                        }
                     }
                     return true
                 }
@@ -301,7 +351,8 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
                 if (!wasOpen && coordinate !in seekerOpenedDoors) {
                     seekerOpenedDoors += coordinate
                     attempts = (attempts - 1).coerceAtLeast(0)
-                    if (room.id == hiddenRoom) {
+                    if (attempts == 0) openAllDoors()
+                    if (coordinate == hiddenDoor) {
                         found = true
                         if (soloTraining) {
                             seeker.player.sendMiniMessage("<green><bold>[모의 숨바꼭질]</bold> <white>가상의 플레이어가 숨은 방을 찾았습니다!")
@@ -317,7 +368,7 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
                         hider.player.sendMiniMessage("<red><bold>[!] 술래에게 발각되었습니다!")
                         seeker.player.sendMiniMessage("<gold><bold>[!] 숨은 플레이어를 찾았습니다. 무기로 공격하세요!")
                     } else {
-                        extinguishRoom(room)
+                        extinguishRandomEmptyRoom()
                         if (attempts <= 0) {
                             if (soloTraining) {
                                 seeker.player.sendMiniMessage("<red><bold>[모의 숨바꼭질]</bold> <gray>가상의 플레이어를 찾지 못했습니다.")
@@ -368,21 +419,42 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
                     player.inventory.extraContents = cloneItems(snapshot.extra)
                     player.removePotionEffect(PotionEffectType.BLINDNESS)
                     snapshot.blindness?.let(player::addPotionEffect)
-                    if (player.isOnline) player.teleport(snapshot.location)
+                    player.isGlowing = snapshot.glowing
+                    player.fireTicks = snapshot.fireTicks
+                    if (player.isOnline && (data == seeker || data == hider)) player.teleport(snapshot.location)
+                }
+                deadSpectatorSnapshots.values.forEach { snapshot ->
+                    val spectator = snapshot.player
+                    if (!spectator.isOnline) return@forEach
+                    spectator.spectatorTarget = null
+                    spectator.gameMode = snapshot.gameMode
+                    spectator.teleport(snapshot.location)
+                    if (snapshot.gameMode == GameMode.SPECTATOR && snapshot.spectatorTarget?.isValid == true) {
+                        spectator.spectatorTarget = snapshot.spectatorTarget
+                    }
                 }
                 borderExpansion?.restore()
                 borderExpansion = null
+                effectSuppression?.close()
+                effectSuppression = null
                 game.isPaused = false
                 resumeCooldowns()
+                val hiddenDisplays = displaySuppression
+                displaySuppression = null
+                object : BukkitRunnable() {
+                    override fun run() {
+                        hiddenDisplays?.close()
+                    }
+                }.runTaskLater(ClassWarPlugin.instance, 1L)
                 val center = seeker.player.location
                 center.world.spawnParticle(Particle.POOF, center, 38, 1.0, 0.8, 1.0, 0.1)
                 center.world.playSound(center, Sound.BLOCK_TRIAL_SPAWNER_CLOSE_SHUTTER, 0.85f, 1.15f)
             }
 
-            private fun completeHiding(roomId: Int) {
+            private fun completeHiding(doorCoordinate: Triple<Int, Int, Int>) {
                 if (hidingComplete) return
                 hidingComplete = true
-                hiddenRoom = roomId
+                hiddenDoor = doorCoordinate
                 searchTicks = 0
                 hider.entityStatus.canMove = false
                 closeAllDoors()
@@ -406,7 +478,9 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
                 seeker.entityStatus.canAttack = true
                 giveWeapon(hider.player, "<dark_purple><bold>미지의 힘")
                 seeker.player.addPotionEffect(PotionEffect(PotionEffectType.BLINDNESS, PotionEffect.INFINITE_DURATION, 0, false, false, true))
-                snapshots.values.forEach { it.data.player.sendMiniMessage("<dark_red><bold>[!] 탐색 실패. 이제 먼저 상대를 공격하는 플레이어가 승리합니다.") }
+                listOf(seeker, hider).distinct().forEach {
+                    it.player.sendMiniMessage("<dark_red><bold>[!] 탐색 실패. 이제 먼저 상대를 공격하는 플레이어가 승리합니다.")
+                }
                 world.spawnParticle(Particle.SCULK_SOUL, seeker.player.location.add(0.0, 1.0, 0.0), 45, 1.0, 0.8, 1.0, 0.1)
                 world.playSound(seeker.player.location, Sound.ENTITY_WARDEN_ROAR, 0.85f, 0.7f)
             }
@@ -426,6 +500,21 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
                 world.playSound(center, Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE, 0.72f, 0.5f)
             }
 
+            private fun extinguishRandomEmptyRoom() {
+                val occupiedRoomIds = rooms.asSequence()
+                    .filter { room ->
+                        hiddenDoor in room.doors ||
+                            (!soloTraining && hider.player.isOnline &&
+                                room.bounds.contains(hider.player.boundingBox.center))
+                    }
+                    .mapTo(hashSetOf(), Room::id)
+                val room = rooms.filter { it.id !in occupiedRoomIds && it.id !in extinguishedRoomIds }
+                    .randomOrNull()
+                    ?: return
+                extinguishedRoomIds += room.id
+                extinguishRoom(room)
+            }
+
             private fun renderTension() {
                 val heartbeatInterval = when (attempts) {
                     1 -> 11
@@ -440,7 +529,7 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
                         3 -> 0.95f
                         else -> 0.78f
                     }
-                    snapshots.values.asSequence().map { it.data.player }.filter { it.isOnline }.forEach { participant ->
+                    listOf(seeker.player, hider.player).distinct().filter { it.isOnline }.forEach { participant ->
                         participant.playSound(participant.location, Sound.ENTITY_WARDEN_HEARTBEAT, 0.58f, pitch)
                     }
                 }
@@ -470,6 +559,23 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
                         }
                     }
                 }
+            }
+
+            private fun openAllDoors() {
+                (rooms.flatMap { it.doors } + corridorDoors).forEach { (x, y, z) ->
+                    val lower = world.getBlockAt(x, y, z)
+                    snapshotBlock(lower)
+                    snapshotBlock(lower.getRelative(0, 1, 0))
+                    for (block in listOf(lower, lower.getRelative(0, 1, 0))) {
+                        val data = block.blockData as? Openable ?: continue
+                        data.isOpen = true
+                        block.setBlockData(data, false)
+                    }
+                }
+                listOf(seeker.player, hider.player).distinct().filter { it.isOnline }.forEach { participant ->
+                    participant.sendMiniMessage("<dark_red><bold>[!] 문 열기 기회가 모두 소모되어 모든 문이 열렸습니다.")
+                }
+                world.playSound(seeker.player.location, Sound.BLOCK_IRON_DOOR_OPEN, 1.2f, 0.65f)
             }
 
             private fun setDoorOpen(lowerDoor: Block, open: Boolean) {
@@ -538,9 +644,9 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
             if (playerId in session.snapshots) session.finish()
         }
 
-        private fun startSession(owner: HideAndSeek, target: PlayerData) {
+        private fun startSession(owner: HideAndSeek, target: PlayerData, moveDeadSpectatorsOnce: Boolean) {
             if (activeSession != null || target.entityStatus.isDead || !target.player.isOnline) return
-            Session(owner, target).start()
+            Session(owner, target, moveDeadSpectatorsOnce).start()
         }
 
         private fun endForGame(game: Game) {
@@ -564,6 +670,7 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
                 cloneItems(player.inventory.extraContents), data.entityStatus.canMove, data.entityStatus.canAttack,
                 data.entityStatus.canSkillUse, data.entityStatus.isAttackable, data.entityStatus.isSkillTargeting,
                 player.getPotionEffect(PotionEffectType.BLINDNESS),
+                player.isGlowing, player.fireTicks,
             )
         }
 

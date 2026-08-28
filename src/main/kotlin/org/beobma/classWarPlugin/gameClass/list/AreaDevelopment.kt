@@ -4,6 +4,8 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.effect.ParticleOptions
+import org.beobma.classWarPlugin.effect.ParticleApi
+import org.beobma.classWarPlugin.effect.SoundApi
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
 import org.beobma.classWarPlugin.entity.mob.MobEntityData
@@ -131,7 +133,9 @@ class AreaDevelopment : GameClass() {
                         finishDomain(collapse = false, naturalExpiration = true)
                         return
                     }
-                    blindnessStatuses.forEach(DomainBlindnessStatus::refreshEffect)
+                    if (elapsedTicks % 20 == 0) {
+                        blindnessStatuses.forEach(DomainBlindnessStatus::refreshEffect)
+                    }
                     drawDomain(origin, elapsedTicks)
                     if (elapsedTicks % CHAIN_INTERVAL_TICKS == 0) {
                         domainEnemies(origin).forEach { target -> launchFallingChain(target, origin) }
@@ -346,16 +350,16 @@ class AreaDevelopment : GameClass() {
             playerData.trackTask(object : BukkitRunnable() {
                 override fun run() {
                     if (phase >= 8) {
-                        particles.spawn(origin.clone().add(0.0, 1.2, 0.0), Particle.EXPLOSION_EMITTER, count = 5, spread = 2.8)
-                        particles.spawn(origin.clone().add(0.0, 1.3, 0.0), Particle.SQUID_INK, count = 220, spread = 5.5, speed = 0.32)
-                        particles.spawn(origin.clone().add(0.0, 1.5, 0.0), Particle.SCULK_SOUL, count = 110, spread = 4.0, speed = 0.18)
+                        particles.spawn(origin.clone().add(0.0, 1.2, 0.0), Particle.EXPLOSION_EMITTER, count = 3, spread = 2.8)
+                        particles.spawn(origin.clone().add(0.0, 1.3, 0.0), Particle.SQUID_INK, count = 110, spread = 5.5, speed = 0.32)
+                        particles.spawn(origin.clone().add(0.0, 1.5, 0.0), Particle.SCULK_SOUL, count = 60, spread = 4.0, speed = 0.18)
                         particles.spawn(
                             origin.clone().add(0.0, 1.1, 0.0),
                             Particle.BLOCK,
                             Material.BLACK_CONCRETE.createBlockData(),
-                            ParticleOptions.spread(150, 3.4, 0.48),
+                            ParticleOptions.spread(80, 3.4, 0.48),
                         )
-                        drawDustRing(origin, RADIUS, 120, phase * 0.2, ARCANE_CYAN, 0.18)
+                        drawDustRing(origin, RADIUS, 64, phase * 0.2, ARCANE_CYAN, 0.18)
                         sounds.play(origin, Sound.ENTITY_GENERIC_EXPLODE, volume = 1.45f, pitch = 0.4f)
                         sounds.play(origin, Sound.BLOCK_CHAIN_BREAK, volume = 1.2f, pitch = 0.5f)
                         cancel()
@@ -364,10 +368,10 @@ class AreaDevelopment : GameClass() {
 
                     val progress = phase / 8.0
                     val radius = RADIUS * (1.0 - progress)
-                    drawDustRing(origin, radius, 80, phase * 0.28, DEEP_PURPLE, 0.16 + progress * 1.1)
-                    drawDustRing(origin, radius * 0.72, 56, -phase * 0.35, ARCANE_CYAN, 0.3 + progress * 1.4)
-                    repeat(36) { index ->
-                        val angle = 2.0 * PI * index / 36.0 + phase * 0.2
+                    drawDustRing(origin, radius, 44, phase * 0.28, DEEP_PURPLE, 0.16 + progress * 1.1)
+                    drawDustRing(origin, radius * 0.72, 32, -phase * 0.35, ARCANE_CYAN, 0.3 + progress * 1.4)
+                    repeat(18) { index ->
+                        val angle = 2.0 * PI * index / 18.0 + phase * 0.2
                         val y = 5.5 * (1.0 - progress) + sin(index * 0.85 + phase) * 0.45
                         spawnDust(
                             origin.clone().add(cos(angle) * radius, y, sin(angle) * radius),
@@ -375,7 +379,7 @@ class AreaDevelopment : GameClass() {
                             1.35f,
                         )
                     }
-                    particles.spawn(origin.clone().add(0.0, 1.2, 0.0), Particle.REVERSE_PORTAL, count = 28, spread = radius * 0.35, speed = 0.09)
+                    particles.spawn(origin.clone().add(0.0, 1.2, 0.0), Particle.REVERSE_PORTAL, count = 14, spread = radius * 0.35, speed = 0.09)
                     if (phase == 4) sounds.play(origin, Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE, volume = 1.15f, pitch = 0.7f)
                     phase++
                 }
@@ -390,9 +394,9 @@ class AreaDevelopment : GameClass() {
             playerData.trackTask(object : BukkitRunnable() {
                 override fun run() {
                     if (phase > 10) {
-                        particles.spawn(origin.clone().add(0.0, 5.5, 0.0), Particle.REVERSE_PORTAL, count = 150, spread = 5.0, speed = 0.08)
-                        particles.spawn(origin.clone().add(0.0, 4.8, 0.0), Particle.SCULK_SOUL, count = 90, spread = 3.8, speed = 0.1)
-                        particles.spawn(origin.clone().add(0.0, 5.2, 0.0), Particle.END_ROD, count = 65, spread = 4.2, speed = 0.05)
+                        particles.spawn(origin.clone().add(0.0, 5.5, 0.0), Particle.REVERSE_PORTAL, count = 90, spread = 5.0, speed = 0.08)
+                        particles.spawn(origin.clone().add(0.0, 4.8, 0.0), Particle.SCULK_SOUL, count = 48, spread = 3.8, speed = 0.1)
+                        particles.spawn(origin.clone().add(0.0, 5.2, 0.0), Particle.END_ROD, count = 36, spread = 4.2, speed = 0.05)
                         sounds.play(origin, Sound.BLOCK_AMETHYST_CLUSTER_BREAK, volume = 0.9f, pitch = 0.7f)
                         cancel()
                         return
@@ -401,14 +405,14 @@ class AreaDevelopment : GameClass() {
                     val progress = phase / 10.0
                     val height = 0.25 + progress * 5.6
                     val radius = RADIUS * (1.0 - progress * 0.28)
-                    drawDustRing(origin, radius, 84, phase * 0.12, DEEP_PURPLE, height)
-                    drawDustRing(origin, radius * 0.7, 60, -phase * 0.18, ARCANE_CYAN, height + 0.2)
-                    repeat(24) { index ->
-                        val angle = 2.0 * PI * index / 24.0 + phase * 0.16
+                    drawDustRing(origin, radius, 44, phase * 0.12, DEEP_PURPLE, height)
+                    drawDustRing(origin, radius * 0.7, 32, -phase * 0.18, ARCANE_CYAN, height + 0.2)
+                    repeat(12) { index ->
+                        val angle = 2.0 * PI * index / 12.0 + phase * 0.16
                         val point = origin.clone().add(cos(angle) * radius, height + sin(index * 0.8) * 0.35, sin(angle) * radius)
                         particles.spawn(point, if (index % 3 == 0) Particle.END_ROD else Particle.ENCHANT, count = 1)
                     }
-                    particles.spawn(origin.clone().add(0.0, height, 0.0), Particle.WITCH, count = 26, spread = radius * 0.45, speed = 0.025)
+                    particles.spawn(origin.clone().add(0.0, height, 0.0), Particle.WITCH, count = 12, spread = radius * 0.45, speed = 0.025)
                     if (phase == 3 || phase == 7) {
                         sounds.play(origin, Sound.BLOCK_AMETHYST_BLOCK_CHIME, volume = 0.75f, pitch = 1.2f - phase * 0.05f)
                     }
@@ -418,15 +422,15 @@ class AreaDevelopment : GameClass() {
         }
 
         private fun playOpeningEffect(origin: Location) {
-            particles.spawn(origin.clone().add(0.0, 1.0, 0.0), Particle.REVERSE_PORTAL, count = 220, spread = 4.8, speed = 0.26)
-            particles.spawn(origin.clone().add(0.0, 0.7, 0.0), Particle.SQUID_INK, count = 110, spread = 3.0, speed = 0.18)
-            particles.spawn(origin.clone().add(0.0, 1.4, 0.0), Particle.SCULK_SOUL, count = 52, spread = 1.8, speed = 0.1)
+            particles.spawn(origin.clone().add(0.0, 1.0, 0.0), Particle.REVERSE_PORTAL, count = 120, spread = 4.8, speed = 0.26)
+            particles.spawn(origin.clone().add(0.0, 0.7, 0.0), Particle.SQUID_INK, count = 60, spread = 3.0, speed = 0.18)
+            particles.spawn(origin.clone().add(0.0, 1.4, 0.0), Particle.SCULK_SOUL, count = 32, spread = 1.8, speed = 0.1)
 
             repeat(4) { ring ->
                 drawDustRing(
                     origin = origin,
                     radius = RADIUS * (ring + 1) / 4.0,
-                    points = 40 + ring * 16,
+                    points = 28 + ring * 10,
                     phase = ring * PI / 8.0,
                     color = if (ring % 2 == 0) DEEP_PURPLE else ARCANE_CYAN,
                     y = 0.12 + ring * 0.025,
@@ -436,24 +440,24 @@ class AreaDevelopment : GameClass() {
         }
 
         private fun drawDomain(origin: Location, tick: Int) {
-            drawBoundaryCurtain(origin, tick)
+            if (tick % 4 == 0) drawBoundaryCurtain(origin, tick)
             drawCentralCore(origin, tick)
 
-            if (tick % 4 == 0) {
+            if (tick % 8 == 0) {
                 drawGroundSigil(origin, tick)
                 drawCrown(origin, tick)
                 drawAerialRunes(origin, tick)
             }
-            if (tick % 10 == 0) {
-                particles.circle(origin.clone().add(0.0, 0.16, 0.0), Particle.SOUL_FIRE_FLAME, RADIUS, 80)
-                particles.circle(origin.clone().add(0.0, 0.22, 0.0), Particle.WITCH, RADIUS * 0.72, 52)
-                particles.circle(origin.clone().add(0.0, 3.1, 0.0), Particle.REVERSE_PORTAL, RADIUS * 0.46, 32)
+            if (tick % 20 == 0) {
+                particles.circle(origin.clone().add(0.0, 0.16, 0.0), Particle.SOUL_FIRE_FLAME, RADIUS, 40)
+                particles.circle(origin.clone().add(0.0, 0.22, 0.0), Particle.WITCH, RADIUS * 0.72, 28)
+                particles.circle(origin.clone().add(0.0, 3.1, 0.0), Particle.REVERSE_PORTAL, RADIUS * 0.46, 18)
             }
         }
 
         private fun drawBoundaryCurtain(origin: Location, tick: Int) {
-            repeat(76) { index ->
-                val angle = 2.0 * PI * index / 76.0 + tick * 0.012
+            repeat(40) { index ->
+                val angle = 2.0 * PI * index / 40.0 + tick * 0.012
                 val wave = (sin(index * 1.37 + tick * 0.11) + 1.0) * 0.5
                 val radius = RADIUS + sin(index * 0.73 - tick * 0.05) * 0.1
                 val y = 0.25 + wave * 5.2
@@ -465,8 +469,8 @@ class AreaDevelopment : GameClass() {
                 spawnDust(origin.clone().add(cos(angle) * radius, y, sin(angle) * radius), color, 1.25f)
             }
 
-            repeat(16) { index ->
-                val angle = 2.0 * PI * index / 16.0 - tick * 0.008
+            repeat(8) { index ->
+                val angle = 2.0 * PI * index / 8.0 - tick * 0.008
                 val y = 0.4 + (tick * 0.13 + index * 0.72) % 5.4
                 val point = origin.clone().add(cos(angle) * RADIUS, y, sin(angle) * RADIUS)
                 particles.spawn(point, Particle.SCULK_SOUL, count = 1)
@@ -475,9 +479,9 @@ class AreaDevelopment : GameClass() {
 
         private fun drawGroundSigil(origin: Location, tick: Int) {
             val rotation = tick * 0.014
-            drawDustRing(origin, RADIUS - 0.15, 76, rotation, DEEP_PURPLE, 0.1)
-            drawDustRing(origin, RADIUS * 0.7, 58, -rotation * 1.35, ARCANE_CYAN, 0.11)
-            drawDustRing(origin, RADIUS * 0.29, 40, rotation * 2.0, VOID_BLACK, 0.13)
+            drawDustRing(origin, RADIUS - 0.15, 40, rotation, DEEP_PURPLE, 0.1)
+            drawDustRing(origin, RADIUS * 0.7, 32, -rotation * 1.35, ARCANE_CYAN, 0.11)
+            drawDustRing(origin, RADIUS * 0.29, 24, rotation * 2.0, VOID_BLACK, 0.13)
 
             val vertices = List(16) { index ->
                 val angle = 2.0 * PI * index / 16.0 + rotation
@@ -489,19 +493,19 @@ class AreaDevelopment : GameClass() {
                     vertices[index],
                     vertices[(index + 1) % vertices.size],
                     if (index % 2 == 0) ARCANE_CYAN else DEEP_PURPLE,
-                    points = 5,
+                    points = 3,
                 )
             }
 
-            repeat(16) { index ->
-                val angle = 2.0 * PI * index / 16.0 - rotation * 0.65
+            repeat(8) { index ->
+                val angle = 2.0 * PI * index / 8.0 - rotation * 0.65
                 val node = origin.clone().add(cos(angle) * RADIUS * 0.56, 0.18, sin(angle) * RADIUS * 0.56)
                 particles.spawn(node, Particle.ENCHANT, count = 1)
             }
         }
 
         private fun drawCentralCore(origin: Location, tick: Int) {
-            repeat(14) { index ->
+            repeat(8) { index ->
                 val y = 0.3 + index * 0.26
                 val angle = tick * 0.09 + index * 0.58
                 val radius = 0.62 + sin(tick * 0.04 + index) * 0.08
@@ -511,15 +515,15 @@ class AreaDevelopment : GameClass() {
             particles.spawn(
                 origin.clone().add(0.0, 1.8, 0.0),
                 Particle.REVERSE_PORTAL,
-                count = 4,
+                count = 2,
                 spread = 0.42,
                 speed = 0.015,
             )
         }
 
         private fun drawCrown(origin: Location, tick: Int) {
-            repeat(28) { index ->
-                val angle = 2.0 * PI * index / 28.0 - tick * 0.01
+            repeat(16) { index ->
+                val angle = 2.0 * PI * index / 16.0 - tick * 0.01
                 val radius = RADIUS * (0.82 + 0.08 * sin(index * 1.7 + tick * 0.06))
                 val y = 5.25 + sin(index * 0.9 + tick * 0.08) * 0.55
                 val point = origin.clone().add(cos(angle) * radius, y, sin(angle) * radius)
@@ -529,10 +533,10 @@ class AreaDevelopment : GameClass() {
         }
 
         private fun drawAerialRunes(origin: Location, tick: Int) {
-            repeat(36) { index ->
+            repeat(18) { index ->
                 val orbit = index % 3
                 val radius = 3.2 + orbit * 1.65
-                val angle = 2.0 * PI * index / 36.0 + tick * (0.018 + orbit * 0.004)
+                val angle = 2.0 * PI * index / 18.0 + tick * (0.018 + orbit * 0.004)
                 val y = 1.4 + orbit * 0.8 + sin(index * 1.15 + tick * 0.07) * 0.32
                 val point = origin.clone().add(cos(angle) * radius, y, sin(angle) * radius)
                 spawnDust(point, if ((index + orbit) % 2 == 0) ARCANE_CYAN else DEEP_PURPLE, 0.95f)
@@ -647,8 +651,8 @@ private class DomainBoundaryStatus(
             }.setY(0.15)
             if (pushDirection.lengthSquared() < 1.0E-8) pushDirection = Vector(1.0, 0.15, 0.0)
             event.player.velocity = pushDirection.normalize().multiply(0.35)
-            event.player.spawnParticle(Particle.SMOKE, event.player.location.add(0.0, 1.0, 0.0), 8, 0.25, 0.4, 0.25, 0.02)
-            event.player.playSound(event.player.location, Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE, 0.35f, 1.65f)
+            ParticleApi.spawnTo(event.player, event.player.location.add(0.0, 1.0, 0.0), Particle.SMOKE, 8, 0.4, 0.02)
+            SoundApi.playTo(event.player, Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE, 0.35f, 1.65f)
         }
     }
 
@@ -719,6 +723,6 @@ private class DomainBlindnessStatus : StatusAbnormality() {
 
     private companion object {
         const val DOMAIN_BLINDNESS_AMPLIFIER = 0
-        const val DOMAIN_BLINDNESS_EFFECT_TICKS = 10
+        const val DOMAIN_BLINDNESS_EFFECT_TICKS = 40
     }
 }

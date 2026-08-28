@@ -39,7 +39,13 @@ private const val HACKER_ROOT_DAMAGE_DEALT_MULTIPLIER = 1.5
 private const val HACKER_ROOT_DAMAGE_TAKEN_MULTIPLIER = 0.7
 
 private const val MAX_HACK_STAGE = 3
-private val hackTimeLimits = intArrayOf(35, 32, 28)
+private val hackTimeLimits = intArrayOf(35, 34, 33)
+private val hackCodeLengths = intArrayOf(54, 58, 62)
+private val hackOperations = listOf("auth", "exec", "scan", "sync", "bind", "link", "ping", "open")
+private val hackSecretFields = listOf("key", "tok", "hex", "pwd", "sec", "pin")
+private val hackRouteFields = listOf("dst", "via", "net", "hop", "rte", "uri")
+private val hackVerifyFields = listOf("crc", "sig", "sum", "mac", "chk", "tag")
+private val hackPathRoots = listOf("sys", "dev", "net", "var", "tmp", "srv")
 
 class Hacker : GameClass(), GameStatusHandler {
     override val name = "<gray>해커"
@@ -62,7 +68,7 @@ class Hacker : GameClass(), GameStatusHandler {
         override val name = "<bold>해킹"
         override val description = listOf(
             "<gray>채팅창에 출력된 한 줄의 코드를 제한시간 안에 똑같이 입력한다.",
-            "<gray>성공할 때마다 다음 해킹의 코드가 길어지고 제한시간이 짧아진다.",
+            "<gray>성공할 때마다 다음 코드는 4자씩 길어지고 제한시간은 1초씩 짧아진다.",
             "",
             "<gray>모든 단계: 자신을 제외한 생존자를 10초간 {keyword:Radiation}시키고 {keyword:Snare}한다.",
             "<gray>2단계: 생존자에게 영구적인 시스템 손상 디버프를 적용한다.",
@@ -138,35 +144,27 @@ class Hacker : GameClass(), GameStatusHandler {
                 repeat(length) { append(alphabet[Random.nextInt(alphabet.length)]) }
             }
 
-            return when (stage) {
-                1 -> {
-                    val node = token(4)
-                    val key = token(12)
-                    val route = token(5)
-                    val checksum = token(6)
-                    "auth[$node]::key=0x$key;route=$route;crc=$checksum"
-                }
+            val difficultyIndex = (stage - 1).coerceIn(hackCodeLengths.indices)
+            val targetLength = hackCodeLengths[difficultyIndex]
+            val node = token(4 + difficultyIndex)
+            val route = token(4 + difficultyIndex)
+            val checksum = token(5 + difficultyIndex)
+            val operation = hackOperations.random()
+            val secretField = hackSecretFields.random()
+            val routeField = hackRouteFields.random()
+            val verifyField = hackVerifyFields.random()
+            val pathRoot = hackPathRoots.random()
+            val format = Random.nextInt(4)
 
-                2 -> {
-                    val node = token(6)
-                    val key = token(24)
-                    val route = token(9)
-                    val nonce = token(10)
-                    val checksum = token(10)
-                    "sudo.net[node_$node]::decrypt(key=0x$key);route=/sys/cache/$route;nonce=$nonce;crc=$checksum"
-                }
-
-                else -> {
-                    val node = token(8)
-                    val kernel = token(36)
-                    val route = token(12)
-                    val nonce = token(14)
-                    val signature = token(20)
-                    val acl = token(10)
-                    val checksum = token(12)
-                    "root.override[node_$node]::{kernel=0x$kernel;route=/dev/shm/$route;nonce=$nonce;sig=$signature;acl=$acl;crc=$checksum}"
-                }
+            fun render(key: String): String = when (format) {
+                0 -> "$operation[$node]::$secretField=0x$key;$routeField=/$pathRoot/$route;$verifyField=$checksum"
+                1 -> "$operation($node)::$secretField:$key;$routeField:/$pathRoot/$route;$verifyField:$checksum"
+                2 -> "$operation/$node?$secretField=$key&$routeField=/$pathRoot/$route&$verifyField=$checksum"
+                else -> "$operation{$node|$secretField=$key|$routeField=/$pathRoot/$route|$verifyField=$checksum}"
             }
+
+            val keyLength = (targetLength - render("").length).coerceAtLeast(8)
+            return render(token(keyLength))
         }
 
         fun acceptInput(session: HackSession, input: String) {
@@ -261,8 +259,8 @@ class Hacker : GameClass(), GameStatusHandler {
 
         private fun difficultyLabel(stage: Int): String = when (stage) {
             1 -> "<green>보통</green>"
-            2 -> "<yellow>어려움</yellow>"
-            else -> "<red><bold>극한</bold></red>"
+            2 -> "<yellow>보통+</yellow>"
+            else -> "<gold>약간 어려움</gold>"
         }
 
         private fun failSession(reason: String) {

@@ -19,6 +19,7 @@ object SoundApi {
         pitch: Float = 1.0f,
         category: SoundCategory = SoundCategory.MASTER,
     ) {
+        if (EffectSuppressionManager.isSuppressed(location.world)) return
         location.world.playSound(location, sound, category, volume, pitch)
     }
 
@@ -38,6 +39,7 @@ object SoundApi {
         category: SoundCategory = SoundCategory.MASTER,
         location: Location = player.location,
     ) {
+        if (EffectSuppressionManager.isSuppressed(player.world) || EffectSuppressionManager.isSuppressed(location.world)) return
         player.playSound(location, sound, category, volume, pitch)
     }
 

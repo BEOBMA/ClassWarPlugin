@@ -16,7 +16,6 @@ import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.util.DamageType
 import org.bukkit.Bukkit
-import org.bukkit.GameRules
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.Particle
@@ -37,7 +36,9 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
-private const val FEAR_AURA_RADIUS = 32.0
+private const val FEAR_DOMAIN_RADIUS = 48.0
+private const val FEAR_DOMAIN_DURATION_SECONDS = 30
+private const val FEAR_DOMAIN_COOLDOWN_SECONDS = 120
 private const val FEAR_GAZE_RADIUS = 24.0
 private const val SHADOW_LIFETIME_TICKS = 240
 private const val SHADOW_ATTACK_DISTANCE_SQUARED = 2.25
@@ -55,7 +56,8 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
     override val name = "<gray>공포"
     override val rank = Rank.SPECIAL
     override val classItemMaterial = Material.CRYING_OBSIDIAN
-    override var skills: List<Skill> = emptyList()
+    private val nightmareDomain = NightmareDomain()
+    override var skills: List<Skill> = listOf(nightmareDomain)
     override var passives: List<BasePassive> = listOf(CrawlingFear(), Despair())
 
     private val miniMessage = MiniMessage.miniMessage()
@@ -69,18 +71,13 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
     private val activeShadows = mutableMapOf<UUID, Int>()
     private val shadowDisplays = mutableSetOf<BlockDisplay>()
     private val hallucinatedBlocks = mutableMapOf<UUID, MutableSet<Location>>()
-    private var previousTime = 0L
-    private var previousDaylightCycle = true
+    private val appliedFearPotionEffects = mutableMapOf<UUID, MutableSet<PotionEffectType>>()
     private var elapsedSeconds = 0
-    private var nightLocked = false
+    private var activeDomainCenter: Location? = null
+    private var activeDomainSeconds = 0
+    private val domainAffectedPlayers = mutableSetOf<UUID>()
 
     override fun onBattleStart() {
-        val world = player.world
-        previousTime = world.time
-        previousDaylightCycle = world.getGameRuleValue(GameRules.ADVANCE_TIME)
-        world.time = 18000L
-        world.setGameRule(GameRules.ADVANCE_TIME, false)
-        nightLocked = true
         clearRuntimeState()
         game.playerDatas.filterIsInstance<PlayerData>().filter { it != playerData }.forEach {
             sanity[it.uniqueId] = 100.0
@@ -89,20 +86,35 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
             if (it.entityStatus.isDead) knownDead += it.uniqueId
         }
         elapsedSeconds = 0
-        particles.spawn(player, Particle.SOUL, count = 95, spread = 1.15, speed = 0.15)
-        sounds.play(player, Sound.ENTITY_WARDEN_EMERGE, volume = 0.75f, pitch = 0.48f)
     }
 
     override fun onGameTimePasses() {
         if (!player.isOnline || playerStatus.isDead) return
-        player.world.time = 18000L
-        elapsedSeconds++
         val participants = game.playerDatas.filterIsInstance<PlayerData>()
         val newlyDead = participants.filter { it != playerData && it.entityStatus.isDead && knownDead.add(it.uniqueId) }
+        val lostHealthByPlayer = participants.asSequence()
+            .filter { it != playerData && !it.entityStatus.isDead && it.player.isOnline }
+            .associate { target ->
+                val currentHealth = target.player.health
+                val previousHealth = lastHealth.put(target.uniqueId, currentHealth) ?: currentHealth
+                target.uniqueId to (previousHealth - currentHealth).coerceAtLeast(0.0)
+            }
+        val domainCenter = activeDomainCenter ?: return
+        if (activeDomainSeconds <= 0) {
+            endDomain()
+            return
+        }
+        elapsedSeconds++
+        renderDomain(domainCenter)
         participants.filter { it != playerData && !it.entityStatus.isDead && it.player.isOnline }.forEach { target ->
             val victim = target.player
-            val previousHealth = lastHealth.put(target.uniqueId, victim.health) ?: victim.health
-            val lostHealth = (previousHealth - victim.health).coerceAtLeast(0.0)
+            if (!playerData.isEnemyOf(target) || !isInsideActiveDomain(victim.location)) {
+                if (domainAffectedPlayers.remove(target.uniqueId)) leaveDomain(target)
+                return@forEach
+            }
+            domainAffectedPlayers += target.uniqueId
+            victim.setPlayerTime(18000L, false)
+            val lostHealth = lostHealthByPlayer[target.uniqueId] ?: 0.0
             var value = sanity[target.uniqueId] ?: 100.0
             if (lostHealth > 0.0) value -= lostHealth * 6.0
 
@@ -124,28 +136,39 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
             sanity[target.uniqueId] = value
             applyFearEffects(target, value)
         }
+        domainAffectedPlayers.toList().forEach { playerId ->
+            val target = participants.firstOrNull { it.uniqueId == playerId }
+            if (target == null || target.entityStatus.isDead || !target.player.isOnline ||
+                !playerData.isEnemyOf(target) || !isInsideActiveDomain(target.player.location)
+            ) {
+                domainAffectedPlayers.remove(playerId)
+                target?.let(::leaveDomain)
+            }
+        }
+        activeDomainSeconds--
+        if (activeDomainSeconds <= 0) endDomain()
     }
 
     override fun onPlayerDeath() {
-        cleanupHallucinations()
+        endDomain()
     }
 
     override fun onGameEnd() {
-        cleanupHallucinations()
-        if (!nightLocked) return
-        player.world.time = previousTime
-        player.world.setGameRule(GameRules.ADVANCE_TIME, previousDaylightCycle)
-        nightLocked = false
+        endDomain()
     }
 
     private fun proximitySanityDrain(target: PlayerData): Double {
         val victim = target.player
-        if (victim.world != player.world) return 0.0
-        val distanceSquared = victim.location.distanceSquared(player.location)
-        if (distanceSquared > FEAR_AURA_RADIUS * FEAR_AURA_RADIUS) return 0.0
+        val center = activeDomainCenter ?: return 0.0
+        if (victim.world != center.world) return 0.0
+        val dx = victim.location.x - center.x
+        val dz = victim.location.z - center.z
+        val distanceSquared = dx * dx + dz * dz
+        if (distanceSquared > FEAR_DOMAIN_RADIUS * FEAR_DOMAIN_RADIUS) return 0.0
         val distance = kotlin.math.sqrt(distanceSquared)
-        var drain = (1.0 - distance / FEAR_AURA_RADIUS) * 3.5
-        if (distance <= FEAR_GAZE_RADIUS && victim.hasLineOfSight(player) && isLookingAt(victim.eyeLocation, player.eyeLocation)) {
+        var drain = (1.0 - distance / FEAR_DOMAIN_RADIUS) * 3.5
+        val fearDistance = if (victim.world == player.world) victim.location.distance(player.location) else Double.MAX_VALUE
+        if (fearDistance <= FEAR_GAZE_RADIUS && victim.hasLineOfSight(player) && isLookingAt(victim.eyeLocation, player.eyeLocation)) {
             drain += 2.5
         }
         return drain
@@ -184,13 +207,13 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
         }
 
         if (stage >= FearStage.DREAD) {
-            victim.addPotionEffect(PotionEffect(PotionEffectType.DARKNESS, 55, 0, false, false, false))
+            applyFearPotion(target, PotionEffect(PotionEffectType.DARKNESS, 25, 0, false, false, false))
             val heartbeatInterval = if (stage >= FearStage.TERROR) 3 else 5
             if (elapsedSeconds % heartbeatInterval == 0) {
-                victim.playSound(victim.location, Sound.ENTITY_WARDEN_HEARTBEAT, SoundCategory.MASTER, 0.62f, 0.58f)
+                sounds.playTo(victim, Sound.ENTITY_WARDEN_HEARTBEAT, 0.62f, 0.58f, SoundCategory.MASTER)
             }
             if (value <= 40.0 && elapsedSeconds % 4 == 0) {
-                victim.addPotionEffect(PotionEffect(PotionEffectType.NAUSEA, 90, 0, false, false, false))
+                applyFearPotion(target, PotionEffect(PotionEffectType.NAUSEA, 30, 0, false, false, false))
             }
         }
 
@@ -211,8 +234,8 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
         }
 
         if (stage >= FearStage.TERROR) {
-            victim.addPotionEffect(PotionEffect(PotionEffectType.SLOWNESS, 55, 0, false, false, false))
-            victim.addPotionEffect(PotionEffect(PotionEffectType.WEAKNESS, 55, 0, false, false, false))
+            applyFearPotion(target, PotionEffect(PotionEffectType.SLOWNESS, 25, 0, false, false, false))
+            applyFearPotion(target, PotionEffect(PotionEffectType.WEAKNESS, 25, 0, false, false, false))
             if ((realityCooldown[target.uniqueId] ?: 0) <= 0 && Random.nextDouble() < 0.38) {
                 fractureReality(target)
                 realityCooldown[target.uniqueId] = Random.nextInt(8, 13)
@@ -221,11 +244,11 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
 
         if (stage == FearStage.BREAKDOWN) {
             if (elapsedSeconds % 6 == 0) {
-                victim.addPotionEffect(PotionEffect(PotionEffectType.BLINDNESS, 32, 0, false, false, false))
+                applyFearPotion(target, PotionEffect(PotionEffectType.BLINDNESS, 22, 0, false, false, false))
             }
             if (Random.nextDouble() < 0.32) {
                 target.damage(1.5, DamageType.StatusAbnormality, playerData, false, damagePath = DamagePath.STATUS_EFFECT)
-                victim.playSound(victim.location, Sound.ENTITY_WARDEN_ATTACK_IMPACT, SoundCategory.MASTER, 0.52f, 1.55f)
+                sounds.playTo(victim, Sound.ENTITY_WARDEN_ATTACK_IMPACT, 0.52f, 1.55f, SoundCategory.MASTER)
             }
         }
     }
@@ -239,11 +262,11 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
                 whisperCooldown[target.uniqueId] = Random.nextInt(7, 12)
             }
             FearStage.DREAD -> {
-                victim.addPotionEffect(PotionEffect(PotionEffectType.DARKNESS, 80, 0, false, false, false))
-                victim.playSound(victim.location, Sound.ENTITY_ENDERMAN_STARE, SoundCategory.MASTER, 0.62f, 0.48f)
+                applyFearPotion(target, PotionEffect(PotionEffectType.DARKNESS, 25, 0, false, false, false))
+                sounds.playTo(victim, Sound.ENTITY_ENDERMAN_STARE, 0.62f, 0.48f, SoundCategory.MASTER)
             }
             FearStage.TERROR -> {
-                victim.addPotionEffect(PotionEffect(PotionEffectType.BLINDNESS, 35, 0, false, false, false))
+                applyFearPotion(target, PotionEffect(PotionEffectType.BLINDNESS, 22, 0, false, false, false))
                 fractureReality(target)
                 realityCooldown[target.uniqueId] = Random.nextInt(8, 13)
                 spawnShadow(target)
@@ -259,7 +282,7 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
                 fractureReality(target)
                 realityCooldown[target.uniqueId] = Random.nextInt(7, 11)
                 repeat(2) { spawnShadow(target) }
-                victim.playSound(victim.location, Sound.BLOCK_SCULK_SHRIEKER_SHRIEK, SoundCategory.MASTER, 0.85f, 0.72f)
+                sounds.playTo(victim, Sound.BLOCK_SCULK_SHRIEKER_SHRIEK, 0.85f, 0.72f, SoundCategory.MASTER)
             }
         }
     }
@@ -274,7 +297,7 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
         playerData.trackTask(object : BukkitRunnable() {
             var step = 0
             override fun run() {
-                if (!victim.isOnline || target.entityStatus.isDead || step > 5) {
+                if (!victim.isOnline || target.entityStatus.isDead || !isInsideActiveDomain(victim.location) || step > 5) {
                     cancel()
                     return
                 }
@@ -282,9 +305,9 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
                 val source = victim.location.clone()
                     .add(backward.clone().multiply(distance))
                     .add(right.clone().multiply(sideOffset))
-                victim.playSound(source, Sound.BLOCK_GRAVEL_STEP, SoundCategory.MASTER, 0.42f + step * 0.055f, 0.55f)
+                sounds.playTo(victim, Sound.BLOCK_GRAVEL_STEP, 0.42f + step * 0.055f, 0.55f, SoundCategory.MASTER, source)
                 if (step == 5) {
-                    victim.playSound(source, Sound.ENTITY_PLAYER_BREATH, SoundCategory.MASTER, 0.72f, 0.48f)
+                    sounds.playTo(victim, Sound.ENTITY_PLAYER_BREATH, 0.72f, 0.48f, SoundCategory.MASTER, source)
                 }
                 step++
             }
@@ -318,7 +341,7 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
         }
         if (changedLocations.isEmpty()) return
         hallucinatedBlocks.getOrPut(target.uniqueId) { mutableSetOf() }.addAll(changedLocations)
-        victim.playSound(wallCenter, Sound.BLOCK_SCULK_SHRIEKER_SHRIEK, SoundCategory.MASTER, 0.72f, 0.62f)
+        sounds.playTo(victim, Sound.BLOCK_SCULK_SHRIEKER_SHRIEK, 0.72f, 0.62f, SoundCategory.MASTER, wallCenter)
         playerData.trackTask(object : BukkitRunnable() {
             override fun run() {
                 restoreHallucinatedBlocks(target, changedLocations)
@@ -365,7 +388,7 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
             it.hideEntity(ClassWarPlugin.instance, display)
         }
         victim.showEntity(ClassWarPlugin.instance, display)
-        victim.playSound(start, Sound.ENTITY_ENDERMAN_STARE, SoundCategory.MASTER, 0.48f, 0.46f)
+        sounds.playTo(victim, Sound.ENTITY_ENDERMAN_STARE, 0.48f, 0.46f, SoundCategory.MASTER, start)
 
         playerData.trackTask(object : BukkitRunnable() {
             var ticks = 0
@@ -373,6 +396,7 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
 
             override fun run() {
                 if (!display.isValid || !victim.isOnline || target.entityStatus.isDead ||
+                    !isInsideActiveDomain(victim.location) ||
                     victim.world != display.world || ticks >= SHADOW_LIFETIME_TICKS
                 ) {
                     finishShadow()
@@ -393,7 +417,7 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
                     victim.hasLineOfSight(display)
                 if (watched) {
                     if (ticks % 20 == 0) {
-                        victim.playSound(display.location, Sound.BLOCK_CHAIN_PLACE, SoundCategory.MASTER, 0.34f, 0.52f)
+                        sounds.playTo(victim, Sound.BLOCK_CHAIN_PLACE, 0.34f, 0.52f, SoundCategory.MASTER, display.location)
                     }
                 } else {
                     val currentSanity = sanity[target.uniqueId] ?: 100.0
@@ -405,7 +429,7 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
                     val movement = difference.normalize().multiply(speed)
                     display.teleport(display.location.add(movement.x, movement.y.coerceIn(-0.12, 0.12), movement.z))
                     if (ticks % 12 == 0) {
-                        victim.playSound(display.location, Sound.BLOCK_DEEPSLATE_STEP, SoundCategory.MASTER, 0.42f, 0.45f)
+                        sounds.playTo(victim, Sound.BLOCK_DEEPSLATE_STEP, 0.42f, 0.45f, SoundCategory.MASTER, display.location)
                     }
                 }
                 ticks += 2
@@ -413,8 +437,8 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
 
             private fun attackVictim() {
                 val currentSanity = sanity[target.uniqueId] ?: 100.0
-                victim.addPotionEffect(PotionEffect(PotionEffectType.BLINDNESS, 30, 0, false, false, false))
-                victim.addPotionEffect(PotionEffect(PotionEffectType.NAUSEA, 70, 0, false, false, false))
+                applyFearPotion(target, PotionEffect(PotionEffectType.BLINDNESS, 30, 0, false, false, false))
+                applyFearPotion(target, PotionEffect(PotionEffectType.NAUSEA, 70, 0, false, false, false))
                 val knockback = victim.location.toVector().subtract(display.location.toVector())
                 if (knockback.lengthSquared() > 0.0001) {
                     victim.velocity = knockback.normalize().multiply(0.48).setY(0.24)
@@ -426,8 +450,8 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
                     false,
                     damagePath = DamagePath.STATUS_EFFECT,
                 )
-                victim.playSound(victim.location, Sound.ENTITY_WARDEN_ATTACK_IMPACT, SoundCategory.MASTER, 0.9f, 0.72f)
-                victim.playSound(victim.location, Sound.ENTITY_ENDERMAN_SCREAM, SoundCategory.MASTER, 0.58f, 0.48f)
+                sounds.playTo(victim, Sound.ENTITY_WARDEN_ATTACK_IMPACT, 0.9f, 0.72f, SoundCategory.MASTER)
+                sounds.playTo(victim, Sound.ENTITY_ENDERMAN_SCREAM, 0.58f, 0.48f, SoundCategory.MASTER)
             }
 
             private fun finishShadow() {
@@ -458,8 +482,52 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
         realityCooldown.clear()
     }
 
-    private fun clearRuntimeState() {
+    private fun leaveDomain(target: PlayerData) {
+        if (target.player.isOnline) target.player.resetPlayerTime()
+        appliedFearPotionEffects.remove(target.uniqueId)?.forEach(target.player::removePotionEffect)
+        hallucinatedBlocks[target.uniqueId]?.toList()?.let { restoreHallucinatedBlocks(target, it) }
+    }
+
+    private fun applyFearPotion(target: PlayerData, effect: PotionEffect) {
+        if (target.player.addPotionEffect(effect)) {
+            appliedFearPotionEffects.getOrPut(target.uniqueId) { mutableSetOf() } += effect.type
+        }
+    }
+
+    private fun endDomain() {
+        activeDomainCenter = null
+        activeDomainSeconds = 0
+        val participants = game.playerDatas.filterIsInstance<PlayerData>().associateBy { it.uniqueId }
+        domainAffectedPlayers.toList().forEach { playerId -> participants[playerId]?.let(::leaveDomain) }
+        domainAffectedPlayers.clear()
         cleanupHallucinations()
+        appliedFearPotionEffects.clear()
+    }
+
+    private fun isInsideActiveDomain(location: Location): Boolean {
+        val center = activeDomainCenter ?: return false
+        if (location.world != center.world) return false
+        val dx = location.x - center.x
+        val dz = location.z - center.z
+        return dx * dx + dz * dz <= FEAR_DOMAIN_RADIUS * FEAR_DOMAIN_RADIUS
+    }
+
+    private fun renderDomain(center: Location) {
+        val ringPoints = 48
+        repeat(ringPoints) { index ->
+            val angle = Math.PI * 2.0 * index / ringPoints
+            val point = center.clone().add(
+                cos(angle) * FEAR_DOMAIN_RADIUS,
+                0.18,
+                sin(angle) * FEAR_DOMAIN_RADIUS,
+            )
+            particles.spawn(point, Particle.SCULK_SOUL)
+        }
+        particles.spawn(center.clone().add(0.0, 0.8, 0.0), Particle.SOUL, count = 12, spread = 1.4, speed = 0.04)
+    }
+
+    private fun clearRuntimeState() {
+        endDomain()
         sanity.clear()
         lastHealth.clear()
         knownDead.clear()
@@ -482,21 +550,40 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
         return Vector(cos(angle), 0.0, sin(angle))
     }
 
+    private inner class NightmareDomain : Skill() {
+        override val name = "<bold>악몽의 영역"
+        override val description = listOf(
+            "<gray>자신의 위치를 중심으로 반경 48칸의 악몽 영역을 30초간 생성한다.",
+            "<gray>정신력 감소와 공포의 모든 환각 효과는 영역 안의 적에게만 작동한다.",
+            "<gray>영역 밖으로 나간 플레이어에게는 더 이상 효과가 적용되지 않는다.",
+        )
+        override val cooldown = FEAR_DOMAIN_COOLDOWN_SECONDS
+
+        override fun use() {
+            if (activeDomainCenter != null) endDomain()
+            activeDomainCenter = player.location.clone()
+            activeDomainSeconds = FEAR_DOMAIN_DURATION_SECONDS
+            elapsedSeconds = 0
+            particles.spawn(player, Particle.SOUL, count = 60, spread = 1.15, speed = 0.15)
+            particles.spawn(player, Particle.SCULK_SOUL, count = 40, spread = 2.0, speed = 0.12)
+            sounds.play(player, Sound.ENTITY_WARDEN_EMERGE, volume = 0.75f, pitch = 0.48f)
+        }
+    }
+
     private class CrawlingFear : BasePassive() {
         override val name = "<bold>기어다니는 공포"
         override val description = listOf(
-            "<gray>패시브", "", "<gray>게임 시작 시 시간을 밤으로 만들고, 밤으로 고정한다.",
-            "<gray>자신을 제외한 모든 플레이어는 보이지 않는 정신력을 가지고 시작한다.",
-            "<gray>피해를 받거나 사망을 목격하면 정신력이 크게 감소한다.",
-            "<gray>어둠 속에서는 정신력이 감소하고 밝은 곳에서는 천천히 회복한다.",
-            "<gray>공포에게 가까이 가거나 공포를 직접 바라보면 정신력이 빠르게 감소한다.",
+            "<gray>패시브", "", "<gray>악몽의 영역 안에 들어온 적은 보이지 않는 정신력을 가진다.",
+            "<gray>영역 안에서 피해를 받거나 사망을 목격하면 정신력이 크게 감소한다.",
+            "<gray>영역 안의 어둠에서는 정신력이 감소하고 밝은 곳에서는 천천히 회복한다.",
+            "<gray>영역 중심에 가까이 가거나 공포를 직접 바라보면 정신력이 빠르게 감소한다.",
         )
     }
 
     private class Despair : BasePassive() {
         override val name = "<bold>절망"
         override val description = listOf(
-            "<gray>패시브", "", "<gray>정신력이 감소할수록 현실과 감각이 단계적으로 무너진다.",
+            "<gray>패시브", "", "<gray>악몽의 영역 안에서 정신력이 감소할수록 현실과 감각이 단계적으로 무너진다.",
             "<gray>  - 보이지 않는 무언가의 발소리와 숨소리가 뒤에서 가까워진다.",
             "<gray>  - 어둠과 멀미가 지속되고, 존재하지 않는 벽이 길을 막는다.",
             "<gray>  - 이동과 공격이 둔해지며, 검은 형체가 피해자에게만 보인다.",

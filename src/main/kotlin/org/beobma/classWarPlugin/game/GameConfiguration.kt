@@ -6,17 +6,21 @@ import org.bukkit.configuration.file.FileConfiguration
 
 private val defaultRankWeights = mapOf(
     Rank.SPECIAL to 1,
-    Rank.L to 4,
-    Rank.S to 10,
-    Rank.A to 20,
-    Rank.B to 30,
-    Rank.C to 35,
+    Rank.L to 40,
+    Rank.S to 101,
+    Rank.A to 202,
+    Rank.B to 303,
+    Rank.C to 353,
 )
 
 data class GameConfiguration(
     val refreshChances: Int = 3,
     val countdownSeconds: Int = 5,
     val damageIndicatorsEnabled: Boolean = true,
+    val playerListVisible: Boolean = false,
+    val deathMessagesEnabled: Boolean = true,
+    val deathMessagesShowKiller: Boolean = true,
+    val deathMessagesShowCause: Boolean = true,
     val rankWeights: Map<Rank, Int> = defaultRankWeights,
     val centerX: Double = 704.5,
     val centerZ: Double = -615.5,
@@ -42,6 +46,10 @@ object GameSettings {
             refreshChances = config.getInt("selection.refresh-chances", 3).coerceIn(0, 20),
             countdownSeconds = config.getInt("selection.countdown-seconds", 5).coerceIn(0, 60),
             damageIndicatorsEnabled = config.getBoolean("combat.damage-indicators.enabled", true),
+            playerListVisible = config.getBoolean("display.player-list-visible", false),
+            deathMessagesEnabled = config.getBoolean("combat.death-messages.enabled", true),
+            deathMessagesShowKiller = config.getBoolean("combat.death-messages.show-killer", true),
+            deathMessagesShowCause = config.getBoolean("combat.death-messages.show-cause", true),
             rankWeights = Rank.entries.associateWith { rank ->
                 config.getInt("rank-chances.${rank.name.lowercase()}", defaultRankWeights.getValue(rank))
             },
@@ -70,6 +78,22 @@ object GameSettings {
             config.set("border.damage-buffer", current.borderDamageBuffer)
             configChanged = true
         }
+        if (!config.contains("display.player-list-visible")) {
+            config.set("display.player-list-visible", current.playerListVisible)
+            configChanged = true
+        }
+        if (!config.contains("combat.death-messages.enabled")) {
+            config.set("combat.death-messages.enabled", current.deathMessagesEnabled)
+            configChanged = true
+        }
+        if (!config.contains("combat.death-messages.show-killer")) {
+            config.set("combat.death-messages.show-killer", current.deathMessagesShowKiller)
+            configChanged = true
+        }
+        if (!config.contains("combat.death-messages.show-cause")) {
+            config.set("combat.death-messages.show-cause", current.deathMessagesShowCause)
+            configChanged = true
+        }
         if (config.contains("training")) {
             config.set("training", null)
             configChanged = true
@@ -90,6 +114,10 @@ object GameSettings {
             16 -> current.copy(scatterMaxRadius = current.scatterMaxRadius + direction * 10.0 * multiplier)
             22 -> current.copy(borderEnabled = !current.borderEnabled)
             24 -> current.copy(damageIndicatorsEnabled = !current.damageIndicatorsEnabled)
+            52 -> current.copy(playerListVisible = !current.playerListVisible)
+            54 -> current.copy(deathMessagesEnabled = !current.deathMessagesEnabled)
+            56 -> current.copy(deathMessagesShowKiller = !current.deathMessagesShowKiller)
+            58 -> current.copy(deathMessagesShowCause = !current.deathMessagesShowCause)
             28 -> current.copy(minimumPlayerDistance = current.minimumPlayerDistance + direction * 2.0 * multiplier)
             30 -> current.copy(borderInitialSize = current.borderInitialSize + direction * 10.0 * multiplier)
             32 -> current.copy(borderDelaySeconds = current.borderDelaySeconds + direction * 30 * multiplier)
@@ -140,6 +168,10 @@ object GameSettings {
         plugin.config.set("selection.refresh-chances", current.refreshChances)
         plugin.config.set("selection.countdown-seconds", current.countdownSeconds)
         plugin.config.set("combat.damage-indicators.enabled", current.damageIndicatorsEnabled)
+        plugin.config.set("display.player-list-visible", current.playerListVisible)
+        plugin.config.set("combat.death-messages.enabled", current.deathMessagesEnabled)
+        plugin.config.set("combat.death-messages.show-killer", current.deathMessagesShowKiller)
+        plugin.config.set("combat.death-messages.show-cause", current.deathMessagesShowCause)
         Rank.entries.forEach { rank ->
             plugin.config.set("rank-chances.${rank.name.lowercase()}", current.rankWeights[rank] ?: 0)
         }

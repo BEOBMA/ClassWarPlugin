@@ -40,15 +40,21 @@ class OnPlayerDeathEvent : Listener{
         val attribution = DamageManager.consumeAttribution(player)
         val killerName = attribution?.takeIf { it.attackerId != player.uniqueId }?.attackerName
             ?: player.killer?.name
-        val message = when {
-            killerName == null ->
-                "<red><bold>[탈락]</bold> <white>${player.name}<gray>님이 사망했습니다."
-            attribution != null ->
-                "<red><bold>[탈락]</bold> <white>${player.name}<gray>님이 <white>$killerName<gray>님의 ${attribution.path.displayName}<gray>으로 처치되었습니다."
-            else ->
-                "<red><bold>[탈락]</bold> <white>${player.name}<gray>님이 <white>$killerName<gray>님에게 처치되었습니다."
+        event.deathMessage(null)
+        if (currentGame.settings.deathMessagesEnabled) {
+            val cause = attribution?.path?.displayName ?: describeDamageCause(player.lastDamageCause?.cause?.name)
+            val message = buildDeathMessage(
+                victimName = player.name,
+                killerName = killerName.takeIf { currentGame.settings.deathMessagesShowKiller },
+                cause = cause.takeIf { currentGame.settings.deathMessagesShowCause },
+            )
+            val component = miniMessage.deserialize(message)
+            currentGame.playerDatas.filterIsInstance<PlayerData>()
+                .map { it.player }
+                .filter { it.isOnline }
+                .distinctBy { it.uniqueId }
+                .forEach { it.sendMessage(component) }
         }
-        event.deathMessage(miniMessage.deserialize(message))
         event.drops.clear()
         event.droppedExp = 0
         player.gameMode = GameMode.SPECTATOR
@@ -66,5 +72,42 @@ class OnPlayerDeathEvent : Listener{
         AreaDevelopment.clearDomains(listOf(player.uniqueId))
         GraveRobber.recordDeath(playerData)
         handleDeath(playerData)
+    }
+
+    private fun buildDeathMessage(victimName: String, killerName: String?, cause: String?): String {
+        val prefix = "<red><bold>[탈락]</bold> <white>$victimName<gray>님이"
+        val result = if (killerName != null) {
+            "$prefix <white>$killerName<gray>님에게 처치되었습니다."
+        } else {
+            "$prefix 사망했습니다."
+        }
+        return if (cause != null) "$result <dark_gray>(사유: $cause<dark_gray>)" else result
+    }
+
+    private fun describeDamageCause(causeName: String?): String = when (causeName) {
+        "CONTACT" -> "<white>접촉 피해"
+        "ENTITY_ATTACK", "ENTITY_SWEEP_ATTACK" -> "<white>근접 공격"
+        "PROJECTILE" -> "<white>투사체"
+        "SUFFOCATION" -> "<white>질식"
+        "FALL" -> "<white>추락"
+        "FIRE", "FIRE_TICK", "CAMPFIRE", "HOT_FLOOR", "LAVA" -> "<white>화염"
+        "DROWNING" -> "<white>익사"
+        "BLOCK_EXPLOSION", "ENTITY_EXPLOSION" -> "<white>폭발"
+        "VOID" -> "<white>공허"
+        "LIGHTNING" -> "<white>번개"
+        "STARVATION" -> "<white>굶주림"
+        "POISON" -> "<white>독"
+        "MAGIC", "DRAGON_BREATH", "WITHER" -> "<white>마법 또는 상태이상"
+        "FALLING_BLOCK" -> "<white>낙하 블록"
+        "THORNS" -> "<white>가시"
+        "FLY_INTO_WALL" -> "<white>비행 충돌"
+        "CRAMMING" -> "<white>압사"
+        "DRYOUT" -> "<white>건조"
+        "FREEZE" -> "<white>동사"
+        "SONIC_BOOM" -> "<white>음파 공격"
+        "WORLD_BORDER" -> "<white>자기장"
+        "KILL", "SUICIDE" -> "<white>즉사"
+        "CUSTOM" -> "<white>특수 효과"
+        else -> "<white>알 수 없는 원인"
     }
 }

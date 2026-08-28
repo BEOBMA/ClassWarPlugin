@@ -257,7 +257,11 @@ class OnInventoryClickEvent : Listener {
         }
 
         ConfigCategory.COMBAT -> when (inventorySlot) {
-            13 -> 24
+            10 -> 52
+            12 -> 54
+            14 -> 56
+            16 -> 58
+            22 -> 24
             else -> null
         }
     }

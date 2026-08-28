@@ -2,6 +2,8 @@ package org.beobma.classWarPlugin.status.list
 
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamageContext
+import org.beobma.classWarPlugin.effect.ParticleApi
+import org.beobma.classWarPlugin.effect.ParticleOptions
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.status.StatusAbnormality
@@ -82,7 +84,11 @@ class Enchantment : StatusAbnormality(), StatusOnHitHandler, StatusPlayerMoveHan
                     val pull = direction.normalize().multiply(0.24)
                     living.velocity = living.velocity.multiply(0.35).add(pull)
                 }
-                living.world.spawnParticle(Particle.HEART, living.boundingBox.center.toLocation(living.world), 2, 0.28, 0.35, 0.28, 0.015)
+                ParticleApi.spawn(
+                    living.boundingBox.center.toLocation(living.world),
+                    Particle.HEART,
+                    ParticleOptions(2, 0.28, 0.35, 0.28, 0.015),
+                )
             }
         }.runTaskTimer(ClassWarPlugin.instance, 0L, 2L).also {
             entityData.bukkitTasks.add(it)

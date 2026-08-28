@@ -185,7 +185,7 @@ abstract class Projectile : EffectApiAccess {
                 }
 
                 currentSpeed = interpolateSpeed(currentSpeed, elapsedTicks)
-                PortalGun.teleportCustomProjectile(currentLocation, direction, currentSpeed)
+                PortalGun.teleportCustomProjectile(player.uniqueId, currentLocation, direction, currentSpeed)
                 val previousLocation = currentLocation.clone()
                 val nextLocation = previousLocation.clone().add(direction.clone().multiply(currentSpeed))
                 val projectileExpansion = maxOf(xSize, ySize, zSize).coerceAtLeast(0.0)

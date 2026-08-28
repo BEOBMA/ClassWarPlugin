@@ -20,6 +20,7 @@ import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
+import org.bukkit.util.BoundingBox
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
 // 밸런스 조정 상수
@@ -45,7 +46,16 @@ class Trapper : GameClass() {
         )
         override val cooldown = 0
 
-        private data class TrapLine(val start: Location, val end: Location)
+        private data class TrapLine(val start: Location, val end: Location) {
+            val bounds = BoundingBox(
+                minOf(start.x, end.x) - 0.035,
+                minOf(start.y, end.y) - 0.035,
+                minOf(start.z, end.z) - 0.035,
+                maxOf(start.x, end.x) + 0.035,
+                maxOf(start.y, end.y) + 0.035,
+                maxOf(start.z, end.z) + 0.035,
+            )
+        }
 
         private var firstAnchor: Location? = null
         private var selectedAnchor: Location? = null
@@ -121,6 +131,11 @@ class Trapper : GameClass() {
                         cancel()
                         return
                     }
+                    if (firstAnchor == null && lines.isEmpty()) {
+                        scannerTask = null
+                        cancel()
+                        return
+                    }
                     if (visualTick++ % 10 == 0) {
                         firstAnchor?.let { spawnPrivateAnchorParticle(it) }
                         lines.forEach {
@@ -135,8 +150,9 @@ class Trapper : GameClass() {
                     while (iterator.hasNext()) {
                         val line = iterator.next()
                         val target = candidates.firstOrNull { candidate ->
-                            HitboxUtil.intersectsSegment(
-                                candidate.entity.boundingBox,
+                            val candidateBox = candidate.entity.boundingBox
+                            candidateBox.overlaps(line.bounds) && HitboxUtil.intersectsSegment(
+                                candidateBox,
                                 line.start.toVector(),
                                 line.end.toVector(),
                                 expansion = 0.035,

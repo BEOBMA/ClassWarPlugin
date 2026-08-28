@@ -432,7 +432,7 @@ class SpiderMan : GameClass(), GameStatusHandler, GameEndHandler, MovementInputH
                     player.velocity = velocity
                     player.fallDistance = 0f
                     updateWebLine(hand, anchor, pullsToEntity)
-                    drawWeb(hand, anchor, ropeLength)
+                    if (ticks % 2 == 0) drawWeb(hand, anchor, ropeLength)
 
                     val currentSpeed = velocity.length()
                     if (currentSpeed > 0.95 && ticks % 2 == 0) {
@@ -606,7 +606,7 @@ class SpiderMan : GameClass(), GameStatusHandler, GameEndHandler, MovementInputH
             val difference = to.toVector().subtract(from.toVector())
             val distance = difference.length()
             if (distance < 1.0E-8) return
-            val points = ceil(distance / 0.27).toInt().coerceAtLeast(1)
+            val points = ceil(distance / 0.54).toInt().coerceAtLeast(1)
             val sag = (0.05 + (ropeLength - distance).coerceAtLeast(0.0) * 0.42).coerceAtMost(1.5)
             repeat(points + 1) { index ->
                 val progress = index.toDouble() / points
@@ -618,7 +618,7 @@ class SpiderMan : GameClass(), GameStatusHandler, GameEndHandler, MovementInputH
                     Particle.DustOptions(Color.WHITE, 0.66f),
                     ParticleOptions(count = 1),
                 )
-                if (index % 7 == 0) {
+                if (index % 8 == 0) {
                     particles.spawn(current, Particle.WHITE_ASH, count = 1)
                 }
             }

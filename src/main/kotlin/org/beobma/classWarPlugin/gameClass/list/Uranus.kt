@@ -1,6 +1,9 @@
 package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.ClassWarPlugin
+import org.beobma.classWarPlugin.effect.ParticleApi
+import org.beobma.classWarPlugin.effect.ParticleOptions
+import org.beobma.classWarPlugin.effect.SoundApi
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.Rank
@@ -91,10 +94,10 @@ class Uranus : PlanetClass() {
                     }
                     display.teleport(arrow.location)
                     orientIcicle(display, arrow)
-                    arrow.world.spawnParticle(Particle.SNOWFLAKE, arrow.location, 3, 0.08, 0.08, 0.08, 0.012)
+                    ParticleApi.spawn(arrow.location, Particle.SNOWFLAKE, 3, 0.08, 0.012)
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
-            shooter.world.playSound(shooter.location, Sound.BLOCK_GLASS_BREAK, 0.35f, 1.75f)
+            SoundApi.play(shooter.location, Sound.BLOCK_GLASS_BREAK, 0.35f, 1.75f)
         }
 
         fun isIcicle(projectile: org.bukkit.entity.Entity): Boolean =
@@ -104,9 +107,9 @@ class Uranus : PlanetClass() {
             target.getOrCreateStatus(attacker) { Frostbite() }
                 .applyStatus(duration = 5, powerDelta = 4)
             val center = target.entity.boundingBox.center.toLocation(target.entity.world)
-            target.entity.world.spawnParticle(Particle.SNOWFLAKE, center, 22, 0.45, 0.55, 0.45, 0.07)
-            target.entity.world.spawnParticle(Particle.ITEM, center, 10, 0.35, 0.4, 0.35, 0.06, ItemStack(Material.ICE))
-            target.entity.world.playSound(center, Sound.BLOCK_GLASS_BREAK, 0.65f, 1.25f)
+            ParticleApi.spawn(center, Particle.SNOWFLAKE, ParticleOptions(22, 0.45, 0.55, 0.45, 0.07))
+            ParticleApi.spawn(center, Particle.ITEM, ItemStack(Material.ICE), ParticleOptions(10, 0.35, 0.4, 0.35, 0.06))
+            SoundApi.play(center, Sound.BLOCK_GLASS_BREAK, 0.65f, 1.25f)
         }
 
         private fun orientIcicle(display: ItemDisplay, arrow: AbstractArrow) {

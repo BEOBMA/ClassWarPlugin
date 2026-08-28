@@ -40,6 +40,7 @@ object ParticleApi {
     ) = spawn(location, particle, ParticleOptions.spread(count, spread, speed, force))
 
     fun spawn(location: Location, particle: Particle, options: ParticleOptions) {
+        if (EffectSuppressionManager.isSuppressed(location.world)) return
         val data = defaultData(particle)
         location.world.spawnParticle(
             particle,
@@ -60,6 +61,7 @@ object ParticleApi {
         data: T,
         options: ParticleOptions = ParticleOptions(),
     ) {
+        if (EffectSuppressionManager.isSuppressed(location.world)) return
         location.world.spawnParticle(
             particle,
             location,
@@ -91,6 +93,7 @@ object ParticleApi {
         spread: Double = 0.0,
         speed: Double = 0.0,
     ) {
+        if (EffectSuppressionManager.isSuppressed(player.world) || EffectSuppressionManager.isSuppressed(location.world)) return
         player.spawnParticle(particle, location, count, spread, spread, spread, speed, defaultData(particle))
     }
 

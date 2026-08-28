@@ -3,16 +3,25 @@ selection:
   countdown-seconds: 5
 
 rank-chances:
+  # 전체 가중치 합계 1000 기준 Special의 기본 등장 확률은 0.1%입니다.
   special: 1
-  l: 4
-  s: 10
-  a: 20
-  b: 30
-  c: 35
+  l: 40
+  s: 101
+  a: 202
+  b: 303
+  c: 353
+
+display:
+  # false이면 관전 모드에서 플레이어 선택 및 관전에 문제가 생길 수 있습니다.
+  player-list-visible: false
 
 combat:
   damage-indicators:
     enabled: true
+  death-messages:
+    enabled: true
+    show-killer: true
+    show-cause: true
 
 map:
   center-x: 704.5

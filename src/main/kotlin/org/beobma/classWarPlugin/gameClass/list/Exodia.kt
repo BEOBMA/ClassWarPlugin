@@ -88,6 +88,7 @@ class Exodia : GameClass(), GameStatusHandler {
     override fun onGameTimePasses() = Unit
 
     private fun findPartLocations(count: Int): List<Location> {
+        if (count <= 0) return emptyList()
         val world = player.world
         val half = (game.settings.borderInitialSize * 0.45).coerceAtLeast(6.0)
         val bounds = PlayerNavigation.Bounds(
@@ -98,52 +99,62 @@ class Exodia : GameClass(), GameStatusHandler {
         )
         val start = PlayerNavigation.nearestNode(world, player.location)
             ?: PlayerNavigation.surfaceNode(world, player.location.blockX, player.location.blockZ)
+            ?: PlayerNavigation.surfaceNode(world, game.roundCenterX.toInt(), game.roundCenterZ.toInt())
             ?: return List(count) { player.location.clone() }
-        val locations = mutableListOf<Location>()
 
-        // Use the same player-sized graph as game scattering. Surface nodes must be reachable
-        // from the player's spawn and must still have a normal route back to the magnetic center;
-        // this excludes isolated roofs, cliff shelves, islands, and one-way drop traps.
-        val reachableSurfaceNodes = PlayerNavigation.collectReachable(
+        // 플레이어가 실제로 걸어서 닿을 수 있는 후보 중 서로 가장 먼 지점을 차례로 고른다.
+        // 무작위 순서의 앞부분만 사용하던 기존 방식과 달리 맵의 접근 가능한 영역 전체에 퍼진다.
+        val reachableNodes = PlayerNavigation.collectReachable(
             world = world,
             start = start,
             bounds = bounds,
             maxVisitedNodes = PART_REACHABLE_MAX_VISITED_NODES,
-        ).asSequence()
+        )
+        val reachableDisplayNodes = reachableNodes.filter { node ->
+            world.worldBorder.isInside(PlayerNavigation.displayLocation(world, node))
+        }
+        val reachableSurfaceNodes = reachableDisplayNodes.asSequence()
             .filter { node -> PlayerNavigation.surfaceNode(world, node.x, node.z) == node }
-            .filter { node -> world.worldBorder.isInside(PlayerNavigation.displayLocation(world, node)) }
-            .shuffled()
-            .take(PART_CANDIDATE_PATH_CHECKS)
             .toList()
 
-        val centerReachableNodes = mutableListOf<PlayerNavigation.Node>()
-        reachableSurfaceNodes.forEach { node ->
-            if (locations.size >= count) return@forEach
-            if (!PlayerNavigation.hasPathToArea(
-                    world = world,
-                    start = node,
-                    centerX = game.roundCenterX,
-                    centerZ = game.roundCenterZ,
-                    targetRadius = PART_CENTER_TARGET_RADIUS,
-                    bounds = bounds,
-                    maxVisitedNodes = PART_PATH_MAX_VISITED_NODES,
-                )
-            ) return@forEach
-            centerReachableNodes += node
-            val location = PlayerNavigation.displayLocation(world, node)
-            if (locations.none { it.distanceSquared(location) < MINIMUM_PART_DISTANCE_SQUARED }) locations += location
+        val selectedNodes = mutableListOf<PlayerNavigation.Node>()
+        addMostSpreadNodes(reachableSurfaceNodes, selectedNodes, start, count)
+        if (selectedNodes.size < count) {
+            addMostSpreadNodes(reachableDisplayNodes, selectedNodes, start, count)
         }
-        centerReachableNodes.forEach { node ->
-            if (locations.size >= count) return@forEach
-            val location = PlayerNavigation.displayLocation(world, node)
-            if (locations.none { it.blockX == location.blockX && it.blockY == location.blockY && it.blockZ == location.blockZ }) {
-                locations += location
-            }
-        }
+        val locations = selectedNodes.mapTo(mutableListOf()) { PlayerNavigation.displayLocation(world, it) }
 
         val safeFallback = PlayerNavigation.displayLocation(world, start)
         while (locations.size < count) locations += safeFallback.clone()
         return locations
+    }
+
+    private fun addMostSpreadNodes(
+        candidates: Collection<PlayerNavigation.Node>,
+        selected: MutableList<PlayerNavigation.Node>,
+        anchor: PlayerNavigation.Node,
+        count: Int,
+    ) {
+        val selectedColumns = selected.mapTo(hashSetOf()) { it.x to it.z }
+        val remaining = candidates.asSequence()
+            .distinctBy { it.x to it.z }
+            .filter { (it.x to it.z) !in selectedColumns }
+            .shuffled()
+            .toMutableList()
+        val anchors = mutableListOf(anchor).apply { addAll(selected) }
+
+        while (selected.size < count && remaining.isNotEmpty()) {
+            val next = remaining.maxByOrNull { candidate ->
+                anchors.minOf { other ->
+                    val dx = (candidate.x - other.x).toDouble()
+                    val dz = (candidate.z - other.z).toDouble()
+                    dx * dx + dz * dz
+                }
+            } ?: break
+            selected += next
+            anchors += next
+            remaining.remove(next)
+        }
     }
 
     private fun collect(part: Part) {
@@ -172,11 +183,7 @@ class Exodia : GameClass(), GameStatusHandler {
     }
 
     companion object {
-        private const val PART_REACHABLE_MAX_VISITED_NODES = 40_000
-        private const val PART_PATH_MAX_VISITED_NODES = 60_000
-        private const val PART_CANDIDATE_PATH_CHECKS = 192
-        private const val PART_CENTER_TARGET_RADIUS = 4.0
-        private const val MINIMUM_PART_DISTANCE_SQUARED = 100.0
+        private const val PART_REACHABLE_MAX_VISITED_NODES = 120_000
     }
 }
 

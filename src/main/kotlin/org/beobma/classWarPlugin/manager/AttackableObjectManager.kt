@@ -23,7 +23,7 @@ import kotlin.math.cos
 object AttackableObjectManager {
     class Registration internal constructor(private val id: UUID) {
         fun unregister() {
-            targets.remove(id)
+            if (targets.remove(id) != null) stopProjectileTaskIfIdle()
         }
     }
 
@@ -43,10 +43,21 @@ object AttackableObjectManager {
     private var projectileTask: BukkitTask? = null
 
     fun start() {
-        if (projectileTask != null) return
+        ensureProjectileTask()
+    }
+
+    private fun ensureProjectileTask() {
+        if (projectileTask != null || targets.isEmpty()) return
         projectileTask = object : BukkitRunnable() {
             override fun run() = trackPhysicalProjectiles()
         }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L)
+    }
+
+    private fun stopProjectileTaskIfIdle() {
+        if (targets.isNotEmpty()) return
+        projectileTask?.cancel()
+        projectileTask = null
+        previousProjectileLocations.clear()
     }
 
     fun shutdown() {
@@ -66,6 +77,7 @@ object AttackableObjectManager {
     ): Registration {
         val id = UUID.randomUUID()
         targets[id] = Target(ownerId, world.uid, acceptsAreaSkills, canBeHitBy, hitboxes, onHit)
+        ensureProjectileTask()
         return Registration(id)
     }
 

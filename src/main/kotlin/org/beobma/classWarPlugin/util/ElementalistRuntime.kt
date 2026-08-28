@@ -652,12 +652,14 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
                 return@trackTimer false
             }
             center.add(movement)
-            repeat(6) { arm ->
-                val angle = tick * 0.46 + arm * (2.0 * PI / 6.0)
-                val armRadius = radius * (0.45 + (arm % 3) * 0.16)
-                val point = center.clone().add(cos(angle) * armRadius, sin(tick * 0.28 + arm) * 0.75, sin(angle) * armRadius)
-                particles.spawn(point, if (context.fusion == Element.FIRE to Element.AIR) Particle.FLAME else Particle.CLOUD, count = 2, spread = 0.08, speed = 0.025)
-                spawnElementDust(point, if (context.fusion == Element.FIRE to Element.AIR) Element.FIRE else Element.AIR, 1, 0.02, 0.01, 0.8f)
+            if (tick % 2 == 0) {
+                repeat(6) { arm ->
+                    val angle = tick * 0.46 + arm * (2.0 * PI / 6.0)
+                    val armRadius = radius * (0.45 + (arm % 3) * 0.16)
+                    val point = center.clone().add(cos(angle) * armRadius, sin(tick * 0.28 + arm) * 0.75, sin(angle) * armRadius)
+                    particles.spawn(point, if (context.fusion == Element.FIRE to Element.AIR) Particle.FLAME else Particle.CLOUD, count = 2, spread = 0.08, speed = 0.025)
+                    spawnElementDust(point, if (context.fusion == Element.FIRE to Element.AIR) Element.FIRE else Element.AIR, 1, 0.02, 0.01, 0.8f)
+                }
             }
             if (tick % 5 == 0) {
                 particles.spawn(center, Particle.GUST, count = 2, spread = radius * 0.45, speed = 0.035)
@@ -717,7 +719,9 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
         trackTimer(0L, 1L) {
             if (tick++ >= durationTicks) return@trackTimer false
             val center = if (followsPlayer) player.location.clone() else origin
-            particles.circle(center.clone().add(0.0, 0.3, 0.0), particle, radius, 18)
+            if (tick % 2 == 0) {
+                particles.circle(center.clone().add(0.0, 0.3, 0.0), particle, radius, 18)
+            }
             if (tick % 5 == 0) {
                 playerData.radius(center, TargetType.Enemy, radius, false).forEach { onTarget(it, it.entity.location) }
             }
@@ -876,16 +880,18 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
                     particles.spawn(target.entity, Particle.ELECTRIC_SPARK, count = 42, spread = 0.7, speed = 0.18)
                 }
             }
-            repeat(8) { arm ->
-                val angle = tick * 0.34 + arm * PI / 4.0
-                val armRadius = 1.45 + (arm % 3) * 0.52
-                val point = center.clone().add(
-                    cos(angle) * armRadius,
-                    0.35 + ((tick + arm * 3) % 24) / 8.0,
-                    sin(angle) * armRadius,
-                )
-                particles.spawn(point, Particle.ELECTRIC_SPARK, count = 2, spread = 0.08, speed = 0.035)
-                particles.spawn(point, Particle.CLOUD, count = 2, spread = 0.12, speed = 0.025)
+            if (tick % 2 == 0) {
+                repeat(8) { arm ->
+                    val angle = tick * 0.34 + arm * PI / 4.0
+                    val armRadius = 1.45 + (arm % 3) * 0.52
+                    val point = center.clone().add(
+                        cos(angle) * armRadius,
+                        0.35 + ((tick + arm * 3) % 24) / 8.0,
+                        sin(angle) * armRadius,
+                    )
+                    particles.spawn(point, Particle.ELECTRIC_SPARK, count = 2, spread = 0.08, speed = 0.035)
+                    particles.spawn(point, Particle.CLOUD, count = 2, spread = 0.12, speed = 0.025)
+                }
             }
             if (tick % 4 == 0) {
                 particles.circle(center.clone().add(0.0, 0.18, 0.0), Particle.ELECTRIC_SPARK, 3.4, 38)
@@ -894,7 +900,9 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
             if (tick % 20 == 0) {
                 sounds.play(center, Sound.ENTITY_LIGHTNING_BOLT_IMPACT, volume = 0.52f, pitch = 1.45f)
             }
-            particles.spawn(center.clone().add(0.0, 1.3, 0.0), Particle.CLOUD, count = 10, spread = 2.5, speed = 0.055)
+            if (tick % 2 == 0) {
+                particles.spawn(center.clone().add(0.0, 1.3, 0.0), Particle.CLOUD, count = 10, spread = 2.5, speed = 0.055)
+            }
             true
         }
     }
@@ -1201,8 +1209,9 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
         points: Int,
     ) {
         var tick = 0
-        trackTimer(0L, 1L) {
-            if (tick++ >= durationTicks) return@trackTimer false
+        trackTimer(0L, 2L) {
+            if (tick >= durationTicks) return@trackTimer false
+            tick = (tick + 2).coerceAtMost(durationTicks)
             val progress = tick.toDouble() / durationTicks
             spawnDustRing(center, startRadius + (endRadius - startRadius) * progress, points, color, 1.1f)
             true
@@ -1211,13 +1220,12 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
 
     private fun renderCastSigil(element: Element) {
         var tick = 0
-        trackTimer(0L, 1L) {
-            if (tick++ >= 12 || !player.isOnline) return@trackTimer false
+        trackTimer(0L, 2L) {
+            if (tick >= 12 || !player.isOnline) return@trackTimer false
+            tick += 2
             val center = player.location.clone().add(0.0, 0.08, 0.0)
-            if (tick % 2 == 0) {
-                spawnDustRing(center, 0.82 + tick * 0.025, 26, element.color, 1.05f)
-                spawnDustRing(center.clone().add(0.0, 0.09, 0.0), 1.18 - tick * 0.018, 22, Color.WHITE, 0.72f)
-            }
+            spawnDustRing(center, 0.82 + tick * 0.025, 26, element.color, 1.05f)
+            spawnDustRing(center.clone().add(0.0, 0.09, 0.0), 1.18 - tick * 0.018, 22, Color.WHITE, 0.72f)
             repeat(4) { arm ->
                 val angle = tick * 0.42 + arm * PI / 2.0
                 val radius = 0.38 + tick * 0.045
@@ -1290,8 +1298,9 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
         sounds.playTo(player, Sound.BLOCK_AMETHYST_BLOCK_RESONATE, volume = 1.0f, pitch = 1.12f)
         sounds.play(player, Sound.BLOCK_RESPAWN_ANCHOR_CHARGE, volume = 0.58f, pitch = 1.72f)
         var tick = 0
-        trackTimer(0L, 1L) {
-            if (tick++ >= 14) return@trackTimer false
+        trackTimer(0L, 2L) {
+            if (tick >= 14) return@trackTimer false
+            tick += 2
             val center = player.location.clone().add(0.0, 1.05, 0.0)
             val radius = 0.55 + sin(PI * tick / 14.0) * 0.85
             repeat(3) { arm ->

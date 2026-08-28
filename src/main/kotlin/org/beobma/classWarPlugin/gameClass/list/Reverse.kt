@@ -1,6 +1,9 @@
 package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.ClassWarPlugin
+import org.beobma.classWarPlugin.effect.ParticleApi
+import org.beobma.classWarPlugin.effect.ParticleOptions
+import org.beobma.classWarPlugin.effect.SoundApi
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.game.Game
@@ -130,9 +133,9 @@ class Reverse : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
             DamageIndicatorManager.show(living, applied, target.game.settings.damageIndicatorsEnabled)
             living.playHurtAnimation(0.0f)
             living.health = (living.health - applied).coerceAtLeast(0.0)
-            living.world.spawnParticle(Particle.DAMAGE_INDICATOR, living.boundingBox.center.toLocation(living.world),
-                7, 0.35, 0.45, 0.35, 0.03)
-            living.world.playSound(living.location, Sound.ENTITY_ZOMBIE_ATTACK_IRON_DOOR, 0.45f, 1.65f)
+            ParticleApi.spawn(living.boundingBox.center.toLocation(living.world), Particle.DAMAGE_INDICATOR,
+                ParticleOptions(7, 0.35, 0.45, 0.35, 0.03))
+            SoundApi.play(living.location, Sound.ENTITY_ZOMBIE_ATTACK_IRON_DOOR, 0.45f, 1.65f)
             return true
         }
 
@@ -148,8 +151,10 @@ class Reverse : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
                 reversedStatuses += replacement
                 replacement.applyStatus(duration = duration, powerSet = inversion.power.coerceAtLeast(1))
                 val living = target.entity as? LivingEntity
-                living?.world?.spawnParticle(Particle.WITCH, living.boundingBox.center.toLocation(living.world),
-                    14, 0.4, 0.55, 0.4, 0.08)
+                living?.let {
+                    ParticleApi.spawn(it.boundingBox.center.toLocation(it.world), Particle.WITCH,
+                        ParticleOptions(14, 0.4, 0.55, 0.4, 0.08))
+                }
             }
         }
 

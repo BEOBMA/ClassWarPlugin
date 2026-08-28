@@ -7,6 +7,9 @@ import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.title.Title
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamageContext
+import org.beobma.classWarPlugin.effect.ParticleApi
+import org.beobma.classWarPlugin.effect.ParticleOptions
+import org.beobma.classWarPlugin.effect.SoundApi
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.game.GamePhase
@@ -185,7 +188,7 @@ class Referee : GameClass(), GameStatusHandler {
         player.sendMiniMessage(
             "<gold><bold>[대천칭]</bold> <white>${accused.player.name}<gray> — <red>${crime.displayName}<dark_gray> ($detail)"
         )
-        player.playSound(player.location, Sound.BLOCK_NOTE_BLOCK_BELL, SoundCategory.MASTER, 0.35F, 1.7F)
+        SoundApi.playTo(player, Sound.BLOCK_NOTE_BLOCK_BELL, 0.35F, 1.7F, SoundCategory.MASTER)
     }
 
     private fun recordDamageInternal(context: DamageContext, finalDamage: Double) {
@@ -526,8 +529,8 @@ class Referee : GameClass(), GameStatusHandler {
                 courtroomSound(Sound.BLOCK_BEACON_ACTIVATE, 0.65F, 1.42F)
             }
             val center = courtCenter()
-            center.world.spawnParticle(if (verdictGuilty) Particle.SOUL_FIRE_FLAME else Particle.TOTEM_OF_UNDYING,
-                center, 90, 4.0, 1.7, 4.0, 0.09)
+            ParticleApi.spawn(center, if (verdictGuilty) Particle.SOUL_FIRE_FLAME else Particle.TOTEM_OF_UNDYING,
+                ParticleOptions(90, 4.0, 1.7, 4.0, 0.09))
             renderVerdictBurst(verdictGuilty)
             if (verdictGuilty) {
                 val suffix = if (verdictPerjury) " <dark_red>및 위증" else ""
@@ -619,25 +622,30 @@ class Referee : GameClass(), GameStatusHandler {
             repeat(12) { index ->
                 val angle = angleOffset + index * (PI * 2.0 / 12.0)
                 val radius = if (index % 2 == 0) 9.0 else 6.7
-                world.spawnParticle(if (index % 3 == 0) Particle.END_ROD else Particle.ENCHANT,
-                    center.x + cos(angle) * radius, center.y + 0.35 + (index % 3) * 0.35,
-                    center.z + sin(angle) * radius, 1, 0.0, 0.0, 0.0, 0.0)
+                ParticleApi.spawn(
+                    Location(world, center.x + cos(angle) * radius, center.y + 0.35 + (index % 3) * 0.35,
+                        center.z + sin(angle) * radius),
+                    if (index % 3 == 0) Particle.END_ROD else Particle.ENCHANT,
+                )
             }
             if (elapsedTicks % 12 == 0) {
-                world.spawnParticle(Particle.DUST, center, 18, 5.5, 0.4, 8.0, 0.0,
-                    Particle.DustOptions(Color.fromRGB(255, 190, 35), 1.1F))
-                world.spawnParticle(Particle.TRIAL_SPAWNER_DETECTION, center, 8, 4.0, 1.2, 6.0, 0.02)
-                world.spawnParticle(Particle.REVERSE_PORTAL, center.clone().add(0.0, 1.2, 0.0), 10, 2.8, 0.7, 4.2, 0.025)
+                ParticleApi.spawn(center, Particle.DUST, Particle.DustOptions(Color.fromRGB(255, 190, 35), 1.1F),
+                    ParticleOptions(18, 5.5, 0.4, 8.0))
+                ParticleApi.spawn(center, Particle.TRIAL_SPAWNER_DETECTION, ParticleOptions(8, 4.0, 1.2, 6.0, 0.02))
+                ParticleApi.spawn(center.clone().add(0.0, 1.2, 0.0), Particle.REVERSE_PORTAL,
+                    ParticleOptions(10, 2.8, 0.7, 4.2, 0.025))
             }
         }
 
         private fun renderOpeningBurst() {
             val center = courtCenter()
             val world = center.world
-            world.spawnParticle(Particle.FLASH, center.clone().add(0.0, 1.1, 0.0), 1,
-                0.0, 0.0, 0.0, 0.0, Color.fromRGB(255, 220, 120))
-            world.spawnParticle(Particle.END_ROD, center.clone().add(0.0, 1.0, 0.0), 48, 5.5, 1.2, 8.0, 0.045)
-            world.spawnParticle(Particle.ENCHANT, center.clone().add(0.0, 0.6, 0.0), 90, 7.0, 0.7, 10.0, 0.18)
+            ParticleApi.spawn(center.clone().add(0.0, 1.1, 0.0), Particle.FLASH,
+                Color.fromRGB(255, 220, 120))
+            ParticleApi.spawn(center.clone().add(0.0, 1.0, 0.0), Particle.END_ROD,
+                ParticleOptions(48, 5.5, 1.2, 8.0, 0.045))
+            ParticleApi.spawn(center.clone().add(0.0, 0.6, 0.0), Particle.ENCHANT,
+                ParticleOptions(90, 7.0, 0.7, 10.0, 0.18))
             spawnDustRing(center.clone().add(0.0, 0.18, 0.0), 5.0, 48, Color.fromRGB(255, 190, 35), 1.35F)
             spawnDustRing(center.clone().add(0.0, 0.24, 0.0), 9.0, 72, Color.fromRGB(110, 205, 255), 1.0F)
         }
@@ -645,10 +653,9 @@ class Referee : GameClass(), GameStatusHandler {
         private fun renderAccusationBurst() {
             val defendantCenter = defendant.player.location.clone().add(0.0, 1.0, 0.0)
             val world = defendantCenter.world
-            world.spawnParticle(Particle.FLASH, defendantCenter, 1,
-                0.0, 0.0, 0.0, 0.0, Color.fromRGB(225, 45, 45))
-            world.spawnParticle(Particle.WITCH, defendantCenter, 55, 0.75, 1.2, 0.75, 0.09)
-            world.spawnParticle(Particle.SOUL_FIRE_FLAME, defendantCenter, 34, 0.65, 1.05, 0.65, 0.055)
+            ParticleApi.spawn(defendantCenter, Particle.FLASH, Color.fromRGB(225, 45, 45))
+            ParticleApi.spawn(defendantCenter, Particle.WITCH, ParticleOptions(55, 0.75, 1.2, 0.75, 0.09))
+            ParticleApi.spawn(defendantCenter, Particle.SOUL_FIRE_FLAME, ParticleOptions(34, 0.65, 1.05, 0.65, 0.055))
             spawnParticleLine(judge.player.eyeLocation, defendant.player.eyeLocation, Particle.END_ROD, 0.38)
             spawnDustRing(defendant.player.location.clone().add(0.0, 0.15, 0.0), 2.1, 36,
                 Color.fromRGB(215, 45, 45), 1.25F)
@@ -656,8 +663,8 @@ class Referee : GameClass(), GameStatusHandler {
 
         private fun renderDeliberationBurst() {
             val center = courtCenter().add(0.0, 1.0, 0.0)
-            center.world.spawnParticle(Particle.REVERSE_PORTAL, center, 55, 4.0, 1.0, 6.0, 0.085)
-            center.world.spawnParticle(Particle.ELECTRIC_SPARK, center, 26, 3.2, 0.8, 5.0, 0.055)
+            ParticleApi.spawn(center, Particle.REVERSE_PORTAL, ParticleOptions(55, 4.0, 1.0, 6.0, 0.085))
+            ParticleApi.spawn(center, Particle.ELECTRIC_SPARK, ParticleOptions(26, 3.2, 0.8, 5.0, 0.055))
             spawnDustRing(center.clone().add(0.0, -0.82, 0.0), 6.8, 54,
                 Color.fromRGB(175, 120, 255), 1.0F)
         }
@@ -669,20 +676,23 @@ class Referee : GameClass(), GameStatusHandler {
                 spawnDustRing(center.clone().add(0.0, 0.2 + ring * 0.42, 0.0), 3.4 + ring * 2.5,
                     44 + ring * 16, color, 1.25F - ring * 0.12F)
             }
-            center.world.spawnParticle(Particle.FLASH, center.clone().add(0.0, 1.4, 0.0), 2,
-                0.0, 0.0, 0.0, 0.0, color)
-            center.world.spawnParticle(
+            ParticleApi.spawn(center.clone().add(0.0, 1.4, 0.0), Particle.FLASH, color,
+                ParticleOptions(count = 2))
+            ParticleApi.spawn(center.clone().add(0.0, 1.1, 0.0),
                 if (guilty) Particle.SOUL else Particle.END_ROD,
-                center.clone().add(0.0, 1.1, 0.0), 75, 4.8, 1.8, 7.0, 0.11,
-            )
+                ParticleOptions(75, 4.8, 1.8, 7.0, 0.11))
         }
 
         private fun spawnDustRing(center: Location, radius: Double, points: Int, color: Color, size: Float) {
             val dust = Particle.DustOptions(color, size)
             repeat(points) { index ->
                 val angle = PI * 2.0 * index / points
-                center.world.spawnParticle(Particle.DUST, center.x + cos(angle) * radius, center.y,
-                    center.z + sin(angle) * radius, 1, 0.0, 0.0, 0.0, 0.0, dust)
+                ParticleApi.spawn(
+                    Location(center.world, center.x + cos(angle) * radius, center.y,
+                        center.z + sin(angle) * radius),
+                    Particle.DUST,
+                    dust,
+                )
             }
         }
 
@@ -695,7 +705,7 @@ class Referee : GameClass(), GameStatusHandler {
             var distance = 0.0
             while (distance <= length) {
                 val point = from.clone().add(direction.clone().multiply(distance))
-                from.world.spawnParticle(particle, point, 1, 0.0, 0.0, 0.0, 0.0)
+                ParticleApi.spawn(point, particle)
                 distance += spacing
             }
         }
@@ -726,7 +736,7 @@ class Referee : GameClass(), GameStatusHandler {
 
         private fun courtroomSound(sound: Sound, volume: Float, pitch: Float) = participants
             .filter { it.player.isOnline }
-            .forEach { it.player.playSound(it.player.location, sound, SoundCategory.MASTER, volume, pitch) }
+            .forEach { SoundApi.playTo(it.player, sound, volume, pitch, SoundCategory.MASTER) }
 
         private fun courtCenter(): Location = Location(judge.player.world, 625.5, -29.0, -496.0)
 
@@ -1055,8 +1065,9 @@ class Referee : GameClass(), GameStatusHandler {
         if (!target.player.isOnline || target.entityStatus.isDead) return
         val multiplier = if (perjury) 2 else 1
         target.player.sendMiniMessage("<dark_red><bold>[형 집행]</bold> <gray>${crime.displayName}죄${if (perjury) " 및 위증" else ""}의 형을 집행합니다.")
-        target.player.world.spawnParticle(Particle.SOUL_FIRE_FLAME, target.player.location.add(0.0, 1.0, 0.0), 70, 0.8, 1.1, 0.8, 0.08)
-        target.player.playSound(target.player.location, Sound.BLOCK_ANVIL_LAND, SoundCategory.MASTER, 1.0F, 0.55F)
+        ParticleApi.spawn(target.player.location.add(0.0, 1.0, 0.0), Particle.SOUL_FIRE_FLAME,
+            ParticleOptions(70, 0.8, 1.1, 0.8, 0.08))
+        SoundApi.playTo(target.player, Sound.BLOCK_ANVIL_LAND, 1.0F, 0.55F, SoundCategory.MASTER)
         when (crime) {
             Crime.ASSAULT -> {
                 val attribute = target.player.getAttribute(Attribute.MAX_HEALTH) ?: return

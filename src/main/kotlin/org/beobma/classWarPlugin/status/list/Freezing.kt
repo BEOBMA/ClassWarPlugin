@@ -112,7 +112,7 @@ class Freezing : StatusAbnormality(), StatusOnHitHandler, StatusWhenHitHandler, 
                 val currentBox = living.boundingBox
                 current.teleport(currentBox.min.toLocation(living.world))
             }
-        }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L)
+        }.runTaskTimer(ClassWarPlugin.instance, 0L, 2L)
         displayTask = task
         entityData.bukkitTasks.add(task)
         game.tasks.add(task)

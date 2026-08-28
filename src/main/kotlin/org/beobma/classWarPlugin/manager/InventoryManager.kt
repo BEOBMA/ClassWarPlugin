@@ -189,8 +189,8 @@ object InventoryManager {
         ))
         inventory.setItem(20, createDescriptionItem(
             Material.ARMOR_STAND,
-            "<yellow><bold>전투 표시 설정",
-            listOf("<gray>피해량 텍스트 등 전투 표시 기능을 설정합니다."),
+            "<yellow><bold>화면 및 메시지 설정",
+            listOf("<gray>Tab 목록, 피해량 텍스트와 사망 메시지를 설정합니다."),
         ))
         openConfigView(inventory, null)
     }
@@ -202,7 +202,7 @@ object InventoryManager {
             ConfigCategory.RANK -> "랭크 확률 설정"
             ConfigCategory.SCATTER -> "맵 및 산개 설정"
             ConfigCategory.BORDER -> "월드보더 설정"
-            ConfigCategory.COMBAT -> "전투 표시 설정"
+            ConfigCategory.COMBAT -> "화면 및 메시지 설정"
         }
         val inventory = Bukkit.createInventory(null, 27, miniMessage.deserialize("<dark_gray>$title"))
         fillWith(inventory, Material.BLACK_STAINED_GLASS_PANE, " ")
@@ -241,7 +241,15 @@ object InventoryManager {
             }
 
             ConfigCategory.COMBAT -> {
-                inventory.setItem(13, createToggleItem("피해량 텍스트 표시", settings.damageIndicatorsEnabled))
+                inventory.setItem(10, createToggleItem(
+                    "Tab 플레이어 목록 표시",
+                    settings.playerListVisible,
+                    listOf("<red><bold>주의: 비활성화하면 관전 모드에서 플레이어 선택 및 관전에 문제가 생길 수 있습니다."),
+                ))
+                inventory.setItem(12, createToggleItem("사망 메시지 표시", settings.deathMessagesEnabled))
+                inventory.setItem(14, createToggleItem("사망 메시지에 처치자 표시", settings.deathMessagesShowKiller))
+                inventory.setItem(16, createToggleItem("사망 메시지에 사망 사유 표시", settings.deathMessagesShowCause))
+                inventory.setItem(22, createToggleItem("피해량 텍스트 표시", settings.damageIndicatorsEnabled))
             }
         }
 
@@ -433,17 +441,17 @@ object InventoryManager {
             }
         }
 
-    private fun createToggleItem(name: String, enabled: Boolean): ItemStack =
+    private fun createToggleItem(name: String, enabled: Boolean, extraLines: List<String> = emptyList()): ItemStack =
         ItemStack(if (enabled) Material.LIME_DYE else Material.GRAY_DYE).apply {
             itemMeta = itemMeta.apply {
                 displayName(miniMessage.deserialize("<yellow><bold>$name"))
-                lore(listOf(
+                lore((listOf(
                     ItemDescriptionManager.renderLoreLine(
                         if (enabled) "<gray>현재 값: <green><bold>활성화" else "<gray>현재 값: <red><bold>비활성화"
                     ),
                     ItemDescriptionManager.renderLoreLine(""),
                     ItemDescriptionManager.renderLoreLine("<gray>클릭하여 활성화 여부를 변경합니다.")
-                ))
+                ) + extraLines.map(ItemDescriptionManager::renderLoreLine)))
             }
         }
 

@@ -10,6 +10,7 @@ import org.beobma.classWarPlugin.gameClass.handler.GameEndHandler
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.handler.PlayerDeathHandler
 import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
+import org.beobma.classWarPlugin.manager.GameManager.canDispatchClassHandlers
 import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
@@ -26,16 +27,21 @@ import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
+import org.bukkit.Tag
+import org.bukkit.attribute.Attribute
 import org.bukkit.block.Block
 import org.bukkit.entity.BlockDisplay
 import org.bukkit.entity.Display
 import org.bukkit.entity.Interaction
 import org.bukkit.entity.Player
+import org.bukkit.entity.Projectile
 import org.bukkit.event.entity.EntityDamageByEntityEvent
+import org.bukkit.potion.PotionEffectType
 import org.bukkit.scheduler.BukkitRunnable
 import java.util.UUID
 
 private const val CHAMELEON_COOLDOWN_SECONDS = 60
+private const val CHAMELEON_DISGUISE_DURATION_SECONDS = 20
 
 class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, PlayerDeathHandler {
     override val name = "<gray>카멜레온"
@@ -60,6 +66,7 @@ class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, Pla
         override val name = "<bold>위장"
         override val description = listOf(
             "<gray>2칸 내의 바라보는 블럭으로 위장한다.",
+            "<gray>위장은 최대 ${CHAMELEON_DISGUISE_DURATION_SECONDS}초 동안 유지된다.",
             "<gray>자신은 {keyword:Stealth} 상태가 되고, 블럭에 피격 판정이 전이된다.",
             "<gray>웅크리고 있으면 진짜 블럭처럼 밟을 수 있고, 한 칸에 고정된다.",
             "<gray>피격 혹은 공격 시 잠시 블럭이 빨간색으로 변한다."
@@ -83,9 +90,11 @@ class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, Pla
     private fun activateDisguise(block: Block) {
         clearDisguise()
         val generation = ++disguiseGeneration
+        val expiresAtTick = Bukkit.getCurrentTick().toLong() + CHAMELEON_DISGUISE_DURATION_SECONDS * 20L
         copiedMaterial = block.type.takeUnless { it.isAir } ?: Material.STONE
+        val normalBlockData = block.blockData.clone()
         val visual = player.world.spawn(player.location, BlockDisplay::class.java).apply {
-            this.block = block.blockData.clone()
+            this.block = normalBlockData
             billboard = Display.Billboard.FIXED
             brightness = Display.Brightness(15, 15)
             isPersistent = false
@@ -101,10 +110,13 @@ class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, Pla
         interaction = hitbox
         disguiseOwners[hitbox.uniqueId] = this
         stealth = playerData.addStatus(Stealth(), playerData) as Stealth
-        stealth?.applyStatus(powerSet = 1)
+        stealth?.applyStatus(duration = CHAMELEON_DISGUISE_DURATION_SECONDS, powerSet = 1)
         sounds.play(player, Sound.ENTITY_PARROT_AMBIENT, volume = 0.65f, pitch = 1.25f)
         particles.spawn(player, Particle.POOF, count = 26, spread = 0.65, speed = 0.08)
         playerData.trackTask(object : BukkitRunnable() {
+            private var lastBase: Location? = null
+            private var showingDamageFlash = false
+
             override fun run() {
                 if (generation != disguiseGeneration) {
                     cancel()
@@ -112,7 +124,9 @@ class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, Pla
                 }
                 val currentDisplay = display
                 val currentHitbox = interaction
-                if (!player.isOnline || playerStatus.isDead || currentDisplay?.isValid != true || currentHitbox?.isValid != true) {
+                if (Bukkit.getCurrentTick().toLong() >= expiresAtTick || !player.isOnline || playerStatus.isDead ||
+                    currentDisplay?.isValid != true || currentHitbox?.isValid != true
+                ) {
                     clearDisguise()
                     cancel()
                     return
@@ -120,17 +134,25 @@ class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, Pla
                 if (player.isSneaking) {
                     if (lockedLocation == null) lockedLocation = player.location.block.location.add(0.5, 0.0, 0.5)
                     val locked = lockedLocation!!
-                    player.teleport(locked.clone().apply { yaw = player.location.yaw; pitch = player.location.pitch })
+                    if (player.location.distanceSquared(locked) > 1.0E-6) {
+                        player.teleport(locked.clone().apply { yaw = player.location.yaw; pitch = player.location.pitch })
+                    }
                 } else {
                     lockedLocation = null
                 }
                 val base = (lockedLocation ?: player.location).block.location
-                currentDisplay.teleport(base)
-                currentHitbox.teleport(base.clone().add(0.5, 0.0, 0.5))
-                currentDisplay.block = if (Bukkit.getCurrentTick().toLong() < redUntilTick) {
-                    Material.RED_CONCRETE.createBlockData()
-                } else {
-                    block.blockData.clone()
+                val previousBase = lastBase
+                if (previousBase == null || previousBase.world != base.world ||
+                    previousBase.blockX != base.blockX || previousBase.blockY != base.blockY || previousBase.blockZ != base.blockZ
+                ) {
+                    currentDisplay.teleport(base)
+                    currentHitbox.teleport(base.clone().add(0.5, 0.0, 0.5))
+                    lastBase = base.clone()
+                }
+                val shouldShowDamageFlash = Bukkit.getCurrentTick().toLong() < redUntilTick
+                if (showingDamageFlash != shouldShowDamageFlash) {
+                    currentDisplay.block = if (shouldShowDamageFlash) Material.RED_CONCRETE.createBlockData() else normalBlockData
+                    showingDamageFlash = shouldShowDamageFlash
                 }
             }
         }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
@@ -165,13 +187,60 @@ class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, Pla
 
         fun handleDisguiseDamage(event: EntityDamageByEntityEvent): Boolean {
             val owner = disguiseOwners[event.entity.uniqueId] ?: return false
-            val attacker = event.damager as? Player ?: return false
-            val attackerData = findGameForPlayer(attacker)?.playerDatas?.filterIsInstance<PlayerData>()
-                ?.find { it.uniqueId == attacker.uniqueId } ?: return false
             event.isCancelled = true
-            owner.flashRed()
-            owner.playerData.damage(event.damage.coerceAtLeast(1.0), DamageType.Normal, attackerData, damagePath = DamagePath.BASIC_ATTACK)
+
+            val directDamager = event.damager
+            val attacker = when (directDamager) {
+                is Player -> directDamager
+                is Projectile -> directDamager.shooter as? Player
+                else -> null
+            } ?: return true
+            val attackerData = findGameForPlayer(attacker)?.playerDatas?.filterIsInstance<PlayerData>()
+                ?.find { it.uniqueId == attacker.uniqueId } ?: return true
+            if (!attackerData.canDispatchClassHandlers() || !owner.playerData.canDispatchClassHandlers()) return true
+
+            val path = if (directDamager is Projectile) DamagePath.RANGED_ATTACK else DamagePath.BASIC_ATTACK
+            val baseDamage = if (directDamager is Player) {
+                calculatePlayerAttackDamage(event, attacker, owner.player)
+            } else {
+                event.damage
+            }
+            owner.playerData.damage(baseDamage, DamageType.Normal, attackerData, damagePath = path)
+
+            // Interaction 엔티티는 일반 공격 대상처럼 공격 충전량을 소비하지 않으므로 직접 초기화한다.
+            if (directDamager is Player) attacker.resetCooldown()
             return true
         }
+
+        /**
+         * Interaction 엔티티 공격은 서버가 플레이어 대상의 무기 피해를 계산하기 전에 끝날 수 있다.
+         * 실제 플레이어를 공격했을 때와 같은 공격력, 충전량, 대인 인챈트 및 치명타를 복원한다.
+         */
+        private fun calculatePlayerAttackDamage(
+            event: EntityDamageByEntityEvent,
+            attacker: Player,
+            target: Player,
+        ): Double {
+            val attackStrength = attacker.getCooledAttackStrength(0.5f).coerceIn(0.0f, 1.0f)
+            val attackStrengthDouble = attackStrength.toDouble()
+            var baseDamage = (attacker.getAttribute(Attribute.ATTACK_DAMAGE)?.value ?: 1.0) *
+                (0.2 + attackStrengthDouble * attackStrengthDouble * 0.8)
+            if (event.isCritical || isVanillaCriticalAttack(attacker, attackStrength)) {
+                baseDamage *= 1.5
+            }
+
+            val enchantmentDamage = attacker.inventory.itemInMainHand.enchantments.entries.sumOf { (enchantment, level) ->
+                enchantment.getDamageIncrease(level, target.type).toDouble()
+            } * attackStrengthDouble
+
+            // Paper가 이미 올바른 피해를 제공한 경우에는 그 값을 보존한다.
+            return maxOf(event.damage, baseDamage + enchantmentDamage)
+        }
+
+        private fun isVanillaCriticalAttack(attacker: Player, attackStrength: Float): Boolean =
+            attackStrength > 0.9f && attacker.fallDistance > 0.0f && !attacker.isOnGround &&
+                !Tag.CLIMBABLE.isTagged(attacker.location.block.type) && !attacker.isInWater &&
+                !attacker.hasPotionEffect(PotionEffectType.BLINDNESS) && !attacker.isInsideVehicle &&
+                !attacker.isSprinting && !attacker.isGliding
     }
 }

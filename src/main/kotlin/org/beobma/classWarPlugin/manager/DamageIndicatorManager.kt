@@ -40,10 +40,20 @@ object DamageIndicatorManager {
 
     fun start() {
         clearOrphanedDisplays()
-        if (tickingTask != null) return
+        ensureTickingTask()
+    }
+
+    private fun ensureTickingTask() {
+        if (tickingTask != null || indicators.isEmpty()) return
         tickingTask = object : BukkitRunnable() {
             override fun run() = tickIndicators()
         }.runTaskTimer(ClassWarPlugin.instance, 1L, 1L)
+    }
+
+    private fun stopTickingTaskIfIdle() {
+        if (indicators.isNotEmpty()) return
+        tickingTask?.cancel()
+        tickingTask = null
     }
 
     fun show(entity: LivingEntity, damage: Double, enabled: Boolean) {
@@ -63,6 +73,7 @@ object DamageIndicatorManager {
         display.isPersistent = false
         display.persistentDataContainer.set(markerKey, PersistentDataType.BYTE, 1)
         indicators.add(Indicator(entity.uniqueId, display))
+        ensureTickingTask()
     }
 
     fun clearForPlayers(playerIds: Collection<UUID>) {
@@ -74,6 +85,7 @@ object DamageIndicatorManager {
             indicator.display.remove()
             iterator.remove()
         }
+        stopTickingTaskIfIdle()
     }
 
     fun shutdown() {
@@ -103,6 +115,7 @@ object DamageIndicatorManager {
                 display.textOpacity = opacity.toByte()
             }
         }
+        stopTickingTaskIfIdle()
     }
 
     private fun clearOrphanedDisplays() {

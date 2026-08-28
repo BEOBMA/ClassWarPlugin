@@ -1,6 +1,8 @@
 package org.beobma.classWarPlugin.listener
 
 import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.effect.ParticleApi
+import org.beobma.classWarPlugin.effect.SoundApi
 import org.beobma.classWarPlugin.info.Info
 import org.beobma.classWarPlugin.manager.GameManager.trainingInstance
 import org.beobma.classWarPlugin.manager.GameManager.canDispatchClassHandlers
@@ -21,8 +23,8 @@ class OnPlayerMoveEvent : Listener {
         if (event is PlayerTeleportEvent) {
             if (AreaDevelopment.shouldBlockTeleport(player.uniqueId, event.from, event.to)) {
                 event.isCancelled = true
-                player.spawnParticle(Particle.SMOKE, player.location.add(0.0, 1.0, 0.0), 10, 0.3, 0.45, 0.3, 0.025)
-                player.playSound(player.location, Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE, 0.45f, 1.6f)
+                ParticleApi.spawnTo(player, player.location.add(0.0, 1.0, 0.0), Particle.SMOKE, 10, 0.45, 0.025)
+                SoundApi.playTo(player, Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE, 0.45f, 1.6f)
             }
             return
         }

@@ -93,7 +93,18 @@ val verifyShadowJarContents = tasks.register("verifyShadowJarContents") {
         )
 
         ZipFile(shadowArchive).use { archive ->
-            val missingEntries = requiredEntries.filter { archive.getEntry(it) == null }
+            val compiledClassEntries = listOf(
+                layout.buildDirectory.dir("classes/kotlin/main").get().asFile,
+                layout.buildDirectory.dir("classes/java/main").get().asFile,
+            ).filter { it.isDirectory }
+                .flatMap { root ->
+                    root.walkTopDown()
+                        .filter { it.isFile && it.extension == "class" }
+                        .map { it.relativeTo(root).path.replace('\\', '/') }
+                        .toList()
+                }
+            val missingEntries = (requiredEntries + compiledClassEntries).distinct()
+                .filter { archive.getEntry(it) == null }
             check(missingEntries.isEmpty()) {
                 "Shadow JAR is missing required runtime classes: ${missingEntries.joinToString()}"
             }

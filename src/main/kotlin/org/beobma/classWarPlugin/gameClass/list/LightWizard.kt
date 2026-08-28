@@ -81,11 +81,12 @@ class LightWizard : GameClass() {
                     cancel()
                     return
                 }
-                val bob = kotlin.math.sin(tick++ * 0.15) * 0.035
+                val bob = kotlin.math.sin(tick * 0.15) * 0.035
+                tick += 2
                 display.teleport(displayLocation.clone().add(surfaceNormal.clone().multiply(bob)))
                 if (tick % 8 == 0) particles.spawn(location, Particle.END_ROD, count = 2, spread = 0.32)
             }
-        }.runTaskTimer(org.beobma.classWarPlugin.ClassWarPlugin.instance, 0L, 1L))
+        }.runTaskTimer(org.beobma.classWarPlugin.ClassWarPlugin.instance, 0L, 2L))
         particles.spawn(location, Particle.END_ROD, count = 25, spread = 0.25, speed = 0.03)
         sounds.play(location, Sound.BLOCK_GLASS_PLACE, pitch = 1.6f)
         return true

@@ -33,15 +33,22 @@ import org.beobma.classWarPlugin.util.CourtroomMidiPlayer
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
+import java.util.jar.JarFile
 
 class ClassWarPlugin : JavaPlugin() {
 
     companion object {
         const val LUNAR_APOLLO_CHANNEL = "lunar:apollo"
+        private const val PLUGIN_CLASS_PATH = "org/beobma/classWarPlugin/"
+        private const val RELOCATED_LIBRARY_PATH = "${PLUGIN_CLASS_PATH}libs/"
         lateinit var instance: ClassWarPlugin
     }
 
     private var statusActionBarTask: BukkitTask? = null
+
+    override fun onLoad() {
+        preloadPluginClasses()
+    }
 
     override fun onEnable() {
         instance = this
@@ -72,6 +79,45 @@ class ClassWarPlugin : JavaPlugin() {
 
     private fun registerClientDetectionChannel() {
         server.messenger.registerIncomingPluginChannel(this, LUNAR_APOLLO_CHANNEL) { _, _, _ -> }
+    }
+
+    /**
+     * Paper keeps reading classes lazily from the plugin JAR. If that JAR is replaced while the
+     * server is running, a class generated for a BukkitRunnable can otherwise disappear halfway
+     * through a match. Loading every plugin-owned class up front also makes an incomplete build
+     * fail during startup instead of later in an event handler.
+     */
+    private fun preloadPluginClasses() {
+        val source = javaClass.protectionDomain.codeSource?.location ?: return
+        if (source.protocol != "file") return
+        val jarFile = runCatching { java.io.File(source.toURI()) }.getOrNull() ?: return
+        if (!jarFile.isFile || !jarFile.name.endsWith(".jar", ignoreCase = true)) return
+
+        val classNames = JarFile(jarFile).use { archive ->
+            archive.entries().asSequence()
+                .map { it.name }
+                .filter { entry ->
+                    entry.startsWith(PLUGIN_CLASS_PATH) &&
+                        !entry.startsWith(RELOCATED_LIBRARY_PATH) &&
+                        entry.endsWith(".class")
+                }
+                .map { it.removeSuffix(".class").replace('/', '.') }
+                .toList()
+        }
+        val failures = mutableListOf<String>()
+        classNames.forEach { className ->
+            try {
+                Class.forName(className, false, javaClass.classLoader)
+            } catch (error: ClassNotFoundException) {
+                failures += "$className (${error.javaClass.simpleName})"
+            } catch (error: LinkageError) {
+                failures += "$className (${error.javaClass.simpleName})"
+            }
+        }
+        check(failures.isEmpty()) {
+            "플러그인 런타임 클래스를 불러올 수 없습니다: ${failures.take(10).joinToString()}"
+        }
+        loggerInfo("런타임 클래스 ${classNames.size}개를 사전 로드했습니다.")
     }
 
     private fun registerEvents() {

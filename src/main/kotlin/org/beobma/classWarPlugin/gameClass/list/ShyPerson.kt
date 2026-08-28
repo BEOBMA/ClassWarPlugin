@@ -75,7 +75,7 @@ class ShyPerson : GameClass(), GameStatusHandler {
         val step = delta.multiply(1.0 / points)
         val cursor = from.clone()
         repeat(points) {
-            player.spawnParticle(Particle.WITCH, cursor, 1, 0.03, 0.03, 0.03, 0.0)
+            particles.spawnTo(player, cursor, Particle.WITCH, 1, 0.03, 0.0)
             cursor.add(step)
         }
     }

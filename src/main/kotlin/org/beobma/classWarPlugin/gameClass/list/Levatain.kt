@@ -177,9 +177,9 @@ class Levatain : GameClass(), GameStatusHandler {
                     particles.spawn(center, Particle.FLASH, count = if (stage >= FINAL_STAGE) 4 else 2)
                     particles.spawn(center, Particle.EXPLOSION, count = if (stage >= FINAL_STAGE) 3 else 1, spread = 0.35)
                 }
-                tick++
+                tick += 2
             }
-        }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
+        }.runTaskTimer(ClassWarPlugin.instance, 0L, 2L))
     }
 
     private fun startFinalAura() {

@@ -194,15 +194,19 @@ class PortalGun : GameClass(), SkillInputHandler {
                         cancel()
                         return
                     }
-                    bluePortal?.let { drawPortal(it, ticks) }
-                    orangePortal?.let { drawPortal(it, ticks) }
+                    if (ticks % 2 == 0) {
+                        bluePortal?.let { drawPortal(it, ticks) }
+                        orangePortal?.let { drawPortal(it, ticks) }
+                    }
                     val blue = bluePortal
                     val orange = orangePortal
                     if (blue != null && orange != null) {
                         teleportBukkitEntities(blue, orange)
                     }
-                    entityCooldowns.entries.removeIf { player.world.fullTime - it.value > 20L }
-                    portalMomentumByEntity.entries.removeIf { player.world.fullTime - it.value.lastTransitTick > 100L }
+                    if (ticks % 20 == 0) {
+                        entityCooldowns.entries.removeIf { player.world.fullTime - it.value > 20L }
+                        portalMomentumByEntity.entries.removeIf { player.world.fullTime - it.value.lastTransitTick > 100L }
+                    }
                     ticks++
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
@@ -210,8 +214,8 @@ class PortalGun : GameClass(), SkillInputHandler {
 
         private fun drawPortal(portal: PortalData, tick: Int) {
             val dust = Particle.DustOptions(portal.color.dustColor, 1.25f)
-            repeat(18) { index ->
-                val angle = 2.0 * PI * index / 18.0 + tick * 0.045
+            repeat(12) { index ->
+                val angle = 2.0 * PI * index / 12.0 + tick * 0.045
                 val point = portal.center.clone()
                     .add(portal.right.clone().multiply(cos(angle) * 0.88))
                     .add(portal.up.clone().multiply(sin(angle) * 1.34))
@@ -222,10 +226,17 @@ class PortalGun : GameClass(), SkillInputHandler {
         }
 
         private fun teleportBukkitEntities(blue: PortalData, orange: PortalData) {
-            val worlds = listOf(blue.center.world, orange.center.world).distinct()
-            val candidates = worlds.asSequence()
-                .flatMap { it.entities.asSequence() }
+            val candidates = sequenceOf(blue, orange)
+                .flatMap { portal ->
+                    portal.center.world.getNearbyEntities(
+                        portal.center,
+                        PORTAL_GUN_ENTITY_SEARCH_RADIUS,
+                        PORTAL_GUN_ENTITY_SEARCH_RADIUS,
+                        PORTAL_GUN_ENTITY_SEARCH_RADIUS,
+                    ).asSequence()
+                }
                 .filter { it is Player || it is BukkitProjectile }
+                .filter(::canAffectInCurrentMode)
                 .distinctBy { it.uniqueId }
                 .toList()
             val currentIds = mutableSetOf<UUID>()
@@ -373,7 +384,13 @@ class PortalGun : GameClass(), SkillInputHandler {
                 abs(relative.dot(portal.up)) <= 1.36 + upExtent
         }
 
-        fun tryTeleportCustomProjectile(location: Location, direction: Vector, distance: Double): Boolean {
+        fun tryTeleportCustomProjectile(
+            projectileOwnerId: UUID,
+            location: Location,
+            direction: Vector,
+            distance: Double,
+        ): Boolean {
+            if (!canAffectPlayerIdInCurrentMode(projectileOwnerId)) return false
             val blue = bluePortal ?: return false
             val orange = orangePortal ?: return false
             return tryTeleportRay(location, direction, distance, blue, orange) ||
@@ -382,7 +399,23 @@ class PortalGun : GameClass(), SkillInputHandler {
 
         fun belongsTo(playerId: UUID): Boolean = player.uniqueId == playerId
 
+        private fun canAffectInCurrentMode(entity: Entity): Boolean {
+            if (!game.mode.usesTailTagRules) return true
+            val affectedPlayerId = when (entity) {
+                is Player -> entity.uniqueId
+                is BukkitProjectile -> (entity.shooter as? Entity)?.uniqueId ?: return false
+                else -> return false
+            }
+            return canAffectPlayerIdInCurrentMode(affectedPlayerId)
+        }
+
+        private fun canAffectPlayerIdInCurrentMode(affectedPlayerId: UUID): Boolean =
+            !game.mode.usesTailTagRules ||
+                affectedPlayerId == player.uniqueId ||
+                affectedPlayerId == game.targetOf(player.uniqueId)
+
         fun tryTeleportCollidedProjectile(projectile: BukkitProjectile): Boolean {
+            if (!canAffectInCurrentMode(projectile)) return false
             val blue = bluePortal ?: return false
             val orange = orangePortal ?: return false
             val point = projectile.boundingBox.center
@@ -457,11 +490,19 @@ class PortalGun : GameClass(), SkillInputHandler {
     }
 
     companion object {
+        private const val PORTAL_GUN_ENTITY_SEARCH_RADIUS = 6.0
         private val activePortalSkills = mutableSetOf<RedSkill>()
         private val allPortalSkills = mutableSetOf<RedSkill>()
 
-        fun teleportCustomProjectile(location: Location, direction: Vector, distance: Double): Boolean {
-            return activePortalSkills.toList().any { it.tryTeleportCustomProjectile(location, direction, distance) }
+        fun teleportCustomProjectile(
+            projectileOwnerId: UUID,
+            location: Location,
+            direction: Vector,
+            distance: Double,
+        ): Boolean {
+            return activePortalSkills.toList().any {
+                it.tryTeleportCustomProjectile(projectileOwnerId, location, direction, distance)
+            }
         }
 
         fun teleportCollidedProjectile(projectile: BukkitProjectile): Boolean =
