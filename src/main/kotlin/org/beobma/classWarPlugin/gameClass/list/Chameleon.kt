@@ -30,6 +30,7 @@ import org.bukkit.Sound
 import org.bukkit.Tag
 import org.bukkit.attribute.Attribute
 import org.bukkit.block.Block
+import org.bukkit.enchantments.Enchantment
 import org.bukkit.entity.BlockDisplay
 import org.bukkit.entity.Display
 import org.bukkit.entity.Interaction
@@ -201,7 +202,7 @@ class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, Pla
 
             val path = if (directDamager is Projectile) DamagePath.RANGED_ATTACK else DamagePath.BASIC_ATTACK
             val baseDamage = if (directDamager is Player) {
-                calculatePlayerAttackDamage(event, attacker, owner.player)
+                calculatePlayerAttackDamage(event, attacker)
             } else {
                 event.damage
             }
@@ -219,7 +220,6 @@ class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, Pla
         private fun calculatePlayerAttackDamage(
             event: EntityDamageByEntityEvent,
             attacker: Player,
-            target: Player,
         ): Double {
             val attackStrength = attacker.getCooledAttackStrength(0.5f).coerceIn(0.0f, 1.0f)
             val attackStrengthDouble = attackStrength.toDouble()
@@ -229,16 +229,19 @@ class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, Pla
                 baseDamage *= 1.5
             }
 
-            val enchantmentDamage = attacker.inventory.itemInMainHand.enchantments.entries.sumOf { (enchantment, level) ->
-                enchantment.getDamageIncrease(level, target.type).toDouble()
-            } * attackStrengthDouble
+            val sharpnessLevel = attacker.inventory.itemInMainHand.getEnchantmentLevel(Enchantment.SHARPNESS)
+            val enchantmentDamage = if (sharpnessLevel > 0) {
+                (0.5 * sharpnessLevel + 0.5) * attackStrengthDouble
+            } else {
+                0.0
+            }
 
             // Paper가 이미 올바른 피해를 제공한 경우에는 그 값을 보존한다.
             return maxOf(event.damage, baseDamage + enchantmentDamage)
         }
 
         private fun isVanillaCriticalAttack(attacker: Player, attackStrength: Float): Boolean =
-            attackStrength > 0.9f && attacker.fallDistance > 0.0f && !attacker.isOnGround &&
+            attackStrength > 0.9f && attacker.fallDistance > 0.0f &&
                 !Tag.CLIMBABLE.isTagged(attacker.location.block.type) && !attacker.isInWater &&
                 !attacker.hasPotionEffect(PotionEffectType.BLINDNESS) && !attacker.isInsideVehicle &&
                 !attacker.isSprinting && !attacker.isGliding
