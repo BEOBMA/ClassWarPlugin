@@ -4,6 +4,7 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.SkillInputHandler
+import org.beobma.classWarPlugin.manager.ClassBalanceManager
 import org.beobma.classWarPlugin.manager.TemporaryDisplayManager
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Skill
@@ -106,17 +107,18 @@ class PortalGun : GameClass(), SkillInputHandler {
         private val portalMomentumByEntity = mutableMapOf<UUID, PortalMomentum>()
 
         override fun isUseSuccess(): Boolean {
+            val portalRange = ClassBalanceManager.scaleRange(playerData, 45.0)
             val hit = player.world.rayTraceBlocks(
                 player.eyeLocation,
                 player.eyeLocation.direction,
-                45.0,
+                portalRange,
                 FluidCollisionMode.NEVER,
                 true,
             )
             val position = hit?.hitPosition
             val face = hit?.hitBlockFace
             if (position == null || face == null) {
-                player.sendMiniMessage("<red><bold>[!] 45칸 내의 포탈을 설치할 블록을 바라봐야 합니다.")
+                player.sendMiniMessage("<red><bold>[!] %.1f칸 내의 포탈을 설치할 블록을 바라봐야 합니다.".format(portalRange))
                 return false
             }
             pendingPlacement = Placement(position.toLocation(player.world), face)

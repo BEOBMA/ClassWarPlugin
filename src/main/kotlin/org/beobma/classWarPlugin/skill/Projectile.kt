@@ -9,6 +9,7 @@ import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.TemporaryDisplayManager
 import org.beobma.classWarPlugin.manager.AttackableObjectManager
+import org.beobma.classWarPlugin.manager.ClassBalanceManager
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.entity.player.PlayerStatus
@@ -27,6 +28,7 @@ import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.BoundingBox
 import java.util.UUID
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 abstract class Projectile : EffectApiAccess {
     protected lateinit var playerData: PlayerData
@@ -89,7 +91,9 @@ abstract class Projectile : EffectApiAccess {
     fun spawnProjectile(playerData: PlayerData) {
         inject(playerData)
         val game = game
-        val time = time
+        val durationLimitTicks = time?.let { seconds ->
+            (seconds * 20.0 * ClassBalanceManager.rangeMultiplier(playerData)).roundToInt().coerceAtLeast(1)
+        }
         if (isFlatMove) location.pitch = 0F
 
         val direction = location.direction.normalize()
@@ -114,13 +118,13 @@ abstract class Projectile : EffectApiAccess {
             }
 
             override fun run() {
-                if (time == null) {
+                if (durationLimitTicks == null) {
                     if (continueWhile != null && !continueWhile!!.invoke()) {
                         stop()
                         return
                     }
                 } else {
-                    if (durationTicks++ >= time * 20) {
+                    if (durationTicks++ >= durationLimitTicks) {
                         stop()
                         return
                     }

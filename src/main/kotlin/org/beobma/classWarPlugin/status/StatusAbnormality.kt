@@ -44,6 +44,8 @@ abstract class StatusAbnormality {
         this.game = entityData.game
     }
 
+    internal fun balanceCasterData(): PlayerData? = if (::casterData.isInitialized) casterData else null
+
     open fun increasePower(amount: Int) {
         val maxPower = maxPower
         power += amount

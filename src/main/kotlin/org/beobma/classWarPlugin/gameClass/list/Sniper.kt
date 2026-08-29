@@ -11,6 +11,7 @@ import org.beobma.classWarPlugin.gameClass.handler.WeaponInputHandler
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.manager.ClassBalanceManager
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.SkillManager.getTargetCandidates
@@ -75,8 +76,9 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
 
     private fun traceShot(start: Location, direction: Vector, expansion: Double): ShotTrace {
         val normalized = direction.clone().normalize()
-        val blockHit = start.world.rayTraceBlocks(start, normalized, 64.0)
-        val blockDistance = blockHit?.hitPosition?.distance(start.toVector()) ?: 64.0
+        val maximumRange = ClassBalanceManager.scaleRange(playerData, 64.0)
+        val blockHit = start.world.rayTraceBlocks(start, normalized, maximumRange)
+        val blockDistance = blockHit?.hitPosition?.distance(start.toVector()) ?: maximumRange
         val isTraining = PlayerTagManager.hasTag(player, "isTraining")
 
         val targetHit = playerData.getTargetCandidates().asSequence()
@@ -94,7 +96,7 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
                     candidate.entity.boundingBox,
                     start.toVector(),
                     normalized,
-                    64.0,
+                    maximumRange,
                     expansion,
                 )?.let { distance -> candidate to distance }
             }

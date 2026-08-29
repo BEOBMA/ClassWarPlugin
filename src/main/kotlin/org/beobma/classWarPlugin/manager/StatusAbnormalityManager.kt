@@ -33,12 +33,23 @@ object StatusAbnormalityManager {
      * @param powerSet 상태이상의 기본 수치 값에 덮어 씌울 값
      */
     fun StatusAbnormality.applyStatus(duration: Int? = null, powerDelta: Int? = null, powerSet: Int? = null) {
-        powerSet?.let { updatePower(it) }
-        powerDelta?.let { increasePower(it) }
-        if (duration != null) {
+        val caster = balanceCasterData()
+        val shouldBalance = !isClassMechanic
+        val balancedPowerSet = powerSet?.let {
+            if (shouldBalance && showPower) ClassBalanceManager.scaleStatusPower(caster, it) else it
+        }
+        val balancedPowerDelta = powerDelta?.let {
+            if (shouldBalance && showPower) ClassBalanceManager.scaleStatusPower(caster, it) else it
+        }
+        val balancedDuration = duration?.let {
+            if (shouldBalance) ClassBalanceManager.scaleStatusDuration(caster, it) else it
+        }
+        balancedPowerSet?.let { updatePower(it) }
+        balancedPowerDelta?.let { increasePower(it) }
+        if (balancedDuration != null) {
             when (durationMode) {
-                StatusDurationMode.Refresh -> updateDuration(duration)
-                StatusDurationMode.Extend -> increaseDuration(duration)
+                StatusDurationMode.Refresh -> updateDuration(balancedDuration)
+                StatusDurationMode.Extend -> increaseDuration(balancedDuration)
                 StatusDurationMode.Ignore -> return
             }
         }

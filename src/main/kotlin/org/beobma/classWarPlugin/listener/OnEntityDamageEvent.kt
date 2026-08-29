@@ -3,6 +3,8 @@ package org.beobma.classWarPlugin.listener
 import org.beobma.classWarPlugin.manager.GameManager.trainingInstance
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.game.GamePhase
+import org.beobma.classWarPlugin.game.DamageMultiplierType
+import org.beobma.classWarPlugin.game.damageMultiplier
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.DamageIndicatorManager
@@ -18,10 +20,12 @@ import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
 import org.beobma.classWarPlugin.manager.GameManager.canDispatchClassHandlers
 import org.beobma.classWarPlugin.gameClass.list.Vampire
 import org.bukkit.entity.Player
+import org.bukkit.entity.Projectile
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDamageEvent
+import org.bukkit.event.entity.EntityDamageByEntityEvent
 import kotlin.math.roundToInt
 
 class OnEntityDamageEvent : Listener {
@@ -32,7 +36,8 @@ class OnEntityDamageEvent : Listener {
             event.isCancelled = true
         }
         val player = event.entity as? Player ?: return
-        val handlerData = findGameForPlayer(player)?.playerDatas?.filterIsInstance<PlayerData>()
+        val handlerGame = findGameForPlayer(player)
+        val handlerData = handlerGame?.playerDatas?.filterIsInstance<PlayerData>()
             ?.find { it.uniqueId == player.uniqueId }
         if (handlerData?.hasStatus<Invincibility>() == true) {
             event.isCancelled = true
@@ -56,6 +61,14 @@ class OnEntityDamageEvent : Listener {
             if (event.isCancelled) return
         }
         if (event.isCancelled) return
+        if (!event.isManagedPlayerCombatDamage()) {
+            val multiplier = handlerGame?.settings?.damageMultiplier(event.damageMultiplierType()) ?: 1.0
+            if (multiplier <= 0.0) {
+                event.isCancelled = true
+                return
+            }
+            event.damage *= multiplier
+        }
         if (!PlayerTagManager.hasTag(player, "isTraining")) {
             if (handlerData != null && event.finalDamage > 0.0) {
                 CombatManager.recordDamageTaken(handlerData)
@@ -89,5 +102,56 @@ class OnEntityDamageEvent : Listener {
             player.sendMiniMessage("<red>받은 피해 정보 - <gray>피해량: <gold><bold>$formattedDamage</bold></gold>")
         }
         event.isCancelled = true
+    }
+
+    private fun EntityDamageEvent.isManagedPlayerCombatDamage(): Boolean {
+        val damageByEntity = this as? EntityDamageByEntityEvent ?: return false
+        return when (val damager = damageByEntity.damager) {
+            is Player -> true
+            is Projectile -> damager.shooter is Player
+            else -> false
+        }
+    }
+
+    private fun EntityDamageEvent.damageMultiplierType(): DamageMultiplierType = when (cause) {
+        EntityDamageEvent.DamageCause.FALL -> DamageMultiplierType.FALL
+        EntityDamageEvent.DamageCause.DROWNING,
+        EntityDamageEvent.DamageCause.DRYOUT -> DamageMultiplierType.DROWNING
+
+        EntityDamageEvent.DamageCause.FIRE,
+        EntityDamageEvent.DamageCause.FIRE_TICK,
+        EntityDamageEvent.DamageCause.HOT_FLOOR,
+        EntityDamageEvent.DamageCause.CAMPFIRE -> DamageMultiplierType.FIRE
+
+        EntityDamageEvent.DamageCause.LAVA -> DamageMultiplierType.LAVA
+        EntityDamageEvent.DamageCause.SUFFOCATION,
+        EntityDamageEvent.DamageCause.CRAMMING -> DamageMultiplierType.SUFFOCATION
+
+        EntityDamageEvent.DamageCause.BLOCK_EXPLOSION,
+        EntityDamageEvent.DamageCause.ENTITY_EXPLOSION -> DamageMultiplierType.EXPLOSION
+
+        EntityDamageEvent.DamageCause.POISON,
+        EntityDamageEvent.DamageCause.WITHER,
+        EntityDamageEvent.DamageCause.MAGIC,
+        EntityDamageEvent.DamageCause.DRAGON_BREATH -> DamageMultiplierType.POISON_MAGIC
+
+        EntityDamageEvent.DamageCause.STARVATION -> DamageMultiplierType.STARVATION
+        EntityDamageEvent.DamageCause.VOID,
+        EntityDamageEvent.DamageCause.KILL -> DamageMultiplierType.VOID
+
+        EntityDamageEvent.DamageCause.FREEZE -> DamageMultiplierType.FREEZING
+        EntityDamageEvent.DamageCause.CONTACT -> DamageMultiplierType.CONTACT
+        EntityDamageEvent.DamageCause.LIGHTNING -> DamageMultiplierType.LIGHTNING
+        EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+        EntityDamageEvent.DamageCause.ENTITY_SWEEP_ATTACK,
+        EntityDamageEvent.DamageCause.PROJECTILE,
+        EntityDamageEvent.DamageCause.THORNS,
+        EntityDamageEvent.DamageCause.SONIC_BOOM -> DamageMultiplierType.MOB_ATTACK
+
+        EntityDamageEvent.DamageCause.FALLING_BLOCK,
+        EntityDamageEvent.DamageCause.FLY_INTO_WALL -> DamageMultiplierType.IMPACT
+
+        EntityDamageEvent.DamageCause.WORLD_BORDER -> DamageMultiplierType.WORLD_BORDER
+        else -> DamageMultiplierType.OTHER_ENVIRONMENT
     }
 }

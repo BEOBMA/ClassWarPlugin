@@ -7,6 +7,7 @@ import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
+import org.beobma.classWarPlugin.manager.ClassBalanceManager
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
@@ -97,8 +98,9 @@ class ThunderclapFlash : GameClass(), GameStatusHandler {
             if (direction.lengthSquared() < 1.0E-8) direction = player.location.direction.setY(0.0)
             direction.normalize()
             val rayStart = targetCenter.toLocation(player.world).add(0.0, 0.2, 0.0)
-            val obstruction = player.world.rayTraceBlocks(rayStart, direction, 6.0)
-            val distance = ((obstruction?.hitPosition?.distance(targetCenter) ?: 6.0) - 0.8).coerceAtLeast(0.6)
+            val dashRange = ClassBalanceManager.scaleRange(playerData, 6.0)
+            val obstruction = player.world.rayTraceBlocks(rayStart, direction, dashRange)
+            val distance = ((obstruction?.hitPosition?.distance(targetCenter) ?: dashRange) - 0.8).coerceAtLeast(0.6)
             val destination = target.entity.location.clone().add(direction.clone().multiply(distance)).apply {
                 yaw = player.location.yaw
                 pitch = player.location.pitch

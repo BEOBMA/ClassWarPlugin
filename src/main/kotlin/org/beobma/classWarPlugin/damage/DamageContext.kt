@@ -2,6 +2,8 @@ package org.beobma.classWarPlugin.damage
 
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.game.damageMultiplier
+import org.beobma.classWarPlugin.manager.ClassBalanceManager
 import org.beobma.classWarPlugin.util.DamageType
 
 class DamageContext(
@@ -13,8 +15,9 @@ class DamageContext(
     val bypassShield: Boolean = false,
     val armorIgnoreRatio: Double = 0.0,
 ) {
-    val originalDamage: Double = baseDamage
-    var damage: Double = baseDamage
+    val originalDamage: Double = ClassBalanceManager.scaleDamage(attacker, path, baseDamage) *
+        attacker.initGame.settings.damageMultiplier(path)
+    var damage: Double = originalDamage
         private set
     var isCancelled: Boolean = false
 

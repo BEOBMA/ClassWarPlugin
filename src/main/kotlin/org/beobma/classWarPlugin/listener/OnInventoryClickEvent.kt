@@ -16,7 +16,14 @@ import org.beobma.classWarPlugin.manager.InventoryManager.getOpenConfigCategory
 import org.beobma.classWarPlugin.manager.InventoryManager.getClassFromItem
 import org.beobma.classWarPlugin.manager.InventoryManager.getMatchModeFromItem
 import org.beobma.classWarPlugin.manager.InventoryManager.openTrainingClassListInventory
+import org.beobma.classWarPlugin.manager.InventoryManager.openClassBalanceListInventory
+import org.beobma.classWarPlugin.manager.InventoryManager.openClassBalanceDetailInventory
+import org.beobma.classWarPlugin.manager.InventoryManager.getOpenClassBalancePage
+import org.beobma.classWarPlugin.manager.InventoryManager.getSelectedClassBalance
+import org.beobma.classWarPlugin.manager.InventoryManager.getDamageMultiplierTypeFromSlot
 import org.beobma.classWarPlugin.manager.ConfigCategory
+import org.beobma.classWarPlugin.manager.ClassBalanceField
+import org.beobma.classWarPlugin.manager.ClassBalanceManager
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.PlayerManager.refreshClassItemDescriptions
 import org.beobma.classWarPlugin.manager.PlayerPreferenceManager
@@ -97,11 +104,34 @@ class OnInventoryClickEvent : Listener {
                     12 -> ConfigCategory.RANK
                     14 -> ConfigCategory.SCATTER
                     16 -> ConfigCategory.BORDER
+                    18 -> ConfigCategory.DAMAGE
                     20 -> ConfigCategory.COMBAT
+                    24 -> ConfigCategory.CLASS_BALANCE
                     else -> null
                 } ?: return
                 if (selectedCategory != ConfigCategory.PERSONAL && !player.isOp) return
                 player.openConfigCategoryInventory(selectedCategory)
+                return
+            }
+
+            if (category == ConfigCategory.CLASS_BALANCE) {
+                handleClassBalanceConfigClick(player, event)
+                return
+            }
+
+            if (category == ConfigCategory.DAMAGE) {
+                if (event.rawSlot == 45) {
+                    player.openConfigInventory()
+                    return
+                }
+                if (!player.isOp) return
+                val type = getDamageMultiplierTypeFromSlot(event.rawSlot) ?: return
+                GameSettings.adjustDamageMultiplier(
+                    type,
+                    increase = event.isLeftClick,
+                    stepMultiplier = if (event.isShiftClick) 10 else 1,
+                )
+                player.openConfigCategoryInventory(category)
                 return
             }
 
@@ -238,6 +268,7 @@ class OnInventoryClickEvent : Listener {
         ConfigCategory.PERSONAL -> null
         ConfigCategory.GAME -> when (inventorySlot) {
             11 -> 10
+            13 -> 60
             15 -> 12
             else -> null
         }
@@ -269,6 +300,9 @@ class OnInventoryClickEvent : Listener {
             16 -> 46
             22 -> 48
             23 -> 50
+            24 -> 62
+            25 -> 64
+            26 -> 66
             else -> null
         }
 
@@ -279,6 +313,53 @@ class OnInventoryClickEvent : Listener {
             16 -> 58
             22 -> 24
             else -> null
+        }
+
+        ConfigCategory.DAMAGE -> null
+        ConfigCategory.CLASS_BALANCE -> null
+    }
+
+    private fun handleClassBalanceConfigClick(player: Player, event: InventoryClickEvent) {
+        val selectedClass = getSelectedClassBalance(player)
+        val page = getOpenClassBalancePage(player)
+        if (selectedClass == null) {
+            when (event.rawSlot) {
+                45 -> player.openConfigInventory()
+                48 -> player.openClassBalanceListInventory(page - 1)
+                50 -> player.openClassBalanceListInventory(page + 1)
+                else -> event.currentItem?.let(::getClassFromItem)?.let { gameClass ->
+                    player.openClassBalanceDetailInventory(gameClass)
+                }
+            }
+            return
+        }
+
+        when (event.rawSlot) {
+            18 -> player.openClassBalanceListInventory(page)
+            22 -> {
+                ClassBalanceManager.reset(selectedClass)
+                player.openClassBalanceDetailInventory(selectedClass)
+            }
+
+            else -> {
+                val field = when (event.rawSlot) {
+                    10 -> ClassBalanceField.DAMAGE
+                    11 -> ClassBalanceField.HEALING
+                    12 -> ClassBalanceField.RANGE
+                    13 -> ClassBalanceField.OVERALL
+                    14 -> ClassBalanceField.STATUS_DURATION
+                    15 -> ClassBalanceField.STATUS_POWER
+                    16 -> ClassBalanceField.COOLDOWN_FLOW
+                    else -> null
+                } ?: return
+                ClassBalanceManager.adjust(
+                    selectedClass,
+                    field,
+                    increase = event.isLeftClick,
+                    stepMultiplier = if (event.isShiftClick) 10 else 1,
+                )
+                player.openClassBalanceDetailInventory(selectedClass)
+            }
         }
     }
 }

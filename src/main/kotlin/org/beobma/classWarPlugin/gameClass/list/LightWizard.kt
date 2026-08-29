@@ -3,6 +3,7 @@ package org.beobma.classWarPlugin.gameClass.list
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
+import org.beobma.classWarPlugin.manager.ClassBalanceManager
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
 import org.beobma.classWarPlugin.manager.SkillManager.getTargetCandidates
@@ -53,7 +54,12 @@ class LightWizard : GameClass() {
     private val prisms = ArrayDeque<Prism>()
 
     private fun placePrism(): Boolean {
-        val trace = player.world.rayTraceBlocks(player.eyeLocation, player.eyeLocation.direction, 10.0) ?: return false
+        val placementRange = ClassBalanceManager.scaleRange(playerData, 10.0)
+        val trace = player.world.rayTraceBlocks(
+            player.eyeLocation,
+            player.eyeLocation.direction,
+            placementRange,
+        ) ?: return false
         val hitPosition = trace.hitPosition
         val hitFace = trace.hitBlockFace ?: return false
         val surfaceNormal = hitFace.direction.normalize()
@@ -101,7 +107,7 @@ class LightWizard : GameClass() {
         var processed = 0
         while (queue.isNotEmpty() && processed++ < 1 + LIGHT_WIZARD_MAX_PRISMS * 4) {
             val beam = queue.removeFirst()
-            val maxDistance = 24.0
+            val maxDistance = ClassBalanceManager.scaleRange(playerData, 24.0)
             val blockHit = beam.start.world.rayTraceBlocks(beam.start, beam.direction, maxDistance)?.hitPosition
             var distance = blockHit?.distance(beam.start.toVector()) ?: maxDistance
             val prism = prisms

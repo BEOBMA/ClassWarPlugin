@@ -129,13 +129,14 @@ object SkillManager {
         oneself: Boolean,
         hitAttackableObjects: Boolean = true,
     ): List<EntityData> {
+        val effectiveRadius = ClassBalanceManager.scaleRange(this, radius)
         val isTraining = isTraining()
         val sourcePlayer = this as? PlayerData
         if (hitAttackableObjects && sourcePlayer != null && targetType == Enemy) {
-            AttackableObjectManager.hitSphere(sourcePlayer.uniqueId, location, radius)
+            AttackableObjectManager.hitSphere(sourcePlayer.uniqueId, location, effectiveRadius)
         }
         val world = entity.world
-        val nearbyEntities = world.getNearbyEntities(location, radius, radius, radius)
+        val nearbyEntities = world.getNearbyEntities(location, effectiveRadius, effectiveRadius, effectiveRadius)
             .filterIsInstance<LivingEntity>()
         val entityDatas = getTargetCandidates().filter { entityData ->
             val playerStatus = entityData.entityStatus
@@ -144,7 +145,7 @@ object SkillManager {
         val nearbyEntityData = nearbyEntities.mapNotNull { target ->
             entityDatas.find { it.entity == target }
         }.filter { candidate ->
-            HitboxUtil.intersectsSphere(candidate.entity.boundingBox, location.toVector(), radius)
+            HitboxUtil.intersectsSphere(candidate.entity.boundingBox, location.toVector(), effectiveRadius)
         }
 
         return when (targetType) {
@@ -175,7 +176,7 @@ object SkillManager {
         val startLocation = entity.eyeLocation
         val direction = startLocation.direction
 
-        val maxDistance: Double = maxRange
+        val maxDistance = ClassBalanceManager.scaleRange(this, maxRange)
 
         val hitEntityData = playerDatas.asSequence()
             .filter { candidate ->
@@ -234,15 +235,16 @@ object SkillManager {
         val startLocation = sourcePlayer.player.eyeLocation
         val direction = startLocation.direction
 
-        val maxDistance: Double = maxRange
+        val maxDistance = ClassBalanceManager.scaleRange(this, maxRange)
 
         val blockRayTraceResult = world.rayTraceBlocks(startLocation, direction, maxDistance)
         return blockRayTraceResult?.hitBlock
     }
     fun EntityData.getConeTargets(radius: Double, angle: Double, targetType: TargetType, includeSelf: Boolean): List<EntityData> {
         val sourcePlayer = this as? PlayerData ?: return emptyList()
+        val effectiveRadius = ClassBalanceManager.scaleRange(this, radius)
         if (targetType == Enemy) {
-            AttackableObjectManager.hitCone(sourcePlayer.uniqueId, sourcePlayer.player.eyeLocation, radius, angle)
+            AttackableObjectManager.hitCone(sourcePlayer.uniqueId, sourcePlayer.player.eyeLocation, effectiveRadius, angle)
         }
         val isTraining = isTraining()
         val playerLocation = sourcePlayer.player.location
@@ -264,7 +266,7 @@ object SkillManager {
             }
 
             val distanceSquared = HitboxUtil.distanceSquared(targetPlayerData.entity.boundingBox, playerLocation.toVector())
-            if (distanceSquared > radius * radius) return@filter false
+            if (distanceSquared > effectiveRadius * effectiveRadius) return@filter false
             if (distanceSquared == 0.0) return@filter true
 
             val targetPoint = HitboxUtil.closestPoint(targetPlayerData.entity.boundingBox, playerLocation.toVector())

@@ -29,6 +29,7 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager
 import org.beobma.classWarPlugin.manager.DamageIndicatorManager
 import org.beobma.classWarPlugin.manager.StealthVisibilityManager
 import org.beobma.classWarPlugin.manager.AttackableObjectManager
+import org.beobma.classWarPlugin.manager.ClassBalanceManager
 import org.beobma.classWarPlugin.util.CourtroomMidiPlayer
 import org.beobma.classWarPlugin.updater.GitHubReleaseUpdater
 import org.bukkit.plugin.java.JavaPlugin
@@ -56,6 +57,7 @@ class ClassWarPlugin : JavaPlugin() {
         instance = this
         saveDefaultConfig()
         GameSettings.load(config)
+        ClassBalanceManager.load(config, GameManager.gameClassList)
         DamageIndicatorManager.start()
         AttackableObjectManager.start()
         CourtroomMidiPlayer.preload()

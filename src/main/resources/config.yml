@@ -2,6 +2,22 @@ selection:
   refresh-chances: 3
   countdown-seconds: 5
 
+skills:
+  # 2.0이면 모든 스킬의 재사용 대기시간이 2배 빠르게 흘러 실제 대기시간이 절반이 됩니다.
+  cooldown-flow-multiplier: 1.0
+
+# 모든 값은 현재 클래스 수치를 기준으로 한 배율입니다. 개별 클래스 항목은 첫 실행 때 자동 생성됩니다.
+class-balance:
+  defaults:
+    overall-multiplier: 1.0
+    damage-multiplier: 1.0
+    healing-multiplier: 1.0
+    range-multiplier: 1.0
+    status-duration-multiplier: 1.0
+    status-power-multiplier: 1.0
+    cooldown-flow-multiplier: 1.0
+  classes: {}
+
 # GitHub의 최신 정식 릴리스를 확인하고 다음 서버 재시작 때 적용할 JAR을 준비합니다.
 # 릴리스 태그와 JAR 내부 plugin.yml의 version은 같은 버전이어야 합니다. (예: v1.0.2 / 1.0.2)
 auto-update:
@@ -33,6 +49,29 @@ combat:
     enabled: true
     show-killer: true
     show-cause: true
+  # 전체 배율과 세부 배율이 곱해져 최종 배율이 됩니다. 0.0으로 설정하면 해당 피해를 받지 않습니다.
+  damage-multipliers:
+    overall: 1.0
+    basic-attack: 1.0
+    ranged-attack: 1.0
+    skill: 1.0
+    status-effect: 1.0
+    fall: 1.0
+    drowning: 1.0
+    fire: 1.0
+    lava: 1.0
+    suffocation: 1.0
+    explosion: 1.0
+    poison-magic: 1.0
+    starvation: 1.0
+    void: 1.0
+    freezing: 1.0
+    contact: 1.0
+    lightning: 1.0
+    mob-attack: 1.0
+    impact: 1.0
+    world-border: 1.0
+    other-environment: 1.0
 
 map:
   center-x: 704.5
@@ -53,4 +92,9 @@ border:
   shrink-seconds: 600
   minimum-size: 40.0
   damage-buffer: 5.0
+  # 일반 월드보더 밖에서 블록당 받는 피해입니다. 마인크래프트 기본값은 0.2입니다.
+  damage-per-block: 0.2
   final-descent-seconds: 180
+  # 상공에서 내려오는 최종 자기장에 닿았을 때 받는 고정 피해와 피해 주기입니다.
+  final-damage: 2.0
+  final-damage-interval-seconds: 1.0

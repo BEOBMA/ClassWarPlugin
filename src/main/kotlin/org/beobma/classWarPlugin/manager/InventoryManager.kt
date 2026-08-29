@@ -7,8 +7,10 @@ import net.kyori.adventure.text.minimessage.MiniMessage
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
+import org.beobma.classWarPlugin.game.DamageMultiplierType
 import org.beobma.classWarPlugin.game.GameSettings
 import org.beobma.classWarPlugin.game.MatchMode
+import org.beobma.classWarPlugin.game.damageMultiplier
 import org.beobma.classWarPlugin.manager.GameClassManager.toItemStack
 import org.beobma.classWarPlugin.manager.GameManager.gameClassList
 import org.beobma.classWarPlugin.entity.player.PlayerData
@@ -27,9 +29,42 @@ enum class ConfigCategory {
     SCATTER,
     BORDER,
     COMBAT,
+    DAMAGE,
+    CLASS_BALANCE,
 }
 
 object InventoryManager {
+    private const val CLASS_BALANCE_PAGE_SIZE = 45
+    private data class DamageConfigItem(
+        val slot: Int,
+        val type: DamageMultiplierType,
+        val material: Material,
+        val name: String,
+    )
+
+    private val damageConfigItems = listOf(
+        DamageConfigItem(10, DamageMultiplierType.OVERALL, Material.NETHER_STAR, "전체 피해"),
+        DamageConfigItem(11, DamageMultiplierType.BASIC_ATTACK, Material.IRON_SWORD, "기본 공격 피해"),
+        DamageConfigItem(12, DamageMultiplierType.RANGED_ATTACK, Material.BOW, "원거리 공격 피해"),
+        DamageConfigItem(13, DamageMultiplierType.SKILL, Material.BLAZE_ROD, "스킬 피해"),
+        DamageConfigItem(14, DamageMultiplierType.STATUS_EFFECT, Material.FERMENTED_SPIDER_EYE, "상태이상 피해"),
+        DamageConfigItem(15, DamageMultiplierType.FALL, Material.FEATHER, "낙하 피해"),
+        DamageConfigItem(16, DamageMultiplierType.DROWNING, Material.WATER_BUCKET, "익사·건조 피해"),
+        DamageConfigItem(19, DamageMultiplierType.FIRE, Material.FLINT_AND_STEEL, "화염 피해"),
+        DamageConfigItem(20, DamageMultiplierType.LAVA, Material.LAVA_BUCKET, "용암 피해"),
+        DamageConfigItem(21, DamageMultiplierType.SUFFOCATION, Material.SAND, "질식·끼임 피해"),
+        DamageConfigItem(22, DamageMultiplierType.EXPLOSION, Material.TNT, "폭발 피해"),
+        DamageConfigItem(23, DamageMultiplierType.POISON_MAGIC, Material.SPIDER_EYE, "독·위더·마법 피해"),
+        DamageConfigItem(24, DamageMultiplierType.STARVATION, Material.ROTTEN_FLESH, "굶주림 피해"),
+        DamageConfigItem(25, DamageMultiplierType.VOID, Material.ENDER_PEARL, "공허·강제 처치 피해"),
+        DamageConfigItem(28, DamageMultiplierType.FREEZING, Material.POWDER_SNOW_BUCKET, "동상 피해"),
+        DamageConfigItem(29, DamageMultiplierType.CONTACT, Material.CACTUS, "접촉 피해"),
+        DamageConfigItem(30, DamageMultiplierType.LIGHTNING, Material.LIGHTNING_ROD, "번개 피해"),
+        DamageConfigItem(31, DamageMultiplierType.MOB_ATTACK, Material.ZOMBIE_HEAD, "몹·비플레이어 투사체 피해"),
+        DamageConfigItem(32, DamageMultiplierType.IMPACT, Material.ANVIL, "충돌·낙하 블록 피해"),
+        DamageConfigItem(33, DamageMultiplierType.WORLD_BORDER, Material.BARRIER, "월드보더·최종 자기장 피해"),
+        DamageConfigItem(34, DamageMultiplierType.OTHER_ENVIRONMENT, Material.SHIELD, "기타 환경 피해"),
+    )
     private val miniMessage = MiniMessage.miniMessage()
     private val classIconVisibleTooltipComponents: Set<DataComponentType> = setOf(
         DataComponentTypes.CUSTOM_NAME,
@@ -230,16 +265,30 @@ object InventoryManager {
                 "<yellow><bold>월드보더 설정",
                 listOf("<gray>월드보더 사용 여부와 축소 방식을 설정합니다."),
             ))
+            inventory.setItem(18, createDescriptionItem(
+                Material.IRON_SWORD,
+                "<yellow><bold>피해 배율 설정",
+                listOf("<gray>공격과 환경 피해를 유형별로 조절하거나 비활성화합니다."),
+            ))
             inventory.setItem(20, createDescriptionItem(
                 Material.ARMOR_STAND,
                 "<yellow><bold>화면 및 메시지 설정",
                 listOf("<gray>Tab 목록, 피해량 텍스트와 사망 메시지를 설정합니다."),
+            ))
+            inventory.setItem(24, createDescriptionItem(
+                Material.REPEATER,
+                "<yellow><bold>클래스 밸런스 설정",
+                listOf("<gray>클래스별 피해, 사거리, 상태이상 등 전투 수치 배율을 설정합니다."),
             ))
         }
         openConfigView(inventory, null)
     }
 
     fun Player.openConfigCategoryInventory(category: ConfigCategory) {
+        if (category == ConfigCategory.CLASS_BALANCE) {
+            openClassBalanceListInventory(0)
+            return
+        }
         val settings = GameSettings.snapshot()
         val title = when (category) {
             ConfigCategory.PERSONAL -> "개인 설명 설정"
@@ -248,8 +297,11 @@ object InventoryManager {
             ConfigCategory.SCATTER -> "맵 및 산개 설정"
             ConfigCategory.BORDER -> "월드보더 설정"
             ConfigCategory.COMBAT -> "화면 및 메시지 설정"
+            ConfigCategory.DAMAGE -> "피해 배율 설정"
+            ConfigCategory.CLASS_BALANCE -> "클래스 밸런스 설정"
         }
-        val inventory = Bukkit.createInventory(null, 27, miniMessage.deserialize("<dark_gray>$title"))
+        val inventorySize = if (category == ConfigCategory.DAMAGE) 54 else 27
+        val inventory = Bukkit.createInventory(null, inventorySize, miniMessage.deserialize("<dark_gray>$title"))
         fillWith(inventory, Material.BLACK_STAINED_GLASS_PANE, " ")
 
         when (category) {
@@ -269,6 +321,15 @@ object InventoryManager {
 
             ConfigCategory.GAME -> {
                 inventory.setItem(11, createSettingItem(Material.NETHER_STAR, "새로고침 횟수", settings.refreshChances, "회"))
+                inventory.setItem(13, createMultiplierSettingItem(
+                    Material.CLOCK,
+                    "재사용 대기시간 흐름",
+                    settings.cooldownFlowMultiplier,
+                    listOf(
+                        "<gray>2.0배면 재사용 대기시간이 2배 빠르게 흐릅니다.",
+                        "<gray>모든 클래스 스킬에 공통으로 적용됩니다.",
+                    ),
+                ))
                 inventory.setItem(15, createSettingItem(Material.CLOCK, "시작 카운트다운", settings.countdownSeconds, "초"))
             }
 
@@ -297,6 +358,9 @@ object InventoryManager {
                 inventory.setItem(16, createSettingItem(Material.RECOVERY_COMPASS, "중심 최대 이동 거리", settings.borderCenterMaximumDistance, "블록"))
                 inventory.setItem(22, createSettingItem(Material.RED_STAINED_GLASS, "최종 자기장 하강 시간", settings.finalBorderDescentSeconds, "초"))
                 inventory.setItem(23, createSettingItem(Material.MAGMA_BLOCK, "보더 피해 유예 거리", settings.borderDamageBuffer, "블록"))
+                inventory.setItem(24, createSettingItem(Material.BARRIER, "월드보더 블록당 피해", settings.borderDamagePerBlock, "피해"))
+                inventory.setItem(25, createSettingItem(Material.REDSTONE_BLOCK, "최종 자기장 피해", settings.finalBorderDamage, "피해"))
+                inventory.setItem(26, createSettingItem(Material.REPEATER, "최종 자기장 피해 주기", settings.finalBorderDamageIntervalSeconds, "초"))
             }
 
             ConfigCategory.COMBAT -> {
@@ -310,15 +374,112 @@ object InventoryManager {
                 inventory.setItem(16, createToggleItem("사망 메시지에 사망 사유 표시", settings.deathMessagesShowCause))
                 inventory.setItem(22, createToggleItem("피해량 텍스트 표시", settings.damageIndicatorsEnabled))
             }
+
+            ConfigCategory.DAMAGE -> damageConfigItems.forEach { item ->
+                val configuredValue = settings.damageMultipliers[item.type] ?: 1.0
+                val extraLines = buildList {
+                    if (item.type == DamageMultiplierType.OVERALL) {
+                        add("<gray>모든 공격 및 환경 피해에 공통으로 곱해집니다.")
+                    } else {
+                        add("<gray>전체 피해 배율 적용 후: <aqua><bold>${"%.1f".format(settings.damageMultiplier(item.type))}배")
+                    }
+                    add("<gray>0.0배로 설정하면 해당 피해를 받지 않습니다.")
+                }
+                inventory.setItem(
+                    item.slot,
+                    createMultiplierSettingItem(item.material, item.name, configuredValue, extraLines),
+                )
+            }
+
+            ConfigCategory.CLASS_BALANCE -> Unit
         }
 
-        inventory.setItem(18, ItemStack(Material.ARROW).apply {
+        val backSlot = if (category == ConfigCategory.DAMAGE) 45 else 18
+        inventory.setItem(backSlot, ItemStack(Material.ARROW).apply {
             itemMeta = itemMeta.apply {
                 displayName(miniMessage.deserialize("<yellow><bold>카테고리로 돌아가기"))
             }
         })
 
         openConfigView(inventory, category)
+    }
+
+    fun getDamageMultiplierTypeFromSlot(slot: Int): DamageMultiplierType? =
+        damageConfigItems.firstOrNull { it.slot == slot }?.type
+
+    fun Player.openClassBalanceListInventory(page: Int) {
+        val classes = gameClassList
+        val totalPages = maxOf(1, (classes.size + CLASS_BALANCE_PAGE_SIZE - 1) / CLASS_BALANCE_PAGE_SIZE)
+        val safePage = page.coerceIn(0, totalPages - 1)
+        val inventory = Bukkit.createInventory(
+            null,
+            54,
+            miniMessage.deserialize("<dark_gray>클래스 밸런스 (${safePage + 1}/$totalPages)"),
+        )
+        fillWith(inventory, Material.BLACK_STAINED_GLASS_PANE, " ")
+        val startIndex = safePage * CLASS_BALANCE_PAGE_SIZE
+        val endIndex = minOf(startIndex + CLASS_BALANCE_PAGE_SIZE, classes.size)
+        for (index in startIndex until endIndex) {
+            inventory.setItem(index - startIndex, createClassItem(classes[index], this))
+        }
+        inventory.setItem(45, createDescriptionItem(Material.ARROW, "<yellow><bold>카테고리로 돌아가기", emptyList()))
+        if (safePage > 0) {
+            inventory.setItem(48, createDescriptionItem(Material.ARROW, "<yellow><bold>이전 페이지", emptyList()))
+        }
+        if (safePage < totalPages - 1) {
+            inventory.setItem(50, createDescriptionItem(Material.ARROW, "<yellow><bold>다음 페이지", emptyList()))
+        }
+
+        PlayerTagManager.removeIf(this) {
+            it.startsWith("classBalancePage:") || it.startsWith("classBalanceClass:")
+        }
+        PlayerTagManager.addTag(this, "classBalancePage:$safePage")
+        openConfigView(inventory, ConfigCategory.CLASS_BALANCE)
+    }
+
+    fun Player.openClassBalanceDetailInventory(gameClass: GameClass) {
+        val modifiers = ClassBalanceManager.modifiers(gameClass)
+        val inventory = Bukkit.createInventory(
+            null,
+            27,
+            miniMessage.deserialize("<dark_gray>클래스 밸런스: ${UtilManager.applyKeywords(gameClass.name)}"),
+        )
+        fillWith(inventory, Material.BLACK_STAINED_GLASS_PANE, " ")
+        val fields = listOf(
+            Triple(10, ClassBalanceField.DAMAGE, Material.IRON_SWORD),
+            Triple(11, ClassBalanceField.HEALING, Material.GOLDEN_APPLE),
+            Triple(12, ClassBalanceField.RANGE, Material.SPYGLASS),
+            Triple(13, ClassBalanceField.OVERALL, Material.NETHER_STAR),
+            Triple(14, ClassBalanceField.STATUS_DURATION, Material.CLOCK),
+            Triple(15, ClassBalanceField.STATUS_POWER, Material.BLAZE_POWDER),
+            Triple(16, ClassBalanceField.COOLDOWN_FLOW, Material.REPEATER),
+        )
+        fields.forEach { (slot, field, material) ->
+            inventory.setItem(slot, createClassBalanceSettingItem(material, field, modifiers))
+        }
+        inventory.setItem(18, createDescriptionItem(Material.ARROW, "<yellow><bold>클래스 목록으로 돌아가기", emptyList()))
+        inventory.setItem(22, createDescriptionItem(
+            Material.BARRIER,
+            "<red><bold>이 클래스 설정 초기화",
+            listOf("<gray>클릭하면 모든 배율을 기본값으로 되돌립니다."),
+        ))
+
+        PlayerTagManager.removeIf(this) { it.startsWith("classBalanceClass:") }
+        PlayerTagManager.addTag(this, "classBalanceClass:${ClassBalanceManager.configKey(gameClass)}")
+        openConfigView(inventory, ConfigCategory.CLASS_BALANCE)
+    }
+
+    fun getOpenClassBalancePage(player: Player): Int =
+        PlayerTagManager.findTag(player) { it.startsWith("classBalancePage:") }
+            ?.substringAfter("classBalancePage:")
+            ?.toIntOrNull()
+            ?: 0
+
+    fun getSelectedClassBalance(player: Player): GameClass? {
+        val key = PlayerTagManager.findTag(player) { it.startsWith("classBalanceClass:") }
+            ?.substringAfter("classBalanceClass:")
+            ?: return null
+        return gameClassList.firstOrNull { ClassBalanceManager.configKey(it) == key }
     }
 
     private fun Player.openConfigView(inventory: Inventory, category: ConfigCategory?) {
@@ -505,6 +666,53 @@ object InventoryManager {
                 ))
             }
         }
+
+    private fun createMultiplierSettingItem(
+        material: Material,
+        name: String,
+        value: Double,
+        extraLines: List<String> = emptyList(),
+    ): ItemStack = ItemStack(material).apply {
+        itemMeta = itemMeta.apply {
+            displayName(miniMessage.deserialize("<yellow><bold>$name"))
+            lore((listOf(
+                ItemDescriptionManager.renderLoreLine("<gray>현재 값: <white><bold>${"%.1f".format(value)}배"),
+                ItemDescriptionManager.renderLoreLine(""),
+            ) + extraLines.map(ItemDescriptionManager::renderLoreLine) + listOf(
+                ItemDescriptionManager.renderLoreLine(""),
+                ItemDescriptionManager.renderLoreLine("<green>좌클릭: +0.1배 <red>우클릭: -0.1배"),
+                ItemDescriptionManager.renderLoreLine("<gray>Shift 클릭: 1.0배씩 조절"),
+            )))
+        }
+    }
+
+    private fun createClassBalanceSettingItem(
+        material: Material,
+        field: ClassBalanceField,
+        modifiers: ClassBalanceModifiers,
+    ): ItemStack {
+        val name = when (field) {
+            ClassBalanceField.OVERALL -> "전체 효과 수치"
+            ClassBalanceField.DAMAGE -> "피해량"
+            ClassBalanceField.HEALING -> "회복량"
+            ClassBalanceField.RANGE -> "스킬 사거리·범위"
+            ClassBalanceField.STATUS_DURATION -> "상태이상 지속시간"
+            ClassBalanceField.STATUS_POWER -> "상태이상 수치"
+            ClassBalanceField.COOLDOWN_FLOW -> "재사용 대기시간 흐름"
+        }
+        val extraLines = buildList {
+            if (field == ClassBalanceField.OVERALL) {
+                add("<gray>피해·회복·사거리·상태이상 배율에 추가로 곱해집니다.")
+            }
+            if (field != ClassBalanceField.OVERALL && field != ClassBalanceField.COOLDOWN_FLOW) {
+                add("<gray>전체 효과 배율 적용 후: <aqua><bold>${"%.1f".format(modifiers.effective(field))}배")
+            }
+            if (field == ClassBalanceField.COOLDOWN_FLOW) {
+                add("<gray>전역 재사용 대기시간 흐름 배율과 곱해집니다.")
+            }
+        }
+        return createMultiplierSettingItem(material, name, modifiers.value(field), extraLines)
+    }
 
     private fun createToggleItem(name: String, enabled: Boolean, extraLines: List<String> = emptyList()): ItemStack =
         ItemStack(if (enabled) Material.LIME_DYE else Material.GRAY_DYE).apply {

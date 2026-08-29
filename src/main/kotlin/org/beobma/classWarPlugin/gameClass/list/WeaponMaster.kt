@@ -9,6 +9,7 @@ import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.handler.OnSkillUseHandler
+import org.beobma.classWarPlugin.manager.ClassBalanceManager
 import org.beobma.classWarPlugin.manager.CooldownManager
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.getConeTargets
@@ -178,8 +179,9 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             var sideDirection = direction.clone().crossProduct(Vector(0.0, 1.0, 0.0))
             if (sideDirection.lengthSquared() < 1.0E-8) sideDirection = Vector(1.0, 0.0, 0.0)
             sideDirection.normalize()
-            val blockDistance = player.world.rayTraceBlocks(eye, direction, 8.0)?.hitPosition
-                ?.distance(eye.toVector()) ?: 8.0
+            val shotgunRange = ClassBalanceManager.scaleRange(playerData, 8.0)
+            val blockDistance = player.world.rayTraceBlocks(eye, direction, shotgunRange)?.hitPosition
+                ?.distance(eye.toVector()) ?: shotgunRange
             playerData.getConeTargets(8.0, 42.0, TargetType.Enemy, false).forEach { target ->
                 val closest = HitboxUtil.closestPoint(target.entity.boundingBox, eye.toVector())
                 if (closest.distance(eye.toVector()) <= blockDistance + 0.3) {

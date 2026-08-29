@@ -7,9 +7,11 @@ import net.kyori.adventure.title.Title
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.game.Game
+import org.beobma.classWarPlugin.game.DamageMultiplierType
 import org.beobma.classWarPlugin.game.GamePhase
 import org.beobma.classWarPlugin.game.MatchMode
 import org.beobma.classWarPlugin.game.PlayerSnapshot
+import org.beobma.classWarPlugin.game.damageMultiplier
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.handler.GameEndHandler
@@ -78,8 +80,6 @@ object GameManager {
     private const val FINAL_BORDER_MAX_TILES_PER_AXIS = 20
 private const val FINAL_BORDER_UPDATE_INTERVAL_TICKS = 2L
 private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
-private const val FINAL_BORDER_DAMAGE_INTERVAL_TICKS = 20L
-    private const val FINAL_BORDER_DAMAGE = 2.0
     private const val TAIL_HEARTBEAT_RADIUS = 48.0
     private const val TAIL_HEARTBEAT_MIN_INTERVAL_TICKS = 7
     private const val TAIL_HEARTBEAT_MAX_INTERVAL_TICKS = 36
@@ -554,6 +554,7 @@ private const val FINAL_BORDER_DAMAGE_INTERVAL_TICKS = 20L
         originalBorderSize = border.size
         border.setCenter(roundCenterX, roundCenterZ)
         border.damageBuffer = settings.borderDamageBuffer
+        border.damageAmount = settings.borderDamagePerBlock
         val initialBorderSize = settings.borderInitialSize.coerceAtLeast(1.0)
         val targetBorderSize = settings.borderMinimumSize.coerceAtLeast(1.0)
         border.size = initialBorderSize
@@ -852,6 +853,10 @@ private const val FINAL_BORDER_DAMAGE_INTERVAL_TICKS = 20L
         val minimumZ = centerZ - halfSize
         val maximumZ = centerZ + halfSize
         val currentTick = Bukkit.getCurrentTick().toLong()
+        val damageIntervalTicks = (settings.finalBorderDamageIntervalSeconds * 20.0)
+            .roundToInt()
+            .toLong()
+            .coerceAtLeast(1L)
         val insidePlayers = mutableSetOf<UUID>()
 
         contenders().filter { it.player.isOnline && it.player.world == gameWorld }.forEach { playerData ->
@@ -866,7 +871,7 @@ private const val FINAL_BORDER_DAMAGE_INTERVAL_TICKS = 20L
 
             insidePlayers += player.uniqueId
             val lastDamageTick = lastDamageTicks[player.uniqueId]
-            if (lastDamageTick != null && currentTick - lastDamageTick < FINAL_BORDER_DAMAGE_INTERVAL_TICKS) {
+            if (lastDamageTick != null && currentTick - lastDamageTick < damageIntervalTicks) {
                 return@forEach
             }
             lastDamageTicks[player.uniqueId] = currentTick
@@ -895,7 +900,8 @@ private const val FINAL_BORDER_DAMAGE_INTERVAL_TICKS = 20L
 
     private fun Game.applyFixedFinalBorderDamage(playerData: PlayerData) {
         val player = playerData.player
-        val appliedDamage = FINAL_BORDER_DAMAGE.coerceAtMost(player.health)
+        val appliedDamage = (settings.finalBorderDamage * settings.damageMultiplier(DamageMultiplierType.WORLD_BORDER))
+            .coerceAtMost(player.health)
         if (appliedDamage <= 0.0) return
         playerData.gameClasses.filterIsInstance<Grass>().forEach { it.suppressStealthFromDamage() }
         CombatManager.recordDamageTaken(playerData)

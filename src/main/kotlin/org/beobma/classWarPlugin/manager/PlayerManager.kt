@@ -233,7 +233,7 @@ object PlayerManager {
     }
 
     fun PlayerData.heal(damage: Double, damageType: DamageType, healer: PlayerData) {
-        var finalDamage = damage
+        val finalDamage = ClassBalanceManager.scaleHealing(healer, damage)
 
         if (finalDamage < 0) {
             return
@@ -319,7 +319,7 @@ object PlayerManager {
         when (this) {
             is PlayerData -> this.heal(damage, damageType, healer)
             is DummyEntityData -> return
-            is MobEntityData -> entity.heal(damage)
+            is MobEntityData -> entity.heal(ClassBalanceManager.scaleHealing(healer, damage))
         }
     }
 }

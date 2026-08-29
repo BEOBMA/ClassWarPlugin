@@ -3,6 +3,7 @@ package org.beobma.classWarPlugin.gameClass.list
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.gameClass.Rank
+import org.beobma.classWarPlugin.manager.ClassBalanceManager
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
@@ -64,11 +65,12 @@ class Mars : PlanetClass() {
             val direction = player.eyeLocation.direction.normalize()
             val start = player.location.clone()
             val rayStart = player.boundingBox.center.toLocation(player.world)
+            val dashRange = ClassBalanceManager.scaleRange(playerData, 10.0)
             val obstruction = player.world.rayTraceBlocks(
-                rayStart, direction, 10.0, FluidCollisionMode.NEVER, true
+                rayStart, direction, dashRange, FluidCollisionMode.NEVER, true
             )
-            val distance = ((obstruction?.hitPosition?.distance(rayStart.toVector()) ?: 10.0) - 0.75)
-                .coerceIn(0.0, 10.0)
+            val distance = ((obstruction?.hitPosition?.distance(rayStart.toVector()) ?: dashRange) - 0.75)
+                .coerceIn(0.0, dashRange)
             val steps = ceil(distance / 1.1).toInt().coerceAtLeast(1)
             val step = direction.clone().multiply(distance / steps)
             val invincibility = playerData.getOrCreateStatus(playerData) { Invincibility() }

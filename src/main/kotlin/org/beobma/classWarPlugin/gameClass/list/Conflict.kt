@@ -3,6 +3,7 @@ package org.beobma.classWarPlugin.gameClass.list
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
+import org.beobma.classWarPlugin.manager.ClassBalanceManager
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
@@ -36,12 +37,13 @@ class Conflict : GameClass() {
 
         override fun use() {
             val direction = player.eyeLocation.direction.normalize()
+            val teleportDistance = ClassBalanceManager.scaleRange(playerData, CONFLICT_TELEPORT_DISTANCE)
             val ray = player.world.rayTraceBlocks(
-                player.eyeLocation, direction, CONFLICT_TELEPORT_DISTANCE,
+                player.eyeLocation, direction, teleportDistance,
                 FluidCollisionMode.NEVER, true,
             )
             val maximumDistance = (ray?.hitPosition?.distance(player.eyeLocation.toVector())
-                ?.minus(0.65) ?: CONFLICT_TELEPORT_DISTANCE).coerceAtLeast(0.0)
+                ?.minus(0.65) ?: teleportDistance).coerceAtLeast(0.0)
             val start = player.location.clone()
             var destination = start.clone()
             var distance = 0.25

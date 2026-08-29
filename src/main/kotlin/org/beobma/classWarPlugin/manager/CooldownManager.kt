@@ -36,7 +36,9 @@ object CooldownManager {
             refreshMaterialCooldown(player, material)
             return
         }
-        cooldowns[key] = CooldownEntry(System.nanoTime() + ticks * NANOS_PER_TICK, item.type)
+        val flowMultiplier = ClassBalanceManager.cooldownFlowMultiplier(player, skill)
+        val effectiveTicks = effectiveCooldownTicks(ticks, flowMultiplier)
+        cooldowns[key] = CooldownEntry(System.nanoTime() + effectiveTicks * NANOS_PER_TICK, item.type)
         refreshMaterialCooldown(player, item.type)
     }
 
@@ -109,5 +111,11 @@ object CooldownManager {
     private fun remainingTicks(entry: CooldownEntry): Int {
         val now = entry.pausedAtNanos ?: System.nanoTime()
         return ceil((entry.expiresAtNanos - now).toDouble() / NANOS_PER_TICK).toInt().coerceAtLeast(0)
+    }
+
+    internal fun effectiveCooldownTicks(ticks: Int, flowMultiplier: Double): Long {
+        if (ticks <= 0) return 0L
+        val safeMultiplier = flowMultiplier.takeIf { it.isFinite() && it > 0.0 } ?: 1.0
+        return ceil(ticks.toDouble() / safeMultiplier).toLong().coerceAtLeast(1L)
     }
 }

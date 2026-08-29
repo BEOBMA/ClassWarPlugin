@@ -6,6 +6,7 @@ import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
+import org.beobma.classWarPlugin.manager.ClassBalanceManager
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.getTargetCandidates
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
@@ -64,10 +65,11 @@ class Trapper : GameClass() {
         private var visualTick = 0
 
         override fun isUseSuccess(): Boolean {
+            val anchorRange = ClassBalanceManager.scaleRange(playerData, TRAPPER_ANCHOR_RANGE)
             val trace = player.world.rayTraceBlocks(
                 player.eyeLocation,
                 player.eyeLocation.direction,
-                TRAPPER_ANCHOR_RANGE,
+                anchorRange,
                 FluidCollisionMode.NEVER,
                 true,
             )
@@ -75,7 +77,7 @@ class Trapper : GameClass() {
             val hitFace = trace?.hitBlockFace
             if (hitPosition == null || hitFace == null) {
                 player.sendMiniMessage(
-                    "<red><bold>[!] ${TRAPPER_ANCHOR_RANGE.toInt()}칸 내의 블록을 바라봐야 합니다."
+                    "<red><bold>[!] %.1f칸 내의 블록을 바라봐야 합니다.".format(anchorRange)
                 )
                 return false
             }
