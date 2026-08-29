@@ -2,7 +2,9 @@ package org.beobma.classWarPlugin.manager
 
 import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.format.TextDecoration
+import org.beobma.classWarPlugin.description.DescriptionText
 import org.beobma.classWarPlugin.keyword.Keyword
+import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 
 /** 아이템에 전체 설명과 항상 표시할 부가 정보를 적용한다. */
@@ -18,7 +20,22 @@ object ItemDescriptionManager {
     ): ItemStack = item.apply {
         if (type.isAir) return@apply
         itemMeta = itemMeta.apply {
-            lore(render(sanitize(details), alwaysVisibleLines))
+            lore(render(sanitize(details), alwaysVisibleLines, DescriptionViewMode.DETAILED))
+        }
+    }
+
+    fun applyForPlayer(
+        item: ItemStack,
+        player: Player,
+        detailedDescription: List<String>,
+        briefDescription: List<String> = DescriptionText.brief(detailedDescription),
+        alwaysVisibleLines: List<String> = emptyList(),
+    ): ItemStack = item.apply {
+        if (type.isAir) return@apply
+        val mode = PlayerPreferenceManager.descriptionViewMode(player)
+        val selected = if (mode == DescriptionViewMode.DETAILED) detailedDescription else briefDescription
+        itemMeta = itemMeta.apply {
+            lore(render(sanitize(selected), alwaysVisibleLines, mode, detailedDescription))
         }
     }
 
@@ -37,19 +54,54 @@ object ItemDescriptionManager {
     private fun render(
         lines: List<String>,
         alwaysVisibleLines: List<String>,
+        mode: DescriptionViewMode,
+        keywordSource: List<String> = lines,
     ) = buildList {
-        addAll(lines.map(::renderLoreLine))
-        val keywordExplanations = Keyword.explanationsFor(lines).filterNot(lines::contains)
+        add(renderLoreLine(
+            if (mode == DescriptionViewMode.DETAILED) "<gold><bold>상세 효과</bold>"
+            else "<green><bold>핵심 효과</bold>"
+        ))
+        add(renderLoreLine("<dark_gray>────────────"))
+        addAll(formatEffectLines(lines).map(::renderLoreLine))
+
+        val keywordExplanations = when (mode) {
+            DescriptionViewMode.DETAILED -> Keyword.explanationsFor(keywordSource)
+            DescriptionViewMode.BRIEF -> Keyword.briefExplanationsFor(keywordSource)
+        }.filterNot(lines::contains)
         if (keywordExplanations.isNotEmpty()) {
-            if (isNotEmpty() && lines.lastOrNull()?.isNotBlank() == true) {
-                add(renderLoreLine(""))
-            }
-            addAll(keywordExplanations.map(::renderLoreLine))
+            if (isNotEmpty()) add(renderLoreLine(""))
+            add(renderLoreLine(
+                if (mode == DescriptionViewMode.DETAILED) "<aqua><bold>용어 설명</bold>"
+                else "<aqua><bold>필수 용어</bold>"
+            ))
+            addAll(keywordExplanations.map { renderLoreLine("<dark_gray>• </dark_gray>$it") })
         }
         if (alwaysVisibleLines.isNotEmpty()) {
             if (isNotEmpty()) add(renderLoreLine(""))
+            add(renderLoreLine("<yellow><bold>사용 정보</bold>"))
             addAll(alwaysVisibleLines.map(::renderLoreLine))
         }
+    }
+
+    private fun formatEffectLines(lines: List<String>): List<String> {
+        val content = lines.filterNot(DescriptionText::isTypeLabel)
+        if (content.none(String::isNotBlank)) {
+            return listOf("<dark_gray>• </dark_gray><gray>별도의 추가 효과가 없습니다.")
+        }
+
+        val result = mutableListOf<String>()
+        content.forEach { line ->
+            if (line.isBlank()) {
+                if (result.lastOrNull()?.isNotBlank() == true) result += ""
+                return@forEach
+            }
+            result += if (DescriptionText.isOptionLine(line)) {
+                "<dark_gray>  └ </dark_gray>${line.replaceFirst("-", "").trim()}"
+            } else {
+                "<dark_gray>• </dark_gray>$line"
+            }
+        }
+        return result.dropLastWhile(String::isBlank)
     }
 
     private fun sanitize(lines: List<String>): List<String> = lines

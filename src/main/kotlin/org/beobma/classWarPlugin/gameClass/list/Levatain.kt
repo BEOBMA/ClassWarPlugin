@@ -231,7 +231,7 @@ class Levatain : GameClass(), GameStatusHandler {
 
     private fun updateWeaponItem() {
         val weaponSlot = if (playerData.gameClasses.indexOf(this) == 1) 8 else 0
-        player.inventory.setItem(weaponSlot, toWeaponItemStack())
+        player.inventory.setItem(weaponSlot, toWeaponItemStack(player))
     }
 
     private fun checkHealthThresholds() {

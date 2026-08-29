@@ -16,7 +16,7 @@ import org.bukkit.attribute.Attribute
 import kotlin.random.Random
 
 class Error : GameClass(), GameStatusHandler, GameEndHandler {
-    override val name = "<obfuscated>AIJ9wjfjo2"
+    override val name = "<obfuscated>AIJ9wjfjo2</obfuscated>"
     override val rank = Rank.A
     override val classItemMaterial = Material.GRAY_STAINED_GLASS_PANE
     override var skills: List<Skill> = emptyList()

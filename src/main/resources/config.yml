@@ -2,6 +2,17 @@ selection:
   refresh-chances: 3
   countdown-seconds: 5
 
+# GitHub의 최신 정식 릴리스를 확인하고 다음 서버 재시작 때 적용할 JAR을 준비합니다.
+# 릴리스 태그와 JAR 내부 plugin.yml의 version은 같은 버전이어야 합니다. (예: v1.0.2 / 1.0.2)
+auto-update:
+  enabled: true
+  repository: BEOBMA/ClassWarPlugin
+  # sources/javadoc JAR은 자동으로 제외됩니다. 여러 실행 JAR이 일치하면 -all/-shadow JAR을 우선합니다.
+  asset-pattern: '(?i)^ClassWarPlugin(?:-[0-9A-Za-z._-]+)?\.jar$'
+  startup-delay-seconds: 10
+  check-interval-hours: 6
+  max-download-size-mib: 64
+
 rank-chances:
   # 전체 가중치 합계 1000 기준 Special의 기본 등장 확률은 0.1%입니다.
   special: 1

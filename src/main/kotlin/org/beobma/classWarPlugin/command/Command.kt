@@ -1,6 +1,7 @@
 package org.beobma.classWarPlugin.command
 
 import net.kyori.adventure.text.minimessage.MiniMessage
+import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.manager.GameManager.stop
@@ -10,6 +11,7 @@ import org.beobma.classWarPlugin.manager.InventoryManager.openTrainingClassListI
 import org.beobma.classWarPlugin.manager.InventoryManager.openConfigInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openGameModeInventory
 import org.beobma.classWarPlugin.manager.PlayerTagManager
+import org.beobma.classWarPlugin.updater.GitHubReleaseUpdater.UpdateResult
 import org.bukkit.command.Command
 import org.bukkit.command.CommandExecutor
 import org.bukkit.command.CommandSender
@@ -23,6 +25,37 @@ class Command : Listener, CommandExecutor, TabCompleter {
 
     override fun onCommand(sender: CommandSender, cmd: Command, label: String, args: Array<String>): Boolean {
         if (cmd.name.equals("classwar", ignoreCase = true) && args.isNotEmpty()) {
+            if (args[0].equals("update", ignoreCase = true)) {
+                if (!sender.isOp) {
+                    sender.sendWaringMessage("이 명령어는 관리자만 사용할 수 있습니다.")
+                    return false
+                }
+                sender.sendInfoMessage("GitHub에서 최신 릴리스를 확인하고 있습니다...")
+                ClassWarPlugin.instance.releaseUpdater.checkNow { result ->
+                    when (result) {
+                        is UpdateResult.UpToDate -> sender.sendInfoMessage(
+                            "현재 버전(${result.currentVersion})이 최신 버전입니다.",
+                        )
+
+                        is UpdateResult.CurrentIsNewer -> sender.sendInfoMessage(
+                            "현재 버전(${result.currentVersion})이 최신 공개 릴리스(${result.latestVersion})보다 높습니다.",
+                        )
+
+                        is UpdateResult.PendingRestart -> sender.sendInfoMessage(
+                            "${result.latestVersion} 업데이트가 이미 준비되어 있습니다. 서버를 재시작하면 적용됩니다.",
+                        )
+
+                        is UpdateResult.Downloaded -> sender.sendInfoMessage(
+                            "${result.latestVersion} 업데이트를 내려받았습니다. 서버를 재시작하면 적용됩니다.",
+                        )
+
+                        is UpdateResult.Failed -> sender.sendWaringMessage("업데이트 확인 실패: ${result.reason}")
+                        UpdateResult.InProgress -> sender.sendWaringMessage("이미 업데이트를 확인하고 있습니다.")
+                    }
+                }
+                return true
+            }
+
             if (sender !is Player) {
                 sender.sendWaringMessage("이 명령어는 플레이어만 사용할 수 있습니다.")
                 return false
@@ -30,10 +63,6 @@ class Command : Listener, CommandExecutor, TabCompleter {
 
             when (args[0].lowercase(Locale.getDefault())) {
                 "config" -> {
-                    if (!sender.isOp) {
-                        sender.sendWaringMessage("이 명령어는 관리자만 사용할 수 있습니다.")
-                        return false
-                    }
                     sender.openConfigInventory()
                     return true
                 }
@@ -118,7 +147,7 @@ class Command : Listener, CommandExecutor, TabCompleter {
     ): List<String> {
         if (command.name.equals("classwar", ignoreCase = true)) {
             return when (args.size) {
-                1 -> listOf("start", "stop", "config", "classlist", "training", "exit")
+                1 -> listOf("start", "stop", "config", "classlist", "training", "exit", "update")
                     .filter { it.startsWith(args[0], ignoreCase = true) }
 
                 else -> emptyList()
@@ -130,5 +159,9 @@ class Command : Listener, CommandExecutor, TabCompleter {
 
     private fun CommandSender.sendWaringMessage(msg: String) {
         sendMessage(miniMessage.deserialize("<red><bold>[!] $msg"))
+    }
+
+    private fun CommandSender.sendInfoMessage(msg: String) {
+        sendMessage(miniMessage.deserialize("<green><bold>[ClassWar]</bold> <white>$msg"))
     }
 }

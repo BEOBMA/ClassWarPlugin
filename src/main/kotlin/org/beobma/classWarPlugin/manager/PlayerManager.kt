@@ -12,7 +12,9 @@ import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.list.Referee
 import org.beobma.classWarPlugin.gameClass.list.Reverse
 import org.beobma.classWarPlugin.manager.GameClassManager.toWeaponItemStack
+import org.beobma.classWarPlugin.manager.GameClassManager.getWeaponClassId
 import org.beobma.classWarPlugin.manager.SkillManager.markSkillItem
+import org.beobma.classWarPlugin.manager.SkillManager.getSkillId
 import org.beobma.classWarPlugin.manager.InventoryManager.skillDyeMaterial
 import org.beobma.classWarPlugin.manager.ItemDescriptionManager
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
@@ -20,14 +22,20 @@ import org.beobma.classWarPlugin.util.DamageCalculator
 import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.DamageType.StatusAbnormality
 import org.bukkit.Material
+import org.bukkit.NamespacedKey
 import org.bukkit.entity.Player
 import org.bukkit.entity.LivingEntity
 import org.bukkit.inventory.ItemStack
+import org.bukkit.persistence.PersistentDataType
 
 object PlayerManager {
     private val miniMessage = MiniMessage.miniMessage()
     private const val invincibilityTicks: Long = 20
     private val lastDamageTicks: MutableMap<DamageInvincibilityKey, Long> = mutableMapOf()
+    private val passiveIdKey: NamespacedKey
+        get() = NamespacedKey(org.beobma.classWarPlugin.ClassWarPlugin.instance, "passive-id")
+    private val passiveOwnerKey: NamespacedKey
+        get() = NamespacedKey(org.beobma.classWarPlugin.ClassWarPlugin.instance, "passive-owner")
 
     private data class DamageInvincibilityKey(
         val targetId: java.util.UUID,
@@ -53,9 +61,9 @@ object PlayerManager {
         player.inventory.setChestplate(ItemStack(Material.IRON_CHESTPLATE))
         player.inventory.setLeggings(ItemStack(Material.IRON_LEGGINGS))
         player.inventory.setBoots(ItemStack(Material.IRON_BOOTS))
-        player.inventory.setItem(0, assignedClasses.first().toWeaponItemStack())
+        player.inventory.setItem(0, assignedClasses.first().toWeaponItemStack(player))
         if (assignedClasses.size > 1) {
-            player.inventory.setItem(8, assignedClasses[1].toWeaponItemStack())
+            player.inventory.setItem(8, assignedClasses[1].toWeaponItemStack(player))
         }
 
         val hotbarSkillSlots = (1..if (assignedClasses.size > 1) 7 else 8).iterator()
@@ -75,9 +83,11 @@ object PlayerManager {
                 }
             }
             val item = markSkillItem(
-                ItemDescriptionManager.apply(
+                ItemDescriptionManager.applyForPlayer(
                     displayItem,
+                    player,
                     skill.description,
+                    skill.briefDescription,
                     ItemDescriptionManager.cooldownLines(skill.cooldown),
                 ),
                 skill,
@@ -90,11 +100,11 @@ object PlayerManager {
             if (!inventorySlots.hasNext()) return@forEach
             val name = UtilManager.applyKeywords(passive.name)
             val type = Material.WHITE_DYE
-            val item = ItemDescriptionManager.apply(ItemStack(type, 1).apply {
+            val item = markPassiveItem(ItemDescriptionManager.applyForPlayer(ItemStack(type, 1).apply {
                 itemMeta = itemMeta.apply {
                     displayName(miniMessage.deserialize(name))
                 }
-            }, passive.description)
+            }, player, passive.description, passive.briefDescription), passive, player.uniqueId)
             player.inventory.setItem(inventorySlots.next(), item)
         }
 
@@ -114,6 +124,65 @@ object PlayerManager {
         if (initGame.phase == GamePhase.SCATTERING || initGame.phase == GamePhase.RUNNING) {
             BattleMapManager.giveTo(this)
         }
+    }
+
+    private fun markPassiveItem(
+        item: ItemStack,
+        passive: org.beobma.classWarPlugin.skill.Passive,
+        ownerId: java.util.UUID,
+    ): ItemStack = item.apply {
+        itemMeta = itemMeta.apply {
+            persistentDataContainer.set(passiveIdKey, PersistentDataType.STRING, passive.javaClass.name)
+            persistentDataContainer.set(passiveOwnerKey, PersistentDataType.STRING, ownerId.toString())
+        }
+    }
+
+    private fun getPassiveId(item: ItemStack, ownerId: java.util.UUID): String? {
+        val container = item.itemMeta.persistentDataContainer
+        if (container.get(passiveOwnerKey, PersistentDataType.STRING) != ownerId.toString()) return null
+        return container.get(passiveIdKey, PersistentDataType.STRING)
+    }
+
+    /** 개인 설명 설정을 바꾼 즉시 현재 소지 중인 클래스 아이템의 설명도 갱신한다. */
+    fun refreshClassItemDescriptions(playerData: PlayerData) {
+        val player = playerData.player
+        val registeredClasses by lazy { GameManager.gameClassList }
+        fun allClasses() = sequence {
+            yieldAll(playerData.gameClasses)
+            yieldAll(registeredClasses)
+        }
+
+        player.inventory.contents.forEach { item ->
+            if (item == null || item.type.isAir) return@forEach
+
+            val weaponClassId = getWeaponClassId(item)
+            if (weaponClassId != null) {
+                val gameClass = allClasses().firstOrNull { it.javaClass.name == weaponClassId } ?: return@forEach
+                ItemDescriptionManager.applyForPlayer(
+                    item, player, gameClass.weapon.description, gameClass.weapon.briefDescription,
+                )
+                return@forEach
+            }
+
+            val skillId = getSkillId(item, player.uniqueId)
+            if (skillId != null) {
+                val skill = allClasses().flatMap { it.skills.asSequence() }.firstOrNull { it.id == skillId }
+                    ?: return@forEach
+                ItemDescriptionManager.applyForPlayer(
+                    item, player, skill.description, skill.briefDescription,
+                    ItemDescriptionManager.cooldownLines(skill.cooldown),
+                )
+                return@forEach
+            }
+
+            val passiveId = getPassiveId(item, player.uniqueId) ?: return@forEach
+            val passive = allClasses().flatMap { it.passives.asSequence() }
+                .firstOrNull { it.javaClass.name == passiveId } ?: return@forEach
+            ItemDescriptionManager.applyForPlayer(
+                item, player, passive.description, passive.briefDescription,
+            )
+        }
+        player.updateInventory()
     }
 
     fun PlayerData.damage(

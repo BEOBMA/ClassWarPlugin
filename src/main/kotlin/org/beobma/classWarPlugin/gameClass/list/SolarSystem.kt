@@ -303,7 +303,7 @@ class SolarSystem : GameClass(), GameStatusHandler, GameEndHandler, OnHitHandler
     private fun ensurePlanetItems(planet: PlanetClass) {
         if (planet === uranus && player.inventory.contents.none {
                 it != null && getWeaponClassId(it) == Uranus::class.java.name
-            }) giveOrDrop(uranus.toWeaponItemStack())
+            }) giveOrDrop(uranus.toWeaponItemStack(player))
 
         planet.skills.forEach { skill ->
             if (player.inventory.contents.none { it != null && getSkillId(it, player.uniqueId) == skill.id }) {
@@ -314,7 +314,13 @@ class SolarSystem : GameClass(), GameStatusHandler, GameEndHandler, OnHitHandler
                     }
                 }
                 giveOrDrop(markSkillItem(
-                    ItemDescriptionManager.apply(display, skill.description, ItemDescriptionManager.cooldownLines(skill.cooldown)),
+                    ItemDescriptionManager.applyForPlayer(
+                        display,
+                        player,
+                        skill.description,
+                        skill.briefDescription,
+                        ItemDescriptionManager.cooldownLines(skill.cooldown),
+                    ),
                     skill, player.uniqueId
                 ))
             }

@@ -49,7 +49,7 @@ class Blacksmith : GameClass(), GameStatusHandler, OnHitHandler {
 
     private fun refreshWeapon() {
         val slot = if (playerData.gameClasses.indexOf(this) == 1) 8 else 0
-        player.inventory.setItem(slot, toWeaponItemStack())
+        player.inventory.setItem(slot, toWeaponItemStack(player))
     }
 
     private fun chanceAt(level: Int): EnhanceChance = when (level) {

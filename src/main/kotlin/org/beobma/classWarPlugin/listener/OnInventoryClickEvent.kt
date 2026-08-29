@@ -7,6 +7,7 @@ import org.beobma.classWarPlugin.manager.GameManager.confirmAssignedClass
 import org.beobma.classWarPlugin.manager.GameManager.refreshAssignedClass
 import org.beobma.classWarPlugin.manager.GameManager.startTraining
 import org.beobma.classWarPlugin.manager.GameManager.startNewGame
+import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassStatusInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openConfigInventory
@@ -17,6 +18,8 @@ import org.beobma.classWarPlugin.manager.InventoryManager.getMatchModeFromItem
 import org.beobma.classWarPlugin.manager.InventoryManager.openTrainingClassListInventory
 import org.beobma.classWarPlugin.manager.ConfigCategory
 import org.beobma.classWarPlugin.manager.PlayerTagManager
+import org.beobma.classWarPlugin.manager.PlayerManager.refreshClassItemDescriptions
+import org.beobma.classWarPlugin.manager.PlayerPreferenceManager
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.list.Contractor
 import org.beobma.classWarPlugin.gameClass.list.DeathNote
@@ -89,6 +92,7 @@ class OnInventoryClickEvent : Listener {
             val category = getOpenConfigCategory(player)
             if (category == null) {
                 val selectedCategory = when (event.rawSlot) {
+                    22 -> ConfigCategory.PERSONAL
                     10 -> ConfigCategory.GAME
                     12 -> ConfigCategory.RANK
                     14 -> ConfigCategory.SCATTER
@@ -96,6 +100,7 @@ class OnInventoryClickEvent : Listener {
                     20 -> ConfigCategory.COMBAT
                     else -> null
                 } ?: return
+                if (selectedCategory != ConfigCategory.PERSONAL && !player.isOp) return
                 player.openConfigCategoryInventory(selectedCategory)
                 return
             }
@@ -104,6 +109,16 @@ class OnInventoryClickEvent : Listener {
                 player.openConfigInventory()
                 return
             }
+            if (category == ConfigCategory.PERSONAL) {
+                if (event.rawSlot != 13) return
+                PlayerPreferenceManager.toggleDescriptionViewMode(player)
+                findGameForPlayer(player)?.playerDatas?.filterIsInstance<PlayerData>()
+                    ?.find { it.uniqueId == player.uniqueId }
+                    ?.let(::refreshClassItemDescriptions)
+                player.openConfigCategoryInventory(category)
+                return
+            }
+            if (!player.isOp) return
             val settingSlot = configSettingSlot(category, event.rawSlot) ?: return
             GameSettings.adjust(settingSlot, event.isLeftClick, if (event.isShiftClick) 10 else 1)
             player.openConfigCategoryInventory(category)
@@ -220,6 +235,7 @@ class OnInventoryClickEvent : Listener {
     }
 
     private fun configSettingSlot(category: ConfigCategory, inventorySlot: Int): Int? = when (category) {
+        ConfigCategory.PERSONAL -> null
         ConfigCategory.GAME -> when (inventorySlot) {
             11 -> 10
             15 -> 12

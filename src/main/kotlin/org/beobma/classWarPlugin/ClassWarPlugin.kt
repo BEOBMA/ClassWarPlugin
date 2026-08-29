@@ -30,6 +30,7 @@ import org.beobma.classWarPlugin.manager.DamageIndicatorManager
 import org.beobma.classWarPlugin.manager.StealthVisibilityManager
 import org.beobma.classWarPlugin.manager.AttackableObjectManager
 import org.beobma.classWarPlugin.util.CourtroomMidiPlayer
+import org.beobma.classWarPlugin.updater.GitHubReleaseUpdater
 import org.bukkit.plugin.java.JavaPlugin
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
@@ -45,6 +46,7 @@ class ClassWarPlugin : JavaPlugin() {
     }
 
     private var statusActionBarTask: BukkitTask? = null
+    val releaseUpdater = GitHubReleaseUpdater(this)
 
     override fun onLoad() {
         preloadPluginClasses()
@@ -61,11 +63,13 @@ class ClassWarPlugin : JavaPlugin() {
         registerClientDetectionChannel()
         registerEvents()
         startStatusActionBarTask()
+        releaseUpdater.start()
         loggerInfo("플러그인이 정상적으로 활성화되었습니다.")
     }
 
     override fun onDisable() {
         statusActionBarTask?.cancel()
+        releaseUpdater.stop()
         GameManager.run {
             Info.game?.stop()
             stopAllTraining()

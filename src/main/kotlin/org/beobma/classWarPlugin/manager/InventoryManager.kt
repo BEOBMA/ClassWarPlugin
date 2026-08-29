@@ -1,5 +1,8 @@
 package org.beobma.classWarPlugin.manager
 
+import io.papermc.paper.datacomponent.DataComponentType
+import io.papermc.paper.datacomponent.DataComponentTypes
+import io.papermc.paper.datacomponent.item.TooltipDisplay
 import net.kyori.adventure.text.minimessage.MiniMessage
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.gameClass.GameClass
@@ -18,6 +21,7 @@ import org.bukkit.inventory.ItemStack
 import org.bukkit.persistence.PersistentDataType
 
 enum class ConfigCategory {
+    PERSONAL,
     GAME,
     RANK,
     SCATTER,
@@ -27,6 +31,23 @@ enum class ConfigCategory {
 
 object InventoryManager {
     private val miniMessage = MiniMessage.miniMessage()
+    private val classIconVisibleTooltipComponents: Set<DataComponentType> = setOf(
+        DataComponentTypes.CUSTOM_NAME,
+        DataComponentTypes.ITEM_NAME,
+        DataComponentTypes.LORE,
+        DataComponentTypes.TOOLTIP_DISPLAY,
+    )
+    private val classIconImplicitTooltipComponents: Set<DataComponentType> = setOf(
+        DataComponentTypes.ATTRIBUTE_MODIFIERS,
+        DataComponentTypes.JUKEBOX_PLAYABLE,
+        DataComponentTypes.WEAPON,
+        DataComponentTypes.TOOL,
+        DataComponentTypes.EQUIPPABLE,
+        DataComponentTypes.BLOCKS_ATTACKS,
+        DataComponentTypes.INSTRUMENT,
+        DataComponentTypes.OMINOUS_BOTTLE_AMPLIFIER,
+        DataComponentTypes.SULFUR_CUBE_CONTENT,
+    )
     private val classIdKey: NamespacedKey
         get() = NamespacedKey(ClassWarPlugin.instance, "class-id")
     private val matchModeKey: NamespacedKey
@@ -49,14 +70,14 @@ object InventoryManager {
 
     fun Player.openClassListInventory(page: Int) {
         val visibleClasses = gameClassList.filter { isOp || it.rank != Rank.SPECIAL }
-        val inventory = buildClassListInventory(page, visibleClasses) ?: return
+        val inventory = buildClassListInventory(page, visibleClasses, this) ?: return
         PlayerTagManager.addTag(this, "openClassListInventory")
         openInventory(inventory)
     }
 
     fun Player.openTrainingClassListInventory(page: Int) {
         val visibleClasses = gameClassList.filter { isOp || it.rank != Rank.SPECIAL }
-        val inventory = buildClassListInventory(page, visibleClasses) ?: return
+        val inventory = buildClassListInventory(page, visibleClasses, this) ?: return
         PlayerTagManager.addTag(this, "openTrainingClassListInventory")
         openInventory(inventory)
     }
@@ -70,8 +91,8 @@ object InventoryManager {
         val inventory = Bukkit.createInventory(null, 54, miniMessage.deserialize(title))
         fillWith(inventory, Material.GRAY_STAINED_GLASS_PANE, " ")
 
-        if (isDual) populateDualAssignedClasses(inventory, assignedClasses)
-        else populateSingleAssignedClass(inventory, assignedClasses.first())
+        if (isDual) populateDualAssignedClasses(inventory, assignedClasses, player)
+        else populateSingleAssignedClass(inventory, assignedClasses.first(), player)
 
         inventory.setItem(45, ItemStack(Material.NETHER_STAR).apply {
             itemMeta = itemMeta.apply {
@@ -106,37 +127,37 @@ object InventoryManager {
         player.openInventory(inventory)
     }
 
-    private fun populateSingleAssignedClass(inventory: Inventory, gameClass: GameClass) {
-        inventory.setItem(4, createClassItem(gameClass))
-        inventory.setItem(19, gameClass.weapon.toItemStack())
+    private fun populateSingleAssignedClass(inventory: Inventory, gameClass: GameClass, viewer: Player) {
+        inventory.setItem(4, createClassItem(gameClass, viewer))
+        inventory.setItem(19, gameClass.weapon.toItemStack(viewer))
         val skillSlots = listOf(20, 21, 22, 23, 24, 25, 26, 27)
         gameClass.skills.forEachIndexed { index, skill ->
             val slot = skillSlots.getOrNull(index) ?: return@forEachIndexed
             inventory.setItem(slot, createFullDescriptionItem(
-                skillDyeMaterial(index), skill.name, skill.description,
+                viewer, skillDyeMaterial(index), skill.name, skill.description, skill.briefDescription,
                 ItemDescriptionManager.cooldownLines(skill.cooldown),
             ))
         }
         gameClass.passives.forEachIndexed { index, passive ->
             if (index >= 7) return@forEachIndexed
             inventory.setItem(30 + index, createFullDescriptionItem(
-                Material.WHITE_DYE, passive.name, passive.description
+                viewer, Material.WHITE_DYE, passive.name, passive.description, passive.briefDescription,
             ))
         }
     }
 
-    private fun populateDualAssignedClasses(inventory: Inventory, classes: List<GameClass>) {
+    private fun populateDualAssignedClasses(inventory: Inventory, classes: List<GameClass>, viewer: Player) {
         val first = classes[0]
         val second = classes[1]
-        inventory.setItem(2, createClassItem(first))
-        inventory.setItem(6, createClassItem(second))
-        inventory.setItem(11, first.weapon.toItemStack())
-        inventory.setItem(15, second.weapon.toItemStack())
+        inventory.setItem(2, createClassItem(first, viewer))
+        inventory.setItem(6, createClassItem(second, viewer))
+        inventory.setItem(11, first.weapon.toItemStack(viewer))
+        inventory.setItem(15, second.weapon.toItemStack(viewer))
 
-        populateAssignedSkills(inventory, first, (18..25).toList())
-        populateAssignedSkills(inventory, second, (27..34).toList(), first.skills.size)
-        populateAssignedPassives(inventory, first, (36..42).toList())
-        populateAssignedPassives(inventory, second, (46..52).toList())
+        populateAssignedSkills(inventory, first, (18..25).toList(), viewer = viewer)
+        populateAssignedSkills(inventory, second, (27..34).toList(), first.skills.size, viewer)
+        populateAssignedPassives(inventory, first, (36..42).toList(), viewer)
+        populateAssignedPassives(inventory, second, (46..52).toList(), viewer)
     }
 
     private fun populateAssignedSkills(
@@ -144,21 +165,27 @@ object InventoryManager {
         gameClass: GameClass,
         slots: List<Int>,
         dyeOffset: Int = 0,
+        viewer: Player,
     ) {
         gameClass.skills.forEachIndexed { index, skill ->
             val slot = slots.getOrNull(index) ?: return@forEachIndexed
             inventory.setItem(slot, createFullDescriptionItem(
-                skillDyeMaterial(dyeOffset + index), skill.name, skill.description,
+                viewer, skillDyeMaterial(dyeOffset + index), skill.name, skill.description, skill.briefDescription,
                 ItemDescriptionManager.cooldownLines(skill.cooldown),
             ))
         }
     }
 
-    private fun populateAssignedPassives(inventory: Inventory, gameClass: GameClass, slots: List<Int>) {
+    private fun populateAssignedPassives(
+        inventory: Inventory,
+        gameClass: GameClass,
+        slots: List<Int>,
+        viewer: Player,
+    ) {
         gameClass.passives.forEachIndexed { index, passive ->
             val slot = slots.getOrNull(index) ?: return@forEachIndexed
             inventory.setItem(slot, createFullDescriptionItem(
-                Material.WHITE_DYE, passive.name, passive.description
+                viewer, Material.WHITE_DYE, passive.name, passive.description, passive.briefDescription,
             ))
         }
     }
@@ -167,37 +194,55 @@ object InventoryManager {
         val inventory = Bukkit.createInventory(null, 27, miniMessage.deserialize("<dark_gray>ClassWar 설정 카테고리"))
         fillWith(inventory, Material.BLACK_STAINED_GLASS_PANE, " ")
 
-        inventory.setItem(10, createDescriptionItem(
-            Material.CLOCK,
-            "<yellow><bold>게임 시작 설정",
-            listOf("<gray>새로고침 횟수와 시작 카운트다운을 설정합니다."),
+        inventory.setItem(22, createDescriptionItem(
+            if (PlayerPreferenceManager.usesDetailedDescriptions(this)) Material.WRITABLE_BOOK else Material.BOOK,
+            "<aqua><bold>개인 설명 설정",
+            listOf(
+                if (PlayerPreferenceManager.usesDetailedDescriptions(this)) {
+                    "<gray>현재 표시 방식: <green><bold>상세 설명"
+                } else {
+                    "<gray>현재 표시 방식: <yellow><bold>간략 설명 (기본값)"
+                },
+                "",
+                "<gray>자신에게 표시되는 클래스 설명만 변경합니다.",
+                "<green>OP 권한 없이도 사용할 수 있습니다.",
+            ),
         ))
-        inventory.setItem(12, createDescriptionItem(
-            Material.NETHER_STAR,
-            "<yellow><bold>랭크 확률 설정",
-            listOf("<gray>각 클래스 랭크의 등장 가중치를 설정합니다."),
-        ))
-        inventory.setItem(14, createDescriptionItem(
-            Material.RECOVERY_COMPASS,
-            "<yellow><bold>맵 및 산개 설정",
-            listOf("<gray>산개 반경과 플레이어 최소 간격을 설정합니다."),
-        ))
-        inventory.setItem(16, createDescriptionItem(
-            Material.BARRIER,
-            "<yellow><bold>월드보더 설정",
-            listOf("<gray>월드보더 사용 여부와 축소 방식을 설정합니다."),
-        ))
-        inventory.setItem(20, createDescriptionItem(
-            Material.ARMOR_STAND,
-            "<yellow><bold>화면 및 메시지 설정",
-            listOf("<gray>Tab 목록, 피해량 텍스트와 사망 메시지를 설정합니다."),
-        ))
+
+        if (isOp) {
+            inventory.setItem(10, createDescriptionItem(
+                Material.CLOCK,
+                "<yellow><bold>게임 시작 설정",
+                listOf("<gray>새로고침 횟수와 시작 카운트다운을 설정합니다."),
+            ))
+            inventory.setItem(12, createDescriptionItem(
+                Material.NETHER_STAR,
+                "<yellow><bold>랭크 확률 설정",
+                listOf("<gray>각 클래스 랭크의 등장 가중치를 설정합니다."),
+            ))
+            inventory.setItem(14, createDescriptionItem(
+                Material.RECOVERY_COMPASS,
+                "<yellow><bold>맵 및 산개 설정",
+                listOf("<gray>산개 반경과 플레이어 최소 간격을 설정합니다."),
+            ))
+            inventory.setItem(16, createDescriptionItem(
+                Material.BARRIER,
+                "<yellow><bold>월드보더 설정",
+                listOf("<gray>월드보더 사용 여부와 축소 방식을 설정합니다."),
+            ))
+            inventory.setItem(20, createDescriptionItem(
+                Material.ARMOR_STAND,
+                "<yellow><bold>화면 및 메시지 설정",
+                listOf("<gray>Tab 목록, 피해량 텍스트와 사망 메시지를 설정합니다."),
+            ))
+        }
         openConfigView(inventory, null)
     }
 
     fun Player.openConfigCategoryInventory(category: ConfigCategory) {
         val settings = GameSettings.snapshot()
         val title = when (category) {
+            ConfigCategory.PERSONAL -> "개인 설명 설정"
             ConfigCategory.GAME -> "게임 시작 설정"
             ConfigCategory.RANK -> "랭크 확률 설정"
             ConfigCategory.SCATTER -> "맵 및 산개 설정"
@@ -208,6 +253,20 @@ object InventoryManager {
         fillWith(inventory, Material.BLACK_STAINED_GLASS_PANE, " ")
 
         when (category) {
+            ConfigCategory.PERSONAL -> {
+                inventory.setItem(13, createToggleItem(
+                    "상세 설명 표시",
+                    PlayerPreferenceManager.usesDetailedDescriptions(this),
+                    listOf(
+                        "<gray>비활성화하면 핵심 효과만 간략하게 표시합니다.",
+                        "<gray>활성화하면 세부 조건과 용어 설명까지 표시합니다.",
+                        "",
+                        "<yellow>기본값: 간략 설명",
+                        "<green>이 설정은 플레이어별로 영구 저장됩니다.",
+                    ),
+                ))
+            }
+
             ConfigCategory.GAME -> {
                 inventory.setItem(11, createSettingItem(Material.NETHER_STAR, "새로고침 횟수", settings.refreshChances, "회"))
                 inventory.setItem(15, createSettingItem(Material.CLOCK, "시작 카운트다운", settings.countdownSeconds, "초"))
@@ -317,13 +376,15 @@ object InventoryManager {
 
     fun Player.openClassStatusInventory(gameClass: GameClass) {
         val inventory = Bukkit.createInventory(null, 27, miniMessage.deserialize(UtilManager.applyKeywords(gameClass.name)))
-        inventory.setItem(0, gameClass.weapon.toItemStack())
+        inventory.setItem(0, gameClass.weapon.toItemStack(this))
         for (i in 0..gameClass.skills.size) {
             val skill = gameClass.skills.getOrNull(i) ?: break
             inventory.setItem(i + 1, createFullDescriptionItem(
+                this,
                 skillDyeMaterial(i),
                 skill.name,
                 skill.description,
+                skill.briefDescription,
                 ItemDescriptionManager.cooldownLines(skill.cooldown),
             ))
         }
@@ -331,13 +392,13 @@ object InventoryManager {
             val passive = gameClass.passives.getOrNull(i - gameClass.skills.size - 1) ?: break
             val material = Material.WHITE_DYE
             inventory.setItem(i, createFullDescriptionItem(
-                material, passive.name, passive.description
+                this, material, passive.name, passive.description, passive.briefDescription,
             ))
         }
         openInventory(inventory)
     }
 
-    private fun buildClassListInventory(page: Int, classList: List<GameClass?>): Inventory? {
+    private fun buildClassListInventory(page: Int, classList: List<GameClass?>, viewer: Player): Inventory? {
         val totalPages = (classList.size + 18 - 1) / 18
         if (page !in 0..<totalPages) return null
         val inventory = Bukkit.createInventory(null, 27, miniMessage.deserialize("클래스 목록 (페이지 ${page + 1}/${totalPages})"))
@@ -348,7 +409,7 @@ object InventoryManager {
 
         for (i in startIdx until endIdx) {
             val gameClass = classList[i] ?: continue
-            inventory.setItem(i - startIdx, createClassItem(gameClass))
+            inventory.setItem(i - startIdx, createClassItem(gameClass, viewer))
         }
 
         if (page > 0) {
@@ -414,17 +475,21 @@ object InventoryManager {
     }
 
     private fun createFullDescriptionItem(
+        viewer: Player,
         material: Material,
         name: String,
         details: List<String>,
+        briefDetails: List<String>,
         alwaysVisibleLines: List<String> = emptyList(),
-    ): ItemStack = ItemDescriptionManager.apply(
+    ): ItemStack = ItemDescriptionManager.applyForPlayer(
         ItemStack(material).apply {
             itemMeta = itemMeta.apply {
                 displayName(miniMessage.deserialize(UtilManager.applyKeywords(name)))
             }
         },
+        viewer,
         details,
+        briefDetails,
         alwaysVisibleLines,
     )
 
@@ -473,15 +538,47 @@ object InventoryManager {
         }
     }
 
-    private fun createClassItem(gameClass: GameClass): ItemStack {
+    private fun createClassItem(gameClass: GameClass, viewer: Player): ItemStack {
         val name = miniMessage.deserialize(UtilManager.applyKeywords(gameClass.name))
-        val rank = listOf(ItemDescriptionManager.renderLoreLine("<gray>랭크: ${gameClass.rank.formattedName}"))
+        val loreLines = buildList {
+            add(ItemDescriptionManager.renderLoreLine("<gray>랭크: ${gameClass.rank.formattedName}"))
+            add(ItemDescriptionManager.renderLoreLine(
+                if (PlayerPreferenceManager.usesDetailedDescriptions(viewer)) {
+                    "<gray>설명 표시: <green>상세"
+                } else {
+                    "<gray>설명 표시: <yellow>간략"
+                }
+            ))
+            if (gameClass.skills.isNotEmpty()) {
+                add(ItemDescriptionManager.renderLoreLine(""))
+                add(ItemDescriptionManager.renderLoreLine(
+                    "<red><bold>스킬</bold><gray>: ${gameClass.skills.joinToString("<gray>, ") { it.name }}"
+                ))
+            }
+            if (gameClass.passives.isNotEmpty()) {
+                add(ItemDescriptionManager.renderLoreLine(
+                    "<white><bold>패시브</bold><gray>: ${gameClass.passives.joinToString("<gray>, ") { it.name }}"
+                ))
+            }
+        }
         return ItemStack(gameClass.classItemMaterial, 1).apply {
             itemMeta = itemMeta.apply {
                 displayName(name)
-                lore(rank)
+                lore(loreLines)
                 persistentDataContainer.set(classIdKey, PersistentDataType.STRING, gameClass.javaClass.name)
             }
+            hideVanillaClassIconTooltip()
         }
+    }
+
+    /** Keeps the class name/lore while hiding material-provided lines such as damage and record information. */
+    private fun ItemStack.hideVanillaClassIconTooltip() {
+        val hiddenComponents = dataTypes
+            .filterNotTo(linkedSetOf()) { it in classIconVisibleTooltipComponents }
+            .apply { addAll(classIconImplicitTooltipComponents) }
+        setData(
+            DataComponentTypes.TOOLTIP_DISPLAY,
+            TooltipDisplay.tooltipDisplay().hiddenComponents(hiddenComponents),
+        )
     }
 }

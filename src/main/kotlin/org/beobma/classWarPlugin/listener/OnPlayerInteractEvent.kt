@@ -18,6 +18,7 @@ import org.beobma.classWarPlugin.gameClass.handler.SkillInputHandler
 import org.beobma.classWarPlugin.status.list.Disarm
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
+import org.bukkit.event.Event
 import org.bukkit.event.Listener
 import org.bukkit.event.block.Action
 import org.bukkit.event.player.PlayerInteractEvent
@@ -76,7 +77,7 @@ class OnPlayerInteractEvent : Listener {
                 .filterIsInstance<WeaponInputHandler>()
                 .forEach { handler ->
                     if (isRightClick) handler.onWeaponRightClick(event) else handler.onWeaponLeftClick(event)
-                    if (event.isCancelled) return
+                    if (event.useInteractedBlock() == Event.Result.DENY) return
                 }
             return
         }

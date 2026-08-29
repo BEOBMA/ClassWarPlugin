@@ -1,6 +1,11 @@
 package org.beobma.classWarPlugin.keyword
 
-enum class Keyword(val string: String, val description: String? = null) {
+enum class Keyword(
+    val string: String,
+    val description: String? = null,
+    /** 간략 설명에서도 조작법·발동 조건 등 플레이에 필수적인 해설을 표시한다. */
+    val showDescriptionInBrief: Boolean = false,
+) {
     Arrow("<gold><bold>화살</bold><gray>"),
     Invalidity("<dark_gray><bold>무효</bold><gray>"),
     Stealth(
@@ -23,7 +28,8 @@ enum class Keyword(val string: String, val description: String? = null) {
     ),
     VibrationExplosion(
         "<gold><bold>진동 폭발</bold><gray>",
-        "{keyword:VibrationExplosion}: <gold><bold>(진동 수치 x 0.5)</bold><gray> 만큼 {keyword:AbnormalStatusDamage}를 입고 {keyword:Vibration}을 제거한다."
+        "{keyword:VibrationExplosion}: <gold><bold>(진동 수치 x 0.5)</bold><gray> 만큼 {keyword:AbnormalStatusDamage}를 입고 {keyword:Vibration}을 제거한다.",
+        showDescriptionInBrief = true,
     ),
     AbnormalStatusDamage(
         "<green><bold>상태이상 피해</bold><gray>",
@@ -52,11 +58,13 @@ enum class Keyword(val string: String, val description: String? = null) {
     ),
     Bleeding(
         "<dark_red><bold>출혈</bold><gray>",
-        "{keyword:Bleeding}: 기본 공격 시 수치 만큼 {keyword:AbnormalStatusDamage}를 입고 수치를 절반으로 만든다."
+        "{keyword:Bleeding}: 기본 공격 시 수치 만큼 {keyword:AbnormalStatusDamage}를 입고 수치를 절반으로 만든다.",
+        showDescriptionInBrief = true,
     ),
     RespiteHealth(
         "<dark_red><bold>유예체력</bold><gray>",
-        "{keyword:RespiteHealth}: 일반적인 체력으로 간주되나, 어떤 경로로든 소멸되면 사망한다."
+        "{keyword:RespiteHealth}: 일반적인 체력으로 간주되나, 어떤 경로로든 소멸되면 사망한다.",
+        showDescriptionInBrief = true,
     ),
     Execution(
         "<dark_red><bold>처형</bold><gray>",
@@ -64,7 +72,8 @@ enum class Keyword(val string: String, val description: String? = null) {
     ),
     Electrocution(
         "<light_purple><bold>감전</bold><gray>",
-        "{keyword:Electrocution}: 20초간 <gold><bold>이동 속도가 5% 감소</bold><gray>한다. 지속 시간 도중 {keyword:Electrocution}이 다시 적용되면 {keyword:Electrocution}을 제거하고 2초간 {keyword:Stun}한다."
+        "{keyword:Electrocution}: 20초간 <gold><bold>이동 속도가 5% 감소</bold><gray>한다. 지속 시간 도중 {keyword:Electrocution}이 다시 적용되면 {keyword:Electrocution}을 제거하고 2초간 {keyword:Stun}한다.",
+        showDescriptionInBrief = true,
     ),
     Stun("<yellow><bold>기절</bold><gray>"),
     Snare(
@@ -73,7 +82,8 @@ enum class Keyword(val string: String, val description: String? = null) {
     ),
     Brightness(
         "<white><bold>광휘</bold><gray>",
-        "{keyword:Brightness}: 수치가 5가 되면 {keyword:Brightness}를 제거하고 2초간 {keyword:Snare}된다."
+        "{keyword:Brightness}: 수치가 5가 되면 {keyword:Brightness}를 제거하고 2초간 {keyword:Snare}된다.",
+        showDescriptionInBrief = true,
     ),
     Radiation(
         "<white><bold>발광</bold><gray>",
@@ -85,7 +95,8 @@ enum class Keyword(val string: String, val description: String? = null) {
     ),
     Charge(
         "<blue><bold>충전</bold><gray>",
-        "{keyword:Charge}: 웅크려서 충전하고, 특정 스킬 사용 시 소모하여 스킬을 강화한다."
+        "{keyword:Charge}: 웅크려서 충전하고, 특정 스킬 사용 시 소모하여 스킬을 강화한다.",
+        showDescriptionInBrief = true,
     ),
     Fix(
         "<dark_gray><bold>고정</bold><gray>",
@@ -93,15 +104,18 @@ enum class Keyword(val string: String, val description: String? = null) {
     ),
     Frostbite(
         "<aqua><bold>동상</bold><gray>",
-        "{keyword:Frostbite}: 5초간 <gold><bold>이동 속도가 (수치 x 5)% 만큼 감소</bold><gray>한다. 수치가 10 이상이면 {keyword:Frostbite}을 제거하고 {keyword:Freezing} 상태가 된다."
+        "{keyword:Frostbite}: 5초간 <gold><bold>이동 속도가 (수치 x 5)% 만큼 감소</bold><gray>한다. 수치가 10 이상이면 {keyword:Frostbite}을 제거하고 {keyword:Freezing} 상태가 된다.",
+        showDescriptionInBrief = true,
     ),
     Freezing(
         "<white><bold>빙결</bold><gray>",
-        "{keyword:Freezing}: 3초간 {keyword:Stun}과 동일한 효과를 적용하며, 지속 시간동안 기본 공격 피격 시 {keyword:Freezing} 상태가 해제되고 피해량의 50% 만큼 추가 {keyword:AbnormalStatusDamage}를 입는다."
+        "{keyword:Freezing}: 3초간 {keyword:Stun}과 동일한 효과를 적용하며, 지속 시간동안 기본 공격 피격 시 {keyword:Freezing} 상태가 해제되고 피해량의 50% 만큼 추가 {keyword:AbnormalStatusDamage}를 입는다.",
+        showDescriptionInBrief = true,
     ),
     DimensionMarker(
         "<blue><bold>차원 표식</bold><gray>",
-        "{keyword:DimensionMarker}: 최대 수치는 4이며, 지속 시간이 연장되지 않는다."
+        "{keyword:DimensionMarker}: 최대 수치는 4이며, 지속 시간이 연장되지 않는다.",
+        showDescriptionInBrief = true,
     ),
     Erosion(
         "<blue><bold>잠식</bold><gray>",
@@ -113,7 +127,8 @@ enum class Keyword(val string: String, val description: String? = null) {
     ),
     Checkpoint(
         "<aqua><bold>체크포인트</bold><gray>",
-        "{keyword:Checkpoint}: 저장된 위치와 체력으로 되돌아갈 수 있으며 지속시간 종료 시 사라진다."
+        "{keyword:Checkpoint}: 저장된 위치와 체력으로 되돌아갈 수 있으며 지속시간 종료 시 사라진다.",
+        showDescriptionInBrief = true,
     ),
     TimePhase(
         "<yellow><bold>시간대</bold><gray>",
@@ -135,7 +150,16 @@ enum class Keyword(val string: String, val description: String? = null) {
             line in registeredExplanations || explanationPrefix.containsMatchIn(line)
 
         /** 설명 본문과 키워드 해설에서 참조한 모든 키워드의 해설을 등장 순서대로 반환한다. */
-        fun explanationsFor(lines: List<String>): List<String> {
+        fun explanationsFor(lines: List<String>): List<String> =
+            collectKeywords(lines).mapNotNull(Keyword::description)
+
+        /** 간략 모드에서도 반드시 알아야 하는 조작법·발동 조건 해설만 반환한다. */
+        fun briefExplanationsFor(lines: List<String>): List<String> =
+            collectKeywords(lines)
+                .filter(Keyword::showDescriptionInBrief)
+                .mapNotNull(Keyword::description)
+
+        private fun collectKeywords(lines: List<String>): Set<Keyword> {
             val keywords = linkedSetOf<Keyword>()
             val pending = ArrayDeque<Keyword>()
 
@@ -151,7 +175,7 @@ enum class Keyword(val string: String, val description: String? = null) {
                 pending.removeFirst().description?.let(::collect)
             }
 
-            return keywords.mapNotNull { it.description }
+            return keywords
         }
     }
 }

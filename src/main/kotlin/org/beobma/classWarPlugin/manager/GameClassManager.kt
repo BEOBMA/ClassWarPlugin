@@ -6,6 +6,7 @@ import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Weapon
 import org.bukkit.Material
 import org.bukkit.NamespacedKey
+import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import org.bukkit.persistence.PersistentDataType
 
@@ -14,17 +15,21 @@ object GameClassManager {
     private val weaponClassKey: NamespacedKey
         get() = NamespacedKey(ClassWarPlugin.instance, "weapon-class")
 
-    fun Weapon.toItemStack(): ItemStack {
+    fun Weapon.toItemStack(viewer: Player? = null): ItemStack {
         if (material == Material.AIR) return ItemStack(Material.AIR)
         val itemStack = ItemStack(material, 1).apply {
             itemMeta = itemMeta.apply {
                 displayName(miniMessage.deserialize(UtilManager.applyKeywords(name)))
             }
         }
-        return ItemDescriptionManager.apply(itemStack, description)
+        return if (viewer == null) {
+            ItemDescriptionManager.apply(itemStack, description)
+        } else {
+            ItemDescriptionManager.applyForPlayer(itemStack, viewer, description, briefDescription)
+        }
     }
 
-    fun GameClass.toWeaponItemStack(): ItemStack = weapon.toItemStack().apply {
+    fun GameClass.toWeaponItemStack(viewer: Player? = null): ItemStack = weapon.toItemStack(viewer).apply {
         if (!type.isAir) {
             itemMeta = itemMeta.apply {
                 persistentDataContainer.set(

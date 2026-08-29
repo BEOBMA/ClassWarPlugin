@@ -4,6 +4,7 @@ import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.effect.EffectApiAccess
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.entity.player.PlayerStatus
+import org.beobma.classWarPlugin.description.DescriptionText
 import org.bukkit.entity.Player
 
 abstract class Passive : EffectApiAccess {
@@ -14,6 +15,8 @@ abstract class Passive : EffectApiAccess {
 
     abstract val name: String
     abstract val description: List<String>
+    open val briefDescription: List<String>
+        get() = DescriptionText.brief(description)
 
     fun inject(playerData: PlayerData) {
         if (playerData.entityStatus !is PlayerStatus) return

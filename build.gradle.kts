@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "org.beobma"
-version = "1.0-SNAPSHOT"
+version = "1.0.1"
 
 repositories {
     mavenCentral()
@@ -21,6 +21,8 @@ repositories {
 dependencies {
     compileOnly("io.papermc.paper:paper-api:26.2.build.+")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
+    implementation("com.google.code.gson:gson:2.13.2")
+    testImplementation(kotlin("test"))
 }
 
 val targetJavaVersion = 25
@@ -30,6 +32,11 @@ kotlin {
 
 tasks.shadowJar {
     relocate("kotlin", "org.beobma.classWarPlugin.libs.kotlin")
+    relocate("com.google.gson", "org.beobma.classWarPlugin.libs.gson")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 val verifyShadowJarContents = tasks.register("verifyShadowJarContents") {
@@ -120,7 +127,7 @@ tasks.processResources {
     val props = mapOf("version" to version)
     inputs.properties(props)
     filteringCharset = "UTF-8"
-    filesMatching("paper-plugin.yml") {
+    filesMatching("plugin.yml") {
         expand(props)
     }
 }
