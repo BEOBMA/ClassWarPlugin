@@ -8,7 +8,7 @@ class Vibration : StatusAbnormality() {
         get() = Keyword.Vibration.string
     override val description: List<String>
         get() = listOf(
-            Keyword.Vibration.description!!,
+            Keyword.Vibration.requireDescription(),
             "",
             "<gray>수치 합산 적용",
             "<gray>지속시간 연장 적용",

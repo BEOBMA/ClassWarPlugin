@@ -158,7 +158,7 @@ class Mathematician : GameClass(), GameStatusHandler {
         10 -> {
             val values = List(4) { Random.nextInt(-50, 101) }
             "${values.joinToString(", ")} 중 최댓값과 최솟값의 차 = ?" to
-                (values.maxOrNull()!! - values.minOrNull()!!)
+                (values.maxOf { it } - values.minOf { it })
         }
         else -> {
             val a = Random.nextInt(-15, 16); val b = Random.nextInt(-15, 16)

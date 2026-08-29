@@ -15,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.round
 import kotlin.math.roundToInt
 
+/** 클래스별로 조정 가능한 밸런스 축과 대응 설정 키다. */
 enum class ClassBalanceField(val configName: String) {
     OVERALL("overall-multiplier"),
     DAMAGE("damage-multiplier"),
@@ -25,6 +26,10 @@ enum class ClassBalanceField(val configName: String) {
     COOLDOWN_FLOW("cooldown-flow-multiplier"),
 }
 
+/**
+ * 한 클래스에 적용할 독립적인 밸런스 배율 묶음이다.
+ * [overallMultiplier]는 피해·회복·사거리·상태 지속시간·상태 세기와 곱해진다.
+ */
 data class ClassBalanceModifiers(
     val overallMultiplier: Double = 1.0,
     val damageMultiplier: Double = 1.0,
@@ -34,6 +39,7 @@ data class ClassBalanceModifiers(
     val statusPowerMultiplier: Double = 1.0,
     val cooldownFlowMultiplier: Double = 1.0,
 ) {
+    /** [field]에 저장된 원시 배율을 반환한다. */
     fun value(field: ClassBalanceField): Double = when (field) {
         ClassBalanceField.OVERALL -> overallMultiplier
         ClassBalanceField.DAMAGE -> damageMultiplier
@@ -44,12 +50,14 @@ data class ClassBalanceModifiers(
         ClassBalanceField.COOLDOWN_FLOW -> cooldownFlowMultiplier
     }
 
+    /** 전체 배율을 포함해 실제 계산에 사용할 [field]의 배율을 반환한다. */
     fun effective(field: ClassBalanceField): Double = when (field) {
         ClassBalanceField.OVERALL -> overallMultiplier
         ClassBalanceField.COOLDOWN_FLOW -> cooldownFlowMultiplier
         else -> overallMultiplier * value(field)
     }
 
+    /** [field]만 [value]로 교체한 사본을 반환한다. */
     fun with(field: ClassBalanceField, value: Double): ClassBalanceModifiers = when (field) {
         ClassBalanceField.OVERALL -> copy(overallMultiplier = value)
         ClassBalanceField.DAMAGE -> copy(damageMultiplier = value)
@@ -61,6 +69,10 @@ data class ClassBalanceModifiers(
     }
 }
 
+/**
+ * 클래스별 배율을 설정 파일에서 읽고 스킬 호출 문맥에 맞는 배율을 선택한다.
+ * 배율은 `0.1..10.0` 범위의 소수 첫째 자리로 정규화된다.
+ */
 object ClassBalanceManager {
     private const val ROOT_PATH = "class-balance"
     private const val MINIMUM_MULTIPLIER = 0.1
@@ -81,6 +93,7 @@ object ClassBalanceManager {
     @Volatile
     private var descriptors: List<ClassDescriptor> = emptyList()
 
+    /** 등록 클래스의 배율을 불러오고 누락된 설정 항목을 기본값으로 생성한다. */
     fun load(config: FileConfiguration, classes: Collection<GameClass>) {
         val uniqueClasses = classes.distinctBy { it.javaClass.name }
         descriptors = uniqueClasses.map { ClassDescriptor(it.javaClass.name, configKey(it)) }
@@ -117,11 +130,14 @@ object ClassBalanceManager {
         if (changed) ClassWarPlugin.instance.saveConfig()
     }
 
+    /** 클래스 단순 이름을 안정적인 kebab-case 설정 키로 변환한다. */
     fun configKey(gameClass: GameClass): String = configKey(gameClass.javaClass.simpleName)
 
+    /** [gameClass]의 현재 배율을 반환하며 미등록 클래스에는 기본 배율을 사용한다. */
     fun modifiers(gameClass: GameClass): ClassBalanceModifiers =
         modifiersByKey[configKey(gameClass)] ?: defaultModifiers
 
+    /** [field]를 `0.1 * stepMultiplier`만큼 변경하고 즉시 설정 파일에 저장한다. */
     fun adjust(gameClass: GameClass, field: ClassBalanceField, increase: Boolean, stepMultiplier: Int) {
         val key = configKey(gameClass)
         val current = modifiersByKey[key] ?: defaultModifiers
@@ -134,6 +150,7 @@ object ClassBalanceManager {
         plugin.saveConfig()
     }
 
+    /** [gameClass]의 모든 배율을 현재 기본 배율로 되돌리고 저장한다. */
     fun reset(gameClass: GameClass) {
         val key = configKey(gameClass)
         modifiersByKey = modifiersByKey.toMutableMap().apply { put(key, defaultModifiers) }
@@ -144,6 +161,7 @@ object ClassBalanceManager {
         plugin.saveConfig()
     }
 
+    /** 경기 전역 배율과 [skill] 소유 클래스의 쿨다운 흐름 배율을 결합한다. */
     fun cooldownFlowMultiplier(player: Player, skill: Skill): Double {
         val game = GameManager.findGameForPlayer(player)
         val globalMultiplier = game?.settings?.cooldownFlowMultiplier ?: 1.0
@@ -156,6 +174,7 @@ object ClassBalanceManager {
         return (globalMultiplier * classMultiplier).coerceAtLeast(MINIMUM_MULTIPLIER)
     }
 
+    /** 피해 경로와 호출 클래스에 맞는 피해 배율을 [amount]에 적용한다. */
     fun scaleDamage(attacker: PlayerData, path: DamagePath, amount: Double): Double {
         val key = if (path.isBasicAttack) {
             getWeaponClassId(attacker.player.inventory.itemInMainHand)?.let(::keyForClassName)
@@ -166,21 +185,26 @@ object ClassBalanceManager {
         return amount * effective(key, ClassBalanceField.DAMAGE)
     }
 
+    /** 호출 클래스의 회복 배율을 [amount]에 적용한다. */
     fun scaleHealing(healer: PlayerData, amount: Double): Double =
         amount * effective(resolveCallerKey(healer), ClassBalanceField.HEALING)
 
+    /** 호출 클래스의 사거리 배율을 [amount]에 적용하고 음수 결과를 방지한다. */
     fun scaleRange(source: EntityData, amount: Double): Double {
         return (amount * rangeMultiplier(source)).coerceAtLeast(0.0)
     }
 
+    /** [source]의 호출 클래스에 해당하는 사거리 배율을 반환한다. */
     fun rangeMultiplier(source: EntityData): Double {
         val playerData = source as? PlayerData ?: return 1.0
         return effective(resolveCallerKey(playerData), ClassBalanceField.RANGE)
     }
 
+    /** 상태 지속시간에 호출 클래스 배율을 적용하되 0이 아닌 값의 부호를 보존한다. */
     fun scaleStatusDuration(caster: PlayerData?, duration: Int): Int =
         scalePositiveInt(duration, effective(caster?.let(::resolveCallerKey), ClassBalanceField.STATUS_DURATION))
 
+    /** 상태 세기에 호출 클래스 배율을 적용하되 0이 아닌 값의 부호를 보존한다. */
     fun scaleStatusPower(caster: PlayerData?, power: Int): Int =
         scalePositiveInt(power, effective(caster?.let(::resolveCallerKey), ClassBalanceField.STATUS_POWER))
 

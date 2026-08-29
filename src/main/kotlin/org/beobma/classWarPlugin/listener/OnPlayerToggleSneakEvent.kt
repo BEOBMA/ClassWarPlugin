@@ -14,7 +14,7 @@ class OnPlayerToggleSneakEvent : Listener {
     @EventHandler(ignoreCancelled = true)
     fun onToggleSneak(event: PlayerToggleSneakEvent) {
         val player = event.player
-        if (!isGaming() && !PlayerTagManager.hasTag(player, "isTraining")) return
+        if (!isGaming() && !PlayerTagManager.isTraining(player)) return
         val playerData = findGameForPlayer(player)?.playerDatas?.filterIsInstance<PlayerData>()
             ?.find { it.uniqueId == player.uniqueId } ?: return
         if (!playerData.canDispatchClassHandlers()) return

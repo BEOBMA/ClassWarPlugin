@@ -306,7 +306,7 @@ class AreaDevelopment : GameClass() {
         }
 
         private fun domainEnemies(origin: Location): List<EntityData> {
-            val isTraining = PlayerTagManager.hasTag(player, "isTraining")
+            val isTraining = PlayerTagManager.isTraining(player)
             if (isTraining) registerTrainingEntities()
 
             return game.playerDatas.asSequence()

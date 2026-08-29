@@ -7,3 +7,4 @@ commands:
   classwar:
     description: ClassWar 메인 명령어
     aliases: [ cw, ClassWar ]
+    usage: /cw help

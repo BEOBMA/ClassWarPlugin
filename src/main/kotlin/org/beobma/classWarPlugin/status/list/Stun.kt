@@ -14,7 +14,7 @@ class Stun : StatusAbnormality(), StatusOnHitHandler, StatusPlayerMoveHandler {
         get() = Keyword.Stun.string
     override val description: List<String>
         get() = listOf(
-            Keyword.Stun.description!!,
+            Keyword.Stun.requireDescription(),
             "",
             "<gray>수치 없음",
             "<gray>지속시간 연장",

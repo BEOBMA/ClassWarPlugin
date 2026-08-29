@@ -133,8 +133,9 @@ class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, Pla
                     return
                 }
                 if (player.isSneaking) {
-                    if (lockedLocation == null) lockedLocation = player.location.block.location.add(0.5, 0.0, 0.5)
-                    val locked = lockedLocation!!
+                    val locked = lockedLocation ?: player.location.block.location.add(0.5, 0.0, 0.5).also {
+                        lockedLocation = it
+                    }
                     if (player.location.distanceSquared(locked) > 1.0E-6) {
                         player.teleport(locked.clone().apply { yaw = player.location.yaw; pitch = player.location.pitch })
                     }
@@ -160,10 +161,15 @@ class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, Pla
     }
 
     private fun flashRed() {
-        if (display?.isValid != true) return
+        val currentDisplay = display?.takeIf { it.isValid } ?: return
         redUntilTick = Bukkit.getCurrentTick().toLong() + 8L
-        particles.spawn(display!!.location.add(0.5, 0.5, 0.5), Particle.DAMAGE_INDICATOR, count = 6, spread = 0.3)
-        sounds.play(display!!.location, Sound.BLOCK_WOOD_HIT, volume = 0.45f, pitch = 1.35f)
+        particles.spawn(
+            currentDisplay.location.add(0.5, 0.5, 0.5),
+            Particle.DAMAGE_INDICATOR,
+            count = 6,
+            spread = 0.3,
+        )
+        sounds.play(currentDisplay.location, Sound.BLOCK_WOOD_HIT, volume = 0.45f, pitch = 1.35f)
     }
 
     private fun clearDisguise() {

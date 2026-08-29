@@ -7,6 +7,10 @@ import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import org.bukkit.potion.PotionEffect
 
+/**
+ * 경기 참가 전 플레이어 상태를 복원하기 위한 값 객체다.
+ * 위치와 인벤토리 아이템은 캡처 시 복제되어 이후 Bukkit 객체 변경과 분리된다.
+ */
 data class PlayerSnapshot(
     val location: Location,
     val inventoryContents: Array<ItemStack?>,
@@ -32,6 +36,7 @@ data class PlayerSnapshot(
     val scaleBase: Double?,
 ) {
     companion object {
+        /** 현재 플레이어 상태를 방어적으로 복사해 스냅샷으로 만든다. */
         fun capture(player: Player): PlayerSnapshot = PlayerSnapshot(
             location = player.location.clone(),
             inventoryContents = player.inventory.contents.map { it?.clone() }.toTypedArray(),

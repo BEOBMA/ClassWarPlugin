@@ -2,6 +2,7 @@ package org.beobma.classWarPlugin.manager
 
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.EntityData
+import org.beobma.classWarPlugin.entity.PlayerOwnedEntityData
 import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
 import org.beobma.classWarPlugin.entity.mob.MobEntityData
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
@@ -31,13 +32,14 @@ import org.bukkit.persistence.PersistentDataType
 import java.util.UUID
 import kotlin.math.cos
 
-
+/** 스킬 아이템 식별, 사용 검증과 공통 대상 탐색을 담당한다. */
 object SkillManager {
     private val skillIdKey: NamespacedKey
         get() = NamespacedKey(ClassWarPlugin.instance, "skill-id")
     private val skillOwnerKey: NamespacedKey
         get() = NamespacedKey(ClassWarPlugin.instance, "skill-owner")
 
+    /** 아이템에 스킬 식별자와 소유자 UUID를 기록하고 같은 인스턴스를 반환한다. */
     fun markSkillItem(item: ItemStack, skill: Skill, ownerId: UUID): ItemStack = item.apply {
         itemMeta = itemMeta.apply {
             persistentDataContainer.set(skillIdKey, PersistentDataType.STRING, skill.id)
@@ -45,6 +47,7 @@ object SkillManager {
         }
     }
 
+    /** [ownerId]가 소유한 스킬 아이템인 경우에만 기록된 스킬 ID를 반환한다. */
     fun getSkillId(item: ItemStack, ownerId: UUID): String? {
         val container = item.itemMeta.persistentDataContainer
         if (container.get(skillOwnerKey, PersistentDataType.STRING) != ownerId.toString()) return null
@@ -52,10 +55,20 @@ object SkillManager {
     }
 
     private fun EntityData.isTraining(): Boolean = when (this) {
-        is PlayerData -> PlayerTagManager.hasTag(player, "isTraining")
+        is PlayerData -> PlayerTagManager.isTraining(player)
         else -> false
     }
 
+    private fun PlayerData.isEnemyCandidate(candidate: EntityData, training: Boolean): Boolean = when (candidate) {
+        is PlayerData -> isEnemyOf(candidate)
+        is PlayerOwnedEntityData -> isEnemyOf(candidate.ownerData)
+        else -> training
+    }
+
+    /**
+     * 현재 경기에서 스킬 대상이 될 수 있는 엔티티 데이터의 중복 없는 목록을 만든다.
+     * 훈련 중에는 월드의 비플레이어 생명체도 필요할 때 데이터로 등록한다.
+     */
     fun EntityData.getTargetCandidates(): List<EntityData> {
         val candidates: MutableList<EntityData> = game.playerDatas.toMutableList()
         val sourcePlayer = this as? PlayerData
@@ -73,6 +86,11 @@ object SkillManager {
         return candidates.distinctBy { it.entity.uniqueId }
     }
 
+    /**
+     * 상태·침묵·쿨다운·이동 제한을 검사한 뒤 스킬 이벤트와 효과를 실행한다.
+     *
+     * @return 효과가 실행되어 사용 요청이 최종 승인됐는지 여부
+     */
     fun EntityData.use(skill: Skill, clickedItem: ItemStack): Boolean {
         val playerData = this as? PlayerData ?: return false
         if (!entityStatus.canSkillUse) {
@@ -122,6 +140,10 @@ object SkillManager {
 
         return true
     }
+    /**
+     * [location] 중심의 구형 범위와 [targetType]을 모두 만족하는 대상을 반환한다.
+     * [radius]에는 클래스 사거리 배율이 적용된다.
+     */
     fun EntityData.radius(
         location: Location,
         targetType: TargetType,
@@ -153,8 +175,7 @@ object SkillManager {
 
             Enemy -> {
                 nearbyEntityData.filter { candidate ->
-                    (candidate !is PlayerData && isTraining) ||
-                        (sourcePlayer != null && candidate is PlayerData && sourcePlayer.isEnemyOf(candidate))
+                    sourcePlayer?.isEnemyCandidate(candidate, isTraining) == true
                 }
             }
 
@@ -163,6 +184,10 @@ object SkillManager {
             }
         }
     }
+    /**
+     * 시선 광선이 가장 먼저 만나는 유효 대상을 반환한다.
+     * [wallShot]이 `false`면 대상보다 앞에 있는 블록이 광선을 차단한다.
+     */
     fun EntityData.shotLaserGetEntityData(maxRange: Double, targetType: TargetType, wallShot: Boolean): EntityData? {
         val sourcePlayer = this as? PlayerData ?: return null
         val isTraining = isTraining()
@@ -184,8 +209,7 @@ object SkillManager {
                 if (hitEntity === this.entity || hitEntity !is LivingEntity) return@filter false
                 when (targetType) {
                     Self -> false
-                    Enemy -> isTraining && candidate !is PlayerData ||
-                        (candidate is PlayerData && sourcePlayer.isEnemyOf(candidate))
+                    Enemy -> sourcePlayer.isEnemyCandidate(candidate, isTraining)
                     All -> true
                 }
             }
@@ -219,7 +243,7 @@ object SkillManager {
             }
             val isValidTarget = when (targetType) {
                 Self -> false
-                Enemy -> targetData !is PlayerData || sourcePlayer.isEnemyOf(targetData)
+                Enemy -> sourcePlayer.isEnemyCandidate(targetData, isTraining)
                 All -> true
             }
             if (!isValidTarget) {
@@ -229,6 +253,7 @@ object SkillManager {
         }
         return null
     }
+    /** 클래스 사거리 배율을 적용한 시선 광선이 처음 만나는 블록을 반환한다. */
     fun EntityData.shotLaserGetBlock(maxRange: Double): Block? {
         val sourcePlayer = this as? PlayerData ?: return null
         val world = sourcePlayer.player.world
@@ -240,6 +265,10 @@ object SkillManager {
         val blockRayTraceResult = world.rayTraceBlocks(startLocation, direction, maxDistance)
         return blockRayTraceResult?.hitBlock
     }
+    /**
+     * 플레이어 시선 기준 [angle]도의 원뿔과 [radius] 블록 안에 있는 유효 대상을 반환한다.
+     * 반경에는 클래스 사거리 배율이 적용된다.
+     */
     fun EntityData.getConeTargets(radius: Double, angle: Double, targetType: TargetType, includeSelf: Boolean): List<EntityData> {
         val sourcePlayer = this as? PlayerData ?: return emptyList()
         val effectiveRadius = ClassBalanceManager.scaleRange(this, radius)
@@ -257,12 +286,10 @@ object SkillManager {
             if (!includeSelf && targetPlayerData == this)
                 return@filter false
 
-            if (!(isTraining && targetPlayerData !is PlayerData)) {
-                when (targetType) {
-                    Self -> if (targetPlayerData != sourcePlayer) return@filter false
-                    Enemy -> if (targetPlayerData !is PlayerData || !sourcePlayer.isEnemyOf(targetPlayerData)) return@filter false
-                    All -> if (targetPlayerData !is PlayerData) return@filter false
-                }
+            when (targetType) {
+                Self -> if (targetPlayerData != sourcePlayer) return@filter false
+                Enemy -> if (!sourcePlayer.isEnemyCandidate(targetPlayerData, isTraining)) return@filter false
+                All -> Unit
             }
 
             val distanceSquared = HitboxUtil.distanceSquared(targetPlayerData.entity.boundingBox, playerLocation.toVector())

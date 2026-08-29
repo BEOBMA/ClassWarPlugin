@@ -79,7 +79,7 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
         val maximumRange = ClassBalanceManager.scaleRange(playerData, 64.0)
         val blockHit = start.world.rayTraceBlocks(start, normalized, maximumRange)
         val blockDistance = blockHit?.hitPosition?.distance(start.toVector()) ?: maximumRange
-        val isTraining = PlayerTagManager.hasTag(player, "isTraining")
+        val isTraining = PlayerTagManager.isTraining(player)
 
         val targetHit = playerData.getTargetCandidates().asSequence()
             .filter { candidate ->

@@ -6,6 +6,7 @@ import org.bukkit.scoreboard.Team
 import java.util.Collections
 import java.util.IdentityHashMap
 
+/** 경기 중 참가자의 머리 위 이름표를 숨기고 기존 스코어보드 팀 설정을 복원한다. */
 object NameTagManager {
     private const val HIDDEN_TEAM_NAME = "cw_hide_names"
 
@@ -16,6 +17,7 @@ object NameTagManager {
 
     private val states: MutableMap<Scoreboard, ScoreboardState> = IdentityHashMap()
 
+    /** 온라인 플레이어가 사용하는 모든 스코어보드에서 [playerNames]의 이름표를 숨긴다. */
     fun hideAll(playerNames: Collection<String>) {
         if (playerNames.isEmpty()) return
         val scoreboards = Collections.newSetFromMap(IdentityHashMap<Scoreboard, Boolean>())
@@ -23,6 +25,7 @@ object NameTagManager {
         scoreboards.forEach { scoreboard -> hideOn(scoreboard, playerNames) }
     }
 
+    /** 변경했던 팀 옵션을 되돌리고 임시 숨김 팀을 제거한다. */
     fun restoreAll() {
         states.forEach { (scoreboard, state) ->
             state.originalTeamOptions.forEach { (team, option) ->

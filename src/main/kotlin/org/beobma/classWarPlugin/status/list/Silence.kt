@@ -8,7 +8,7 @@ class Silence : StatusAbnormality() {
         get() = Keyword.Silence.string
     override val description: List<String>
         get() = listOf(
-            Keyword.Silence.description!!,
+            Keyword.Silence.requireDescription(),
             "",
             "<gray>수치 없음",
             "<gray>지속시간 연장 적용",

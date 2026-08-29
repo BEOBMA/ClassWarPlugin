@@ -112,7 +112,7 @@ class Grass : GameClass(), GameStatusHandler, OnHitHandler, WhenHitHandler, Envi
     }
 
     private fun nearbyEnemies(): List<EntityData> {
-        val training = PlayerTagManager.hasTag(player, "isTraining")
+        val training = PlayerTagManager.isTraining(player)
         val sourceBox = player.boundingBox
         return playerData.getTargetCandidates().filter { target ->
             if (target == playerData || target.entityStatus.isDead || !target.entityStatus.isSkillTargeting) return@filter false

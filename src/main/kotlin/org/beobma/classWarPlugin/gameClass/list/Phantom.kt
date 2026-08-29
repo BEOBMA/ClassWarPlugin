@@ -4,6 +4,9 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.entity.EntityData
+import org.beobma.classWarPlugin.entity.EntityStatus
+import org.beobma.classWarPlugin.entity.DamageRedirectEntityData
+import org.beobma.classWarPlugin.entity.PlayerOwnedEntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
@@ -11,6 +14,8 @@ import org.beobma.classWarPlugin.gameClass.handler.GameEndHandler
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.handler.PlayerDeathHandler
 import org.beobma.classWarPlugin.manager.CooldownManager
+import org.beobma.classWarPlugin.manager.GameManager.canDispatchClassHandlers
+import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.getTargetCandidates
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
@@ -27,10 +32,14 @@ import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.entity.ArmorStand
+import org.bukkit.entity.Player
+import org.bukkit.entity.Projectile
+import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.inventory.ItemStack
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.Vector
+import java.util.UUID
 import kotlin.math.min
 
 class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
@@ -43,6 +52,7 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
     private var active = false
     private var returning = false
     private var body: ArmorStand? = null
+    private var bodyData: PhantomBodyData? = null
     private var stealth: Stealth? = null
     private var speed: MoveSpeedIncrease? = null
     private var cooldownItem: ItemStack? = null
@@ -63,6 +73,7 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
         override val name = "<bold>이탈"
         override val description = listOf(
             "<gray>자신의 육체를 남기고 전방으로 도약하며, 20초간 {keyword:Stealth} 상태가 되고 <gold><bold>이동 속도가 20% 증가</bold><gray>한다.",
+            "<gray>남겨진 육체가 공격이나 스킬에 적중하면 자신이 대신 피해를 받는다.",
             "{keyword:Stealth} 상태에서 가장 가까운 적에게 가는 경로가 입자로 표시된다.",
             "<gray>상대는 {keyword:Stealth} 상태인 자신과 가까워지면 주변에 특수한 입자가 표시된다.",
             "<gray>이 스킬을 재사용하면 모든 벽을 통과해 빠르게 육체로 돌아온다."
@@ -85,10 +96,10 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
         active = true
         returning = false
         val origin = player.location.clone()
-        body = player.world.spawn(origin, ArmorStand::class.java).apply {
+        val spawnedBody = player.world.spawn(origin, ArmorStand::class.java).apply {
             isPersistent = false
             setGravity(false)
-            isInvulnerable = true
+            isInvulnerable = false
             isCollidable = false
             setArms(true)
             setBasePlate(false)
@@ -98,6 +109,9 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
             equipment.setBoots(player.inventory.boots.clone())
             equipment.setItemInMainHand(player.inventory.itemInMainHand.clone())
         }
+        body = spawnedBody
+        bodyData = PhantomBodyData(playerData, spawnedBody).also(game.playerDatas::add)
+        activeBodies[spawnedBody.uniqueId] = this
         stealth = (playerData.addStatus(Stealth(), playerData) as Stealth).also { it.applyStatus(duration = 20, powerSet = 1) }
         speed = (playerData.addStatus(MoveSpeedIncrease(), playerData) as MoveSpeedIncrease).also { it.applyStatus(duration = 20, powerSet = 20) }
         player.velocity = player.eyeLocation.direction.normalize().multiply(1.2).setY(0.38)
@@ -224,8 +238,13 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
         returning = false
         returnTask?.cancel()
         returnTask = null
-        body?.remove()
+        body?.let { armorStand ->
+            activeBodies.remove(armorStand.uniqueId)
+            armorStand.remove()
+        }
         body = null
+        bodyData?.let(game.playerDatas::remove)
+        bodyData = null
         stealth?.remove(); stealth = null
         speed?.remove(); speed = null
         restoreReturnState()
@@ -298,6 +317,69 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
             marks[context.target] = mark
             particles.spawn(context.target.entity, Particle.SWEEP_ATTACK, count = 2, spread = 0.25, speed = 0.02)
         }
+    }
+
+    companion object {
+        private val activeBodies = mutableMapOf<UUID, Phantom>()
+
+        /** 팬텀이 남긴 육체에 가해진 바닐라 근접·투사체 피해를 실제 플레이어에게 전달합니다. */
+        fun handleBodyDamage(event: EntityDamageByEntityEvent): Boolean {
+            val phantom = activeBodies[event.entity.uniqueId] ?: return false
+            event.isCancelled = true
+            if (!phantom.active || phantom.playerStatus.isDead || phantom.body?.isValid != true) return true
+
+            val attacker = when (val damager = event.damager) {
+                is Player -> damager
+                is Projectile -> damager.shooter as? Player
+                else -> null
+            } ?: return true
+            val attackerGame = findGameForPlayer(attacker) ?: return true
+            if (attackerGame !== phantom.game) return true
+            val attackerData = attackerGame.playerDatas.filterIsInstance<PlayerData>()
+                .firstOrNull { it.uniqueId == attacker.uniqueId }
+                ?: return true
+            if (!attackerData.canDispatchClassHandlers()) return true
+
+            val path = if (event.damager is Projectile) DamagePath.RANGED_ATTACK else DamagePath.BASIC_ATTACK
+            phantom.bodyData?.damage(
+                event.damage,
+                DamageType.Normal,
+                attackerData,
+                damagePath = path,
+            )
+            phantom.body?.playHurtAnimation(0.0F)
+            return true
+        }
+    }
+}
+
+private class PhantomBodyData(
+    override val ownerData: PlayerData,
+    override val entity: ArmorStand,
+) : EntityData(), PlayerOwnedEntityData, DamageRedirectEntityData {
+    override val game = ownerData.initGame
+    override val entityStatus = object : EntityStatus() {}
+    override val bukkitTasks: MutableList<BukkitTask> = mutableListOf()
+    override val statusAbnormalitys: MutableList<StatusAbnormality> = mutableListOf()
+
+    override fun redirectDamage(
+        damage: Double,
+        damageType: DamageType,
+        damager: PlayerData,
+        isInvincibilityTimeIgnore: Boolean,
+        bypassShield: Boolean,
+        damagePath: DamagePath?,
+        armorIgnoreRatio: Double,
+    ) {
+        ownerData.damage(
+            damage,
+            damageType,
+            damager,
+            isInvincibilityTimeIgnore,
+            bypassShield,
+            damagePath,
+            armorIgnoreRatio,
+        )
     }
 }
 

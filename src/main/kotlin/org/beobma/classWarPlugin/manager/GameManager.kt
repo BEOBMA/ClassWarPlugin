@@ -29,6 +29,7 @@ import org.bukkit.GameRules
 import org.bukkit.GameMode
 import org.bukkit.Location
 import org.bukkit.Material
+import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.SoundCategory
 import org.bukkit.World
@@ -56,7 +57,14 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
 
+/**
+ * 정규 경기와 훈련 경기의 생성, 단계 전환, 참가자 복구 및 모든 런타임 자원 정리를 조율한다.
+ * 정규 경기는 동시에 하나만 존재하며 Bukkit 월드의 첫 번째 월드를 전장으로 사용한다.
+ */
 object GameManager {
+    /** 운영자 능력 변경 명령의 성공 여부와 사용자용 결과 메시지다. */
+    data class AbilityChangeResult(val success: Boolean, val message: String)
+
     private val miniMessage = MiniMessage.miniMessage()
     private const val RECONNECT_GRACE_TICKS = 5L * 60L * 20L
     private const val SPAWN_CENTER_TARGET_RADIUS = 4.0
@@ -123,6 +131,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
 
     private val miniMessageTagPattern = Regex("<[^>]+>")
 
+    /** 매 조회마다 새 클래스 인스턴스를 만들고 등급·표시 이름 순으로 정렬한 목록이다. */
     val gameClassList: List<GameClass>
         get() = gameClassFactories.map { it() }
             .sortedWith(
@@ -136,12 +145,17 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
 
     val trainingInstance: MutableList<Game> = mutableListOf()
 
+    /**
+     * 온라인 비훈련 플레이어로 [mode] 경기를 생성한다.
+     *
+     * @return 시작에 성공하면 `null`, 실패하면 사용자에게 표시할 사유
+     */
     fun startNewGame(mode: MatchMode): String? {
         if (game != null) return "이미 진행중인 게임이 있습니다."
 
         val newGame = Game(mutableListOf(), mode = mode)
         val participants = Bukkit.getOnlinePlayers()
-            .filterNot { PlayerTagManager.hasTag(it, "isTraining") }
+            .filterNot(PlayerTagManager::isTraining)
             .map { PlayerData(it, newGame) }
         if (participants.size <= 1) return "참가자가 2명 이상이여야 게임을 시작할 수 있습니다."
         val requiredClassCount = participants.size * mode.assignedClassCount
@@ -154,6 +168,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         return null
     }
 
+    /** 참가자 상태를 보관하고 클래스 선택 단계로 경기를 시작한다. */
     fun Game.start() {
         val participants = activePlayers()
         if (participants.size * mode.assignedClassCount > availableClassesFor(mode).size) {
@@ -206,6 +221,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         participants.forEach { it.openAssignedClassInventory() }
     }
 
+    /** 클래스 선택 단계에서 남은 기회를 사용해 현재 배정 전체를 다시 추첨한다. */
     fun PlayerData.refreshAssignedClass() {
         val currentGame = initGame
         if (currentGame.phase != GamePhase.CLASS_SELECTION) return
@@ -238,13 +254,14 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         openAssignedClassInventory()
     }
 
+    /** 현재 클래스 배정을 확정하고 모든 생존자가 확정했으면 카운트다운을 시작한다. */
     fun PlayerData.confirmAssignedClass() {
         val currentGame = initGame
         if (currentGame.phase != GamePhase.CLASS_SELECTION) return
         if (gameClasses.size != currentGame.mode.assignedClassCount) return
         if (!currentGame.confirmedPlayers.add(player.uniqueId)) return
 
-        PlayerTagManager.removeTag(player, "openAssignedClassInventory")
+        PlayerTagManager.removeFlag(player, PlayerFlag.OPEN_ASSIGNED_CLASS_INVENTORY)
         player.closeInventory()
         player.playerListName(miniMessage.deserialize(player.name))
         currentGame.sendNotification("${player.name}님이 클래스를 확정했습니다. (${currentGame.confirmedPlayers.size}/${currentGame.contenders().size})")
@@ -276,14 +293,14 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
 
     private fun availableClassesFor(mode: MatchMode): List<GameClass> = gameClassFactories
         .map { it() }
-        .filterNot { mode.usesTailTagRules && it is Parasite }
+        .filterNot { !mode.allowsParasite && it is Parasite }
 
     private fun Game.beginCountdown() {
         phase = GamePhase.COUNTDOWN
         val participants = contenders()
         initializeTailTargets(participants)
         participants.forEach {
-            PlayerTagManager.removeTag(it.player, "openAssignedClassInventory")
+            PlayerTagManager.removeFlag(it.player, PlayerFlag.OPEN_ASSIGNED_CLASS_INVENTORY)
             it.player.closeInventory()
             it.entityStatus.canMove = false
         }
@@ -485,6 +502,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
                 elapsedTicks += 2L
 
                 contenders().forEach { playerData ->
+                    if (elapsedTicks % 10L == 0L) showTailTargetHighlight(playerData)
                     val player = playerData.player
                     val threat = threatOf(playerData.uniqueId)?.let { findParticipant(it) }
                     if (!player.isOnline || disconnectedPlayers.contains(playerData.uniqueId) ||
@@ -524,6 +542,49 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
             }
         }.runTaskTimer(ClassWarPlugin.instance, 0L, 2L)
         track(task)
+    }
+
+    /** 다른 참가자에게는 보이지 않는 파티클 윤곽으로 각 플레이어의 표적만 강조합니다. */
+    private fun Game.showTailTargetHighlight(hunterData: PlayerData) {
+        val hunter = hunterData.player
+        val targetData = targetOf(hunterData.uniqueId)?.let { targetId -> findParticipant(targetId) } ?: return
+        val target = targetData.player
+        if (!hunter.isOnline || !target.isOnline || targetData.entityStatus.isDead ||
+            disconnectedPlayers.contains(hunterData.uniqueId) || disconnectedPlayers.contains(targetData.uniqueId) ||
+            hunter.world != target.world || !hunter.canSee(target)
+        ) {
+            return
+        }
+
+        val box = target.boundingBox
+        val center = box.center
+        val radius = maxOf(box.maxX - box.minX, box.maxZ - box.minZ) * 0.65 + 0.18
+        repeat(12) { index ->
+            val angle = index * (PI * 2.0 / 12.0)
+            val y = when (index % 3) {
+                0 -> box.minY + 0.12
+                1 -> (box.minY + box.maxY) * 0.5
+                else -> box.maxY - 0.08
+            }
+            hunter.spawnParticle(
+                Particle.GLOW,
+                Location(target.world, center.x + cos(angle) * radius, y, center.z + sin(angle) * radius),
+                1,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+            )
+        }
+        hunter.spawnParticle(
+            Particle.END_ROD,
+            Location(target.world, center.x, box.maxY + 0.22, center.z),
+            2,
+            0.08,
+            0.05,
+            0.08,
+            0.0,
+        )
     }
 
     private fun Game.startClassTickTask() {
@@ -1310,6 +1371,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         Material.END_STONE, Material.BASALT, Material.BLACKSTONE,
     )
 
+    /** 실행 중인 경기의 참가자를 사망 처리하고 승리 조건을 다시 평가한다. */
     fun handleDeath(playerData: PlayerData) {
         val currentGame = playerData.initGame
         if (currentGame.phase != GamePhase.RUNNING || playerData.entityStatus.isDead) return
@@ -1347,6 +1409,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         }
     }
 
+    /** 유효한 타인 처치만 [playerKillCounts]에 기록한다. */
     fun Game.recordPlayerKill(victimId: UUID, killerId: UUID?) {
         val creditedKillerId = killerId?.takeIf { it != victimId } ?: return
         if (phase != GamePhase.RUNNING) return
@@ -1354,6 +1417,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         playerKillCounts[creditedKillerId] = (playerKillCounts[creditedKillerId] ?: 0) + 1
     }
 
+    /** 참가자 연결 해제를 기록하고 5분 뒤에도 미복귀 시 탈락시키는 작업을 예약한다. */
     fun handleTemporaryDisconnect(player: Player) {
         val currentGame = game ?: return
         if (currentGame.phase == GamePhase.WAITING || currentGame.phase == GamePhase.FINISHED) return
@@ -1387,6 +1451,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         currentGame.tasks.add(task)
     }
 
+    /** 참가자 엔티티를 새 [Player] 객체에 다시 연결하고 경기 단계에 맞는 상태를 복원한다. */
     fun handleReconnect(player: Player) {
         pendingPostGameCleanup.remove(player.uniqueId)?.let { snapshot ->
             restorePlayerAfterGame(player, snapshot)
@@ -1487,6 +1552,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         }
     }
 
+    /** 현재 경기 설정을 기준으로 탭 목록과 머리 위 이름표 가시성을 다시 적용한다. */
     fun refreshPlayerListVisibility() {
         val currentGame = game ?: return
         if (currentGame.settings.playerListVisible) PlayerListManager.restoreAll() else PlayerListManager.hideAll()
@@ -1575,6 +1641,10 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         track(task)
     }
 
+    /**
+     * 경기 작업·표시·상태·매니저 캐시를 정리하고 모든 참가자를 경기 전 스냅샷으로 복원한다.
+     * 오프라인 참가자의 스냅샷은 다음 접속 때 복원하도록 보관한다.
+     */
     fun Game.stop() {
         val wasRunning = phase == GamePhase.RUNNING
         phase = GamePhase.FINISHED
@@ -1655,19 +1725,182 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         if (game === this) game = null
     }
 
+    /** 훈련 태그가 있으면 개인 훈련 경기를, 그렇지 않으면 현재 정규 경기를 반환한다. */
     fun findGameForPlayer(player: Player): Game? =
-        if (PlayerTagManager.hasTag(player, "isTraining")) {
+        if (PlayerTagManager.isTraining(player)) {
             trainingInstance.find { instance -> instance.activePlayers().any { it.player == player } }
         } else {
             game
         }
 
+    fun abilityClassSuggestions(): List<String> = gameClassList
+        .map(ClassBalanceManager::configKey)
+        .sorted()
+
+    fun assignedAbilityNames(player: Player): List<String>? = findPlayerData(player)?.gameClasses
+        ?.map(::plainClassName)
+
+    fun tailTargetPlayer(player: Player): Player? {
+        val currentGame = findGameForPlayer(player) ?: return null
+        if (!currentGame.mode.usesTailTagRules) return null
+        val playerData = currentGame.findParticipant(player.uniqueId) ?: return null
+        return currentGame.targetOf(playerData.uniqueId)
+            ?.let { targetId -> currentGame.findParticipant(targetId) }
+            ?.player
+    }
+
+    /** 선택 또는 전투 중 [player]의 지정 슬롯에 운영자 요청으로 클래스를 배정한다. */
+    fun forceAssignAbility(player: Player, query: String, slot: Int = 1): AbilityChangeResult {
+        val currentGame = findGameForPlayer(player)
+            ?: return AbilityChangeResult(false, "${player.name}님은 게임 또는 연습에 참가하고 있지 않습니다.")
+        val playerData = currentGame.findParticipant(player.uniqueId)
+            ?: return AbilityChangeResult(false, "${player.name}님의 게임 데이터를 찾을 수 없습니다.")
+        if (currentGame.phase != GamePhase.CLASS_SELECTION && currentGame.phase != GamePhase.RUNNING) {
+            return AbilityChangeResult(false, "능력은 선택 단계 또는 전투 진행 중에만 변경할 수 있습니다.")
+        }
+        if (slot !in 1..currentGame.mode.assignedClassCount) {
+            return AbilityChangeResult(false, "${currentGame.mode.displayName} 모드에서는 1~${currentGame.mode.assignedClassCount}번 슬롯만 사용할 수 있습니다.")
+        }
+
+        val prototype = gameClassList.firstOrNull { matchesClassQuery(it, query) }
+            ?: return AbilityChangeResult(false, "'$query'에 해당하는 능력을 찾을 수 없습니다.")
+        if (!currentGame.mode.allowsParasite && prototype is Parasite) {
+            return AbilityChangeResult(false, "꼬리잡기 모드에는 기생충을 배정할 수 없습니다.")
+        }
+        val slotIndex = slot - 1
+        if (slotIndex > playerData.gameClasses.size) {
+            return AbilityChangeResult(false, "앞 슬롯부터 먼저 배정해 주세요.")
+        }
+        if (playerData.gameClasses.withIndex().any { (index, assigned) ->
+                index != slotIndex && assigned.javaClass == prototype.javaClass
+            }
+        ) {
+            return AbilityChangeResult(false, "같은 능력을 한 플레이어에게 중복 배정할 수 없습니다.")
+        }
+
+        val replacement = if (currentGame.phase == GamePhase.CLASS_SELECTION) {
+            currentGame.availableClasses.firstOrNull { it.javaClass == prototype.javaClass }
+                ?: return AbilityChangeResult(false, "해당 능력은 이미 다른 플레이어에게 배정되었거나 사용할 수 없습니다.")
+        } else {
+            prototype
+        }
+        val previous = playerData.gameClasses.getOrNull(slotIndex)
+        if (previous?.javaClass == replacement.javaClass) {
+            return AbilityChangeResult(false, "이미 해당 슬롯에 ${plainClassName(previous)} 능력이 배정되어 있습니다.")
+        }
+
+        if (currentGame.phase == GamePhase.CLASS_SELECTION) {
+            previous?.let { currentGame.availableClasses.add(it) }
+            currentGame.availableClasses.remove(replacement)
+            if (slotIndex == playerData.gameClasses.size) playerData.gameClasses.add(replacement)
+            else playerData.gameClasses[slotIndex] = replacement
+            currentGame.confirmedPlayers.remove(player.uniqueId)
+            playerData.openAssignedClassInventory()
+        } else {
+            previous?.let(::endAssignedClass)
+            if (slotIndex == playerData.gameClasses.size) playerData.gameClasses.add(replacement)
+            else playerData.gameClasses[slotIndex] = replacement
+            rebuildRuntimeAbilities(playerData, replacement)
+        }
+
+        return AbilityChangeResult(
+            true,
+            "${player.name}님의 ${slot}번 능력을 ${plainClassName(replacement)}(으)로 배정했습니다.",
+        )
+    }
+
+    /** 슬롯 번호, 클래스 이름 또는 `all` 선택자로 운영자 요청 능력을 제거한다. */
+    fun forceRemoveAbility(player: Player, selector: String): AbilityChangeResult {
+        val currentGame = findGameForPlayer(player)
+            ?: return AbilityChangeResult(false, "${player.name}님은 게임 또는 연습에 참가하고 있지 않습니다.")
+        val playerData = currentGame.findParticipant(player.uniqueId)
+            ?: return AbilityChangeResult(false, "${player.name}님의 게임 데이터를 찾을 수 없습니다.")
+        if (currentGame.phase != GamePhase.CLASS_SELECTION && currentGame.phase != GamePhase.RUNNING) {
+            return AbilityChangeResult(false, "능력은 선택 단계 또는 전투 진행 중에만 변경할 수 있습니다.")
+        }
+        if (playerData.gameClasses.isEmpty()) {
+            return AbilityChangeResult(false, "${player.name}님에게 배정된 능력이 없습니다.")
+        }
+
+        val removed = when {
+            selector.equals("all", ignoreCase = true) || selector == "전체" -> playerData.gameClasses.toList()
+            selector.toIntOrNull() != null -> {
+                val index = selector.toInt() - 1
+                listOfNotNull(playerData.gameClasses.getOrNull(index))
+            }
+            else -> listOfNotNull(playerData.gameClasses.firstOrNull { matchesClassQuery(it, selector) })
+        }
+        if (removed.isEmpty()) {
+            return AbilityChangeResult(false, "'$selector'에 해당하는 배정 능력을 찾을 수 없습니다.")
+        }
+
+        if (currentGame.phase == GamePhase.CLASS_SELECTION) {
+            removed.forEach { gameClass ->
+                playerData.gameClasses.remove(gameClass)
+                if (currentGame.availableClasses.none { it.javaClass == gameClass.javaClass }) {
+                    currentGame.availableClasses.add(gameClass)
+                }
+            }
+            currentGame.confirmedPlayers.remove(player.uniqueId)
+            if (playerData.gameClasses.isEmpty()) {
+                PlayerTagManager.removeFlag(player, PlayerFlag.OPEN_ASSIGNED_CLASS_INVENTORY)
+                player.closeInventory()
+            } else {
+                playerData.openAssignedClassInventory()
+            }
+        } else {
+            removed.forEach(::endAssignedClass)
+            playerData.gameClasses.removeAll(removed.toSet())
+            rebuildRuntimeAbilities(playerData, initializedClass = null)
+        }
+
+        val removedNames = removed.joinToString(", ", transform = ::plainClassName)
+        return AbilityChangeResult(true, "${player.name}님에게서 $removedNames 능력을 제거했습니다.")
+    }
+
+    private fun findPlayerData(player: Player): PlayerData? = findGameForPlayer(player)
+        ?.playerDatas
+        ?.filterIsInstance<PlayerData>()
+        ?.firstOrNull { it.uniqueId == player.uniqueId }
+
+    private fun rebuildRuntimeAbilities(playerData: PlayerData, initializedClass: GameClass?) {
+        CooldownManager.clear(listOf(playerData.uniqueId))
+        playerData.player.inventory.clear()
+        if (playerData.gameClasses.isNotEmpty()) playerData.classSet(initializeHandlers = false)
+        initializedClass?.passives?.filterIsInstance<GameStatusHandler>()?.forEach { it.onBattleStart() }
+        (initializedClass as? GameStatusHandler)?.onBattleStart()
+        playerData.player.inventory.heldItemSlot = 0
+    }
+
+    private fun endAssignedClass(gameClass: GameClass) {
+        gameClass.passives.filterIsInstance<GameEndHandler>().forEach { it.onGameEnd() }
+        (gameClass as? GameEndHandler)?.onGameEnd()
+    }
+
+    private fun matchesClassQuery(gameClass: GameClass, query: String): Boolean {
+        val normalizedQuery = normalizeClassQuery(query)
+        return sequenceOf(
+            gameClass.javaClass.simpleName,
+            ClassBalanceManager.configKey(gameClass),
+            plainClassName(gameClass),
+        ).any { normalizeClassQuery(it) == normalizedQuery }
+    }
+
+    private fun normalizeClassQuery(value: String): String = value
+        .replace(miniMessageTagPattern, "")
+        .replace(Regex("[\\s_-]+"), "")
+        .lowercase(Locale.ROOT)
+
+    private fun plainClassName(gameClass: GameClass): String = gameClass.name.replace(miniMessageTagPattern, "")
+
+    /** 클래스 주입과 전투 초기화가 끝나 현재 클래스 처리기를 안전하게 호출할 수 있는지 판정한다. */
     fun PlayerData.canDispatchClassHandlers(): Boolean {
         if (gameClasses.isEmpty() || gameClasses.any { !it.isInjectedFor(this) }) return false
         if (!initGame.battleInitializedPlayers.contains(uniqueId)) return false
-        return PlayerTagManager.hasTag(player, "isTraining") || initGame.phase == GamePhase.RUNNING
+        return PlayerTagManager.isTraining(player) || initGame.phase == GamePhase.RUNNING
     }
 
+    /** 원래 플레이어 상태를 보관하고 [gameClass]를 사용하는 개인 훈련 경기를 시작한다. */
     fun Player.startTraining(gameClass: GameClass) {
         val trainingGame = Game(mutableListOf())
         val playerData = PlayerData(this, trainingGame)
@@ -1675,7 +1908,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         trainingGame.playerDatas.add(playerData)
         playerData.gameClass = gameClass
         trainingInstance.add(trainingGame)
-        PlayerTagManager.addTag(this, "isTraining")
+        PlayerTagManager.addFlag(this, PlayerFlag.TRAINING)
         playerData.classSet()
         trainingGame.battleInitializedPlayers.add(uniqueId)
         inventory.heldItemSlot = 0
@@ -1696,6 +1929,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         trainingGame.track(task)
     }
 
+    /** 개인 훈련 자원을 정리하고 시작 전 플레이어 상태를 복원한다. */
     fun Player.stopTraining() {
         val trainingGame = trainingInstance.find { it.activePlayers().any { data -> data.player == this } } ?: return
         trainingGame.activePlayers().forEach { data ->
@@ -1731,6 +1965,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         trainingInstance.remove(trainingGame)
     }
 
+    /** 플러그인 종료 등을 위해 모든 개인 훈련 경기를 일괄 정리한다. */
     fun stopAllTraining() {
         val trainingPlayerIds = trainingInstance.flatMap { it.activePlayers() }.map { it.uniqueId }
         Contractor.clearSessions(trainingPlayerIds)

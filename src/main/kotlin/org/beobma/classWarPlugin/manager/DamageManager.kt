@@ -18,9 +18,14 @@ import org.bukkit.entity.Entity
 import java.util.UUID
 import kotlin.math.roundToInt
 
+/**
+ * 커스텀 피해의 유효성 검사, 클래스·상태 처리기 호출과 보호막 적용 순서를 관리한다.
+ * 실제 체력 차감과 방어력 계산은 이 객체 밖에서 수행된다.
+ */
 object DamageManager {
     private const val BASIC_ATTACK_DAMAGE_MULTIPLIER = 0.6
 
+    /** 최근 피해를 사망 원인과 공격자에게 연결하기 위한 짧은 수명의 기록이다. */
     data class Attribution(
         val attackerId: UUID,
         val attackerName: String,
@@ -30,6 +35,11 @@ object DamageManager {
 
     private val lastDamageByTarget: MutableMap<UUID, Attribution> = mutableMapOf()
 
+    /**
+     * [context]를 처리기에 전달하고 기본 공격 보정, 받는 피해 보정, 보호막을 순서대로 적용한다.
+     *
+     * @return 취소되지 않았으며 최종 피해가 양수인지 여부
+     */
     fun process(context: DamageContext): Boolean {
         if (context.damage <= 0.0) return false
         if (context.attacker.gameClasses.filterIsInstance<Parasite>().any { it.isParasitizing() }) return false
@@ -63,6 +73,7 @@ object DamageManager {
         return !context.isCancelled && context.damage > 0.0
     }
 
+    /** 실제 피해 적용에 성공한 뒤 전투 상태와 사망 귀속 정보를 기록한다. */
     fun recordSuccessfulDamage(context: DamageContext) {
         val target = context.target.entity
         CombatManager.recordSuccessfulDamage(context)
@@ -74,11 +85,13 @@ object DamageManager {
         )
     }
 
+    /** [target]의 최근 피해 기록을 한 번 꺼낸다. 10초가 지난 기록은 반환하지 않는다. */
     fun consumeAttribution(target: Entity): Attribution? {
         val attribution = lastDamageByTarget.remove(target.uniqueId) ?: return null
         return attribution.takeIf { target.world.fullTime - it.recordedAtTick <= 200L }
     }
 
+    /** 지정한 대상들의 미소비 피해 귀속 기록을 제거한다. */
     fun clearAttributions(targetIds: Iterable<UUID>) {
         targetIds.forEach(lastDamageByTarget::remove)
     }

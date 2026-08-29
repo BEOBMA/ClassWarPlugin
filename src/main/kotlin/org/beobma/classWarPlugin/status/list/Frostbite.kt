@@ -12,7 +12,7 @@ class Frostbite : StatusAbnormality() {
         get() = Keyword.Frostbite.string
     override val description: List<String>
         get() = listOf(
-            Keyword.Frostbite.description!!,
+            Keyword.Frostbite.requireDescription(),
             "",
             "<gray>수치 합산 적용 (최대 수치 10)",
             "<gray>지속시간 갱신",

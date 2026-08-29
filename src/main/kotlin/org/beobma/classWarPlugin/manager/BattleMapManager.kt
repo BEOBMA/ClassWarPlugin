@@ -24,12 +24,14 @@ import java.util.UUID
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
+/** 참가자 개인 위치와 현재 자기장 경계를 표시하는 전장 지도 수명주기를 관리한다. */
 object BattleMapManager {
     private const val MAP_SIZE = 128
     private val miniMessage = MiniMessage.miniMessage()
     private val mapItemKey: NamespacedKey
         get() = NamespacedKey(ClassWarPlugin.instance, "battle-map")
 
+    /** 산개 또는 전투 중인 참가자의 보조 손에 현재 경기 지도를 지급한다. */
     fun giveTo(playerData: PlayerData) {
         val game = playerData.initGame
         if (game.phase != GamePhase.SCATTERING && game.phase != GamePhase.RUNNING) return
@@ -44,11 +46,13 @@ object BattleMapManager {
         player.inventory.setItemInOffHand(mapItem)
     }
 
+    /** 아이템 영속 데이터로 플러그인이 생성한 전장 지도인지 판별한다. */
     fun isBattleMap(item: ItemStack?): Boolean {
         if (item == null || item.type != Material.FILLED_MAP) return false
         return item.itemMeta.persistentDataContainer.has(mapItemKey, PersistentDataType.BYTE)
     }
 
+    /** 렌더러를 지도에서 분리하고 경기의 지도 참조를 제거한다. */
     fun cleanup(game: Game) {
         val mapView = game.battleMapView
         val renderer = game.battleMapRenderer

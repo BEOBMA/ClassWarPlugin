@@ -48,55 +48,9 @@ val verifyShadowJarContents = tasks.register("verifyShadowJarContents") {
             .archiveFile
             .get()
             .asFile
-        val requiredEntries = listOf(
-            "org/beobma/classWarPlugin/gameClass/list/TimeManiqulator.class",
-            "org/beobma/classWarPlugin/gameClass/list/GunBlader\$BulletStatus.class",
-            "org/beobma/classWarPlugin/status/list/CheckpointStatus.class",
-            "org/beobma/classWarPlugin/status/list/GunBulletStatus.class",
-            "org/beobma/classWarPlugin/status/list/GamblerCardStatus.class",
-            "org/beobma/classWarPlugin/status/list/TimePhaseStatus.class",
-            "org/beobma/classWarPlugin/status/list/SniperAmmoStatus.class",
-            "org/beobma/classWarPlugin/status/list/SpiderWebChargeStatus.class",
-            "org/beobma/classWarPlugin/status/list/MathAnswerStackStatus.class",
-            "org/beobma/classWarPlugin/gameClass/list/BackRoom.class",
-            "org/beobma/classWarPlugin/gameClass/list/Chameleon.class",
-            "org/beobma/classWarPlugin/gameClass/list/Dwarf.class",
-            "org/beobma/classWarPlugin/gameClass/list/HideAndSeek.class",
-            "org/beobma/classWarPlugin/gameClass/list/JustLight.class",
-            "org/beobma/classWarPlugin/gameClass/list/LuckyOne.class",
-            "org/beobma/classWarPlugin/gameClass/list/PatAndMatt.class",
-            "org/beobma/classWarPlugin/gameClass/list/Peanuts.class",
-            "org/beobma/classWarPlugin/gameClass/list/RainbowBridge.class",
-            "org/beobma/classWarPlugin/gameClass/list/Reverse.class",
-            "org/beobma/classWarPlugin/gameClass/list/Sagittarius.class",
-            "org/beobma/classWarPlugin/gameClass/list/ShyPerson.class",
-            "org/beobma/classWarPlugin/gameClass/list/Terrorist.class",
-            "org/beobma/classWarPlugin/gameClass/list/ThunderclapFlash.class",
-            "org/beobma/classWarPlugin/gameClass/list/Train.class",
-            "org/beobma/classWarPlugin/gameClass/list/TrainCarriage.class",
-            "org/beobma/classWarPlugin/gameClass/list/WoundsWind.class",
-            "org/beobma/classWarPlugin/gameClass/list/Blacksmith.class",
-            "org/beobma/classWarPlugin/gameClass/list/Brave.class",
-            "org/beobma/classWarPlugin/gameClass/list/BurningPainStatus.class",
-            "org/beobma/classWarPlugin/gameClass/list/SolarSystem.class",
-            "org/beobma/classWarPlugin/gameClass/list/Sol.class",
-            "org/beobma/classWarPlugin/gameClass/list/Luna.class",
-            "org/beobma/classWarPlugin/gameClass/list/Mercurius.class",
-            "org/beobma/classWarPlugin/gameClass/list/Venus.class",
-            "org/beobma/classWarPlugin/gameClass/list/Terra.class",
-            "org/beobma/classWarPlugin/gameClass/list/Mars.class",
-            "org/beobma/classWarPlugin/gameClass/list/Jupiter.class",
-            "org/beobma/classWarPlugin/gameClass/list/Saturnus.class",
-            "org/beobma/classWarPlugin/gameClass/list/Uranus.class",
-            "org/beobma/classWarPlugin/gameClass/list/Neptune.class",
-            "org/beobma/classWarPlugin/gameClass/list/Pluto.class",
-            "org/beobma/classWarPlugin/gameClass/list/PlanetClass.class",
-            "org/beobma/classWarPlugin/gameClass/list/PlanetPowerRegistry.class",
-            "org/beobma/classWarPlugin/listener/OnEntityShootBowEvent.class",
-            "org/beobma/classWarPlugin/status/list/Burn.class",
-            "org/beobma/classWarPlugin/status/list/Enchantment.class",
-            "org/beobma/classWarPlugin/status/list/AttackSpeedDecrease.class",
-            "org/beobma/classWarPlugin/manager/AttackableObjectManager.class",
+        val requiredRuntimeEntries = listOf(
+            "org/beobma/classWarPlugin/libs/kotlin/jvm/internal/Intrinsics.class",
+            "org/beobma/classWarPlugin/libs/gson/Gson.class",
         )
 
         ZipFile(shadowArchive).use { archive ->
@@ -110,7 +64,7 @@ val verifyShadowJarContents = tasks.register("verifyShadowJarContents") {
                         .map { it.relativeTo(root).path.replace('\\', '/') }
                         .toList()
                 }
-            val missingEntries = (requiredEntries + compiledClassEntries).distinct()
+            val missingEntries = (requiredRuntimeEntries + compiledClassEntries).distinct()
                 .filter { archive.getEntry(it) == null }
             check(missingEntries.isEmpty()) {
                 "Shadow JAR is missing required runtime classes: ${missingEntries.joinToString()}"

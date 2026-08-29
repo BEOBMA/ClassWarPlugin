@@ -1,5 +1,6 @@
 package org.beobma.classWarPlugin.gameClass
 
+/** 클래스 추첨 가중치와 표시 색상을 구분하는 등급이다. */
 enum class Rank(
     val displayName: String,
     color: String,

@@ -31,7 +31,7 @@ class OnPlayerConnectionEvent(
         validationTasks.remove(event.player.uniqueId)?.cancel()
         acceptedPlayers.remove(event.player.uniqueId)
         StealthVisibilityManager.revealTo(event.player)
-        if (PlayerTagManager.hasTag(event.player, "isTraining")) {
+        if (PlayerTagManager.isTraining(event.player)) {
             event.player.stopTraining()
         }
         handleTemporaryDisconnect(event.player)

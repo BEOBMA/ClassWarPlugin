@@ -5,9 +5,17 @@ import org.bukkit.entity.LivingEntity
 import org.bukkit.potion.PotionEffectType
 import kotlin.math.min
 
+/** 바닐라 방어력·강인함·저항·흡수 체력을 커스텀 피해에 적용한다. */
 object DamageCalculator {
+    /** 방어 계산 후 체력에 적용할 피해와 흡수 체력이 막은 양이다. */
     data class Result(val finalDamage: Double, val absorbed: Double)
 
+    /**
+     * 피해를 계산하고 흡수된 만큼 [target]의 흡수 체력을 즉시 차감한다.
+     * 고정 피해는 방어 요소와 흡수 체력을 모두 우회한다.
+     *
+     * @param armorIgnoreRatio 무시할 방어력 비율. 계산 시 `0.0..1.0`으로 제한된다.
+     */
     fun calculate(
         baseDamage: Double,
         target: LivingEntity,

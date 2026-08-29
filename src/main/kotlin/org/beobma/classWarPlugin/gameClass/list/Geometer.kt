@@ -129,12 +129,14 @@ class Geometer : GameClass() {
 
         override fun use() {
             if (player.isSneaking) { clearCoordinates(); return }
-            val point = playerData.shotLaserGetBlock(GEOMETER_COORDINATE_RANGE)!!.location.add(0.5, 1.0, 0.5)
-            if (first == null || second != null) {
+            val targetBlock = playerData.shotLaserGetBlock(GEOMETER_COORDINATE_RANGE) ?: return
+            val point = targetBlock.location.add(0.5, 1.0, 0.5)
+            val firstPoint = first
+            if (firstPoint == null || second != null) {
                 if (second != null) clearCoordinates(playSound = false)
                 first = point; second = null
             }
-            else if (validBox(first!!, point)) second = point
+            else if (validBox(firstPoint, point)) second = point
             else {
                 player.sendMiniMessage(
                     "<red><bold>[!] 부피 ${GEOMETER_MAX_VOLUME.toInt()}, " +
@@ -144,9 +146,10 @@ class Geometer : GameClass() {
             }
             particles.spawn(point, Particle.HAPPY_VILLAGER, count = 12, spread = 0.2)
             sounds.play(point, Sound.BLOCK_NOTE_BLOCK_PLING, pitch = if (second == null) 1.0f else 1.6f)
-            second?.let {
-                showBox(first!!, it)
-                startBoxDisplay(first!!.clone(), it.clone())
+            second?.let { secondPoint ->
+                val selectedFirstPoint = first ?: return@let
+                showBox(selectedFirstPoint, secondPoint)
+                startBoxDisplay(selectedFirstPoint.clone(), secondPoint.clone())
             }
         }
 

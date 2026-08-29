@@ -17,7 +17,10 @@ enum class Keyword(
         "<red><bold>화상</bold><gray>",
         "{keyword:Burn}: 지속 시간 동안 몸에 불이 붙어 화염 피해를 입는다."
     ),
-    Shield("<aqua><bold>보호막</bold><gray>"),
+    Shield(
+        "<aqua><bold>보호막</bold><gray>",
+        "{keyword:Shield}: 피해를 받으면 체력보다 먼저 보호막 수치가 감소한다.",
+    ),
     TrueDamage(
         "<white><bold>고정 피해</bold><gray>",
         "{keyword:TrueDamage}: 어떤 경우에도 피해량이 변하지 않는다."
@@ -75,7 +78,10 @@ enum class Keyword(
         "{keyword:Electrocution}: 20초간 <gold><bold>이동 속도가 5% 감소</bold><gray>한다. 지속 시간 도중 {keyword:Electrocution}이 다시 적용되면 {keyword:Electrocution}을 제거하고 2초간 {keyword:Stun}한다.",
         showDescriptionInBrief = true,
     ),
-    Stun("<yellow><bold>기절</bold><gray>"),
+    Stun(
+        "<yellow><bold>기절</bold><gray>",
+        "{keyword:Stun}: 이동, 기본 공격과 스킬 사용이 불가능하다.",
+    ),
     Snare(
         "<dark_gray><bold>속박</bold><gray>",
         "{keyword:Snare}: 위치를 이동할 수 없지만 시야 회전과 공격, 스킬 사용은 가능하다."
@@ -138,6 +144,10 @@ enum class Keyword(
         "<yellow><bold>무적</bold><gray>",
         "{keyword:Invincibility}: 어떠한 방법으로도 피해를 받지 않는다."
     );
+
+    fun requireDescription(): String = requireNotNull(description) {
+        "Keyword '$name'에 설명이 등록되지 않았습니다."
+    }
 
     companion object {
         private val explanationPrefix = "^\\s*\\{keyword:[A-Za-z]+}:".toRegex()

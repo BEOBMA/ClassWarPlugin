@@ -11,7 +11,7 @@ class VibrationExplosion : StatusAbnormality() {
         get() = Keyword.VibrationExplosion.string
     override val description: List<String>
         get() = listOf(
-            Keyword.VibrationExplosion.description!!,
+            Keyword.VibrationExplosion.requireDescription(),
             "",
             "<gray>수치 없음",
             "<gray>지속시간 없음",

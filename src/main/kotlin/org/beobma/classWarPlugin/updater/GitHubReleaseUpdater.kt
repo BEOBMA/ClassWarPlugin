@@ -207,8 +207,9 @@ class GitHubReleaseUpdater(private val plugin: ClassWarPlugin) {
         if (candidates.size == 1) return candidates.single()
 
         val preferred = candidates.filter { asset ->
-            asset.name!!.contains("-all", ignoreCase = true) ||
-                asset.name.contains("-shadow", ignoreCase = true)
+            val name = asset.name.orEmpty()
+            name.contains("-all", ignoreCase = true) ||
+                name.contains("-shadow", ignoreCase = true)
         }
         if (preferred.size == 1) return preferred.single()
         throw UpdateException(

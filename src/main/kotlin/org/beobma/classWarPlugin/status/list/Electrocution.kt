@@ -12,7 +12,7 @@ class Electrocution : StatusAbnormality() {
         get() = Keyword.Electrocution.string
     override val description: List<String>
         get() = listOf(
-            Keyword.Electrocution.description!!,
+            Keyword.Electrocution.requireDescription(),
             "",
             "<gray>수치 없음",
             "<gray>지속시간 고정",

@@ -19,6 +19,7 @@ import java.util.Locale
 import java.util.UUID
 import kotlin.random.Random
 
+/** 피해량 텍스트 표시를 생성하고 상승·페이드·제거 수명주기를 틱 단위로 관리한다. */
 object DamageIndicatorManager {
     private const val lifetimeTicks = 30
     private const val fadeStartTick = 8
@@ -38,6 +39,7 @@ object DamageIndicatorManager {
     private val markerKey: NamespacedKey
         get() = NamespacedKey(ClassWarPlugin.instance, "damage-indicator")
 
+    /** 이전 비정상 종료로 남은 표시 엔티티를 제거해 관리 상태를 초기화한다. */
     fun start() {
         clearOrphanedDisplays()
         ensureTickingTask()
@@ -56,6 +58,7 @@ object DamageIndicatorManager {
         tickingTask = null
     }
 
+    /** [entity] 위에 양수 [damage]를 나타내는 1.5초짜리 텍스트를 생성한다. */
     fun show(entity: LivingEntity, damage: Double, enabled: Boolean) {
         if (!enabled || damage <= 0.0 || entity.isDead || (entity is Player && !entity.isOnline)) return
         val spawnLocation = entity.location.clone().add(
@@ -76,6 +79,7 @@ object DamageIndicatorManager {
         ensureTickingTask()
     }
 
+    /** 소유 엔티티 UUID가 [playerIds]에 포함된 활성 표시를 제거한다. */
     fun clearForPlayers(playerIds: Collection<UUID>) {
         if (playerIds.isEmpty()) return
         val iterator = indicators.iterator()
@@ -88,6 +92,7 @@ object DamageIndicatorManager {
         stopTickingTaskIfIdle()
     }
 
+    /** 틱 작업과 추적 중이거나 월드에 고아로 남은 모든 피해 표시를 제거한다. */
     fun shutdown() {
         tickingTask?.cancel()
         tickingTask = null

@@ -1,6 +1,7 @@
 package org.beobma.classWarPlugin.listener
 
 import net.kyori.adventure.text.minimessage.MiniMessage
+import org.beobma.classWarPlugin.game.GameSetting
 import org.beobma.classWarPlugin.game.GameSettings
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.manager.GameManager.confirmAssignedClass
@@ -24,7 +25,9 @@ import org.beobma.classWarPlugin.manager.InventoryManager.getDamageMultiplierTyp
 import org.beobma.classWarPlugin.manager.ConfigCategory
 import org.beobma.classWarPlugin.manager.ClassBalanceField
 import org.beobma.classWarPlugin.manager.ClassBalanceManager
+import org.beobma.classWarPlugin.manager.PlayerFlag
 import org.beobma.classWarPlugin.manager.PlayerTagManager
+import org.beobma.classWarPlugin.manager.PlayerTagValue
 import org.beobma.classWarPlugin.manager.PlayerManager.refreshClassItemDescriptions
 import org.beobma.classWarPlugin.manager.PlayerPreferenceManager
 import org.beobma.classWarPlugin.entity.player.PlayerData
@@ -76,11 +79,11 @@ class OnInventoryClickEvent : Listener {
             return
         }
 
-        if (PlayerTagManager.hasTag(player, "openGameModeInventory")) {
+        if (PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_GAME_MODE_INVENTORY)) {
             event.isCancelled = true
             if (event.rawSlot !in 0 until inventory.topInventory.size) return
             val matchMode = event.currentItem?.let(::getMatchModeFromItem) ?: return
-            PlayerTagManager.removeTag(player, "openGameModeInventory")
+            PlayerTagManager.removeFlag(player, PlayerFlag.OPEN_GAME_MODE_INVENTORY)
             player.closeInventory()
             if (!player.isOp) {
                 player.sendMessage(miniMessage.deserialize("<red><bold>[!] 이 명령어는 관리자만 사용할 수 있습니다."))
@@ -93,7 +96,7 @@ class OnInventoryClickEvent : Listener {
             return
         }
 
-        if (PlayerTagManager.hasTag(player, "openConfigInventory")) {
+        if (PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_CONFIG_INVENTORY)) {
             event.isCancelled = true
             if (event.rawSlot !in 0 until inventory.topInventory.size) return
             val category = getOpenConfigCategory(player)
@@ -149,13 +152,13 @@ class OnInventoryClickEvent : Listener {
                 return
             }
             if (!player.isOp) return
-            val settingSlot = configSettingSlot(category, event.rawSlot) ?: return
-            GameSettings.adjust(settingSlot, event.isLeftClick, if (event.isShiftClick) 10 else 1)
+            val setting = configSetting(category, event.rawSlot) ?: return
+            GameSettings.adjust(setting, event.isLeftClick, if (event.isShiftClick) 10 else 1)
             player.openConfigCategoryInventory(category)
             return
         }
 
-        if (PlayerTagManager.hasTag(player, "openAssignedClassInventory")) {
+        if (PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_ASSIGNED_CLASS_INVENTORY)) {
             event.isCancelled = true
             if (event.rawSlot !in 0 until inventory.topInventory.size) return
             val currentGame = game ?: return
@@ -168,7 +171,7 @@ class OnInventoryClickEvent : Listener {
             return
         }
 
-        if (PlayerTagManager.hasTag(player, "openClassListInventory")) {
+        if (PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_CLASS_LIST_INVENTORY)) {
             event.isCancelled = true
             if (event.rawSlot !in 0 until inventory.topInventory.size) return
             val clickItem = event.currentItem ?: return
@@ -176,7 +179,7 @@ class OnInventoryClickEvent : Listener {
             return
         }
 
-        if (PlayerTagManager.hasTag(player, "openTrainingClassListInventory")) {
+        if (PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_TRAINING_CLASS_LIST_INVENTORY)) {
             event.isCancelled = true
             if (event.rawSlot !in 0 until inventory.topInventory.size) return
             val clickItem = event.currentItem ?: return
@@ -184,7 +187,7 @@ class OnInventoryClickEvent : Listener {
             return
         }
 
-        if (PlayerTagManager.hasTag(player, "openClassStatusInventory")) {
+        if (PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_CLASS_STATUS_INVENTORY)) {
             event.isCancelled = true
             return
         }
@@ -213,13 +216,11 @@ class OnInventoryClickEvent : Listener {
                 val gameClass = getClassFromItem(clickItem) ?: return
                 if (!player.isOp && gameClass.rank == Rank.SPECIAL) return
                 val currentPage = getCurrentPageFromTitle(inventory.title().toString())
-                PlayerTagManager.removeIf(player) { it.startsWith("classListPage:") }
-                PlayerTagManager.addTag(player, "classListPage:$currentPage")
-                PlayerTagManager.removeIf(player) { it.startsWith("classStatusReturn:") }
-                PlayerTagManager.addTag(player, "classStatusReturn:list")
-                PlayerTagManager.addTag(player, "openingClassStatusInventory")
+                PlayerTagManager.setValue(player, PlayerTagValue.CLASS_LIST_PAGE, currentPage)
+                PlayerTagManager.setValue(player, PlayerTagValue.CLASS_STATUS_RETURN, "list")
+                PlayerTagManager.addFlag(player, PlayerFlag.OPENING_CLASS_STATUS_INVENTORY)
                 player.openClassStatusInventory(gameClass)
-                PlayerTagManager.addTag(player, "openClassStatusInventory")
+                PlayerTagManager.addFlag(player, PlayerFlag.OPEN_CLASS_STATUS_INVENTORY)
                 return
             }
         }
@@ -252,7 +253,7 @@ class OnInventoryClickEvent : Listener {
                 val gameClass = getClassFromItem(clickItem) ?: return
                 if (!player.isOp && gameClass.rank == Rank.SPECIAL) return
                 player.closeInventory()
-                PlayerTagManager.removeTag(player, "openTrainingClassListInventory")
+                PlayerTagManager.removeFlag(player, PlayerFlag.OPEN_TRAINING_CLASS_LIST_INVENTORY)
                 player.startTraining(gameClass)
                 return
             }
@@ -264,54 +265,54 @@ class OnInventoryClickEvent : Listener {
         return matchResult.groupValues[1].toInt() - 1
     }
 
-    private fun configSettingSlot(category: ConfigCategory, inventorySlot: Int): Int? = when (category) {
+    private fun configSetting(category: ConfigCategory, inventorySlot: Int): GameSetting? = when (category) {
         ConfigCategory.PERSONAL -> null
         ConfigCategory.GAME -> when (inventorySlot) {
-            11 -> 10
-            13 -> 60
-            15 -> 12
+            11 -> GameSetting.REFRESH_CHANCES
+            13 -> GameSetting.COOLDOWN_FLOW_MULTIPLIER
+            15 -> GameSetting.COUNTDOWN_SECONDS
             else -> null
         }
 
         ConfigCategory.RANK -> when (inventorySlot) {
-            10 -> 37
-            11 -> 38
-            12 -> 39
-            14 -> 41
-            15 -> 42
-            16 -> 43
+            10 -> GameSetting.RANK_SPECIAL_WEIGHT
+            11 -> GameSetting.RANK_L_WEIGHT
+            12 -> GameSetting.RANK_S_WEIGHT
+            14 -> GameSetting.RANK_A_WEIGHT
+            15 -> GameSetting.RANK_B_WEIGHT
+            16 -> GameSetting.RANK_C_WEIGHT
             else -> null
         }
 
         ConfigCategory.SCATTER -> when (inventorySlot) {
-            10 -> 14
-            13 -> 16
-            16 -> 28
+            10 -> GameSetting.SCATTER_MINIMUM_RADIUS
+            13 -> GameSetting.SCATTER_MAXIMUM_RADIUS
+            16 -> GameSetting.MINIMUM_PLAYER_DISTANCE
             else -> null
         }
 
         ConfigCategory.BORDER -> when (inventorySlot) {
-            10 -> 22
-            11 -> 30
-            12 -> 32
-            13 -> 34
-            14 -> 40
-            15 -> 44
-            16 -> 46
-            22 -> 48
-            23 -> 50
-            24 -> 62
-            25 -> 64
-            26 -> 66
+            10 -> GameSetting.BORDER_ENABLED
+            11 -> GameSetting.BORDER_INITIAL_SIZE
+            12 -> GameSetting.BORDER_DELAY_SECONDS
+            13 -> GameSetting.BORDER_SHRINK_SECONDS
+            14 -> GameSetting.BORDER_MINIMUM_SIZE
+            15 -> GameSetting.BORDER_CENTER_MINIMUM_DISTANCE
+            16 -> GameSetting.BORDER_CENTER_MAXIMUM_DISTANCE
+            22 -> GameSetting.FINAL_BORDER_DESCENT_SECONDS
+            23 -> GameSetting.BORDER_DAMAGE_BUFFER
+            24 -> GameSetting.BORDER_DAMAGE_PER_BLOCK
+            25 -> GameSetting.FINAL_BORDER_DAMAGE
+            26 -> GameSetting.FINAL_BORDER_DAMAGE_INTERVAL_SECONDS
             else -> null
         }
 
         ConfigCategory.COMBAT -> when (inventorySlot) {
-            10 -> 52
-            12 -> 54
-            14 -> 56
-            16 -> 58
-            22 -> 24
+            10 -> GameSetting.PLAYER_LIST_VISIBLE
+            12 -> GameSetting.DEATH_MESSAGES_ENABLED
+            14 -> GameSetting.DEATH_MESSAGES_SHOW_KILLER
+            16 -> GameSetting.DEATH_MESSAGES_SHOW_CAUSE
+            22 -> GameSetting.DAMAGE_INDICATORS_ENABLED
             else -> null
         }
 

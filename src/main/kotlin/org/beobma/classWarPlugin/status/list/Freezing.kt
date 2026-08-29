@@ -28,7 +28,7 @@ class Freezing : StatusAbnormality(), StatusOnHitHandler, StatusWhenHitHandler, 
         get() = Keyword.Freezing.string
     override val description: List<String>
         get() = listOf(
-            Keyword.Freezing.description!!,
+            Keyword.Freezing.requireDescription(),
             "",
             "<gray>수치 없음",
             "<gray>지속시간 연장",

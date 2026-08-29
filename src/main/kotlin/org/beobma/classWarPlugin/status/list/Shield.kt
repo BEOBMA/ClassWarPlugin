@@ -8,7 +8,7 @@ class Shield : StatusAbnormality() {
         get() = Keyword.Shield.string
     override val description: List<String>
         get() = listOf(
-            Keyword.Shield.description!!,
+            Keyword.Shield.requireDescription(),
             "",
             "<gray>수치 개별 합산 적용",
             "<gray>지속시간 개별 적용",

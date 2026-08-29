@@ -109,7 +109,7 @@ class Referee : GameClass(), GameStatusHandler {
         private var selectedDefendant: PlayerData? = null
 
         override fun isUseSuccess(): Boolean {
-            val training = PlayerTagManager.hasTag(player, "isTraining")
+            val training = PlayerTagManager.isTraining(player)
             if ((!training && game.phase != GamePhase.RUNNING) || game.isPaused || activeTrials.containsKey(game)) {
                 player.sendMiniMessage("<red><bold>[!] 지금은 재판을 열 수 없습니다.")
                 return false
@@ -270,7 +270,7 @@ class Referee : GameClass(), GameStatusHandler {
         val targetAndDistance = player.world.players.asSequence()
             .filter { candidate ->
                 candidate.uniqueId != player.uniqueId &&
-                    candidate.isOnline && PlayerTagManager.hasTag(candidate, "isTraining")
+                    candidate.isOnline && PlayerTagManager.isTraining(candidate)
             }
             .mapNotNull { candidate ->
                 val target = findGameForPlayer(candidate)?.playerDatas
@@ -342,7 +342,7 @@ class Referee : GameClass(), GameStatusHandler {
         private val miniMessage = MiniMessage.miniMessage()
         private val game = owner.game
         private val judge = owner.playerData
-        private val isTrainingTrial = PlayerTagManager.hasTag(judge.player, "isTraining")
+        private val isTrainingTrial = PlayerTagManager.isTraining(judge.player)
         private val isSoloTrial = judge == defendant
         private val participants = (game.playerDatas.filterIsInstance<PlayerData>() + defendant)
             .distinctBy(PlayerData::uniqueId)
@@ -1092,7 +1092,7 @@ class Referee : GameClass(), GameStatusHandler {
             }
             Crime.MURDER -> {
                 target.player.sendMiniMessage(if (perjury) "<dark_red><bold>위증이 확인되어 즉시 처형합니다." else "<red><bold>사형을 집행합니다.")
-                if (PlayerTagManager.hasTag(target.player, "isTraining")) {
+                if (PlayerTagManager.isTraining(target.player)) {
                     target.player.sendMiniMessage("<yellow><bold>[훈련]</bold> <gray>처형 판정과 연출만 적용하고 실제 사망은 생략합니다.")
                 } else {
                     target.player.health = 0.0

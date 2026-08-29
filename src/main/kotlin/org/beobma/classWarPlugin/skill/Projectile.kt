@@ -30,6 +30,13 @@ import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
+/**
+ * 시선 방향으로 이동하며 블록·엔티티·공격 가능 오브젝트 충돌을 처리하는 투사체 기반 형식이다.
+ *
+ * [speed]는 틱당 블록, [time]은 초, [xSize]·[ySize]·[zSize]는 대상 히트박스 확장량이다.
+ * 제한 시간은 클래스 사거리 배율에 따라 함께 조정된다. [itemDisplayItem]을 제공하면 투사체와
+ * 수명이 같은 비영구 [ItemDisplay]가 자동으로 생성되고 제거된다.
+ */
 abstract class Projectile : EffectApiAccess {
     protected lateinit var playerData: PlayerData
     protected lateinit var player: Player
@@ -64,6 +71,7 @@ abstract class Projectile : EffectApiAccess {
         this.game = playerData.initGame
     }
 
+    /** 시간 제한을 제거하고 [predicate]가 참인 동안 투사체를 유지한다. */
     fun setContinueWhileIf(predicate: () -> Boolean) {
         this.continueWhile = predicate
         time = null
@@ -76,6 +84,10 @@ abstract class Projectile : EffectApiAccess {
 
     open fun onItemDisplayMove(display: ItemDisplay, location: Location, speed: Double, tick: Int) {}
 
+    /**
+     * 다음 틱의 이동 속도를 계산한다.
+     * 기본 구현은 목표 [speed]의 20%씩 가속하되 목표 속도를 넘지 않는다.
+     */
     open fun interpolateSpeed(previousSpeed: Double, tick: Int): Double {
         if (speed <= 0.0) return speed
         val acceleration = abs(speed) * 0.2
@@ -88,6 +100,7 @@ abstract class Projectile : EffectApiAccess {
 
     open fun onProjectileEnd(location: Location) {}
 
+    /** 투사체를 생성하고 생성자 플레이어의 정리 대상 작업으로 등록한다. */
     fun spawnProjectile(playerData: PlayerData) {
         inject(playerData)
         val game = game
@@ -119,7 +132,7 @@ abstract class Projectile : EffectApiAccess {
 
             override fun run() {
                 if (durationLimitTicks == null) {
-                    if (continueWhile != null && !continueWhile!!.invoke()) {
+                    if (continueWhile?.invoke() == false) {
                         stop()
                         return
                     }
@@ -137,7 +150,7 @@ abstract class Projectile : EffectApiAccess {
                 }
 
                 if (isPlayerHit) {
-                    val isTraining = PlayerTagManager.hasTag(player, "isTraining")
+                    val isTraining = PlayerTagManager.isTraining(player)
                     val targetCandidates = if (isTraining) {
                         trainingCandidates.clear()
                         trainingCandidateIds.clear()

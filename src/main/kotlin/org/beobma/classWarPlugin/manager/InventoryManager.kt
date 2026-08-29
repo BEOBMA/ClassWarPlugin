@@ -22,6 +22,7 @@ import org.bukkit.inventory.Inventory
 import org.bukkit.inventory.ItemStack
 import org.bukkit.persistence.PersistentDataType
 
+/** 설정 인벤토리의 최상위 화면 범주다. */
 enum class ConfigCategory {
     PERSONAL,
     GAME,
@@ -33,6 +34,7 @@ enum class ConfigCategory {
     CLASS_BALANCE,
 }
 
+/** 클래스 선택, 훈련 및 서버 설정용 인벤토리 UI를 생성하고 갱신한다. */
 object InventoryManager {
     private const val CLASS_BALANCE_PAGE_SIZE = 45
     private data class DamageConfigItem(
@@ -106,14 +108,14 @@ object InventoryManager {
     fun Player.openClassListInventory(page: Int) {
         val visibleClasses = gameClassList.filter { isOp || it.rank != Rank.SPECIAL }
         val inventory = buildClassListInventory(page, visibleClasses, this) ?: return
-        PlayerTagManager.addTag(this, "openClassListInventory")
+        PlayerTagManager.addFlag(this, PlayerFlag.OPEN_CLASS_LIST_INVENTORY)
         openInventory(inventory)
     }
 
     fun Player.openTrainingClassListInventory(page: Int) {
         val visibleClasses = gameClassList.filter { isOp || it.rank != Rank.SPECIAL }
         val inventory = buildClassListInventory(page, visibleClasses, this) ?: return
-        PlayerTagManager.addTag(this, "openTrainingClassListInventory")
+        PlayerTagManager.addFlag(this, PlayerFlag.OPEN_TRAINING_CLASS_LIST_INVENTORY)
         openInventory(inventory)
     }
 
@@ -155,10 +157,10 @@ object InventoryManager {
             }
         })
 
-        if (PlayerTagManager.hasTag(player, "openAssignedClassInventory")) {
-            PlayerTagManager.addTag(player, "openingAssignedClassInventory")
+        if (PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_ASSIGNED_CLASS_INVENTORY)) {
+            PlayerTagManager.addFlag(player, PlayerFlag.OPENING_ASSIGNED_CLASS_INVENTORY)
         }
-        PlayerTagManager.addTag(player, "openAssignedClassInventory")
+        PlayerTagManager.addFlag(player, PlayerFlag.OPEN_ASSIGNED_CLASS_INVENTORY)
         player.openInventory(inventory)
     }
 
@@ -430,10 +432,9 @@ object InventoryManager {
             inventory.setItem(50, createDescriptionItem(Material.ARROW, "<yellow><bold>다음 페이지", emptyList()))
         }
 
-        PlayerTagManager.removeIf(this) {
-            it.startsWith("classBalancePage:") || it.startsWith("classBalanceClass:")
-        }
-        PlayerTagManager.addTag(this, "classBalancePage:$safePage")
+        PlayerTagManager.removeValue(this, PlayerTagValue.CLASS_BALANCE_PAGE)
+        PlayerTagManager.removeValue(this, PlayerTagValue.CLASS_BALANCE_CLASS)
+        PlayerTagManager.setValue(this, PlayerTagValue.CLASS_BALANCE_PAGE, safePage)
         openConfigView(inventory, ConfigCategory.CLASS_BALANCE)
     }
 
@@ -464,31 +465,32 @@ object InventoryManager {
             listOf("<gray>클릭하면 모든 배율을 기본값으로 되돌립니다."),
         ))
 
-        PlayerTagManager.removeIf(this) { it.startsWith("classBalanceClass:") }
-        PlayerTagManager.addTag(this, "classBalanceClass:${ClassBalanceManager.configKey(gameClass)}")
+        PlayerTagManager.setValue(
+            this,
+            PlayerTagValue.CLASS_BALANCE_CLASS,
+            ClassBalanceManager.configKey(gameClass),
+        )
         openConfigView(inventory, ConfigCategory.CLASS_BALANCE)
     }
 
     fun getOpenClassBalancePage(player: Player): Int =
-        PlayerTagManager.findTag(player) { it.startsWith("classBalancePage:") }
-            ?.substringAfter("classBalancePage:")
+        PlayerTagManager.getValue(player, PlayerTagValue.CLASS_BALANCE_PAGE)
             ?.toIntOrNull()
             ?: 0
 
     fun getSelectedClassBalance(player: Player): GameClass? {
-        val key = PlayerTagManager.findTag(player) { it.startsWith("classBalanceClass:") }
-            ?.substringAfter("classBalanceClass:")
+        val key = PlayerTagManager.getValue(player, PlayerTagValue.CLASS_BALANCE_CLASS)
             ?: return null
         return gameClassList.firstOrNull { ClassBalanceManager.configKey(it) == key }
     }
 
     private fun Player.openConfigView(inventory: Inventory, category: ConfigCategory?) {
-        if (PlayerTagManager.hasTag(this, "openConfigInventory")) {
-            PlayerTagManager.addTag(this, "openingConfigInventory")
+        if (PlayerTagManager.hasFlag(this, PlayerFlag.OPEN_CONFIG_INVENTORY)) {
+            PlayerTagManager.addFlag(this, PlayerFlag.OPENING_CONFIG_INVENTORY)
         }
-        PlayerTagManager.removeIf(this) { it.startsWith("configCategory:") }
-        category?.let { PlayerTagManager.addTag(this, "configCategory:${it.name}") }
-        PlayerTagManager.addTag(this, "openConfigInventory")
+        PlayerTagManager.removeValue(this, PlayerTagValue.CONFIG_CATEGORY)
+        category?.let { PlayerTagManager.setValue(this, PlayerTagValue.CONFIG_CATEGORY, it.name) }
+        PlayerTagManager.addFlag(this, PlayerFlag.OPEN_CONFIG_INVENTORY)
         openInventory(inventory)
     }
 
@@ -500,21 +502,19 @@ object InventoryManager {
         inventory.setItem(14, createMatchModeItem(Material.RECOVERY_COMPASS, MatchMode.TAIL_TAG))
         inventory.setItem(16, createMatchModeItem(Material.ENDER_EYE, MatchMode.TAIL_TAG_DUAL))
         listOf(
-            "openGameModeInventory",
-            "openConfigInventory",
-            "openingConfigInventory",
-            "openClassListInventory",
-            "openTrainingClassListInventory",
-            "openClassStatusInventory",
-            "openingClassStatusInventory",
-        ).forEach { PlayerTagManager.removeTag(this, it) }
-        PlayerTagManager.removeIf(this) {
-            it.startsWith("configCategory:") ||
-                it.startsWith("classListPage:") ||
-                it.startsWith("classStatusReturn:")
-        }
+            PlayerFlag.OPEN_GAME_MODE_INVENTORY,
+            PlayerFlag.OPEN_CONFIG_INVENTORY,
+            PlayerFlag.OPENING_CONFIG_INVENTORY,
+            PlayerFlag.OPEN_CLASS_LIST_INVENTORY,
+            PlayerFlag.OPEN_TRAINING_CLASS_LIST_INVENTORY,
+            PlayerFlag.OPEN_CLASS_STATUS_INVENTORY,
+            PlayerFlag.OPENING_CLASS_STATUS_INVENTORY,
+        ).forEach { PlayerTagManager.removeFlag(this, it) }
+        PlayerTagManager.removeValue(this, PlayerTagValue.CONFIG_CATEGORY)
+        PlayerTagManager.removeValue(this, PlayerTagValue.CLASS_LIST_PAGE)
+        PlayerTagManager.removeValue(this, PlayerTagValue.CLASS_STATUS_RETURN)
         closeInventory()
-        PlayerTagManager.addTag(this, "openGameModeInventory")
+        PlayerTagManager.addFlag(this, PlayerFlag.OPEN_GAME_MODE_INVENTORY)
         openInventory(inventory)
     }
 
@@ -525,8 +525,7 @@ object InventoryManager {
     }
 
     fun getOpenConfigCategory(player: Player): ConfigCategory? =
-        PlayerTagManager.findTag(player) { it.startsWith("configCategory:") }
-            ?.substringAfter("configCategory:")
+        PlayerTagManager.getValue(player, PlayerTagValue.CONFIG_CATEGORY)
             ?.let { name -> ConfigCategory.entries.find { it.name == name } }
 
     fun getClassFromItem(item: ItemStack): GameClass? {

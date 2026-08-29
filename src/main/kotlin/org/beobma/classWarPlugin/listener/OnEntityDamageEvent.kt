@@ -19,16 +19,24 @@ import org.beobma.classWarPlugin.gameClass.handler.EnvironmentalDamageHandler
 import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
 import org.beobma.classWarPlugin.manager.GameManager.canDispatchClassHandlers
 import org.beobma.classWarPlugin.gameClass.list.Vampire
+import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.entity.Projectile
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
+import org.bukkit.event.entity.EntityDamageByBlockEvent
 import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import kotlin.math.roundToInt
 
 class OnEntityDamageEvent : Listener {
+    private val fireContactMaterials = setOf(
+        Material.CAMPFIRE,
+        Material.SOUL_CAMPFIRE,
+        Material.MAGMA_BLOCK,
+    )
+
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     fun onEntityDamage(event: EntityDamageEvent) {
         if (Vampire.handleBatDamage(event)) return
@@ -69,7 +77,7 @@ class OnEntityDamageEvent : Listener {
             }
             event.damage *= multiplier
         }
-        if (!PlayerTagManager.hasTag(player, "isTraining")) {
+        if (!PlayerTagManager.isTraining(player)) {
             if (handlerData != null && event.finalDamage > 0.0) {
                 CombatManager.recordDamageTaken(handlerData)
             }
@@ -113,45 +121,50 @@ class OnEntityDamageEvent : Listener {
         }
     }
 
-    private fun EntityDamageEvent.damageMultiplierType(): DamageMultiplierType = when (cause) {
-        EntityDamageEvent.DamageCause.FALL -> DamageMultiplierType.FALL
-        EntityDamageEvent.DamageCause.DROWNING,
-        EntityDamageEvent.DamageCause.DRYOUT -> DamageMultiplierType.DROWNING
+    private fun EntityDamageEvent.damageMultiplierType(): DamageMultiplierType {
+        if (cause == EntityDamageEvent.DamageCause.CONTACT) {
+            val damageByBlock = this as? EntityDamageByBlockEvent
+            val material = damageByBlock?.damagerBlockState?.type ?: damageByBlock?.damager?.type
+            if (material in fireContactMaterials) return DamageMultiplierType.FIRE
+        }
 
-        EntityDamageEvent.DamageCause.FIRE,
-        EntityDamageEvent.DamageCause.FIRE_TICK,
-        EntityDamageEvent.DamageCause.HOT_FLOOR,
-        EntityDamageEvent.DamageCause.CAMPFIRE -> DamageMultiplierType.FIRE
+        return when (cause) {
+            EntityDamageEvent.DamageCause.FALL -> DamageMultiplierType.FALL
+            EntityDamageEvent.DamageCause.DROWNING,
+            EntityDamageEvent.DamageCause.DRYOUT -> DamageMultiplierType.DROWNING
 
-        EntityDamageEvent.DamageCause.LAVA -> DamageMultiplierType.LAVA
-        EntityDamageEvent.DamageCause.SUFFOCATION,
-        EntityDamageEvent.DamageCause.CRAMMING -> DamageMultiplierType.SUFFOCATION
+            EntityDamageEvent.DamageCause.FIRE,
+            EntityDamageEvent.DamageCause.FIRE_TICK -> DamageMultiplierType.FIRE
 
-        EntityDamageEvent.DamageCause.BLOCK_EXPLOSION,
-        EntityDamageEvent.DamageCause.ENTITY_EXPLOSION -> DamageMultiplierType.EXPLOSION
+            EntityDamageEvent.DamageCause.LAVA -> DamageMultiplierType.LAVA
+            EntityDamageEvent.DamageCause.SUFFOCATION,
+            EntityDamageEvent.DamageCause.CRAMMING -> DamageMultiplierType.SUFFOCATION
 
-        EntityDamageEvent.DamageCause.POISON,
-        EntityDamageEvent.DamageCause.WITHER,
-        EntityDamageEvent.DamageCause.MAGIC,
-        EntityDamageEvent.DamageCause.DRAGON_BREATH -> DamageMultiplierType.POISON_MAGIC
+            EntityDamageEvent.DamageCause.BLOCK_EXPLOSION,
+            EntityDamageEvent.DamageCause.ENTITY_EXPLOSION -> DamageMultiplierType.EXPLOSION
 
-        EntityDamageEvent.DamageCause.STARVATION -> DamageMultiplierType.STARVATION
-        EntityDamageEvent.DamageCause.VOID,
-        EntityDamageEvent.DamageCause.KILL -> DamageMultiplierType.VOID
+            EntityDamageEvent.DamageCause.POISON,
+            EntityDamageEvent.DamageCause.WITHER,
+            EntityDamageEvent.DamageCause.MAGIC -> DamageMultiplierType.POISON_MAGIC
 
-        EntityDamageEvent.DamageCause.FREEZE -> DamageMultiplierType.FREEZING
-        EntityDamageEvent.DamageCause.CONTACT -> DamageMultiplierType.CONTACT
-        EntityDamageEvent.DamageCause.LIGHTNING -> DamageMultiplierType.LIGHTNING
-        EntityDamageEvent.DamageCause.ENTITY_ATTACK,
-        EntityDamageEvent.DamageCause.ENTITY_SWEEP_ATTACK,
-        EntityDamageEvent.DamageCause.PROJECTILE,
-        EntityDamageEvent.DamageCause.THORNS,
-        EntityDamageEvent.DamageCause.SONIC_BOOM -> DamageMultiplierType.MOB_ATTACK
+            EntityDamageEvent.DamageCause.STARVATION -> DamageMultiplierType.STARVATION
+            EntityDamageEvent.DamageCause.VOID,
+            EntityDamageEvent.DamageCause.KILL -> DamageMultiplierType.VOID
 
-        EntityDamageEvent.DamageCause.FALLING_BLOCK,
-        EntityDamageEvent.DamageCause.FLY_INTO_WALL -> DamageMultiplierType.IMPACT
+            EntityDamageEvent.DamageCause.FREEZE -> DamageMultiplierType.FREEZING
+            EntityDamageEvent.DamageCause.CONTACT -> DamageMultiplierType.CONTACT
+            EntityDamageEvent.DamageCause.LIGHTNING -> DamageMultiplierType.LIGHTNING
+            EntityDamageEvent.DamageCause.ENTITY_ATTACK,
+            EntityDamageEvent.DamageCause.ENTITY_SWEEP_ATTACK,
+            EntityDamageEvent.DamageCause.PROJECTILE,
+            EntityDamageEvent.DamageCause.THORNS,
+            EntityDamageEvent.DamageCause.SONIC_BOOM -> DamageMultiplierType.MOB_ATTACK
 
-        EntityDamageEvent.DamageCause.WORLD_BORDER -> DamageMultiplierType.WORLD_BORDER
-        else -> DamageMultiplierType.OTHER_ENVIRONMENT
+            EntityDamageEvent.DamageCause.FALLING_BLOCK,
+            EntityDamageEvent.DamageCause.FLY_INTO_WALL -> DamageMultiplierType.IMPACT
+
+            EntityDamageEvent.DamageCause.WORLD_BORDER -> DamageMultiplierType.WORLD_BORDER
+            else -> DamageMultiplierType.OTHER_ENVIRONMENT
+        }
     }
 }

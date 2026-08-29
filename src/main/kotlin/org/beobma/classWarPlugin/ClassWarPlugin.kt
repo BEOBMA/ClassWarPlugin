@@ -128,7 +128,10 @@ class ClassWarPlugin : JavaPlugin() {
 
     private fun registerEvents() {
         val command = Command()
-        server.getPluginCommand("classwar")?.setExecutor(command)
+        server.getPluginCommand("classwar")?.apply {
+            setExecutor(command)
+            tabCompleter = command
+        }
 
         server.pluginManager.registerEvents(command, this)
         server.pluginManager.registerEvents(OnInventoryClickEvent(), this)

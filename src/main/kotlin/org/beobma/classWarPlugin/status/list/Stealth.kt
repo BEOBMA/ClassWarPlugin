@@ -12,7 +12,7 @@ class Stealth : StatusAbnormality() {
         get() = Keyword.Stealth.string
     override val description: List<String>
         get() = listOf(
-            Keyword.Stealth.description!!,
+            Keyword.Stealth.requireDescription(),
             "",
             "<gray>수치 없음",
             "<gray>지속시간 연장 적용",
@@ -27,14 +27,14 @@ class Stealth : StatusAbnormality() {
 
     override fun onDurationChanged() {
         super.onDurationChanged()
-        if (power > 0 && (duration == null || duration!! > 0)) {
+        if (power > 0 && duration?.let { it > 0 } != false) {
             (entityData as? PlayerData)?.let(StealthVisibilityManager::hideFromEnemies)
         }
     }
 
     override fun onPowerChanged() {
         super.onPowerChanged()
-        if (power > 0 && (duration == null || duration!! > 0)) {
+        if (power > 0 && duration?.let { it > 0 } != false) {
             (entityData as? PlayerData)?.let(StealthVisibilityManager::hideFromEnemies)
         }
     }

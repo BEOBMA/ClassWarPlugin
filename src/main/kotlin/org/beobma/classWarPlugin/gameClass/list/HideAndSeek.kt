@@ -98,7 +98,7 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
                 return false
             }
             selectedTarget = playerData.shotLaserGetEntityData(10.0, TargetType.Enemy, false) as? PlayerData
-            if (selectedTarget == null && PlayerTagManager.hasTag(player, "isTraining")) {
+            if (selectedTarget == null && PlayerTagManager.isTraining(player)) {
                 selectedTarget = playerData
                 player.sendMiniMessage("<gold><bold>[모의 숨바꼭질]</bold> <gray>가상의 플레이어가 숨은 방을 탐색합니다.")
             }
@@ -177,7 +177,7 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
         ) {
             val game: Game = ownerClass.game
             val seeker: PlayerData = ownerClass.playerData
-            val soloTraining = seeker == hider && PlayerTagManager.hasTag(seeker.player, "isTraining")
+            val soloTraining = seeker == hider && PlayerTagManager.isTraining(seeker.player)
             val world = seeker.player.world
             val snapshots = game.playerDatas.filterIsInstance<PlayerData>()
                 .filter { !it.entityStatus.isDead && it.player.isOnline }

@@ -21,6 +21,11 @@ import org.bukkit.entity.Player
 import org.bukkit.scheduler.BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 
+/**
+ * 한 틱마다 아래쪽으로 이동하며 블록과 엔티티 충돌을 검사하는 낙하체의 기반 형식이다.
+ * [speed]는 틱당 블록, [time]은 초 단위다. 충돌하거나 지속 조건이 끝나면 [onMeteorEnd]가
+ * 정확히 한 번 호출된다.
+ */
 abstract class Meteor(
 
 ) : EffectApiAccess {
@@ -47,16 +52,24 @@ abstract class Meteor(
         this.game = playerData.initGame
     }
 
+    /** 충돌하지 않은 각 이동 틱에 호출된다. */
     open fun onMeteorMove(location: Location) {}
+
+    /** 유효한 대상과 충돌했을 때 종료 전에 호출된다. */
     open fun onMeteorEntityHit(hitEntityData: EntityData, location: Location) {}
+
+    /** [isWallHit]이 켜진 상태에서 고체 블록과 충돌했을 때 호출된다. */
     open fun onMeteorBlockHit(hitBlock: Block, location: Location) {}
+
+    /** 낙하체가 어떤 이유로든 종료될 때 한 번 호출된다. */
     open fun onMeteorEnd(location: Location) {}
 
+    /** 낙하체를 생성하고 생성자 플레이어의 정리 대상 작업으로 등록한다. */
     fun spawnMeteor(playerData: PlayerData) {
         inject(playerData)
         val currentLocation = location.clone()
         val time = time
-        val isTraining = PlayerTagManager.hasTag(player, "isTraining")
+        val isTraining = PlayerTagManager.isTraining(player)
         var ticks = 0
 
         val task = object : BukkitRunnable() {
@@ -80,7 +93,7 @@ abstract class Meteor(
                     }
                 }
                 if (time == null) {
-                    if (continueWhile != null && !continueWhile!!.invoke()) {
+                    if (continueWhile?.invoke() == false) {
                         stop()
                         return
                     }

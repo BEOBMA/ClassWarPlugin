@@ -6,11 +6,13 @@ import org.bukkit.World
 import org.bukkit.entity.Display
 import java.util.UUID
 
+/** 스킬이 생성한 비영구 표시 엔티티를 소유자별로 식별하고 가시성을 관리한다. */
 object TemporaryDisplayManager {
     private val visibilitySuppressions = mutableSetOf<VisibilitySuppression>()
 
     private fun ownerTag(ownerId: UUID): String = "cw-${ownerId.toString().take(8)}"
 
+    /** [display]에 소유자 태그를 붙이고 현재 가시성 억제 규칙을 즉시 적용한다. */
     fun mark(display: Display, ownerId: UUID) {
         display.addScoreboardTag(ownerTag(ownerId))
         display.isPersistent = false
@@ -23,6 +25,7 @@ object TemporaryDisplayManager {
             .forEach { it.hideEntity(ClassWarPlugin.instance, display) }
     }
 
+    /** [world]에서 [ownerId]가 소유한 모든 표시 엔티티를 제거한다. */
     fun clear(world: World, ownerId: UUID) {
         val tag = ownerTag(ownerId)
         world.getEntitiesByClass(Display::class.java)
@@ -47,6 +50,7 @@ object TemporaryDisplayManager {
         return suppression
     }
 
+    /** [close]할 때까지 특정 소유자의 표시를 지정 관전자에게 숨기는 해제 가능한 핸들이다. */
     class VisibilitySuppression internal constructor(
         internal val worldId: UUID,
         internal val ownerIds: Set<UUID>,

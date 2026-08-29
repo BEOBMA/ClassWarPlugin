@@ -2,6 +2,7 @@ package org.beobma.classWarPlugin.manager
 
 import net.kyori.adventure.text.minimessage.MiniMessage
 import org.beobma.classWarPlugin.entity.EntityData
+import org.beobma.classWarPlugin.entity.DamageRedirectEntityData
 import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
 import org.beobma.classWarPlugin.entity.mob.MobEntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
@@ -28,6 +29,7 @@ import org.bukkit.entity.LivingEntity
 import org.bukkit.inventory.ItemStack
 import org.bukkit.persistence.PersistentDataType
 
+/** 클래스 아이템 구성과 플레이어·전투 엔티티의 피해 및 회복 적용을 담당한다. */
 object PlayerManager {
     private val miniMessage = MiniMessage.miniMessage()
     private const val invincibilityTicks: Long = 20
@@ -43,11 +45,16 @@ object PlayerManager {
         val damageType: DamageType,
     )
 
+    /** 지정한 플레이어가 공격자나 피격자로 포함된 자체 무적 시간 기록을 제거한다. */
     fun clearDamageInvincibility(playerIds: Collection<java.util.UUID>) {
         if (playerIds.isEmpty()) return
         lastDamageTicks.keys.removeIf { it.targetId in playerIds || it.damagerId in playerIds }
     }
 
+    /**
+     * 배정 클래스를 주입하고 무기·스킬·패시브 아이템을 인벤토리에 배치한다.
+     * [initializeHandlers]가 참이면 전투 시작 콜백도 이어서 실행한다.
+     */
     fun PlayerData.classSet(initializeHandlers: Boolean = true) {
         val assignedClasses = gameClasses.toList()
         if (assignedClasses.isEmpty()) return
@@ -185,6 +192,10 @@ object PlayerManager {
         player.updateInventory()
     }
 
+    /**
+     * 플레이어에게 커스텀 피해 파이프라인을 적용한다.
+     * 훈련 중에는 체력을 깎지 않고 계산된 피해 정보만 표시한다.
+     */
     fun PlayerData.damage(
         damage: Double,
         damageType: DamageType,
@@ -220,7 +231,7 @@ object PlayerManager {
         }
         DamageIndicatorManager.show(player, damageResult.finalDamage, initGame.settings.damageIndicatorsEnabled)
         player.playHurtAnimation(0.0f)
-        if (PlayerTagManager.hasTag(player, "isTraining")) {
+        if (PlayerTagManager.isTraining(player)) {
             val formattedDamage = String.format("%.2f", damageResult.finalDamage)
             player.sendMiniMessage("<red>받은 피해 정보 - <gray>피해량: <gold><bold>$formattedDamage</bold></gold>")
             return
@@ -232,6 +243,7 @@ object PlayerManager {
         player.health = newHealth
     }
 
+    /** 클래스 회복 배율과 회복 반전 효과를 반영해 플레이어를 회복한다. */
     fun PlayerData.heal(damage: Double, damageType: DamageType, healer: PlayerData) {
         val finalDamage = ClassBalanceManager.scaleHealing(healer, damage)
 
@@ -242,6 +254,7 @@ object PlayerManager {
         player.heal(finalDamage)
     }
 
+    /** 엔티티 데이터의 실제 종류에 맞춰 플레이어, 위임 대상, 더미 또는 몹 피해를 적용한다. */
     fun EntityData.damage(
         damage: Double,
         damageType: DamageType,
@@ -254,6 +267,15 @@ object PlayerManager {
         when (this) {
             is PlayerData -> this.damage(
                 damage, damageType, damager, isInvincibilityTimeIgnore, bypassShield, damagePath, armorIgnoreRatio,
+            )
+            is DamageRedirectEntityData -> redirectDamage(
+                damage,
+                damageType,
+                damager,
+                isInvincibilityTimeIgnore,
+                bypassShield,
+                damagePath,
+                armorIgnoreRatio,
             )
             is DummyEntityData -> {
                 if (damage <= 0.0) {
@@ -314,6 +336,7 @@ object PlayerManager {
         }
     }
 
+    /** 엔티티 데이터의 실제 종류에 맞춰 회복을 적용한다. 더미는 회복하지 않는다. */
     fun EntityData.heal(damage: Double, damageType: DamageType, healer: PlayerData) {
         if (Reverse.invertHealingIfNeeded(this, damage)) return
         when (this) {

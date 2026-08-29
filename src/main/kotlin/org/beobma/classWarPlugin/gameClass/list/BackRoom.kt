@@ -86,7 +86,7 @@ class BackRoom : GameClass(), GameEndHandler, PlayerDeathHandler {
                 return false
             }
             selectedTarget = playerData.shotLaserGetEntityData(10.0, TargetType.Enemy, false)
-            if (selectedTarget == null && PlayerTagManager.hasTag(player, "isTraining")) {
+            if (selectedTarget == null && PlayerTagManager.isTraining(player)) {
                 selectedTarget = playerData
                 player.sendMiniMessage("<gold><bold>[백룸 훈련]</bold> <gray>자기 자신을 백룸으로 보냅니다.")
             }

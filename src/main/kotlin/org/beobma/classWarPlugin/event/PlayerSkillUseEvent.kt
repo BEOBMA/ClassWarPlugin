@@ -6,6 +6,10 @@ import org.bukkit.event.Event
 import org.bukkit.event.HandlerList
 import org.bukkit.inventory.ItemStack
 
+/**
+ * 기본 사용 조건을 통과한 뒤 실제 스킬 효과가 실행되기 전에 발생하는 취소 가능 이벤트다.
+ * 취소 상태는 [context]에 직접 반영되며 처리기는 재사용 대기시간도 같은 컨텍스트에서 조정할 수 있다.
+ */
 class PlayerSkillUseEvent(
     val context: SkillContext,
 ) : Event(), Cancellable {

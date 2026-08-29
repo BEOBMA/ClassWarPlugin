@@ -10,6 +10,12 @@ import org.bukkit.Material
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 
+/**
+ * 플레이어에게 배정되는 클래스의 공통 계약이다.
+ *
+ * 인스턴스를 사용하기 전에 [inject]로 소유자를 연결해야 한다. 클래스가 가진 [skills]와
+ * [passives]도 배정 과정에서 같은 [PlayerData]로 주입된다.
+ */
 abstract class GameClass : EffectApiAccess {
     protected lateinit var playerData: PlayerData
     protected lateinit var player: Player
@@ -24,6 +30,7 @@ abstract class GameClass : EffectApiAccess {
     abstract var passives: List<Passive>
     open val extraItemMaterials: List<ItemStack> = listOf()
 
+    /** 클래스가 참조할 플레이어·상태·경기를 [playerData] 기준으로 연결한다. */
     fun inject(playerData: PlayerData) {
         if (playerData.entityStatus !is PlayerStatus) return
 
@@ -33,6 +40,7 @@ abstract class GameClass : EffectApiAccess {
         this.game = playerData.initGame
     }
 
+    /** 현재 주입된 모든 컨텍스트가 [expected]와 일치하는지 검사한다. */
     fun isInjectedFor(expected: PlayerData): Boolean =
         this::playerData.isInitialized &&
             this::player.isInitialized &&

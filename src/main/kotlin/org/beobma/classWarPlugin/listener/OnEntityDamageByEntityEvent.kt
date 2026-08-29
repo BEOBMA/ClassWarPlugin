@@ -15,6 +15,7 @@ import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.gameClass.list.Vampire
+import org.beobma.classWarPlugin.gameClass.list.Phantom
 import org.beobma.classWarPlugin.gameClass.list.Referee
 import org.beobma.classWarPlugin.gameClass.list.Chameleon
 import org.beobma.classWarPlugin.gameClass.list.HideAndSeek
@@ -29,8 +30,9 @@ import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 
 class OnEntityDamageByEntityEvent : Listener {
-    @EventHandler
+    @EventHandler(ignoreCancelled = true)
     fun onPlayerDamage(event: EntityDamageByEntityEvent) {
+        if (Phantom.handleBodyDamage(event)) return
         if (HideAndSeek.handleDamage(event)) return
         if (Chameleon.handleDisguiseDamage(event)) return
         if (Vampire.handleBatDamage(event)) return
@@ -45,11 +47,11 @@ class OnEntityDamageByEntityEvent : Listener {
         val targetEntity = event.entity as? LivingEntity ?: return
         val isMannequin = targetEntity.isMannequin()
         val targetPlayer = targetEntity as? Player
-        val attackerIsTraining = PlayerTagManager.hasTag(attacker, "isTraining")
+        val attackerIsTraining = PlayerTagManager.isTraining(attacker)
         if (targetPlayer == null && !isMannequin && !attackerIsTraining) return
         if (!isGaming() &&
             !attackerIsTraining &&
-            !(targetPlayer != null && PlayerTagManager.hasTag(targetPlayer, "isTraining"))
+            !(targetPlayer != null && PlayerTagManager.isTraining(targetPlayer))
         ) return
 
         val attackerGame = findGameForPlayer(attacker) ?: return

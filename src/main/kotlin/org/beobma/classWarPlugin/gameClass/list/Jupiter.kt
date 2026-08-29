@@ -66,7 +66,7 @@ class Jupiter : PlanetClass(), GameStatusHandler {
                     }
                 }
 
-                val training = PlayerTagManager.hasTag(player, "isTraining")
+                val training = PlayerTagManager.isTraining(player)
                 playerData.getTargetCandidates().filter { target ->
                     target != playerData && !target.entityStatus.isDead && target.entity.isValid &&
                         target.entity.world == player.world &&

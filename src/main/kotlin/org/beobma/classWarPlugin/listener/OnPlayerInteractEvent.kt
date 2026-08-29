@@ -47,7 +47,7 @@ class OnPlayerInteractEvent : Listener {
         if (!isRightClick && !isLeftClick) return
 
         val player = event.player
-        val isTraining = PlayerTagManager.hasTag(player, "isTraining")
+        val isTraining = PlayerTagManager.isTraining(player)
         if (!isGaming() && !isTraining) return
 
         // RIGHT_CLICK_AIR에서는 서버/아이템 종류에 따라 event.item이 비어 있을 수 있으므로
