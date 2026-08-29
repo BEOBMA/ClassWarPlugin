@@ -1,92 +1,110 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.ClassWarPlugin
+import org.beobma.classWarPlugin.damage.DamageContext
+import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.GameClass
-import org.beobma.classWarPlugin.gameClass.Weapon
-import org.beobma.classWarPlugin.skill.Passive
+import org.beobma.classWarPlugin.gameClass.Rank
+import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
+import org.beobma.classWarPlugin.manager.PlayerManager.damage
+import org.beobma.classWarPlugin.manager.PlayerManager.heal
+import org.beobma.classWarPlugin.manager.SkillManager.radius
+import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
+import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Skill
-import org.bukkit.Material
+import org.beobma.classWarPlugin.util.DamageType
+import org.beobma.classWarPlugin.util.TargetType
+import org.bukkit.*
+import org.bukkit.scheduler.BukkitRunnable
+import java.util.UUID
+
+// 밸런스 조정 상수
+private const val WARLOCK_MARK_COOLDOWN_SECONDS = 20
+private const val WARLOCK_HEALTH_COST = 5.0
+private const val WARLOCK_MARK_DURATION_SECONDS = 8
+private const val WARLOCK_MARK_DURATION_TICKS = 160L
+private const val WARLOCK_MARK_RANGE = 8.0
+private const val WARLOCK_AURA_RADIUS = 3.0
+private const val WARLOCK_PERIODIC_DAMAGE = 1.0
+private const val WARLOCK_MARK_DAMAGE_MULTIPLIER = 1.1
+private const val WARLOCK_HEAL_RATIO = 0.5
 
 class Warlock : GameClass() {
     override val name = "<gray>워락"
-    override val description = listOf(
-        "<gold>역할군",
-        "",
-        "<gray>클래스 설명"
-    )
+    override val rank = Rank.B
     override val classItemMaterial = Material.GRAY_GLAZED_TERRACOTTA
-    override val weapon = WarlocksWand()
 
     override var skills: List<Skill> = listOf(
-        WarlocksRedSkill(),
-        WarlocksOrangeSkill(),
-        WarlocksYellowSkill()
+        RedSkill()
     )
 
-    override var passives: List<Passive> = listOf(
-        WarlocksPassive()
+    override var passives: List<BasePassive> = listOf(
+        Passive()
     )
-}
 
-class WarlocksWand : Weapon() {
-    override val name = "<gray>무기 이름"
-    override val description = listOf("<gray>무기 설명")
-    override val material = Material.WOODEN_SWORD
-}
+    private val markedUntil = mutableMapOf<UUID, Long>()
 
-class WarlocksRedSkill : Skill() {
-    override val name = "<gray><bold>저주"
-    override val description = listOf(
-        "<dark_red><bold>체력을 5 소모</bold><gray>하고 사용할 수 있다.",
-        "",
-        "<gray>5칸 내의 바라보는 적에게 7초간 치명적 상처를 부여한다.",
-        "<gray>치명적 상처가 적용중인 적은 <gold><bold>받는 피해가 10% 증가</bold><gray>하고 받은 피해의 절반 만큼 워락은 <green><bold>체력을 회복</bold><gray>한다."
-    )
-    override val cooldown = 14
+    private inner class RedSkill : Skill() {
+        override val name = "<bold>역병의 낙인"
+        override val description = listOf(
+            "<dark_red><bold>체력을 5 소모</bold><gray>하고 사용할 수 있다.",
+            "",
+            "<gray>8칸 내의 바라보는 적에게 8초간 역병의 낙인을 새긴다.",
+            "",
+            "<gray>역병의 낙인이 새겨진 적은 워락에게 받는 피해가 10% 증가하고",
+            "<gray>자신과 주변 3칸 이내의 적은 매초 1의 피해를 입는다.",
+        )
+        override val cooldown = WARLOCK_MARK_COOLDOWN_SECONDS
 
-    override fun use() {
-        // TODO: 체력 5 소모 + 대상에게 상태이상 부여
+        override fun use() {
+            val target = playerData.shotLaserGetEntityData(WARLOCK_MARK_RANGE, TargetType.Enemy, false) ?: return
+            player.health = (player.health - WARLOCK_HEALTH_COST).coerceAtLeast(1.0)
+            markedUntil[target.entity.uniqueId] = player.world.fullTime + WARLOCK_MARK_DURATION_TICKS
+            particles.line(player.eyeLocation, target.entity.location.add(0.0, target.entity.height / 2.0, 0.0), Particle.WITCH, 0.3)
+            sounds.play(target.entity, Sound.ENTITY_WITHER_SPAWN, volume = 0.42f, pitch = 1.5f)
+            var seconds = 0
+            playerData.trackTask(object : BukkitRunnable() {
+                override fun run() {
+                    if (seconds++ >= WARLOCK_MARK_DURATION_SECONDS ||
+                        markedUntil[target.entity.uniqueId]?.let { it <= player.world.fullTime } != false
+                    ) {
+                        markedUntil.remove(target.entity.uniqueId)
+                        cancel(); return
+                    }
+                    target.damage(WARLOCK_PERIODIC_DAMAGE, DamageType.StatusAbnormality, playerData)
+                    playerData.radius(target.entity.location, TargetType.Enemy, WARLOCK_AURA_RADIUS, false)
+                        .filter { it.entity.uniqueId != target.entity.uniqueId }
+                        .forEach { it.damage(WARLOCK_PERIODIC_DAMAGE, DamageType.StatusAbnormality, playerData) }
+                    particles.circle(target.entity.location, Particle.WITCH, 3.0, 24)
+                }
+            }.runTaskTimer(ClassWarPlugin.instance, 20L, 20L))
+        }
+
+        override fun isUseSuccess(): Boolean {
+            if (player.health <= WARLOCK_HEALTH_COST) {
+                player.sendMiniMessage("<red><bold>[!] 체력이 부족합니다.")
+                return false
+            }
+            if (playerData.shotLaserGetEntityData(WARLOCK_MARK_RANGE, TargetType.Enemy, false) != null) return true
+            player.sendMiniMessage("<red><bold>[!] 바라보는 적이 없습니다.")
+            return false
+        }
     }
-}
 
-class WarlocksOrangeSkill : Skill() {
-    override val name = "<green><bold>역병"
-    override val description = listOf(
-        "<dark_red><bold>체력을 10 소모</bold><gray>하고 사용할 수 있다.",
-        "",
-        "<gray>8초간 바라보는 블럭 주위에 역병을 일으킨다.",
-        "<gray>역병이 일어난 곳에 들어온 모든 적에게 초당 4의 피해를 입힌다."
-    )
-    override val cooldown = 20
+    private inner class Passive : BasePassive(), OnHitHandler {
+        override val name = "<bold>저편의 계약"
+        override val description = listOf(
+            "<gray>패시브",
+            "",
+            "<gray>역병의 낙인이 새겨진 적에게 피해를 입히면 입힌 피해의 50% 만큼 체력을 회복한다."
+        )
 
-    override fun use() {
-        // TODO: 블럭 주위 범위 데미지 + 지속 시간
+        override fun onHit(context: DamageContext) {
+            if ((markedUntil[context.target.entity.uniqueId] ?: 0L) <= player.world.fullTime) return
+            context.addDamageDealtMultiplier(WARLOCK_MARK_DAMAGE_MULTIPLIER)
+            playerData.heal(context.damage * WARLOCK_HEAL_RATIO, DamageType.Normal, playerData)
+            particles.spawn(player, Particle.HEART, count = 2, spread = 0.25)
+        }
     }
-}
-
-class WarlocksYellowSkill : Skill() {
-    override val name = "<bold>죽음의 원"
-    override val description = listOf(
-        "<dark_red><bold>체력을 20 소모</bold><gray>하고 사용할 수 있다.",
-        "",
-        "<gray>바라보는 대상에게 10초간 죽음의 원을 만든다.",
-        "<gray>죽음의 원을 기준으로 파동이 펼쳐지며 이 파동은 시간이 지날수록 넓어진다.",
-        "<gray>파동에 닿은 적은 초당 2의 피해를 입으며 워락은 이 스킬로 입힌 피해의 절반 만큼 <green><bold>체력을 회복</bold><gray>한다.",
-        "",
-        "<dark_gray>바라보는 대상이 없다면 자신에게 시전한다.",
-        "<dark_gray>죽음의 원의 기준점이 되는 대상은 피해를 입지 않는다."
-    )
-    override val cooldown = Int.MAX_VALUE
-
-    override fun use() {
-        // TODO: 타겟 중심 파동 범위 증가 및 피해 + 회복
-    }
-}
-
-class WarlocksPassive : Passive() {
-    override val name = "<bold>저편의 계약"
-    override val description = listOf(
-        "<gray>패시브",
-        "",
-        "<gray>스킬 시전 시 소모값을 지불할 수 없다면 게임당 최대 2번, 소모값을 무시하고 사용한다."
-    )
 }

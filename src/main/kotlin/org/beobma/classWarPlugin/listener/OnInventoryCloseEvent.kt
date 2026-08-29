@@ -2,10 +2,15 @@ package org.beobma.classWarPlugin.listener
 
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.info.Info.game
+import org.beobma.classWarPlugin.game.GamePhase
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
-import org.beobma.classWarPlugin.manager.InventoryManager.openClassPickInventory
+import org.beobma.classWarPlugin.manager.InventoryManager.openAssignedClassInventory
 import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.gameClass.list.Contractor
+import org.beobma.classWarPlugin.gameClass.list.DeathNote
+import org.beobma.classWarPlugin.manager.PlayerFlag
 import org.beobma.classWarPlugin.manager.PlayerTagManager
+import org.beobma.classWarPlugin.manager.PlayerTagValue
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
@@ -18,55 +23,88 @@ class OnInventoryCloseEvent : Listener {
     fun onInventoryClose(event: InventoryCloseEvent) {
         val player = event.player as? Player ?: return
 
-        if (PlayerTagManager.hasTag(player, "openClassPickInventory")) {
-            reopenClassPickInventoryLater(
-                player,
-                "openClassPickInventory"
-            )
+        if (Contractor.isGuessInventoryOpen(player)) {
+            Contractor.handleInventoryClose(player)
             return
         }
 
-        if (PlayerTagManager.hasTag(player, "openingClassStatusInventory")) {
-            PlayerTagManager.removeTag(player, "openingClassStatusInventory")
-            PlayerTagManager.removeTag(player, "openClassListInventory")
+        if (DeathNote.isSelectionInventoryOpen(player)) {
+            DeathNote.handleInventoryClose(player)
             return
         }
 
-        if (PlayerTagManager.hasTag(player, "openClassStatusInventory")) {
-            val page = PlayerTagManager.findTag(player) { it.startsWith("classListPage:") }
-                ?.substringAfter("classListPage:")
+        if (PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_GAME_MODE_INVENTORY)) {
+            PlayerTagManager.removeFlag(player, PlayerFlag.OPEN_GAME_MODE_INVENTORY)
+            return
+        }
+
+        if (PlayerTagManager.hasFlag(player, PlayerFlag.OPENING_ASSIGNED_CLASS_INVENTORY)) {
+            PlayerTagManager.removeFlag(player, PlayerFlag.OPENING_ASSIGNED_CLASS_INVENTORY)
+            return
+        }
+
+        if (PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_ASSIGNED_CLASS_INVENTORY)) {
+            reopenAssignedClassInventoryLater(player)
+            return
+        }
+
+        if (PlayerTagManager.hasFlag(player, PlayerFlag.OPENING_CONFIG_INVENTORY)) {
+            PlayerTagManager.removeFlag(player, PlayerFlag.OPENING_CONFIG_INVENTORY)
+            return
+        }
+
+        if (PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_CONFIG_INVENTORY)) {
+            PlayerTagManager.removeFlag(player, PlayerFlag.OPEN_CONFIG_INVENTORY)
+            PlayerTagManager.removeValue(player, PlayerTagValue.CONFIG_CATEGORY)
+            return
+        }
+
+        if (PlayerTagManager.hasFlag(player, PlayerFlag.OPENING_CLASS_STATUS_INVENTORY)) {
+            PlayerTagManager.removeFlag(player, PlayerFlag.OPENING_CLASS_STATUS_INVENTORY)
+            PlayerTagManager.removeFlag(player, PlayerFlag.OPEN_CLASS_LIST_INVENTORY)
+            PlayerTagManager.removeFlag(player, PlayerFlag.OPEN_TRAINING_CLASS_LIST_INVENTORY)
+            return
+        }
+
+        if (PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_CLASS_STATUS_INVENTORY)) {
+            val page = PlayerTagManager.getValue(player, PlayerTagValue.CLASS_LIST_PAGE)
                 ?.toIntOrNull()
                 ?: 0
-            PlayerTagManager.removeTag(player, "openClassStatusInventory")
-            PlayerTagManager.removeTag(player, "openingClassStatusInventory")
-            PlayerTagManager.removeIf(player) { it.startsWith("classListPage:") }
+            PlayerTagManager.removeFlag(player, PlayerFlag.OPEN_CLASS_STATUS_INVENTORY)
+            PlayerTagManager.removeFlag(player, PlayerFlag.OPENING_CLASS_STATUS_INVENTORY)
+            PlayerTagManager.removeValue(player, PlayerTagValue.CLASS_LIST_PAGE)
+            PlayerTagManager.removeValue(player, PlayerTagValue.CLASS_STATUS_RETURN)
             reopenClassListInventoryLater(player, page)
             return
         }
 
-        if (PlayerTagManager.hasTag(player, "openClassListInventory")) {
-            PlayerTagManager.removeTag(player, "openClassListInventory")
-            PlayerTagManager.removeIf(player) { it.startsWith("classListPage:") }
+        if (PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_CLASS_LIST_INVENTORY)) {
+            PlayerTagManager.removeFlag(player, PlayerFlag.OPEN_CLASS_LIST_INVENTORY)
+            PlayerTagManager.removeValue(player, PlayerTagValue.CLASS_LIST_PAGE)
+            PlayerTagManager.removeValue(player, PlayerTagValue.CLASS_STATUS_RETURN)
             return
         }
 
-        if (PlayerTagManager.hasTag(player, "openTrainingClassListInventory")) {
-            PlayerTagManager.removeTag(player, "openTrainingClassListInventory")
-            PlayerTagManager.removeIf(player) { it.startsWith("classListPage:") }
+        if (PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_TRAINING_CLASS_LIST_INVENTORY)) {
+            PlayerTagManager.removeFlag(player, PlayerFlag.OPEN_TRAINING_CLASS_LIST_INVENTORY)
+            PlayerTagManager.removeValue(player, PlayerTagValue.CLASS_LIST_PAGE)
+            PlayerTagManager.removeValue(player, PlayerTagValue.CLASS_STATUS_RETURN)
             return
         }
     }
 
-    private fun reopenClassPickInventoryLater(player: Player, tag: String) {
+    private fun reopenAssignedClassInventoryLater(player: Player) {
         val task = object : BukkitRunnable() {
             override fun run() {
-                if (PlayerTagManager.hasTag(player, tag)) {
-                    val playerData = game?.playerDatas?.filterIsInstance<PlayerData>()?.find { it.player == player } ?: return
-
-                    playerData.openClassPickInventory(1)
-                }
+                val currentGame = game ?: return
+                if (currentGame.phase != GamePhase.CLASS_SELECTION) return
+                if (!PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_ASSIGNED_CLASS_INVENTORY)) return
+                if (currentGame.confirmedPlayers.contains(player.uniqueId)) return
+                val playerData = currentGame.playerDatas.filterIsInstance<PlayerData>()
+                    .find { it.player == player } ?: return
+                playerData.openAssignedClassInventory()
             }
-        }.runTaskLater(ClassWarPlugin.instance, 10L)
+        }.runTaskLater(ClassWarPlugin.instance, 2L)
         game?.playerDatas?.filterIsInstance<PlayerData>()?.find { it.player == player }?.trackTask(task)
     }
 

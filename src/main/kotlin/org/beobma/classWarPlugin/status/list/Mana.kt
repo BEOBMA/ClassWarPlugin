@@ -13,6 +13,7 @@ class Mana : StatusAbnormality() {
         "<dark_gray>사라지지 않음."
     )
     override val canRemove: Boolean = false
+    override val isClassMechanic: Boolean = true
     override var maxPower: Int? = 100
     override var duration: Int? = null
 }

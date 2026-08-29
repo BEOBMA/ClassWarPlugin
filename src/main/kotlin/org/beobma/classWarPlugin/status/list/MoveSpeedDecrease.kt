@@ -2,7 +2,7 @@ package org.beobma.classWarPlugin.status.list
 
 import org.beobma.classWarPlugin.status.handler.MoveSpeedHandler
 
-class MoveSpeedDecrease : MoveSpeedHandler() {
+open class MoveSpeedDecrease : MoveSpeedHandler() {
     override val name: String
         get() = "<red><bold>이동 속도 감소<gray>"
     override val description: List<String>

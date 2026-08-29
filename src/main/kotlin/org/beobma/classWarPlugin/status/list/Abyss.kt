@@ -12,7 +12,7 @@ class Abyss : StatusAbnormality() {
         get() = Keyword.Abyss.string
     override val description: List<String>
         get() = listOf(
-            Keyword.Abyss.description!!,
+            Keyword.Abyss.requireDescription(),
             "",
             "<gray>수치 없음",
             "<gray>지속시간 연장 적용",

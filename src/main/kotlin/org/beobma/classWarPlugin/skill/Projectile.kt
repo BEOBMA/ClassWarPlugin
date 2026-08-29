@@ -1,17 +1,23 @@
 package org.beobma.classWarPlugin.skill
 
 import org.beobma.classWarPlugin.ClassWarPlugin
+import org.beobma.classWarPlugin.effect.EffectApiAccess
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
+import org.beobma.classWarPlugin.entity.mob.MobEntityData
 import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.manager.PlayerTagManager
+import org.beobma.classWarPlugin.manager.TemporaryDisplayManager
+import org.beobma.classWarPlugin.manager.AttackableObjectManager
+import org.beobma.classWarPlugin.manager.ClassBalanceManager
 import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.entity.player.PlayerStatus
 import org.beobma.classWarPlugin.util.TargetType
+import org.beobma.classWarPlugin.gameClass.list.PortalGun
 import org.beobma.classWarPlugin.util.TargetType.All
 import org.beobma.classWarPlugin.util.TargetType.Enemy
-import org.beobma.classWarPlugin.util.TargetType.Team
+import org.beobma.classWarPlugin.util.TargetType.Self
 import org.bukkit.Location
 import org.bukkit.block.Block
 import org.bukkit.entity.ItemDisplay
@@ -22,8 +28,16 @@ import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.BoundingBox
 import java.util.UUID
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
-abstract class Projectile {
+/**
+ * 시선 방향으로 이동하며 블록·엔티티·공격 가능 오브젝트 충돌을 처리하는 투사체 기반 형식이다.
+ *
+ * [speed]는 틱당 블록, [time]은 초, [xSize]·[ySize]·[zSize]는 대상 히트박스 확장량이다.
+ * 제한 시간은 클래스 사거리 배율에 따라 함께 조정된다. [itemDisplayItem]을 제공하면 투사체와
+ * 수명이 같은 비영구 [ItemDisplay]가 자동으로 생성되고 제거된다.
+ */
+abstract class Projectile : EffectApiAccess {
     protected lateinit var playerData: PlayerData
     protected lateinit var player: Player
     protected lateinit var playerStatus: PlayerStatus
@@ -57,6 +71,7 @@ abstract class Projectile {
         this.game = playerData.initGame
     }
 
+    /** 시간 제한을 제거하고 [predicate]가 참인 동안 투사체를 유지한다. */
     fun setContinueWhileIf(predicate: () -> Boolean) {
         this.continueWhile = predicate
         time = null
@@ -69,6 +84,10 @@ abstract class Projectile {
 
     open fun onItemDisplayMove(display: ItemDisplay, location: Location, speed: Double, tick: Int) {}
 
+    /**
+     * 다음 틱의 이동 속도를 계산한다.
+     * 기본 구현은 목표 [speed]의 20%씩 가속하되 목표 속도를 넘지 않는다.
+     */
     open fun interpolateSpeed(previousSpeed: Double, tick: Int): Double {
         if (speed <= 0.0) return speed
         val acceleration = abs(speed) * 0.2
@@ -81,10 +100,13 @@ abstract class Projectile {
 
     open fun onProjectileEnd(location: Location) {}
 
+    /** 투사체를 생성하고 생성자 플레이어의 정리 대상 작업으로 등록한다. */
     fun spawnProjectile(playerData: PlayerData) {
         inject(playerData)
         val game = game
-        val time = time
+        val durationLimitTicks = time?.let { seconds ->
+            (seconds * 20.0 * ClassBalanceManager.rangeMultiplier(playerData)).roundToInt().coerceAtLeast(1)
+        }
         if (isFlatMove) location.pitch = 0F
 
         val direction = location.direction.normalize()
@@ -109,13 +131,13 @@ abstract class Projectile {
             }
 
             override fun run() {
-                if (time == null) {
-                    if (continueWhile != null && !continueWhile!!.invoke()) {
+                if (durationLimitTicks == null) {
+                    if (continueWhile?.invoke() == false) {
                         stop()
                         return
                     }
                 } else {
-                    if (durationTicks++ >= time * 20) {
+                    if (durationTicks++ >= durationLimitTicks) {
                         stop()
                         return
                     }
@@ -128,7 +150,7 @@ abstract class Projectile {
                 }
 
                 if (isPlayerHit) {
-                    val isTraining = PlayerTagManager.hasTag(player, "isTraining")
+                    val isTraining = PlayerTagManager.isTraining(player)
                     val targetCandidates = if (isTraining) {
                         trainingCandidates.clear()
                         trainingCandidateIds.clear()
@@ -138,11 +160,13 @@ abstract class Projectile {
                                 trainingCandidates.add(data)
                             }
                         }
-                        for (mannequin in player.world.entities) {
-                            if (!mannequin.isMannequin()) continue
-                            val data = game.playerDatas.find { it.entity == mannequin }
-                                ?: DummyEntityData(mannequin, game).also { game.playerDatas.add(it) }
-                            val entityId = data.entity.uniqueId
+                        for (livingEntity in player.world.livingEntities) {
+                            if (livingEntity == player || livingEntity is Player) continue
+                            val data = game.playerDatas.find { it.entity == livingEntity }
+                                ?: if (livingEntity.isMannequin()) DummyEntityData(livingEntity, game)
+                                else MobEntityData(livingEntity, game)
+                            if (data !in game.playerDatas) game.playerDatas.add(data)
+                            val entityId = livingEntity.uniqueId
                             if (trainingCandidateIds.add(entityId)) {
                                 trainingCandidates.add(data)
                             }
@@ -157,10 +181,9 @@ abstract class Projectile {
                         val bb = targetData.entity.boundingBox.expand(xSize, ySize, zSize)
                         if (!bb.contains(currentLocation.x, currentLocation.y, currentLocation.z)) continue
                         val isValidTarget = when (targetType) {
-                            Team -> targetData.entity.isMannequin() && isTraining ||
-                                (targetData is PlayerData && targetData.team == playerData.team)
-                            Enemy -> targetData.entity.isMannequin() && isTraining ||
-                                (targetData is PlayerData && targetData.team != playerData.team)
+                            Self -> targetData == playerData
+                            Enemy -> targetData !is PlayerData && isTraining ||
+                                (targetData is PlayerData && playerData.isEnemyOf(targetData))
                             All -> true
                         }
                         if (isValidTarget) {
@@ -178,9 +201,21 @@ abstract class Projectile {
                     }
                 }
 
-                val previousLocation = currentLocation.clone()
                 currentSpeed = interpolateSpeed(currentSpeed, elapsedTicks)
+                PortalGun.teleportCustomProjectile(player.uniqueId, currentLocation, direction, currentSpeed)
+                val previousLocation = currentLocation.clone()
                 val nextLocation = previousLocation.clone().add(direction.clone().multiply(currentSpeed))
+                val projectileExpansion = maxOf(xSize, ySize, zSize).coerceAtLeast(0.0)
+                if (AttackableObjectManager.hitProjectileSegment(
+                        player.uniqueId,
+                        previousLocation,
+                        nextLocation,
+                        projectileExpansion,
+                    )
+                ) {
+                    stop()
+                    return
+                }
                 val speedRatio = if (speed == 0.0) 1.0 else (currentSpeed / speed).coerceIn(0.0, 1.0)
                 val interpolatedLocation = lerpLocation(previousLocation, nextLocation, speedRatio)
                 updateItemDisplay(interpolatedLocation, currentSpeed, elapsedTicks)
@@ -196,6 +231,7 @@ abstract class Projectile {
         val item = itemDisplayItem?.clone() ?: return
         val display = startLocation.world.spawn(startLocation, ItemDisplay::class.java)
         display.setItemStack(item)
+        TemporaryDisplayManager.mark(display, player.uniqueId)
         itemDisplay = display
         onItemDisplaySpawn(display, startLocation)
     }

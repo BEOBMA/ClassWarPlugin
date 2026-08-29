@@ -1,9 +1,12 @@
 name: ClassWarPlugin
-version: '1.0-SNAPSHOT'
+version: '${version}'
 main: org.beobma.classWarPlugin.ClassWarPlugin
-api-version: '1.21'
+api-version: '26.2'
+authors: [ BEOBMA ]
+website: https://github.com/BEOBMA/ClassWarPlugin
 
 commands:
   classwar:
     description: ClassWar 메인 명령어
     aliases: [ cw, ClassWar ]
+    usage: /cw help

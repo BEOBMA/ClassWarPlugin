@@ -2,198 +2,166 @@ package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.gameClass.GameClass
-import org.beobma.classWarPlugin.gameClass.Weapon
+import org.beobma.classWarPlugin.gameClass.Rank
+import org.beobma.classWarPlugin.manager.PlayerManager.damage
+import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
-import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
-import org.beobma.classWarPlugin.skill.Passive
+import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Skill
-import org.beobma.classWarPlugin.status.list.Mana
 import org.bukkit.Location
 import org.bukkit.Material
+import org.bukkit.Particle
+import org.bukkit.Sound
+import org.bukkit.SoundCategory
 import org.bukkit.scheduler.BukkitRunnable
 
+// 밸런스 조정 상수
+private const val LIGHTNING_WIZARD_CUMULONIMBUS_COOLDOWN_SECONDS = 8
+private const val LIGHTNING_WIZARD_OVERLOAD_COOLDOWN_SECONDS = 50
+private const val LIGHTNING_WIZARD_LIGHTNING_DAMAGE = 4.0
+
 class LightningWizard : GameClass() {
-    val markers: MutableList<Marker> = mutableListOf()
-    override val name = "<gray>번개 마법사"
-    override val description = listOf(
-        "<gold>역할군",
-        "",
-        "<gray>클래스 설명"
-    )
+    private val markers: MutableList<Marker> = mutableListOf()
+    override val name = "<gray>뇌운술사"
+    override val rank = Rank.B
     override val classItemMaterial = Material.LIGHTNING_ROD
-    override val weapon = LightningWizardsStaff()
 
     override var skills: List<Skill> = listOf(
-        LightningWizardsRedSkill(),
-        LightningWizardsOrangeSkill(),
-        LightningWizardsYellowSkill()
+        RedSkill(),
+        OrangeSkill()
     )
 
-    override var passives: List<Passive> = listOf(
-        LightningWizardsPassive()
+    override var passives: List<BasePassive> = listOf(
+        Passive()
     )
-}
 
-class LightningWizardsStaff : Weapon() {
-    override val name = "<gray>지팡이 대용 검"
-    override val description = listOf("<gray>무기 설명")
-    override val material = Material.WOODEN_SWORD
-}
-
-data class Marker(
-    val location: Location,
-    var coolTime: Int = 0,
-    var isOn: Boolean = false,
-    var isOverload: Boolean = false
-)
-
-class LightningWizardsRedSkill : Skill() {
-    override val name = "<light_purple><bold>적란운"
-    override val description = listOf(
-        "{keyword:Mana}를 20 소모하고 사용할 수 있다.",
-        "",
-        "<gray>자신의 위치 또는 바라보는 블럭 위에 표식을 남긴다. 최대 3개.",
-        "<dark_gray>웅크리면 4칸 내 지정 설치 가능."
+    private data class Marker(
+        val location: Location,
+        var isOverload: Boolean = false,
+        var ageSeconds: Int = 0,
     )
-    override val cooldown = 1
 
-    override fun use() {
-        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
+    private fun createMarker(location: Location) {
+        markers.clear()
+        val marker = Marker(location.clone())
+        markers += marker
+        sounds.play(location, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, volume = 0.7f, pitch = 1.7f)
+        playerData.trackTask(object : BukkitRunnable() {
+            override fun run() {
+                if (marker !in markers) { cancel(); return }
+                marker.ageSeconds++
+                particles.spawn(marker.location, Particle.CLOUD, count = 16, spread = 1.2, speed = 0.02)
+                if (marker.isOverload || marker.ageSeconds % 5 == 0) strike(marker.location)
+                if (marker.isOverload && marker.ageSeconds >= 5) {
+                    markers.remove(marker)
+                    cancel()
+                }
+            }
+        }.runTaskTimer(ClassWarPlugin.instance, 20L, 20L))
+    }
 
-        val location = if (player.isSneaking) {
-            playerData.shotLaserGetBlock(4.0)?.location?.add(0.0, 1.0, 0.0) ?: run {
-                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+    private fun strike(location: Location) {
+        location.world.strikeLightningEffect(location)
+        location.world.players
+            .filter { it.location.distanceSquared(location) <= 64.0 * 64.0 }
+        sounds.play(
+            location,
+            Sound.ENTITY_LIGHTNING_BOLT_IMPACT,
+            volume = 0.62f,
+            pitch = 1.3f,
+            category = SoundCategory.MASTER,
+        )
+        sounds.play(
+            location,
+            Sound.ENTITY_LIGHTNING_BOLT_THUNDER,
+            volume = 0.34f,
+            pitch = 1.5f,
+            category = SoundCategory.MASTER,
+        )
+        playerData.radius(location, org.beobma.classWarPlugin.util.TargetType.Enemy, 3.0, false)
+            .forEach {
+                it.damage(
+                    LIGHTNING_WIZARD_LIGHTNING_DAMAGE,
+                    org.beobma.classWarPlugin.util.DamageType.Normal,
+                    playerData,
+                )
+            }
+        particles.spawn(location, Particle.ELECTRIC_SPARK, count = 30, spread = 1.4, speed = 0.12)
+    }
+
+    private class RedSkill : Skill() {
+        override val name = "<bold>적란운"
+        override val description = listOf(
+            "<gray>10칸 내의 바라보는 블럭에 적란운을 생성한다.",
+            "<gray>이미 적란운이 존재한다면 기존 적란운을 제거하고 생성한다.",
+            "",
+            "<dark_gray>웅크린 상태에서 사용하면 자신의 위치에 적란운을 생성할 수도 있다."
+        )
+        override val cooldown = LIGHTNING_WIZARD_CUMULONIMBUS_COOLDOWN_SECONDS
+
+        override fun use() {
+            val location = if (player.isSneaking) {
+                player.location.clone().add(0.0, 1.0, 0.0)
+            }
+            else {
+                playerData.shotLaserGetBlock(10.0)?.location?.add(0.5, 1.0, 0.5) ?: run {
+                    player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+                    return
+                }
+            }
+
+            val gameClass = playerData.findGameClass(LightningWizard::class.java) ?: return
+            gameClass.createMarker(location)
+            return
+        }
+
+        override fun isUseSuccess(): Boolean {
+            if (!player.isSneaking) {
+                playerData.shotLaserGetBlock(10.0)?.location?.add(0.0, 1.0, 0.0) ?: run {
+                    player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+                    return false
+                }
+            }
+            return true
+        }
+    }
+    private class OrangeSkill : Skill() {
+        override val name = "<bold>과부하"
+        override val description = listOf(
+            "<gray>적란운을 5초간 과부하시킨다.",
+            "<gray>과부하된 적란운은 매초 낙뢰를 발생시키며, 지속시간 종료 후 적란운은 소멸한다."
+        )
+        override val cooldown = LIGHTNING_WIZARD_OVERLOAD_COOLDOWN_SECONDS
+
+        override fun use() {
+            val gameClass = playerData.findGameClass(LightningWizard::class.java) ?: return
+            val markerList = gameClass.markers
+            if (markerList.isEmpty()) {
+                player.sendMiniMessage("<red><bold>[!] 생성된 표식이 존재하지 않습니다.")
                 return
             }
-        }
-        else {
-            player.location.clone().add(0.0, 1.0, 0.0)
+
+            markerList.forEach { marker -> marker.isOverload = true; marker.ageSeconds = 0 }
+            sounds.play(player, Sound.BLOCK_BEACON_POWER_SELECT, pitch = 1.8f)
         }
 
-        val gameClass = playerData.gameClass
-
-        if (gameClass !is LightningWizard) return
-        val markerList = gameClass.markers
-        if (markerList.size >= 3) {
-            markerList.removeFirstOrNull()
-        }
-        markerList.add(Marker(location))
-        mana.decreasePower(20)
-        return
-    }
-
-    override fun isUseSuccess(): Boolean {
-        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-        if (mana.power < 20) {
-            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return false
-        }
-        if (player.isSneaking) {
-            playerData.shotLaserGetBlock(4.0)?.location?.add(0.0, 1.0, 0.0) ?: run {
-                player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
+        override fun isUseSuccess(): Boolean {
+            val gameClass = playerData.findGameClass(LightningWizard::class.java) ?: return false
+            val markerList = gameClass.markers
+            if (markerList.isEmpty()) {
+                player.sendMiniMessage("<red><bold>[!] 생성된 표식이 존재하지 않습니다.")
                 return false
             }
+            return true
         }
-        return true
-    }
-}
-
-class LightningWizardsOrangeSkill : Skill() {
-    override val name = "<light_purple><bold>낙뢰 충전"
-    override val description = listOf(
-        "<gray>표식이 1개 이상 존재할 때만 사용할 수 있다.",
-        "{keyword:Mana}를 40 소모하고 가장 가까운 표식을 활성화한다."
-    )
-    override val cooldown = 10
-
-    override fun use() {
-        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-        val gameClass = playerData.gameClass
-        if (gameClass !is LightningWizard) return
-        val markerList = gameClass.markers
-        if (markerList.isEmpty()) {
-            player.sendMiniMessage("<red><bold>[!] 생성된 표식이 존재하지 않습니다.")
-            return
-        }
-
-        markerList.forEach { it.isOn = false }
-        markerList.minByOrNull { it.location.distanceSquared(player.location) }?.isOn = true
-
-        mana.decreasePower(40)
     }
 
-    override fun isUseSuccess(): Boolean {
-        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-        if (mana.power < 40) {
-            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return false
-        }
-        val gameClass = playerData.gameClass
-        if (gameClass !is LightningWizard) return false
-        val markerList = gameClass.markers
-        if (markerList.isEmpty()) {
-            player.sendMiniMessage("<red><bold>[!] 생성된 표식이 존재하지 않습니다.")
-            return false
-        }
-        return true
+    private class Passive : BasePassive() {
+        override val name = "<bold>낙뢰"
+        override val description = listOf(
+            "<gray>적란운은 5초마다 주변에 낙뢰를 발생시킨다.",
+            "<gray>낙뢰는 주변 3칸 이내의 모든 적에게 4의 피해를 입힌다."
+        )
     }
-}
-
-class LightningWizardsYellowSkill : Skill() {
-    override val name = "<yellow><bold>과부하"
-    override val description = listOf(
-        "{keyword:Mana}를 100 소모하고 사용할 수 있다.",
-        "<gray>10초간 모든 표식을 과부하 상태로 만든다. 이후 모든 표식 제거."
-    )
-    override val cooldown = 20
-
-    override fun use() {
-        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-        if (mana.power < 100) {
-            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return
-        }
-        val gameClass = playerData.gameClass
-
-        if (gameClass !is LightningWizard) return
-        val markerList = gameClass.markers
-        if (markerList.isEmpty()) {
-            player.sendMiniMessage("<red><bold>[!] 생성된 표식이 존재하지 않습니다.")
-            return
-        }
-
-        mana.decreasePower(100)
-        markerList.forEach { it.isOverload = true }
-
-        val task = object : BukkitRunnable() {
-            override fun run() {
-                markerList.clear()
-            }
-        }.runTaskLater(ClassWarPlugin.instance, 200L)
-        playerData.trackTask(task)
-    }
-
-    override fun isUseSuccess(): Boolean {
-        val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-        if (mana.power < 100) {
-            player.sendMiniMessage("<red><bold>[!] 마나가 부족하여 스킬을 사용할 수 없습니다.")
-            return false
-        }
-        val gameClass = playerData.gameClass
-        if (gameClass !is LightningWizard) return false
-        val markerList = gameClass.markers
-        if (markerList.isEmpty()) {
-            player.sendMiniMessage("<red><bold>[!] 생성된 표식이 존재하지 않습니다.")
-            return false
-        }
-        return true
-    }
-}
-
-class LightningWizardsPassive : Passive() {
-    override val name = "<light_purple><bold>암페어"
-    override val description = listOf(
-        "<gray>공격 스킬 적중 시 재사용 대기 시간을 5% 돌려받는다."
-    )
 }

@@ -1,106 +1,107 @@
 package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.gameClass.GameClass
-import org.beobma.classWarPlugin.gameClass.Weapon
+import org.beobma.classWarPlugin.gameClass.Rank
+import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.manager.PlayerManager.heal
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.UtilManager.getPlayerMaxHealth
-import org.beobma.classWarPlugin.skill.Passive
+import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.AttackSpeedIncrease
 import org.beobma.classWarPlugin.status.list.MoveSpeedIncrease
 import org.beobma.classWarPlugin.status.list.WhenDamageReduction
 import org.beobma.classWarPlugin.util.DamageType
-import org.beobma.classWarPlugin.util.addBaseDamage
+import org.beobma.classWarPlugin.damage.DamageContext
 import org.bukkit.Material
-import org.bukkit.event.entity.EntityDamageByEntityEvent
+
+// 밸런스 조정 상수
+private const val BERSERKER_RAGNAROK_COOLDOWN_SECONDS = 60
+private const val BERSERKER_RAGNAROK_DURATION_SECONDS = 8
+private const val BERSERKER_RAGNAROK_DURATION_TICKS = 160L
+private const val BERSERKER_RAGNAROK_SPEED_BONUS_PERCENT = 50
+private const val BERSERKER_MISSING_HEALTH_DAMAGE_RATIO = 0.2
+private const val BERSERKER_MAX_BONUS_DAMAGE = 4.0
+private const val BERSERKER_LOW_HEALTH_RATIO = 0.5
+private const val BERSERKER_LIFESTEAL_RATIO = 0.1
+private const val BERSERKER_RAGNAROK_MIN_HEALTH = 1.0
 
 class Berserker : GameClass() {
     override val name: String = "<gray>광전사"
-    override val description = listOf(
-        "<yellow>근거리 전사",
-        "",
-        "<gray>광전사는 자신을 강화하는 스킬을 사용하며, 체력이 감소할수록 더 큰 피해를 입힙니다."
-    )
+    override val rank = Rank.B
     override val classItemMaterial = Material.IRON_AXE
-    override val weapon = BerserkersAxe()
+    override val weapon: BaseWeapon = Weapon()
 
-    override var skills: List<Skill> = listOf(BerserkersRedSkill(), BerserkersOrangeSkill())
-    override var passives: List<Passive> = listOf(BerserkersPassive())
-}
+    override var skills: List<Skill> = listOf(RedSkill())
+    override var passives: List<BasePassive> = listOf(Passive())
 
-class BerserkersAxe : Weapon() {
-    override val name = "<gray>광전사의 도끼"
-    override val description: List<String> = listOf("<gray>무겁고 날카롭다.")
-    override val material: Material = Material.IRON_AXE
+    private var ragnarokUntil = 0L
 
-}
 
-class BerserkersRedSkill : Skill() {
-    override val name: String
-        get() = "<dark_red><bold>피의 분노"
-    override val description: List<String>
-        get() = listOf("<gray>사용 시 5초 동안 <gold><bold>공격 속도가 30%</bold><gray> 증가한다.")
-    override val cooldown: Int
-        get() = 10
+    private class Weapon : BaseWeapon() {
+        override val name = "<gray>철 도끼"
+        override val description: List<String> = listOf("")
+        override val material: Material = Material.IRON_AXE
 
-    override fun use(){
-        val attackSpeedIncrease = AttackSpeedIncrease()
-        val playerAttackSpeedIncrease = playerData.addStatus(attackSpeedIncrease, playerData)
-        playerAttackSpeedIncrease.applyStatus(
-            duration = 5,
-            powerDelta = 30
-        )
     }
-}
 
-class BerserkersOrangeSkill : Skill() {
-    override val name: String
-        get() = "<yellow><bold>라그나로크"
-    override val description: List<String>
-        get() = listOf(
-            "<gray>사용 시 10초 동안 <gold><bold>이동 속도가 30%</bold><gray> 증가하고",
-            "<gold><bold>받는 피해가 40%</bold><gray> 감소한다."
-        )
-    override val cooldown: Int
-        get() = 40
+    private inner class RedSkill : Skill() {
+        override val name: String
+            get() = "<bold>라그나로크"
+        override val description: List<String>
+            get() = listOf(
+                "<gray>8초간 이동 속도와 공격 속도가 50% 증가한다.",
+                "<gray>라그나로크가 지속되는 동안 체력이 1 미만으로 감소하지 않는다."
+            )
+        override val cooldown: Int
+            get() = BERSERKER_RAGNAROK_COOLDOWN_SECONDS
 
-    override fun use() {
-        val playerMoveSpeedIncrease = playerData.addStatus(MoveSpeedIncrease(), playerData)
-        val playerWhenDamageReduction = playerData.addStatus(WhenDamageReduction(), playerData)
+        override fun use() {
+            val playerMoveSpeedIncrease = playerData.addStatus(MoveSpeedIncrease(), playerData)
+            val playerAttackSpeedIncrease = playerData.addStatus(AttackSpeedIncrease(), playerData)
 
-        playerMoveSpeedIncrease.applyStatus(
-            duration = 10,
-            powerDelta = 30
-        )
-        playerWhenDamageReduction.applyStatus(
-            duration = 10,
-            powerDelta = 40
-        )
+            playerMoveSpeedIncrease.applyStatus(
+                duration = BERSERKER_RAGNAROK_DURATION_SECONDS,
+                powerDelta = BERSERKER_RAGNAROK_SPEED_BONUS_PERCENT
+            )
+            playerAttackSpeedIncrease.applyStatus(
+                duration = BERSERKER_RAGNAROK_DURATION_SECONDS,
+                powerDelta = BERSERKER_RAGNAROK_SPEED_BONUS_PERCENT
+            )
+            ragnarokUntil = player.world.fullTime + BERSERKER_RAGNAROK_DURATION_TICKS
+            sounds.play(player, org.bukkit.Sound.ENTITY_RAVAGER_ROAR, volume = 1.1f, pitch = 0.75f)
+            particles.spawn(player, org.bukkit.Particle.ANGRY_VILLAGER, count = 18, spread = 0.6)
+        }
     }
-}
 
-class BerserkersPassive : Passive(), OnHitHandler {
-    override val name: String
-        get() = "<red><bold>광전사의 의지"
-    override val description: List<String>
-        get() = listOf(
-            "<gray>패시브",
-            "",
-            "<gray>기본 공격 적중 시 잃은 체력에 비례해 피해량이 증가한다.",
-            "<gray>또한, 체력이 50% 이하라면 피해량의 10% 만큼 <green><bold>체력을 회복</bold><gray>한다.",
-            "<dark_gray>잃은 체력 1당 0.2씩, 최대 4까지 피해량이 증가한다."
-        )
+    private inner class Passive : BasePassive(), OnHitHandler, WhenHitHandler {
+        override val name: String
+            get() = "<red><bold>광전사의 의지"
+        override val description: List<String>
+            get() = listOf(
+                "<gray>패시브",
+                "",
+                "<gray>기본 공격 적중 시 가하는 피해가 잃은 체력에 비례하여 증가한다. (최대 50%)"
+            )
 
-    override fun onAttackHit(event: EntityDamageByEntityEvent) {
-        val missingHealth = player.getPlayerMaxHealth() - player.health
-        val damageBoost = (missingHealth * 0.2).coerceAtMost(4.0)
-        event.addBaseDamage(damageBoost)
+        override fun onAttackHit(context: DamageContext) {
+            val missingHealth = player.getPlayerMaxHealth() - player.health
+            val damageBoost = (missingHealth * BERSERKER_MISSING_HEALTH_DAMAGE_RATIO)
+                .coerceAtMost(BERSERKER_MAX_BONUS_DAMAGE)
+            context.addBaseDamage(damageBoost)
 
-        if (player.getPlayerMaxHealth() / 2 > player.health) {
-            playerData.heal(event.damage / 10, DamageType.Normal, playerData)
+            if (player.getPlayerMaxHealth() * BERSERKER_LOW_HEALTH_RATIO > player.health) {
+                playerData.heal(context.damage * BERSERKER_LIFESTEAL_RATIO, DamageType.Normal, playerData)
+            }
+        }
+
+        override fun whenHit(context: DamageContext) {
+            if (player.world.fullTime < ragnarokUntil) {
+                context.capDamage(player.health - BERSERKER_RAGNAROK_MIN_HEALTH)
+            }
         }
     }
 }

@@ -1,14 +1,27 @@
 package org.beobma.classWarPlugin.util
 
 import org.bukkit.attribute.Attribute
-import org.bukkit.entity.Player
+import org.bukkit.entity.LivingEntity
 import org.bukkit.potion.PotionEffectType
 import kotlin.math.min
 
+/** 바닐라 방어력·강인함·저항·흡수 체력을 커스텀 피해에 적용한다. */
 object DamageCalculator {
+    /** 방어 계산 후 체력에 적용할 피해와 흡수 체력이 막은 양이다. */
     data class Result(val finalDamage: Double, val absorbed: Double)
 
-    fun calculate(baseDamage: Double, target: Player, damageType: DamageType): Result {
+    /**
+     * 피해를 계산하고 흡수된 만큼 [target]의 흡수 체력을 즉시 차감한다.
+     * 고정 피해는 방어 요소와 흡수 체력을 모두 우회한다.
+     *
+     * @param armorIgnoreRatio 무시할 방어력 비율. 계산 시 `0.0..1.0`으로 제한된다.
+     */
+    fun calculate(
+        baseDamage: Double,
+        target: LivingEntity,
+        damageType: DamageType,
+        armorIgnoreRatio: Double = 0.0,
+    ): Result {
         if (baseDamage <= 0.0) {
             return Result(0.0, 0.0)
         }
@@ -19,7 +32,7 @@ object DamageCalculator {
 
         var damage = baseDamage
 
-        damage = applyArmorAndToughness(damage, target)
+        damage = applyArmorAndToughness(damage, target, armorIgnoreRatio)
         damage = applyResistance(damage, target)
 
         damage = damage.coerceAtLeast(0.0)
@@ -35,8 +48,13 @@ object DamageCalculator {
         return Result(damage, absorbed)
     }
 
-    private fun applyArmorAndToughness(damage: Double, target: Player): Double {
-        val armor = target.getAttribute(Attribute.ARMOR)?.value ?: 0.0
+    private fun applyArmorAndToughness(
+        damage: Double,
+        target: LivingEntity,
+        armorIgnoreRatio: Double,
+    ): Double {
+        val effectiveIgnoreRatio = armorIgnoreRatio.coerceIn(0.0, 1.0)
+        val armor = (target.getAttribute(Attribute.ARMOR)?.value ?: 0.0) * (1.0 - effectiveIgnoreRatio)
         val toughness = target.getAttribute(Attribute.ARMOR_TOUGHNESS)?.value ?: 0.0
 
         val armorFactor = (armor / 5.0).coerceAtLeast(armor - damage / (2.0 + toughness / 4.0))
@@ -45,7 +63,7 @@ object DamageCalculator {
         return damage * damageMultiplier
     }
 
-    private fun applyResistance(damage: Double, target: Player): Double {
+    private fun applyResistance(damage: Double, target: LivingEntity): Double {
         val resistanceEffect = target.getPotionEffect(PotionEffectType.RESISTANCE) ?: return damage
         val amplifier = resistanceEffect.amplifier + 1
         val resistanceMultiplier = (1.0 - 0.2 * amplifier).coerceAtLeast(0.0)
