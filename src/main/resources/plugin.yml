@@ -2,6 +2,8 @@ name: ClassWarPlugin
 version: '${version}'
 main: org.beobma.classWarPlugin.ClassWarPlugin
 api-version: '26.2'
+authors: [ BEOBMA ]
+website: https://github.com/BEOBMA/ClassWarPlugin
 
 commands:
   classwar:

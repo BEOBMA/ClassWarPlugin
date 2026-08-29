@@ -51,6 +51,7 @@ val verifyShadowJarContents = tasks.register("verifyShadowJarContents") {
         val requiredRuntimeEntries = listOf(
             "org/beobma/classWarPlugin/libs/kotlin/jvm/internal/Intrinsics.class",
             "org/beobma/classWarPlugin/libs/gson/Gson.class",
+            "META-INF/LICENSE",
         )
 
         ZipFile(shadowArchive).use { archive ->
@@ -80,6 +81,9 @@ tasks.build {
 tasks.processResources {
     val props = mapOf("version" to version)
     inputs.properties(props)
+    from(rootProject.file("LICENSE")) {
+        into("META-INF")
+    }
     filteringCharset = "UTF-8"
     filesMatching("plugin.yml") {
         expand(props)

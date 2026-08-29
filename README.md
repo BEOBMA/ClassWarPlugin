@@ -46,7 +46,7 @@ Spigot/Bukkit 및 다른 Paper 포크에서의 동작은 보장하지 않습니�
 배포하지 마세요. 서버의 `/reload` 명령은 Bukkit 객체와 예약 작업을 불완전하게 남길 수 있으므로
 사용하지 않는 것을 권장합니다.
 
-## 빠른 시작
+## 시작
 
 1. 운영자는 `/cw config`에서 경기 설정을 확인합니다.
 2. 참가자 두 명 이상이 접속한 상태에서 `/cw start`를 실행합니다.
@@ -57,7 +57,7 @@ Spigot/Bukkit 및 다른 Paper 포크에서의 동작은 보장하지 않습니�
 
 개별 클래스는 정규 경기가 없을 때 `/cw training`으로 연습할 수 있고 `/cw exit`으로 종료할 수 있습니다.
 
-## 경기 모드
+## 모드
 
 | 모드 | 배정 클래스 수 | 규칙 |
 | --- | ---: | --- |
@@ -183,33 +183,17 @@ JAVA_HOME=/path/to/jdk-21 ./gradlew clean build
 5. GitHub에 정식 릴리스를 생성하고 `ClassWarPlugin-<버전>-all.jar`만 실행 파일로 첨부합니다.
 6. 테스트 서버에서 신규 설치와 기존 설정을 사용한 업데이트를 각각 확인합니다.
 
-## 문제 해결
-
-### `UnsupportedClassVersionError`가 발생합니다
-
-서버가 Java 25보다 낮은 버전으로 실행 중입니다. `java -version`과 서버 시작 스크립트의 Java 경로를
-확인하세요.
-
-### Paper가 API 버전을 지원하지 않는다고 표시합니다
-
-현재 플러그인은 `api-version: 26.2`를 사용합니다. 호환되는 Paper 빌드로 서버를 업데이트하세요.
-
-### 설정 변경이 진행 중인 경기에 반영되지 않습니다
-
-경기 공용 설정은 시작 시 스냅샷으로 고정됩니다. 현재 경기를 종료하고 새 경기를 시작하세요.
-
-### 자동 업데이트가 실패합니다
-
-GitHub API 접근 가능 여부, 요청 한도, 릴리스 태그와 JAR 버전 일치 여부, 첨부 파일 이름 및
-`auto-update.asset-pattern`을 확인하세요. `/cw update`를 사용하면 실패 원인을 즉시 확인할 수 있습니다.
-
-버그를 보고할 때는 Paper 버전, Java 버전, 플러그인 버전, 재현 단계와 관련 서버 로그를 함께 제공해 주세요.
-[GitHub Issues](https://github.com/BEOBMA/ClassWarPlugin/issues)에서 제보할 수 있습니다.
-
-## 개발 문서
-
-- [ITEM_DISPLAY 검 방향·회전 및 암살자 벽 해제](docs/item-display-sword-orientation.md)
-
 ## 라이선스
 
-저작권과 사용·수정·배포 조건은 [LICENSE](LICENSE)를 따릅니다.
+이 프로젝트는 [MIT License](LICENSE)를 기반으로 배포됩니다. 개인·상업적 사용, 수정, 병합,
+배포, 재라이선스와 판매가 허용됩니다. 단, 원본 또는 수정본을 소스나 바이너리 형태로 재배포할 때는
+다음 저작권 고지와 이 저장소의 `LICENSE` 전문을 수정 없이 반드시 함께 포함해야 합니다.
+
+```text
+Copyright (c) 2026 BEOBMA
+```
+
+원본 프로젝트: [BEOBMA/ClassWarPlugin](https://github.com/BEOBMA/ClassWarPlugin)
+
+공식 빌드 JAR에는 동일한 라이선스가 `META-INF/LICENSE` 경로로 포함됩니다. 플러그인을 다른
+프로젝트나 배포 묶음에 포함하는 경우에도 이 파일을 제거하지 마세요.
