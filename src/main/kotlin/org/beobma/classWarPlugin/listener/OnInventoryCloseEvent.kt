@@ -8,6 +8,7 @@ import org.beobma.classWarPlugin.manager.InventoryManager.openAssignedClassInven
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.list.Contractor
 import org.beobma.classWarPlugin.gameClass.list.DeathNote
+import org.beobma.classWarPlugin.game.GameSettings
 import org.beobma.classWarPlugin.manager.PlayerFlag
 import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.PlayerTagValue
@@ -30,6 +31,18 @@ class OnInventoryCloseEvent : Listener {
 
         if (DeathNote.isSelectionInventoryOpen(player)) {
             DeathNote.handleInventoryClose(player)
+            return
+        }
+
+        if (PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_STARTING_ITEMS_INVENTORY)) {
+            GameSettings.setStartingItems(event.inventory.contents.filterNotNull())
+            PlayerTagManager.removeFlag(player, PlayerFlag.OPEN_STARTING_ITEMS_INVENTORY)
+            return
+        }
+
+        if (PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_CLASS_WEAPON_INVENTORY)) {
+            GameSettings.setClassWeapon(event.inventory.getItem(4))
+            PlayerTagManager.removeFlag(player, PlayerFlag.OPEN_CLASS_WEAPON_INVENTORY)
             return
         }
 

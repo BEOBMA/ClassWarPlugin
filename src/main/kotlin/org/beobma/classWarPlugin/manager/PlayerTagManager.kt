@@ -12,6 +12,8 @@ enum class PlayerFlag(internal val serializedName: String) {
     OPENING_ASSIGNED_CLASS_INVENTORY("openingAssignedClassInventory"),
     OPEN_CONFIG_INVENTORY("openConfigInventory"),
     OPENING_CONFIG_INVENTORY("openingConfigInventory"),
+    OPEN_STARTING_ITEMS_INVENTORY("openStartingItemsInventory"),
+    OPEN_CLASS_WEAPON_INVENTORY("openClassWeaponInventory"),
     OPEN_CLASS_LIST_INVENTORY("openClassListInventory"),
     OPEN_TRAINING_CLASS_LIST_INVENTORY("openTrainingClassListInventory"),
     OPEN_CLASS_STATUS_INVENTORY("openClassStatusInventory"),

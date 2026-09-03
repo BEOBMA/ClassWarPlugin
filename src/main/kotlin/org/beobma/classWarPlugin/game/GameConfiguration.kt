@@ -4,6 +4,7 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.bukkit.configuration.file.FileConfiguration
+import org.bukkit.inventory.ItemStack
 import java.util.Locale
 
 private val defaultRankWeights = mapOf(
@@ -78,6 +79,8 @@ enum class GameSetting {
 private object GameConfigPath {
     const val REFRESH_CHANCES = "selection.refresh-chances"
     const val COUNTDOWN_SECONDS = "selection.countdown-seconds"
+    const val STARTING_ITEMS = "selection.starting-items"
+    const val CLASS_WEAPON = "selection.class-weapon"
     const val COOLDOWN_FLOW_MULTIPLIER = "skills.cooldown-flow-multiplier"
     const val DAMAGE_INDICATORS_ENABLED = "combat.damage-indicators.enabled"
     const val PLAYER_LIST_VISIBLE = "display.player-list-visible"
@@ -149,6 +152,8 @@ private object GameConfigStep {
 data class GameConfiguration(
     val refreshChances: Int = 3,
     val countdownSeconds: Int = 5,
+    val startingItems: List<ItemStack> = defaultStartingItems(),
+    val classWeapon: ItemStack? = null,
     val cooldownFlowMultiplier: Double = 1.0,
     val damageIndicatorsEnabled: Boolean = true,
     val playerListVisible: Boolean = false,
@@ -174,6 +179,13 @@ data class GameConfiguration(
     val finalBorderDescentSeconds: Int = 180,
     val finalBorderDamage: Double = 2.0,
     val finalBorderDamageIntervalSeconds: Double = 1.0,
+)
+
+private fun defaultStartingItems(): List<ItemStack> = listOf(
+    ItemStack(org.bukkit.Material.IRON_HELMET),
+    ItemStack(org.bukkit.Material.IRON_CHESTPLATE),
+    ItemStack(org.bukkit.Material.IRON_LEGGINGS),
+    ItemStack(org.bukkit.Material.IRON_BOOTS),
 )
 
 /** 전체 피해 배율과 [type]의 세부 배율을 결합한다. */
@@ -207,6 +219,14 @@ object GameSettings {
         current = GameConfiguration(
             refreshChances = config.getInt(GameConfigPath.REFRESH_CHANCES, defaults.refreshChances),
             countdownSeconds = config.getInt(GameConfigPath.COUNTDOWN_SECONDS, defaults.countdownSeconds),
+            startingItems = if (config.contains(GameConfigPath.STARTING_ITEMS, true)) {
+                config.getList(GameConfigPath.STARTING_ITEMS)
+                    ?.mapNotNull(::deserializeItemStack)
+                    ?: emptyList()
+            } else {
+                defaults.startingItems.map(ItemStack::clone)
+            },
+            classWeapon = deserializeItemStack(config.get(GameConfigPath.CLASS_WEAPON)),
             cooldownFlowMultiplier = config.getDouble(
                 GameConfigPath.COOLDOWN_FLOW_MULTIPLIER,
                 defaults.cooldownFlowMultiplier,
@@ -292,6 +312,18 @@ object GameSettings {
 
     /** 이후 설정 변경과 독립적인 현재 설정 사본을 반환한다. */
     fun snapshot(): GameConfiguration = current.copy()
+
+    /** 게임 시작 시 모든 참가자에게 지급할 아이템을 저장한다. */
+    fun setStartingItems(items: Collection<ItemStack>) {
+        current = current.copy(startingItems = items.filter { !it.type.isAir }.map(ItemStack::clone))
+        save()
+    }
+
+    /** 모든 클래스에 공통으로 적용할 기본 무기 템플릿을 저장한다. null이면 클래스 고유 무기를 사용한다. */
+    fun setClassWeapon(item: ItemStack?) {
+        current = current.copy(classWeapon = item?.takeUnless { it.type.isAir }?.clone())
+        save()
+    }
 
     /**
      * [setting]을 정의된 한 단계와 [multiplier]의 곱만큼 변경하고 저장한다.
@@ -465,12 +497,14 @@ object GameSettings {
     private fun save() {
         val plugin = ClassWarPlugin.instance
         current.configEntries().forEach(plugin.config::set)
+        plugin.config.set(GameConfigPath.CLASS_WEAPON, current.classWeapon?.clone())
         plugin.saveConfig()
     }
 
     private fun GameConfiguration.configEntries(): Map<String, Any> = buildMap {
         put(GameConfigPath.REFRESH_CHANCES, refreshChances)
         put(GameConfigPath.COUNTDOWN_SECONDS, countdownSeconds)
+        put(GameConfigPath.STARTING_ITEMS, startingItems.map(ItemStack::clone))
         put(GameConfigPath.COOLDOWN_FLOW_MULTIPLIER, oneDecimal(cooldownFlowMultiplier))
         put(GameConfigPath.DAMAGE_INDICATORS_ENABLED, damageIndicatorsEnabled)
         put(GameConfigPath.PLAYER_LIST_VISIBLE, playerListVisible)
@@ -503,6 +537,15 @@ object GameSettings {
     }
 
     private fun oneDecimal(value: Double): Double = kotlin.math.round(value * 10.0) / 10.0
+
+    private fun deserializeItemStack(value: Any?): ItemStack? = when (value) {
+        is ItemStack -> value.clone()
+        is Map<*, *> -> runCatching {
+            @Suppress("UNCHECKED_CAST")
+            ItemStack.deserialize(value as Map<String, Any>)
+        }.getOrNull()
+        else -> null
+    }
 
     private fun Double.finiteOr(fallback: Double): Double = if (isFinite()) this else fallback
 }

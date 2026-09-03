@@ -333,6 +333,16 @@ object InventoryManager {
                     ),
                 ))
                 inventory.setItem(15, createSettingItem(Material.CLOCK, "시작 카운트다운", settings.countdownSeconds, "초"))
+                inventory.setItem(17, createDescriptionItem(
+                    Material.CHEST,
+                    "<yellow><bold>기본 지급 아이템 편집",
+                    listOf("<gray>클릭하여 게임 시작 시 지급할 아이템을 직접 넣거나 빼세요.", "<gray>갑옷, 무기, 활 등 모든 아이템을 설정할 수 있습니다."),
+                ))
+                inventory.setItem(26, createDescriptionItem(
+                    settings.classWeapon?.type ?: Material.IRON_SWORD,
+                    "<yellow><bold>클래스 기본 무기 편집",
+                    listOf("<gray>클릭하여 모든 클래스에 지급되는 기본 무기를 교체합니다.", "<gray>비워 두면 각 클래스의 고유 기본 무기를 사용합니다."),
+                ))
             }
 
             ConfigCategory.RANK -> {
@@ -404,6 +414,25 @@ object InventoryManager {
         })
 
         openConfigView(inventory, category)
+    }
+
+    /** 게임 시작 시 지급할 공용 아이템을 편집하는 인벤토리를 연다. */
+    fun Player.openStartingItemsInventory() {
+        val inventory = Bukkit.createInventory(null, 54, miniMessage.deserialize("<dark_gray>기본 지급 아이템 편집"))
+        GameSettings.snapshot().startingItems.forEachIndexed { slot, item ->
+            if (slot < inventory.size) inventory.setItem(slot, item.clone())
+        }
+        openInventory(inventory)
+        // openInventory가 이전 설정 창의 Close 이벤트를 먼저 발생시키므로 그 뒤에 편집 상태를 표시한다.
+        PlayerTagManager.addFlag(this, PlayerFlag.OPEN_STARTING_ITEMS_INVENTORY)
+    }
+
+    /** 모든 클래스에 공통으로 적용할 기본 무기 템플릿을 편집한다. */
+    fun Player.openClassWeaponInventory() {
+        val inventory = Bukkit.createInventory(null, 9, miniMessage.deserialize("<dark_gray>클래스 기본 무기 편집"))
+        GameSettings.snapshot().classWeapon?.let { inventory.setItem(4, it.clone()) }
+        openInventory(inventory)
+        PlayerTagManager.addFlag(this, PlayerFlag.OPEN_CLASS_WEAPON_INVENTORY)
     }
 
     fun getDamageMultiplierTypeFromSlot(slot: Int): DamageMultiplierType? =

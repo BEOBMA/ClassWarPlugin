@@ -26,6 +26,7 @@ import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.entity.Player
 import org.bukkit.entity.LivingEntity
+import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.inventory.ItemStack
 import org.bukkit.persistence.PersistentDataType
 
@@ -64,13 +65,11 @@ object PlayerManager {
             gameClass.passives.forEach { passive -> passive.inject(this) }
         }
 
-        player.inventory.setHelmet(ItemStack(Material.IRON_HELMET))
-        player.inventory.setChestplate(ItemStack(Material.IRON_CHESTPLATE))
-        player.inventory.setLeggings(ItemStack(Material.IRON_LEGGINGS))
-        player.inventory.setBoots(ItemStack(Material.IRON_BOOTS))
-        player.inventory.setItem(0, assignedClasses.first().toWeaponItemStack(player))
+        initGame.settings.startingItems.forEach { item -> giveStartingItem(player, item) }
+        val weaponTemplate = initGame.settings.classWeapon
+        player.inventory.setItem(0, assignedClasses.first().toWeaponItemStack(player, weaponTemplate))
         if (assignedClasses.size > 1) {
-            player.inventory.setItem(8, assignedClasses[1].toWeaponItemStack(player))
+            player.inventory.setItem(8, assignedClasses[1].toWeaponItemStack(player, weaponTemplate))
         }
 
         val hotbarSkillSlots = (1..if (assignedClasses.size > 1) 7 else 8).iterator()
@@ -130,6 +129,20 @@ object PlayerManager {
 
         if (initGame.phase == GamePhase.SCATTERING || initGame.phase == GamePhase.RUNNING) {
             BattleMapManager.giveTo(this)
+        }
+    }
+
+    /** 갑옷은 장비 칸에, 그 밖의 시작 아이템은 일반 인벤토리에 지급한다. */
+    private fun giveStartingItem(player: Player, item: ItemStack) {
+        val copy = item.clone()
+        when (copy.type.equipmentSlot) {
+            EquipmentSlot.HEAD -> player.inventory.setHelmet(copy)
+            EquipmentSlot.CHEST -> player.inventory.setChestplate(copy)
+            EquipmentSlot.LEGS -> player.inventory.setLeggings(copy)
+            EquipmentSlot.FEET -> player.inventory.setBoots(copy)
+            else -> player.inventory.addItem(copy).values.forEach { leftover ->
+                player.world.dropItemNaturally(player.location, leftover)
+            }
         }
     }
 

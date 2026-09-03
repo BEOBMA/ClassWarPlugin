@@ -40,6 +40,10 @@ class OnPlayerConnectionEvent(
     @EventHandler(priority = EventPriority.LOWEST)
     fun onPlayerJoin(event: PlayerJoinEvent) {
         val player = event.player
+        if (!isVanillaOnlyEnabled()) {
+            acceptPlayer(player)
+            return
+        }
         val brand = player.clientBrandName
         if (brand != null) {
             validateClient(player, brand)
@@ -56,6 +60,7 @@ class OnPlayerConnectionEvent(
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
     fun onPlayerRegisterChannel(event: PlayerRegisterChannelEvent) {
+        if (!isVanillaOnlyEnabled()) return
         if (!event.channel.equals(ClassWarPlugin.LUNAR_APOLLO_CHANNEL, ignoreCase = true)) return
         blockClient(event.player, "Lunar Client")
     }
@@ -65,12 +70,19 @@ class OnPlayerConnectionEvent(
             blockClient(player, brand)
             return
         }
+        acceptPlayer(player)
+    }
+
+    private fun acceptPlayer(player: Player) {
         if (!acceptedPlayers.add(player.uniqueId)) return
 
         handleReconnect(player)
         refreshPlayerListVisibility()
         StealthVisibilityManager.refreshAll()
     }
+
+    private fun isVanillaOnlyEnabled(): Boolean =
+        plugin.config.getBoolean("client-restrictions.vanilla-only", false)
 
     private fun blockClient(player: Player, brand: String?) {
         validationTasks.remove(player.uniqueId)?.cancel()

@@ -32,7 +32,8 @@ object GameClassManager {
     }
 
     /** 클래스 무기 아이템을 만들고 원래 클래스의 정규 이름을 영속 데이터에 기록한다. */
-    fun GameClass.toWeaponItemStack(viewer: Player? = null): ItemStack = weapon.toItemStack(viewer).apply {
+    fun GameClass.toWeaponItemStack(viewer: Player? = null, template: ItemStack? = null): ItemStack =
+        (template?.clone() ?: weapon.toItemStack(viewer)).apply {
         if (!type.isAir) {
             itemMeta = itemMeta.apply {
                 persistentDataContainer.set(

@@ -13,6 +13,8 @@ import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassStatusInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openConfigInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openConfigCategoryInventory
+import org.beobma.classWarPlugin.manager.InventoryManager.openStartingItemsInventory
+import org.beobma.classWarPlugin.manager.InventoryManager.openClassWeaponInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.getOpenConfigCategory
 import org.beobma.classWarPlugin.manager.InventoryManager.getClassFromItem
 import org.beobma.classWarPlugin.manager.InventoryManager.getMatchModeFromItem
@@ -78,6 +80,10 @@ class OnInventoryClickEvent : Listener {
             DeathNote.handleInventoryClick(player, event.rawSlot)
             return
         }
+
+        // 기본 지급 아이템 편집 인벤토리는 일반 인벤토리처럼 자유롭게 조작한다.
+        if (PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_STARTING_ITEMS_INVENTORY)) return
+        if (PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_CLASS_WEAPON_INVENTORY)) return
 
         if (PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_GAME_MODE_INVENTORY)) {
             event.isCancelled = true
@@ -152,6 +158,14 @@ class OnInventoryClickEvent : Listener {
                 return
             }
             if (!player.isOp) return
+            if (category == ConfigCategory.GAME && event.rawSlot == 17) {
+                player.openStartingItemsInventory()
+                return
+            }
+            if (category == ConfigCategory.GAME && event.rawSlot == 26) {
+                player.openClassWeaponInventory()
+                return
+            }
             val setting = configSetting(category, event.rawSlot) ?: return
             GameSettings.adjust(setting, event.isLeftClick, if (event.isShiftClick) 10 else 1)
             player.openConfigCategoryInventory(category)
