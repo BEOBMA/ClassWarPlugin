@@ -20,6 +20,7 @@ import org.bukkit.Sound
 private const val CONFLICT_TELEPORT_DISTANCE = 8.0
 
 class Conflict : GameClass() {
+    override val classId = "conflict"
     override val name = "<gray>불화"
     override val rank = Rank.B
     override val classItemMaterial = Material.STICK
@@ -27,6 +28,7 @@ class Conflict : GameClass() {
     override var passives: List<BasePassive> = emptyList()
 
     private inner class RedSkill : Skill(), MovementSkill {
+        override val definitionId = "conflict/red-skill"
         override val name = "<bold>불화"
         override val description = listOf(
             "<gray>바라보는 방향으로 순간이동한다.",
@@ -35,7 +37,7 @@ class Conflict : GameClass() {
         )
         override val cooldown = 0
 
-        override fun use() {
+        override fun use(): Boolean {
             val direction = player.eyeLocation.direction.normalize()
             val teleportDistance = ClassBalanceManager.scaleRange(playerData, CONFLICT_TELEPORT_DISTANCE)
             val ray = player.world.rayTraceBlocks(
@@ -68,6 +70,7 @@ class Conflict : GameClass() {
                 particles.spawn(player, Particle.DAMAGE_INDICATOR, count = (repeatedDamage / 2) * 5, spread = 0.35, speed = 0.08)
                 sounds.play(player, Sound.ENTITY_PLAYER_HURT, volume = 0.65f, pitch = 0.75f)
             }
+            return true
         }
     }
 }

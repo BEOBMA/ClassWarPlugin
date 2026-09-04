@@ -4,7 +4,6 @@ import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
-import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
@@ -14,7 +13,6 @@ import org.beobma.classWarPlugin.skill.Flooring
 import org.beobma.classWarPlugin.skill.Projectile
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.Abyss
-import org.beobma.classWarPlugin.status.list.Mana
 import org.beobma.classWarPlugin.status.list.Erosion
 import org.beobma.classWarPlugin.status.list.Silence
 import org.beobma.classWarPlugin.status.list.Stealth
@@ -41,6 +39,7 @@ private const val ABYSSAL_VEIL_SILENCE_DURATION_SECONDS = 3
 private const val ABYSSAL_VEIL_EROSION_DAMAGE = 5.0
 
 class AbyssalVeil : GameClass() {
+    override val classId = "abyssal-veil"
     override val name = "<gray>심연 장막"
     override val rank = Rank.C
     override val classItemMaterial = Material.BLACK_CONCRETE
@@ -54,6 +53,7 @@ class AbyssalVeil : GameClass() {
     )
 
     private class RedSkill : Skill() {
+        override val definitionId = "abyssal-veil/red-skill"
         override val name = "<bold>검은 연기"
         override val description = listOf(
             "<gray>자신 위치에 8초간 유지되는 검은 연기를 형성한다.",
@@ -63,20 +63,21 @@ class AbyssalVeil : GameClass() {
         )
         override val cooldown = ABYSSAL_VEIL_SMOKE_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             val smoke = Smoke()
             smoke.inject(playerData)
 
             smoke.location = if (player.isSneaking) {
                 playerData.shotLaserGetBlock(4.0)?.location?.add(0.5, 1.0, 0.5) ?: run {
                     player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                    return
+                    return false
                 }
             } else {
                 player.location.clone()
             }
             smoke.spawnFlooring(playerData)
             sounds.play(smoke.location, Sound.ENTITY_WITHER_AMBIENT, volume = 0.7f, pitch = 0.55f)
+            return true
         }
 
         override fun isUseSuccess(): Boolean {
@@ -92,6 +93,7 @@ class AbyssalVeil : GameClass() {
     }
 
     private class OrangeSkill : Skill() {
+        override val definitionId = "abyssal-veil/orange-skill"
         override val name = "<bold>잠식"
         override val description = listOf(
             "<gray>바라보는 방향으로 잠식된 연기를 발사한다.",
@@ -100,19 +102,19 @@ class AbyssalVeil : GameClass() {
         )
         override val cooldown = ABYSSAL_VEIL_EROSION_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             val projectile = ProjectileSmoke()
             projectile.location = player.eyeLocation.clone()
 
             projectile.spawnProjectile(playerData)
             sounds.play(player, Sound.ENTITY_WARDEN_SONIC_CHARGE, volume = 0.48f, pitch = 0.62f)
+            return true
         }
 
         override fun isUseSuccess(): Boolean {
             return true
         }
     }
-
 
     private class Smoke : Flooring() {
         private val appliedRadiation = mutableMapOf<PlayerData, Radiation>()

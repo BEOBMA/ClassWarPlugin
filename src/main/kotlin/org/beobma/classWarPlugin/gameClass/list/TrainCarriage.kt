@@ -17,6 +17,7 @@ import org.bukkit.Particle
 import org.bukkit.Sound
 
 class TrainCarriage : GameClass(), GameStatusHandler, WhenHitHandler, GameEndHandler, PlayerDeathHandler {
+    override val classId = "train-carriage"
     override val name = "<gray>기차화통"
     override val rank = Rank.C
     override val classItemMaterial = Material.FIREWORK_ROCKET

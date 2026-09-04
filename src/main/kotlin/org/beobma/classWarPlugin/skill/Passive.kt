@@ -13,9 +13,18 @@ import org.bukkit.entity.Player
  */
 abstract class Passive : EffectApiAccess {
     protected lateinit var playerData: PlayerData
-    protected lateinit var player: Player
+    protected val player: Player get() = playerData.player
     protected lateinit var playerStatus: PlayerStatus
     protected lateinit var game: Game
+
+    lateinit var ownerClass: org.beobma.classWarPlugin.gameClass.GameClass
+        private set
+    val abilityScope get() = ownerClass.abilityScope
+
+    fun bind(data: PlayerData, owner: org.beobma.classWarPlugin.gameClass.GameClass) {
+        ownerClass = owner
+        inject(data)
+    }
 
     abstract val name: String
     abstract val description: List<String>
@@ -26,7 +35,6 @@ abstract class Passive : EffectApiAccess {
     fun inject(playerData: PlayerData) {
         if (playerData.entityStatus !is PlayerStatus) return
         this.playerData = playerData
-        this.player = playerData.player
         this.playerStatus = playerData.entityStatus
         this.game = playerData.initGame
     }

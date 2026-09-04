@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.listener
 
+import org.beobma.classWarPlugin.ability.AbilityTree
+
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.effect.ParticleApi
 import org.beobma.classWarPlugin.effect.SoundApi
@@ -39,16 +41,15 @@ class OnPlayerMoveEvent : Listener {
             }
         }
         if (!playerData.canDispatchClassHandlers()) return
-        for (gameClass in playerData.gameClasses) {
-            if (gameClass !is StatusPlayerMoveHandler) continue
-            gameClass.onPlayerMove(event, playerData)
+        for (bound in AbilityTree.handlers(playerData.gameClasses, StatusPlayerMoveHandler::class.java)) {
+            bound.call { it.onPlayerMove(event, playerData) }
             if (event.isCancelled) return
         }
 
         // 상태이상
-        for (status in playerData.statusAbnormalitys) {
+        for (status in playerData.statusAbnormalitys.toList()) {
             if (status !is StatusPlayerMoveHandler) continue
-            status.onPlayerMove(event, playerData)
+            status.fromSource { status.onPlayerMove(event, playerData) }
         }
     }
 }

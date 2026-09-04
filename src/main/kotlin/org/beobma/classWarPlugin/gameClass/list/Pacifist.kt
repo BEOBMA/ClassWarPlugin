@@ -13,7 +13,7 @@ import org.beobma.classWarPlugin.util.DamageType
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.util.Vector
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
@@ -24,6 +24,7 @@ private const val PACIFIST_VERTICAL_KNOCKBACK = 0.62
 private const val PACIFIST_BORDER_CHECK_TICKS = 50
 
 class Pacifist : GameClass() {
+    override val classId = "pacifist"
     override val name = "<gray>평화주의자"
     override val rank = Rank.A
     override val classItemMaterial = Material.BARRIER
@@ -63,7 +64,7 @@ class Pacifist : GameClass() {
             sounds.play(target, Sound.ENTITY_IRON_GOLEM_ATTACK, volume = 0.8f, pitch = 1.5f)
 
             val targetPlayer = context.target as? PlayerData ?: return
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 private var elapsedTicks = 0
 
                 override fun run() {

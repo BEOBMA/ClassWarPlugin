@@ -14,9 +14,10 @@ import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.Stealth
 import org.bukkit.Material
 import org.bukkit.event.entity.EntityDamageEvent
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 
 class ConArtist : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
+    override val classId = "con-artist"
     override val name = "<gray>사기꾼"
     override val rank = Rank.B
     override val classItemMaterial = Material.ARMOR_STAND
@@ -43,7 +44,7 @@ class ConArtist : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
         val stealth = (playerData.addStatus(Stealth(), playerData) as Stealth).also {
             it.applyStatus(duration = 20, powerSet = 1)
         }
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
                 if (stealth.power > 0) stealth.remove()
                 fakingDeath = false

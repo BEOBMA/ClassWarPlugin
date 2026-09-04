@@ -20,10 +20,11 @@ import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.attribute.Attribute
 import org.bukkit.event.entity.EntityDamageEvent
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import java.util.UUID
 
 class Avenger : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
+    override val classId = "avenger"
     override val name = "<gray>복수자"
     override val rank = Rank.A
     override val classItemMaterial = Material.IRON_SPEAR
@@ -58,7 +59,7 @@ class Avenger : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
         player.sendMiniMessage("<dark_red><bold>[복수]</bold> <gray>8초 안에 자신을 쓰러뜨린 적에게 복수하십시오.")
         particles.spawn(player, Particle.TOTEM_OF_UNDYING, count = 75, spread = 0.85, speed = 0.18)
         sounds.play(player, Sound.ITEM_TOTEM_USE, volume = 0.9f, pitch = 0.72f)
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
                 if (!respiteActive || playerStatus.isDead) return
                 respiteActive = false

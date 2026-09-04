@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.ability.AbilityExecution
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.effect.ParticleOptions
@@ -18,12 +20,11 @@ import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.beobma.classWarPlugin.status.list.Snare
 import org.beobma.classWarPlugin.status.list.Radiation
 import org.bukkit.Color
-import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.entity.Player
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -47,7 +48,9 @@ private val hackRouteFields = listOf("dst", "via", "net", "hop", "rte", "uri")
 private val hackVerifyFields = listOf("crc", "sig", "sum", "mac", "chk", "tag")
 private val hackPathRoots = listOf("sys", "dev", "net", "var", "tmp", "srv")
 
-class Hacker : GameClass(), GameStatusHandler {
+class Hacker : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.gameClass.handler.GameEndHandler {
+    override fun onGameEnd() = clearSessions(listOf(playerData.uniqueId))
+    override val classId = "hacker"
     override val name = "<gray>해커"
     override val rank = Rank.A
     override val classItemMaterial = Material.COMPARATOR
@@ -65,6 +68,7 @@ class Hacker : GameClass(), GameStatusHandler {
     override fun onGameTimePasses() = Unit
 
     private class RedSkill : Skill() {
+        override val definitionId = "hacker/red-skill"
         override val name = "<bold>해킹"
         override val description = listOf(
             "<gray>채팅창에 출력된 한 줄의 코드를 제한시간 안에 똑같이 입력한다.",
@@ -100,7 +104,7 @@ class Hacker : GameClass(), GameStatusHandler {
             return true
         }
 
-        override fun use() {
+        override fun use(): Boolean {
             val stage = completedHacks + 1
             val timeLimit = hackTimeLimits[stage - 1]
             sounds.play(player, Sound.BLOCK_BEACON_ACTIVATE, volume = 0.75f, pitch = 1.55f + stage * 0.12f)
@@ -110,15 +114,16 @@ class Hacker : GameClass(), GameStatusHandler {
                     "<yellow>${timeLimit}초</yellow><gray> 안에 입력하세요."
             )
             issuePrompt(stage, timeLimit)
+            return true
         }
 
         private fun issuePrompt(stage: Int, timeLimit: Int) {
             val expected = generateHackCode(stage)
             val token = UUID.randomUUID()
-            val expiresAtTick = Bukkit.getCurrentTick().toLong() + timeLimit * 20L
+            val expiresAtTick = game.combatTick + timeLimit * 20L
             val progressStatus = playerData.getOrCreateStatus(playerData) { HackerProgressStatus() }
             progressStatus.start(stage, expiresAtTick)
-            val timeout = playerData.trackTask(object : BukkitRunnable() {
+            val timeout = playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 override fun run() {
                     val current = activeSessions[player.uniqueId] ?: return
                     if (current.token != token) return
@@ -290,7 +295,7 @@ class Hacker : GameClass(), GameStatusHandler {
 
         fun handleChatInput(player: Player, input: String) {
             val session = activeSessions[player.uniqueId] ?: return
-            session.skill.acceptInput(session, input)
+            AbilityExecution.with(session.skill.abilityScope) { session.skill.acceptInput(session, input) }
         }
 
         fun clearSessions(playerIds: Collection<UUID>) {
@@ -323,7 +328,7 @@ private class HackerProgressStatus : StatusAbnormality() {
     }
 
     override fun actionBarText(): String {
-        val remainingTicks = (expiresAtTick - Bukkit.getCurrentTick().toLong()).coerceAtLeast(0L)
+        val remainingTicks = (expiresAtTick - game.combatTick).coerceAtLeast(0L)
         val remainingSeconds = (remainingTicks + 19L) / 20L
         return "<aqua><bold>해킹 $power/$MAX_HACK_STAGE</bold></aqua>: <yellow>${remainingSeconds}초</yellow>"
     }

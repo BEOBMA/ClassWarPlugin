@@ -13,7 +13,6 @@ import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.AttackSpeedIncrease
 import org.beobma.classWarPlugin.status.list.MoveSpeedIncrease
-import org.beobma.classWarPlugin.status.list.WhenDamageReduction
 import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.bukkit.Material
@@ -30,6 +29,7 @@ private const val BERSERKER_LIFESTEAL_RATIO = 0.1
 private const val BERSERKER_RAGNAROK_MIN_HEALTH = 1.0
 
 class Berserker : GameClass() {
+    override val classId = "berserker"
     override val name: String = "<gray>광전사"
     override val rank = Rank.B
     override val classItemMaterial = Material.IRON_AXE
@@ -40,7 +40,6 @@ class Berserker : GameClass() {
 
     private var ragnarokUntil = 0L
 
-
     private class Weapon : BaseWeapon() {
         override val name = "<gray>철 도끼"
         override val description: List<String> = listOf("")
@@ -49,6 +48,7 @@ class Berserker : GameClass() {
     }
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "berserker/red-skill"
         override val name: String
             get() = "<bold>라그나로크"
         override val description: List<String>
@@ -59,7 +59,7 @@ class Berserker : GameClass() {
         override val cooldown: Int
             get() = BERSERKER_RAGNAROK_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             val playerMoveSpeedIncrease = playerData.addStatus(MoveSpeedIncrease(), playerData)
             val playerAttackSpeedIncrease = playerData.addStatus(AttackSpeedIncrease(), playerData)
 
@@ -71,9 +71,10 @@ class Berserker : GameClass() {
                 duration = BERSERKER_RAGNAROK_DURATION_SECONDS,
                 powerDelta = BERSERKER_RAGNAROK_SPEED_BONUS_PERCENT
             )
-            ragnarokUntil = player.world.fullTime + BERSERKER_RAGNAROK_DURATION_TICKS
+            ragnarokUntil = game.combatTick + BERSERKER_RAGNAROK_DURATION_TICKS
             sounds.play(player, org.bukkit.Sound.ENTITY_RAVAGER_ROAR, volume = 1.1f, pitch = 0.75f)
             particles.spawn(player, org.bukkit.Particle.ANGRY_VILLAGER, count = 18, spread = 0.6)
+            return true
         }
     }
 
@@ -99,7 +100,7 @@ class Berserker : GameClass() {
         }
 
         override fun whenHit(context: DamageContext) {
-            if (player.world.fullTime < ragnarokUntil) {
+            if (game.combatTick < ragnarokUntil) {
                 context.capDamage(player.health - BERSERKER_RAGNAROK_MIN_HEALTH)
             }
         }

@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.manager
 
+import org.beobma.classWarPlugin.ability.AbilityTree
+
 import net.kyori.adventure.text.minimessage.MiniMessage
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.DamageRedirectEntityData
@@ -9,7 +11,6 @@ import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.game.GamePhase
-import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.list.Referee
 import org.beobma.classWarPlugin.gameClass.list.Reverse
 import org.beobma.classWarPlugin.manager.GameClassManager.toWeaponItemStack
@@ -59,11 +60,7 @@ object PlayerManager {
     fun PlayerData.classSet(initializeHandlers: Boolean = true) {
         val assignedClasses = gameClasses.toList()
         if (assignedClasses.isEmpty()) return
-        assignedClasses.forEach { gameClass ->
-            gameClass.inject(this)
-            gameClass.skills.forEach { skill -> skill.inject(this) }
-            gameClass.passives.forEach { passive -> passive.inject(this) }
-        }
+        AbilityTree.bind(assignedClasses, this)
 
         initGame.settings.startingItems.forEach { item -> giveStartingItem(player, item) }
         val weaponTemplate = initGame.settings.classWeapon
@@ -114,17 +111,18 @@ object PlayerManager {
             player.inventory.setItem(inventorySlots.next(), item)
         }
 
-        assignedClasses.flatMap { it.extraItemMaterials }.forEach { item ->
+        val allAbilities = AbilityTree.nodes(assignedClasses, activeOnly = true)
+        allAbilities.filter { it !in assignedClasses && it.weapon !== org.beobma.classWarPlugin.gameClass.DefaultWeapon }
+            .distinctBy { it.classId }.forEach { child ->
+                if (inventorySlots.hasNext()) player.inventory.setItem(inventorySlots.next(), child.toWeaponItemStack(player))
+            }
+        allAbilities.flatMap { it.extraItemMaterials }.forEach { item ->
             if (!inventorySlots.hasNext()) return@forEach
             player.inventory.setItem(inventorySlots.next(), item)
         }
 
         if (initializeHandlers) {
-            assignedClasses.forEach { gameClass ->
-                gameClass.passives.filterIsInstance<GameStatusHandler>()
-                    .forEach { it.onBattleStart() }
-                (gameClass as? GameStatusHandler)?.onBattleStart()
-            }
+            AbilityTree.start(assignedClasses)
         }
 
         if (initGame.phase == GamePhase.SCATTERING || initGame.phase == GamePhase.RUNNING) {
@@ -168,7 +166,7 @@ object PlayerManager {
         val player = playerData.player
         val registeredClasses by lazy { GameManager.gameClassList }
         fun allClasses() = sequence {
-            yieldAll(playerData.gameClasses)
+            yieldAll(AbilityTree.nodes(playerData.gameClasses))
             yieldAll(registeredClasses)
         }
 
@@ -177,7 +175,7 @@ object PlayerManager {
 
             val weaponClassId = getWeaponClassId(item)
             if (weaponClassId != null) {
-                val gameClass = allClasses().firstOrNull { it.javaClass.name == weaponClassId } ?: return@forEach
+                val gameClass = allClasses().firstOrNull { it.classId == weaponClassId || it.javaClass.name == weaponClassId } ?: return@forEach
                 ItemDescriptionManager.applyForPlayer(
                     item, player, gameClass.weapon.description, gameClass.weapon.briefDescription,
                 )
@@ -186,7 +184,7 @@ object PlayerManager {
 
             val skillId = getSkillId(item, player.uniqueId)
             if (skillId != null) {
-                val skill = allClasses().flatMap { it.skills.asSequence() }.firstOrNull { it.id == skillId }
+                val skill = allClasses().flatMap { it.skills.asSequence() }.firstOrNull { it.matchesId(skillId) }
                     ?: return@forEach
                 ItemDescriptionManager.applyForPlayer(
                     item, player, skill.description, skill.briefDescription,

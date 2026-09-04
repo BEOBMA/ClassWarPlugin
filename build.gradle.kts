@@ -23,6 +23,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("com.google.code.gson:gson:2.13.2")
     testImplementation(kotlin("test"))
+    testImplementation("io.papermc.paper:paper-api:26.2.build.+")
 }
 
 val targetJavaVersion = 25

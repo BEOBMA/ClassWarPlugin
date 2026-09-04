@@ -14,10 +14,11 @@ import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.event.player.PlayerInputEvent
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.util.Vector
 
 class HighJumper : GameClass(), GameStatusHandler, MovementInputHandler, EnvironmentalDamageHandler {
+    override val classId = "high-jumper"
     override val name = "<gray>높이뛰기 선수"
     override val rank = Rank.C
     override val classItemMaterial = Material.RABBIT_FOOT
@@ -33,7 +34,7 @@ class HighJumper : GameClass(), GameStatusHandler, MovementInputHandler, Environ
         lastJumpInput = false
         fallImmunity = false
         becameAirborne = false
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
                 if (!player.isOnline || playerStatus.isDead) {
                     cancel()

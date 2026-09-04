@@ -23,7 +23,7 @@ import org.bukkit.util.Transformation
 import org.joml.Quaternionf
 import org.joml.Vector3f
 import org.beobma.classWarPlugin.damage.DamageContext
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import kotlin.math.sqrt
 
 // 밸런스 조정 상수
@@ -33,6 +33,7 @@ private const val METEOR_MIN_IMPACT_DAMAGE = 5.0
 private const val METEOR_BURN_DAMAGE = 1.0
 
 class Meteor : GameClass() {
+    override val classId = "meteor"
     override val name = "<gray>메테오"
     override val rank = Rank.B
     override val classItemMaterial = Material.FIRE_CHARGE
@@ -44,6 +45,7 @@ class Meteor : GameClass() {
         Passive()
     )
     private class RedSkill : Skill() {
+        override val definitionId = "meteor/red-skill"
         override val name = "<bold>유성 낙하"
         override val description = listOf(
             "<gray>18칸 내의 바라보는 위치에 2.5초 후 운석을 떨어트린다.",
@@ -54,13 +56,13 @@ class Meteor : GameClass() {
         )
         override val cooldown = METEOR_FALL_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             val location = if (player.isSneaking) {
                 player.location.clone()
             } else {
                 playerData.shotLaserGetBlock(18.0)?.location?.add(0.5, 1.0, 0.5) ?: run {
                     player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                    return
+                    return false
                 }
             }
 
@@ -76,7 +78,7 @@ class Meteor : GameClass() {
             meteorDisplay.transformation = Transformation(
                 Vector3f(), Quaternionf(), Vector3f(4.2f, 4.2f, 4.2f), Quaternionf()
             )
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 var tick = 0
                 override fun run() {
                     if (tick > 50 || !meteorDisplay.isValid) {
@@ -106,11 +108,11 @@ class Meteor : GameClass() {
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
 
             playerData.trackTask(
-                object : BukkitRunnable() {
+                object : BukkitRunnable(abilityScope) {
                     override fun run() {
                         particles.spawn(location, Particle.EXPLOSION_EMITTER, count = 2)
                         sounds.play(location, Sound.ENTITY_GENERIC_EXPLODE, volume = 2f, pitch = 0.55f)
-                        val targets = playerData.radius(location, TargetType.Enemy, 5.0, false)
+                        val targets = playerData.radius(location, TargetType.Enemy, 5.0, false, hitAttackableObjects = true)
                         targets.forEach {
                             val distance = sqrt(HitboxUtil.distanceSquared(it.entity.boundingBox, location.toVector())).coerceAtMost(5.0)
                             it.damage(
@@ -121,14 +123,14 @@ class Meteor : GameClass() {
                             it.entity.fireTicks += 100
                         }
                         var seconds = 0
-                        playerData.trackTask(object : BukkitRunnable() {
+                        playerData.trackTask(object : BukkitRunnable(abilityScope) {
                             override fun run() {
                                 if (seconds++ >= 10) { cancel(); return }
                                 particles.circle(location.clone().add(0.0, 0.12, 0.0), Particle.FLAME, 5.0, 48)
                                 particles.spawn(location.clone().add(0.0, 0.3, 0.0), Particle.FLAME, count = 50, spread = 4.0, speed = 0.025)
                                 particles.spawn(location.clone().add(0.0, 0.25, 0.0), Particle.SMOKE, count = 28, spread = 4.0, speed = 0.018)
                                 particles.spawn(location.clone().add(0.0, 0.18, 0.0), Particle.LAVA, count = 8, spread = 3.6, speed = 0.02)
-                                playerData.radius(location, TargetType.Enemy, 5.0, false).forEach {
+                                playerData.radius(location, TargetType.Enemy, 5.0, false, hitAttackableObjects = true).forEach {
                                     it.damage(METEOR_BURN_DAMAGE, DamageType.StatusAbnormality, playerData)
                                     it.entity.fireTicks = maxOf(it.entity.fireTicks, 40)
                                 }
@@ -137,6 +139,7 @@ class Meteor : GameClass() {
                     }
                 }.runTaskLater(ClassWarPlugin.instance, 50L)
             )
+            return true
         }
 
         override fun isUseSuccess(): Boolean {

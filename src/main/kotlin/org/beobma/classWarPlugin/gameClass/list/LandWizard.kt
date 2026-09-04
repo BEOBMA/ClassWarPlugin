@@ -3,9 +3,7 @@ package org.beobma.classWarPlugin.gameClass.list
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
-import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
 import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
-import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
@@ -38,6 +36,7 @@ private const val LAND_WIZARD_SHIELD_POWER = 8
 private const val LAND_WIZARD_SHIELD_DAMAGE_TAKEN_MULTIPLIER = 0.7
 
 class LandWizard : GameClass(), GameStatusHandler {
+    override val classId = "land-wizard"
     override val name = "<gray>지맥술사"
     override val rank = Rank.B
     override val classItemMaterial = Material.SANDSTONE
@@ -62,6 +61,7 @@ class LandWizard : GameClass(), GameStatusHandler {
     }
 
     private class RedSkill : Skill() {
+        override val definitionId = "land-wizard/red-skill"
         override val name = "<bold>지진"
         override val description = listOf(
             "{keyword:Mana}를 20 소모하고 사용할 수 있다.",
@@ -70,10 +70,10 @@ class LandWizard : GameClass(), GameStatusHandler {
         )
         override val cooldown = LAND_WIZARD_EARTHQUAKE_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             val mana = playerData.getOrCreateStatus(playerData) { Mana() }
             mana.decreasePower(20)
-            val targets = playerData.radius(player.location, TargetType.Enemy, 4.0, false)
+            val targets = playerData.radius(player.location, TargetType.Enemy, 4.0, false, hitAttackableObjects = true)
             targets.forEach {
                 val vibration = it.getOrCreateStatus(playerData) { Vibration() }
                 vibration.applyStatus(
@@ -93,6 +93,7 @@ class LandWizard : GameClass(), GameStatusHandler {
             )
             particles.spawn(player.location, Particle.CAMPFIRE_COSY_SMOKE, count = 12, spread = 2.8, speed = 0.02)
             sounds.play(player, Sound.ENTITY_GENERIC_EXPLODE, volume = 0.48f, pitch = 0.72f)
+            return true
         }
 
         override fun isUseSuccess(): Boolean {
@@ -106,6 +107,7 @@ class LandWizard : GameClass(), GameStatusHandler {
     }
 
     private class OrangeSkill : Skill() {
+        override val definitionId = "land-wizard/orange-skill"
         override val name = "<bold>공진"
         override val description = listOf(
             "{keyword:Mana}를 60 소모하고 사용할 수 있다.",
@@ -114,7 +116,7 @@ class LandWizard : GameClass(), GameStatusHandler {
         )
         override val cooldown = LAND_WIZARD_RESONANCE_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             val mana = playerData.getOrCreateStatus(playerData) { Mana() }
             val shield = playerData.addStatus(Shield(), playerData)
 
@@ -124,7 +126,7 @@ class LandWizard : GameClass(), GameStatusHandler {
                 powerDelta = LAND_WIZARD_SHIELD_POWER,
             )
 
-            val targets = playerData.radius(player.location, TargetType.Enemy, 4.0, false)
+            val targets = playerData.radius(player.location, TargetType.Enemy, 4.0, false, hitAttackableObjects = true)
             targets.forEach {
                 val vibrationExplosion = it.addStatus(VibrationExplosion(), playerData)
                 vibrationExplosion.applyStatus(duration = 1, powerDelta = 1)
@@ -135,6 +137,7 @@ class LandWizard : GameClass(), GameStatusHandler {
             particles.spawn(player.location.clone().add(0.0, 1.0, 0.0), Particle.REVERSE_PORTAL, count = 42, spread = 1.6, speed = 0.08)
             particles.spawn(player.location.clone().add(0.0, 0.5, 0.0), Particle.ELECTRIC_SPARK, count = 24, spread = 2.5, speed = 0.06)
             sounds.play(player, Sound.BLOCK_AMETHYST_BLOCK_RESONATE, volume = 0.85f, pitch = 0.9f)
+            return true
         }
 
         override fun isUseSuccess(): Boolean {

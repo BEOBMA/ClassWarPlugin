@@ -46,6 +46,7 @@ private const val CHUBBY_VERTICAL_KNOCKBACK_PER_BLOCK = 0.025
 private const val CHUBBY_MAX_VERTICAL_KNOCKBACK = 0.95
 
 class Chubby : GameClass(), GameStatusHandler, EnvironmentalDamageHandler, StatusPlayerMoveHandler {
+    override val classId = "chubby"
     override val name = "<gray>뚱땡이"
     override val rank = Rank.A
     override val classItemMaterial = Material.COOKED_CHICKEN
@@ -98,7 +99,7 @@ class Chubby : GameClass(), GameStatusHandler, EnvironmentalDamageHandler, Statu
 
     private fun triggerImpact(fallHeight: Double) {
         if (fallHeight < CHUBBY_MIN_FALL_HEIGHT) return
-        val currentTick = player.world.fullTime
+        val currentTick = game.combatTick
         if (lastImpactTick != Long.MIN_VALUE && currentTick - lastImpactTick <= 1L) return
         lastImpactTick = currentTick
         val radius = min(CHUBBY_MAX_IMPACT_RADIUS, CHUBBY_BASE_IMPACT_RADIUS + fallHeight * CHUBBY_RADIUS_PER_FALL_BLOCK)
@@ -112,7 +113,7 @@ class Chubby : GameClass(), GameStatusHandler, EnvironmentalDamageHandler, Statu
         val soundVolume = (0.65 + fallHeight * 0.04).toFloat().coerceAtMost(1.45f)
         val soundPitch = (1.0 - fallHeight * 0.025).toFloat().coerceAtLeast(0.45f)
         val impact = player.location.clone()
-        playerData.radius(impact, TargetType.Enemy, radius, false).forEach { target ->
+        playerData.radius(impact, TargetType.Enemy, radius, false, hitAttackableObjects = true).forEach { target ->
             target.damage(damage, DamageType.Normal, playerData, damagePath = DamagePath.SKILL)
             var direction = target.entity.boundingBox.center.clone().subtract(player.boundingBox.center).setY(0.0)
             if (direction.lengthSquared() < 1.0E-8) direction = Vector(1.0, 0.0, 0.0)

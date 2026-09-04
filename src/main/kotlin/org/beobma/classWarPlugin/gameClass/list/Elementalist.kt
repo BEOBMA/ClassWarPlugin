@@ -18,10 +18,10 @@ private const val ELEMENTALIST_RELEASE_COOLDOWN_SECONDS = 5
 private const val ELEMENTALIST_ATTUNE_COOLDOWN_SECONDS = 5
 private const val ELEMENTALIST_TRANSPOSE_COOLDOWN_SECONDS = 0
 
-
 class Elementalist : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler,
     EnvironmentalDamageHandler {
 
+    override val classId = "elementalist"
     override val name = "<gray>원소술사"
 
     override val rank = Rank.L
@@ -62,8 +62,8 @@ class Elementalist : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeath
         if (runtime?.consumeFallImmunity(event) == true) event.isCancelled = true
     }
 
-
     private inner class RedSkill : Skill() {
+        override val definitionId = "elementalist/red-skill"
         override val name = "<bold>발현"
 
         override val description = listOf(
@@ -82,13 +82,11 @@ class Elementalist : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeath
 
         override fun isUseSuccess(): Boolean = runtime?.canCast(ElementCastMode.MANIFEST) == true
 
-        override fun use() {
-            runtime?.cast(ElementCastMode.MANIFEST)
-
-        }
+        override fun use(): Boolean = runtime?.cast(ElementCastMode.MANIFEST) ?: false
     }
 
     private inner class OrangeSkill : Skill() {
+        override val definitionId = "elementalist/orange-skill"
         override val name = "<bold>방출"
 
         override val description = listOf(
@@ -107,12 +105,11 @@ class Elementalist : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeath
 
         override fun isUseSuccess(): Boolean = runtime?.canCast(ElementCastMode.RELEASE) == true
 
-        override fun use() {
-            runtime?.cast(ElementCastMode.RELEASE)
-        }
+        override fun use(): Boolean = runtime?.cast(ElementCastMode.RELEASE) ?: false
     }
 
     private inner class YellowSkill : Skill() {
+        override val definitionId = "elementalist/yellow-skill"
         override val name = "<bold>감응"
 
         override val description = listOf(
@@ -131,12 +128,11 @@ class Elementalist : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeath
 
         override fun isUseSuccess(): Boolean = runtime?.canCast(ElementCastMode.ATTUNE) == true
 
-        override fun use() {
-            runtime?.cast(ElementCastMode.ATTUNE)
-        }
+        override fun use(): Boolean = runtime?.cast(ElementCastMode.ATTUNE) ?: false
     }
 
     private inner class GreenSkill : Skill() {
+        override val definitionId = "elementalist/green-skill"
         override val name = "<bold>전위"
 
         override val description = listOf(
@@ -148,9 +144,7 @@ class Elementalist : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeath
 
         override fun isUseSuccess(): Boolean = runtime?.canTranspose() == true
 
-        override fun use() {
-            runtime?.transpose()
-        }
+        override fun use(): Boolean = runtime?.transpose() ?: false
     }
 
     private class Passive : BasePassive() {

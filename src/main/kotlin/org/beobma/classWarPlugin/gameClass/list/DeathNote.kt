@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.ability.AbilityExecution
+
 import net.kyori.adventure.text.minimessage.MiniMessage
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
@@ -40,7 +42,9 @@ private const val DEATH_NOTE_NAMING_COOLDOWN_SECONDS = 45
 private const val DEATH_NOTE_MARK_DURATION_SECONDS = 30
 private const val DEATH_NOTE_ACTION_THRESHOLD = 10
 
-class DeathNote : GameClass() {
+class DeathNote : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameEndHandler {
+    override fun onGameEnd() = clearSessions(listOf(playerData.uniqueId))
+    override val classId = "death-note"
     override val name = "<gray>데스노트"
     override val rank = Rank.L
     override val classItemMaterial = Material.BOOK
@@ -52,6 +56,7 @@ class DeathNote : GameClass() {
     private val miniMessage = MiniMessage.miniMessage()
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "death-note/red-skill"
         override val name = "<bold>기명"
         override val description = listOf(
             "<gray>생존한 적 중 한 명을 선택해 데스노트에 적는다.",
@@ -68,7 +73,7 @@ class DeathNote : GameClass() {
         )
         override val cooldown = DEATH_NOTE_NAMING_COOLDOWN_SECONDS
 
-        private var selectableTargets: List<PlayerData> = emptyList()
+        private var selectableTargets: List<PlayerData> by requestValue { emptyList() }
 
         override fun isUseSuccess(): Boolean {
             selectableTargets = livingEnemies()
@@ -77,10 +82,11 @@ class DeathNote : GameClass() {
             return false
         }
 
-        override fun use() {
+        override fun use(): Boolean {
             val targets = selectableTargets
             selectableTargets = emptyList()
             openTargetInventory(targets)
+            return true
         }
     }
 
@@ -282,7 +288,7 @@ class DeathNote : GameClass() {
 
         fun handleInventoryClick(player: Player, rawSlot: Int) {
             val session = activeSelections[player.uniqueId] ?: return
-            session.owner.resolveSelection(session, rawSlot)
+            AbilityExecution.with(session.owner.abilityScope) { session.owner.resolveSelection(session, rawSlot) }
         }
 
         fun handleInventoryClose(player: Player) {

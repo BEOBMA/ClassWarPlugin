@@ -17,6 +17,7 @@ import org.bukkit.Sound
 import java.util.UUID
 
 class Anchor : GameClass() {
+    override val classId = "anchor"
     override val name = "<gray>닻"
     override val rank = Rank.C
     override val classItemMaterial = Material.ANVIL
@@ -41,7 +42,7 @@ class Anchor : GameClass() {
             val target = event.playerData
             if (target.game !== game || target.entityStatus.isDead || target.player.world != player.world) return
             if (player.boundingBox.center.distanceSquared(target.player.boundingBox.center) > 36.0) return
-            val now = player.world.fullTime
+            val now = game.combatTick
             if ((cooldownUntil[target.uniqueId] ?: Long.MIN_VALUE) > now) return
             cooldownUntil[target.uniqueId] = now + 400L
             target.getOrCreateStatus(playerData) { AnchorSlowStatus() }

@@ -5,11 +5,9 @@ import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
-import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.PlayerManager.heal
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
-import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
@@ -48,6 +46,7 @@ private const val ASTRONOMER_MANA_STEAL = 2
 private const val ASTRONOMER_METEOR_EXPLOSION_RADIUS = 1.75
 
 class Astronomer : GameClass(), GameStatusHandler {
+    override val classId = "astronomer"
     override val name = "<gray>천문학자"
     override val rank = Rank.B
     override val classItemMaterial = Material.NETHER_STAR
@@ -71,6 +70,7 @@ class Astronomer : GameClass(), GameStatusHandler {
     }
 
     private class RedSkill : Skill() {
+        override val definitionId = "astronomer/red-skill"
         override val name = "<bold>별의 죽음"
         override val description = listOf(
             "<gray>8칸 내의 바라보는 블럭에 6초간 블랙홀을 만든다.",
@@ -81,7 +81,7 @@ class Astronomer : GameClass(), GameStatusHandler {
         )
         override val cooldown = ASTRONOMER_SKILL_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             val origin = player.location
             val blackHole = BlackHole()
             blackHole.location = if (player.isSneaking) {
@@ -89,13 +89,14 @@ class Astronomer : GameClass(), GameStatusHandler {
             } else {
                 val block = playerData.shotLaserGetBlock(8.0) ?: run {
                     player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                    return
+                    return false
                 }
                 block.location.add(0.5, 1.0, 0.5)
             }
-            playerData.findGameClass(Astronomer::class.java)?.blackHoleActiveUntil = player.world.fullTime + 120L
+            (ownerClass as? Astronomer)?.blackHoleActiveUntil = game.combatTick + 120L
             sounds.play(blackHole.location, Sound.ENTITY_WITHER_SHOOT, volume = 0.6f, pitch = 0.5f)
             blackHole.spawnFlooring(playerData)
+            return true
         }
 
         override fun isUseSuccess(): Boolean {
@@ -126,10 +127,10 @@ class Astronomer : GameClass(), GameStatusHandler {
             val mana = playerData.getOrCreateStatus(playerData) { Mana() }
             val count = (mana.power / ASTRONOMER_MANA_PER_METEOR).coerceIn(1, ASTRONOMER_MAX_METEOR_COUNT)
             val targetLoc = context.target.entity.location.clone()
-            val classData = playerData.findGameClass(Astronomer::class.java)
+            val classData = (ownerClass as? Astronomer)
             val soundAndDisplayEndTick = minOf(
-                player.world.fullTime + 60L,
-                classData?.blackHoleActiveUntil ?: player.world.fullTime,
+                game.combatTick + 60L,
+                classData?.blackHoleActiveUntil ?: game.combatTick,
             )
             repeat(count) {
                 val landingAngle = Random.nextDouble(0.0, Math.PI * 2.0)
@@ -139,14 +140,13 @@ class Astronomer : GameClass(), GameStatusHandler {
                 val starMeteor = StarMeteor(Vector(-approach.x / 28.0, 0.0, -approach.z / 28.0))
                 starMeteor.location = landing.clone().add(approach)
                 starMeteor.time = null
-                starMeteor.continueWhile = { player.world.fullTime < soundAndDisplayEndTick }
+                starMeteor.continueWhile = { game.combatTick < soundAndDisplayEndTick }
                 starMeteor.spawnMeteor(playerData)
                 sounds.play(starMeteor.location, Sound.BLOCK_AMETHYST_BLOCK_CHIME, volume = 0.45f, pitch = 1.65f + it * 0.06f)
             }
             mana.updatePower(0)
         }
     }
-
 
     private class BlackHole : Flooring() {
         override lateinit var location: Location
@@ -304,7 +304,7 @@ class Astronomer : GameClass(), GameStatusHandler {
             particles.spawn(location, Particle.FLASH, count = 1)
             particles.spawn(location, Particle.END_ROD, count = 18, spread = 1.0, speed = 0.12)
             sounds.play(location, Sound.BLOCK_AMETHYST_CLUSTER_BREAK, volume = 0.65f, pitch = 1.7f)
-            playerData.radius(location, TargetType.Enemy, ASTRONOMER_METEOR_EXPLOSION_RADIUS, false).forEach {
+            playerData.radius(location, TargetType.Enemy, ASTRONOMER_METEOR_EXPLOSION_RADIUS, false, hitAttackableObjects = true).forEach {
                 it.damage(ASTRONOMER_TRUE_DAMAGE, DamageType.True, playerData)
             }
         }

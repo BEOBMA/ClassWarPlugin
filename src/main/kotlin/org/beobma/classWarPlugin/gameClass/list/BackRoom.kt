@@ -24,7 +24,7 @@ import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.block.BlockState
 import org.bukkit.entity.Player
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.BoundingBox
 import java.time.Duration
@@ -39,6 +39,7 @@ private const val BACKROOM_ROOF_Y = 6
 private const val BACKROOM_MINIMUM_BORDER_SIZE = 19.0
 
 class BackRoom : GameClass(), GameEndHandler, PlayerDeathHandler {
+    override val classId = "back-room"
     override val name = "<gray>백룸"
     override val rank = Rank.A
     override val classItemMaterial = Material.YELLOW_CONCRETE
@@ -66,6 +67,7 @@ class BackRoom : GameClass(), GameEndHandler, PlayerDeathHandler {
     override fun onPlayerDeath() = finishSession(escaped = true, playEffects = false)
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "back-room/red-skill"
         override val name = "<bold>백룸"
         override val description = listOf(
             "<gray>10칸 내의 바라보는 적을 30초간 백룸으로 보낸다.",
@@ -74,7 +76,7 @@ class BackRoom : GameClass(), GameEndHandler, PlayerDeathHandler {
             "<gray>탈출하지 못하면 6의 피해를 입는다."
         )
         override val cooldown = BACKROOM_COOLDOWN_SECONDS
-        private var selectedTarget: EntityData? = null
+        private var selectedTarget: EntityData? by requestValue { null }
 
         override fun isUseSuccess(): Boolean {
             if (player.world.worldBorder.size < BACKROOM_MINIMUM_BORDER_SIZE) {
@@ -94,10 +96,11 @@ class BackRoom : GameClass(), GameEndHandler, PlayerDeathHandler {
             return selectedTarget != null
         }
 
-        override fun use() {
-            val target = selectedTarget ?: return
+        override fun use(): Boolean {
+            val target = selectedTarget ?: return false
             selectedTarget = null
             startSession(target)
+            return true
         }
     }
 
@@ -166,7 +169,7 @@ class BackRoom : GameClass(), GameEndHandler, PlayerDeathHandler {
         sounds.play(entrance, Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE, volume = 1.0f, pitch = 0.55f)
         particles.spawn(entrance, Particle.PORTAL, count = 70, spread = 1.0, speed = 0.22)
 
-        created.task = object : BukkitRunnable() {
+        created.task = object : BukkitRunnable(abilityScope) {
             var tick = 0
             override fun run() {
                 if (session !== created) {

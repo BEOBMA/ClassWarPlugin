@@ -22,7 +22,6 @@ import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.Stealth
 import org.beobma.classWarPlugin.util.DamageType
-import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.Particle
@@ -38,13 +37,14 @@ import org.bukkit.entity.Player
 import org.bukkit.entity.Projectile
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.potion.PotionEffectType
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import java.util.UUID
 
 private const val CHAMELEON_COOLDOWN_SECONDS = 60
 private const val CHAMELEON_DISGUISE_DURATION_SECONDS = 20
 
 class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, PlayerDeathHandler {
+    override val classId = "chameleon"
     override val name = "<gray>카멜레온"
     override val rank = Rank.B
     override val classItemMaterial = Material.BLACK_CONCRETE
@@ -64,6 +64,7 @@ class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, Pla
     override fun onPlayerDeath() = clearDisguise()
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "chameleon/red-skill"
         override val name = "<bold>위장"
         override val description = listOf(
             "<gray>2칸 내의 바라보는 블럭으로 위장한다.",
@@ -73,7 +74,7 @@ class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, Pla
             "<gray>피격 혹은 공격 시 잠시 블럭이 빨간색으로 변한다."
         )
         override val cooldown = CHAMELEON_COOLDOWN_SECONDS
-        private var selectedBlock: Block? = null
+        private var selectedBlock: Block? by requestValue { null }
 
         override fun isUseSuccess(): Boolean {
             selectedBlock = playerData.shotLaserGetBlock(2.0)
@@ -81,17 +82,18 @@ class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, Pla
             return selectedBlock != null
         }
 
-        override fun use() {
-            val block = selectedBlock ?: return
+        override fun use(): Boolean {
+            val block = selectedBlock ?: return false
             selectedBlock = null
             activateDisguise(block)
+            return true
         }
     }
 
     private fun activateDisguise(block: Block) {
         clearDisguise()
         val generation = ++disguiseGeneration
-        val expiresAtTick = Bukkit.getCurrentTick().toLong() + CHAMELEON_DISGUISE_DURATION_SECONDS * 20L
+        val expiresAtTick = game.combatTick + CHAMELEON_DISGUISE_DURATION_SECONDS * 20L
         copiedMaterial = block.type.takeUnless { it.isAir } ?: Material.STONE
         val normalBlockData = block.blockData.clone()
         val visual = player.world.spawn(player.location, BlockDisplay::class.java).apply {
@@ -114,7 +116,7 @@ class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, Pla
         stealth?.applyStatus(duration = CHAMELEON_DISGUISE_DURATION_SECONDS, powerSet = 1)
         sounds.play(player, Sound.ENTITY_PARROT_AMBIENT, volume = 0.65f, pitch = 1.25f)
         particles.spawn(player, Particle.POOF, count = 26, spread = 0.65, speed = 0.08)
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             private var lastBase: Location? = null
             private var showingDamageFlash = false
 
@@ -125,7 +127,7 @@ class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, Pla
                 }
                 val currentDisplay = display
                 val currentHitbox = interaction
-                if (Bukkit.getCurrentTick().toLong() >= expiresAtTick || !player.isOnline || playerStatus.isDead ||
+                if (game.combatTick >= expiresAtTick || !player.isOnline || playerStatus.isDead ||
                     currentDisplay?.isValid != true || currentHitbox?.isValid != true
                 ) {
                     clearDisguise()
@@ -151,7 +153,7 @@ class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, Pla
                     currentHitbox.teleport(base.clone().add(0.5, 0.0, 0.5))
                     lastBase = base.clone()
                 }
-                val shouldShowDamageFlash = Bukkit.getCurrentTick().toLong() < redUntilTick
+                val shouldShowDamageFlash = game.combatTick < redUntilTick
                 if (showingDamageFlash != shouldShowDamageFlash) {
                     currentDisplay.block = if (shouldShowDamageFlash) Material.RED_CONCRETE.createBlockData() else normalBlockData
                     showingDamageFlash = shouldShowDamageFlash
@@ -162,7 +164,7 @@ class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, Pla
 
     private fun flashRed() {
         val currentDisplay = display?.takeIf { it.isValid } ?: return
-        redUntilTick = Bukkit.getCurrentTick().toLong() + 8L
+        redUntilTick = game.combatTick + 8L
         particles.spawn(
             currentDisplay.location.add(0.5, 0.5, 0.5),
             Particle.DAMAGE_INDICATOR,

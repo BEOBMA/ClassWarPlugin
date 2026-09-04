@@ -3,7 +3,6 @@ package org.beobma.classWarPlugin.gameClass.list
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.entity.EntityData
-import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
@@ -26,7 +25,7 @@ import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import java.util.UUID
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
@@ -39,6 +38,7 @@ private const val ICE_WIZARD_FROSTBITE_DURATION_SECONDS = 5
 private const val ICE_WIZARD_FROSTBITE_POWER = 2
 
 class IceWizard : GameClass(), GameStatusHandler {
+    override val classId = "ice-wizard"
     override val name = "<gray>블리자드"
     override val rank = Rank.A
     override val classItemMaterial = Material.BLUE_ICE
@@ -65,6 +65,7 @@ class IceWizard : GameClass(), GameStatusHandler {
     }
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "ice-wizard/red-skill"
         private var bukkitTask: BukkitTask? = null
         private val nextDamageTickByEntity: MutableMap<UUID, Long> = mutableMapOf()
 
@@ -80,7 +81,7 @@ class IceWizard : GameClass(), GameStatusHandler {
 
         override val isOnOffSKill: Boolean = true
 
-        override fun use() {
+        override fun use(): Boolean {
             val mana = playerData.getOrCreateStatus(playerData) { Mana() }
 
             if (bukkitTask != null) {
@@ -89,11 +90,11 @@ class IceWizard : GameClass(), GameStatusHandler {
                 isBlizzardActive = false
                 nextDamageTickByEntity.clear()
                 sounds.play(player, Sound.BLOCK_GLASS_BREAK, pitch = 1.5f)
-                return
+                return true
             }
 
             isBlizzardActive = true
-            bukkitTask = playerData.trackTask(object : BukkitRunnable() {
+            bukkitTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 private var elapsedTicks = 0
 
                 override fun run() {
@@ -128,8 +129,8 @@ class IceWizard : GameClass(), GameStatusHandler {
                         }
                     }
 
-                    val now = player.world.fullTime
-                    val targets = playerData.radius(player.location, TargetType.Enemy, 3.0, false)
+                    val now = game.combatTick
+                    val targets = playerData.radius(player.location, TargetType.Enemy, 3.0, false, hitAttackableObjects = true)
                     targets.forEach { target ->
                         if (now < nextDamageTickByEntity.getOrDefault(target.entity.uniqueId, Long.MIN_VALUE)) return@forEach
                         nextDamageTickByEntity[target.entity.uniqueId] = now + 20L
@@ -144,6 +145,7 @@ class IceWizard : GameClass(), GameStatusHandler {
                     elapsedTicks++
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
+            return true
         }
     }
 

@@ -4,7 +4,6 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
-import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
 import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
@@ -15,7 +14,7 @@ import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.CheckpointStatus
 import org.bukkit.*
 import org.bukkit.attribute.Attribute
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 
 // 밸런스 조정 상수
 private const val TIME_MANIPULATOR_CHECKPOINT_COOLDOWN_SECONDS = 35
@@ -25,6 +24,7 @@ private const val TIME_MANIPULATOR_DEATH_THRESHOLD_HEALTH = 1.0
 private const val TIME_MANIPULATOR_PARADOX_HEALTH_MULTIPLIER = 0.5
 
 class TimeManiqulator : GameClass() {
+    override val classId = "time-maniqulator"
     override val name = "<gray>시간 조작자"
     override val rank = Rank.A
     override val classItemMaterial = Material.CLOCK
@@ -47,7 +47,7 @@ class TimeManiqulator : GameClass() {
         particles.spawn(savedLocation.clone().add(0.0, 1.0, 0.0), Particle.FLASH, count = 1)
         particles.spawn(savedLocation.clone().add(0.0, 1.0, 0.0), Particle.PORTAL, count = 20, spread = 0.7, speed = 0.12)
         sounds.play(player, Sound.BLOCK_RESPAWN_ANCHOR_SET_SPAWN, pitch = 1.4f)
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var tick = 0
             override fun run() {
                 if (playerData.getStatus<CheckpointStatus>() !== status) {
@@ -78,6 +78,7 @@ class TimeManiqulator : GameClass() {
     }
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "time-maniqulator/red-skill"
         override val name = "<bold>체크포인트"
         override val description = listOf(
             "<gray>현재 위치와 체력을 15초간 {keyword:Checkpoint}로 저장한다.",
@@ -86,12 +87,14 @@ class TimeManiqulator : GameClass() {
         )
         override val cooldown = TIME_MANIPULATOR_CHECKPOINT_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             saveCheckpoint()
+            return true
         }
     }
 
     private inner class OrangeSkill : Skill(), org.beobma.classWarPlugin.skill.MovementSkill {
+        override val definitionId = "time-maniqulator/orange-skill"
         override val name = "<bold>회귀"
         override val description = listOf(
             "<gray>저장된 {keyword:Checkpoint}가 있을 때에만 사용할 수 있다.",
@@ -101,8 +104,9 @@ class TimeManiqulator : GameClass() {
         )
         override val cooldown = TIME_MANIPULATOR_REWIND_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             restoreCheckpoint()
+            return true
         }
 
         override fun isUseSuccess(): Boolean {

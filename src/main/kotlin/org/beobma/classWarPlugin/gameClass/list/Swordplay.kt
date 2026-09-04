@@ -1,5 +1,13 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.gameClass.swordplay.FlyingSword
+import org.beobma.classWarPlugin.gameClass.swordplay.SwordFlightMode
+import org.beobma.classWarPlugin.gameClass.swordplay.SwordGeometry.targetOrbitLocation
+import org.beobma.classWarPlugin.gameClass.swordplay.SwordGeometry.targetOrbitTangent
+import org.beobma.classWarPlugin.gameClass.swordplay.SwordGeometry.targetOrbitAngleStep
+import org.beobma.classWarPlugin.gameClass.swordplay.SwordGeometry.normalizeOrbitAngle
+import org.beobma.classWarPlugin.gameClass.swordplay.SwordGeometry.tiltedOrbitOffset
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.entity.EntityData
@@ -15,7 +23,6 @@ import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.DisplayOrientationUtil
 import org.beobma.classWarPlugin.util.HitboxUtil
 import org.beobma.classWarPlugin.util.TargetType
-import org.bukkit.Color
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.Particle
@@ -23,7 +30,7 @@ import org.bukkit.Sound
 import org.bukkit.entity.Display
 import org.bukkit.entity.ItemDisplay
 import org.bukkit.inventory.ItemStack
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.Vector
 import java.util.UUID
@@ -41,7 +48,9 @@ private const val SWORDPLAY_INFINITE_COOLDOWN_SECONDS = 60
 private const val SWORDPLAY_SWORD_DAMAGE = 1.0
 private const val SWORDPLAY_BLOSSOM_DAMAGE = 4.0
 
-class Swordplay : GameClass(), GameStatusHandler {
+class Swordplay : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.gameClass.handler.GameEndHandler {
+    override fun onGameEnd() = resetSwordState()
+    override val classId = "swordplay"
     override val name = "<gray>이기어검"
     override val rank = Rank.S
     override val classItemMaterial = Material.GOLDEN_SWORD
@@ -50,27 +59,6 @@ class Swordplay : GameClass(), GameStatusHandler {
     private val infiniteSkill = InfiniteSkill()
     override var skills: List<Skill> = listOf(blossomSkill, infiniteSkill)
     override var passives: List<BasePassive> = listOf(SwordsmanshipPassive())
-
-    private enum class SwordFlightMode {
-        OWNER_ORBIT,
-        APPROACHING,
-        TARGET_ORBIT,
-        RETURNING,
-    }
-
-    private data class FlyingSword(
-        val display: ItemDisplay,
-        var position: Location,
-        var target: EntityData? = null,
-        var attackCooldownTicks: Int = 0,
-        var mode: SwordFlightMode = SwordFlightMode.OWNER_ORBIT,
-        var movementSpeed: Double = 0.0,
-        var targetOrbitAngle: Double = 0.0,
-        var targetOrbitPathSpeed: Double = 0.0,
-        var targetOrbitHitArmed: Boolean = false,
-        var pierceForward: Vector = Vector(1.0, 0.0, 0.0),
-        var pierceLoopAxis: Vector = Vector(0.0, 1.0, 0.0),
-    )
 
     private val baseSwords = mutableListOf<FlyingSword>()
     private val passiveHitCounts = mutableMapOf<UUID, Int>()
@@ -115,7 +103,7 @@ class Swordplay : GameClass(), GameStatusHandler {
     }
 
     private fun startPassiveTask() {
-        passiveTask = playerData.trackTask(object : BukkitRunnable() {
+        passiveTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
                 if (!player.isOnline || playerStatus.isDead) {
                     baseSwords.forEach { it.display.remove() }
@@ -279,6 +267,7 @@ class Swordplay : GameClass(), GameStatusHandler {
     }
 
     private inner class BlossomSkill : Skill() {
+        override val definitionId = "swordplay/blossom-skill"
         override val name = "<bold>블로섬"
         override val description = listOf(
             "<gray>어검술로 소환된 검을 해당 위치에서 회전시켜 적중한 모든 적에게 4의 피해를 입힌다.",
@@ -291,20 +280,20 @@ class Swordplay : GameClass(), GameStatusHandler {
                 player.sendMiniMessage("<red><bold>[!] 이미 블로섬이 진행 중입니다.")
                 return false
             }
-            ensurePassiveSwords()
             if (baseSwords.size >= PASSIVE_SWORD_COUNT) return true
             player.sendMiniMessage("<red><bold>[!] 회전시킬 어검이 부족합니다.")
             return false
         }
 
-        override fun use() {
+        override fun use(): Boolean {
+            ensurePassiveSwords()
             blossomActive = true
             val centers = baseSwords.map { it.position.clone() }
             val hitTargets = mutableSetOf<UUID>()
             sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_SWEEP, volume = 1.1f, pitch = 0.62f)
             sounds.play(player, Sound.BLOCK_ENCHANTMENT_TABLE_USE, volume = 0.8f, pitch = 1.45f)
 
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 private var tick = 0
 
                 override fun run() {
@@ -329,7 +318,7 @@ class Swordplay : GameClass(), GameStatusHandler {
 
                         val bladeStart = center.clone().subtract(direction.clone().multiply(BLOSSOM_BLADE_HALF_LENGTH))
                         val bladeEnd = center.clone().add(direction.clone().multiply(BLOSSOM_BLADE_HALF_LENGTH))
-                        playerData.radius(center, TargetType.Enemy, BLOSSOM_HIT_RADIUS, false)
+                        playerData.radius(center, TargetType.Enemy, BLOSSOM_HIT_RADIUS, false, hitAttackableObjects = true)
                             .forEach { target ->
                                 if (target.entity.uniqueId in hitTargets) return@forEach
                                 if (!HitboxUtil.intersectsSegment(
@@ -358,10 +347,12 @@ class Swordplay : GameClass(), GameStatusHandler {
                     tick++
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
+            return true
         }
     }
 
     private inner class InfiniteSkill : Skill() {
+        override val definitionId = "swordplay/infinite-skill"
         override val name = "<bold>인피니트"
         override val description = listOf(
             "<gray>20초간 무수한 검이 창조되는 공간을 만든다.",
@@ -378,7 +369,7 @@ class Swordplay : GameClass(), GameStatusHandler {
             return false
         }
 
-        override fun use() = startInfinite()
+        override fun use(): Boolean { startInfinite(); return true }
     }
 
     private fun startInfinite() {
@@ -397,7 +388,7 @@ class Swordplay : GameClass(), GameStatusHandler {
         sounds.play(player, Sound.BLOCK_END_PORTAL_SPAWN, volume = 0.72f, pitch = 1.35f)
         sounds.play(player, Sound.ITEM_TRIDENT_THUNDER, volume = 0.55f, pitch = 1.65f)
 
-        infiniteTask = playerData.trackTask(object : BukkitRunnable() {
+        infiniteTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
             private var tick = 0
 
             override fun run() {
@@ -635,68 +626,6 @@ class Swordplay : GameClass(), GameStatusHandler {
     private fun infiniteOrbitTangent(index: Int, tick: Int): Vector =
         infiniteOrbitLocation(index, tick + 1).toVector().subtract(infiniteOrbitLocation(index, tick).toVector())
 
-    private fun targetOrbitLocation(
-        center: Location,
-        sword: FlyingSword,
-        angle: Double,
-        radius: Double,
-    ): Location {
-        val wave = sin(angle)
-        val forwardOffset = sword.pierceForward.clone().multiply(wave * radius)
-        val loopOffset = sword.pierceLoopAxis.clone().multiply(
-            wave * sin(2.0 * angle) * radius * TARGET_PIERCE_LOOP_WIDTH_RATIO,
-        )
-        return center.clone().add(forwardOffset).add(loopOffset)
-    }
-
-    private fun targetOrbitTangent(sword: FlyingSword, angle: Double, radius: Double): Vector {
-        val forwardDerivative = cos(angle) * radius
-        val loopDerivative = (
-            cos(angle) * sin(2.0 * angle) +
-                2.0 * sin(angle) * cos(2.0 * angle)
-            ) * radius * TARGET_PIERCE_LOOP_WIDTH_RATIO
-        return sword.pierceForward.clone().multiply(forwardDerivative)
-            .add(sword.pierceLoopAxis.clone().multiply(loopDerivative))
-    }
-
-    private fun targetOrbitAngleStep(
-        sword: FlyingSword,
-        angle: Double,
-        radius: Double,
-        pathSpeed: Double,
-    ): Double {
-        val currentDerivativeLength = targetOrbitTangent(sword, angle, radius).length()
-            .coerceAtLeast(TARGET_PIERCE_MIN_DERIVATIVE_LENGTH)
-        val roughStep = (pathSpeed / currentDerivativeLength)
-            .coerceIn(TARGET_PIERCE_MIN_ANGLE_STEP, TARGET_PIERCE_MAX_ANGLE_STEP)
-        val midpointDerivativeLength = targetOrbitTangent(sword, angle + roughStep * 0.5, radius).length()
-            .coerceAtLeast(TARGET_PIERCE_MIN_DERIVATIVE_LENGTH)
-        return (pathSpeed / midpointDerivativeLength)
-            .coerceIn(TARGET_PIERCE_MIN_ANGLE_STEP, TARGET_PIERCE_MAX_ANGLE_STEP)
-    }
-
-    private fun normalizeOrbitAngle(angle: Double): Double {
-        val fullTurn = 2.0 * PI
-        val normalized = angle % fullTurn
-        return if (normalized < 0.0) normalized + fullTurn else normalized
-    }
-
-    private fun tiltedOrbitOffset(
-        angle: Double,
-        radius: Double,
-        inclination: Double,
-        yaw: Double,
-    ): Vector {
-        val localX = cos(angle) * radius
-        val localY = sin(angle) * radius * sin(inclination)
-        val localZ = sin(angle) * radius * cos(inclination)
-        return Vector(
-            localX * cos(yaw) - localZ * sin(yaw),
-            localY,
-            localX * sin(yaw) + localZ * cos(yaw),
-        )
-    }
-
     private fun beginApproach(sword: FlyingSword, target: EntityData, startSpeed: Double) {
         sword.target = target
         sword.mode = SwordFlightMode.APPROACHING
@@ -920,13 +849,9 @@ class Swordplay : GameClass(), GameStatusHandler {
         const val INFINITE_TARGET_ORBIT_PATH_ACCELERATION = 0.009
         const val INFINITE_TARGET_ORBIT_MAX_PATH_SPEED = 0.62
 
-        const val TARGET_PIERCE_LOOP_WIDTH_RATIO = 0.74
         const val TARGET_PIERCE_BASE_ROLL = 0.35
         const val TARGET_PIERCE_ROLL_STEP = 0.83
         const val TARGET_PIERCE_REARM_DISTANCE_SQUARED = 0.36
-        const val TARGET_PIERCE_MIN_DERIVATIVE_LENGTH = 0.001
-        const val TARGET_PIERCE_MIN_ANGLE_STEP = 0.004
-        const val TARGET_PIERCE_MAX_ANGLE_STEP = 0.16
         const val TARGET_PIERCE_MAX_ENTRY_PROJECTION = 0.35
         const val RETURN_RETAINED_SPEED_RATIO = 0.35
         const val RETURN_MIN_START_SPEED = 0.1

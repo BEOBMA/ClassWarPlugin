@@ -25,7 +25,7 @@ import org.bukkit.Sound
 import org.bukkit.entity.ItemDisplay
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.inventory.ItemStack
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import java.util.*
 import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
@@ -37,6 +37,7 @@ private const val KNIGHT_BLEEDING_DURATION_SECONDS = 4
 private const val KNIGHT_BLEEDING_POWER = 4
 
 class Knight : GameClass(), WeaponInputHandler {
+    override val classId = "knight"
     override val name = "<gray>기사"
     override val rank = Rank.B
     override val classItemMaterial = Material.IRON_SWORD
@@ -55,7 +56,7 @@ class Knight : GameClass(), WeaponInputHandler {
 
     override fun onWeaponRightClick(event: PlayerInteractEvent) {
         event.isCancelled = true
-        val now = player.world.fullTime
+        val now = game.combatTick
         if (now < parryReadyTick) {
             player.sendMiniMessage("<red><bold>[!] 패링을 다시 준비하는 중입니다.")
             return
@@ -64,7 +65,6 @@ class Knight : GameClass(), WeaponInputHandler {
         sounds.playTo(player, Sound.ITEM_ARMOR_EQUIP_IRON, pitch = 1.7f)
         particles.spawn(player, Particle.SWEEP_ATTACK, count = 2, spread = 0.2)
     }
-
 
     private class Weapon : BaseWeapon() {
         override val name = "<gray>장검"
@@ -77,6 +77,7 @@ class Knight : GameClass(), WeaponInputHandler {
     }
 
     private class RedSkill : Skill() {
+        override val definitionId = "knight/red-skill"
         override val name = "<bold>가로베기"
         override val description = listOf(
             "<gray>바라보는 방향으로 검을 휘두른다.",
@@ -84,7 +85,7 @@ class Knight : GameClass(), WeaponInputHandler {
         )
         override val cooldown = KNIGHT_HORIZONTAL_SLASH_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             val center = player.location.clone().add(0.0, 1.15, 0.0)
             val display = center.world.spawn(center, ItemDisplay::class.java)
             display.setItemStack(ItemStack(Material.IRON_SWORD))
@@ -92,7 +93,7 @@ class Knight : GameClass(), WeaponInputHandler {
             TemporaryDisplayManager.mark(display, player.uniqueId)
             val baseDirection = player.location.direction.setY(0).normalize()
             val hit = mutableSetOf<UUID>()
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 var tick = 0
                 override fun run() {
                     if (tick > 10 || !display.isValid) {
@@ -108,7 +109,7 @@ class Knight : GameClass(), WeaponInputHandler {
                     display.teleport(displayLocation)
                     DisplayOrientationUtil.alignSwordBladeHorizontally(display, direction, scale = 3.2f)
 
-                    playerData.getConeTargets(5.5, 140.0, TargetType.Enemy, false).forEach { target ->
+                    playerData.getConeTargets(5.5, 140.0, TargetType.Enemy, false, hitAttackableObjects = true).forEach { target ->
                         if (target.entity.uniqueId in hit) return@forEach
                         if (!org.beobma.classWarPlugin.util.HitboxUtil.intersectsSegment(
                                 target.entity.boundingBox,
@@ -130,6 +131,7 @@ class Knight : GameClass(), WeaponInputHandler {
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
             sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_SWEEP, volume = 1.0f, pitch = 0.75f)
+            return true
         }
     }
 
@@ -150,7 +152,7 @@ class Knight : GameClass(), WeaponInputHandler {
         }
 
         override fun whenAttackHit(context: DamageContext) {
-            val now = player.world.fullTime
+            val now = game.combatTick
             if (now > parryUntilTick || now < parryReadyTick) return
             context.isCancelled = true
             parryUntilTick = 0L

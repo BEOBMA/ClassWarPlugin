@@ -36,7 +36,7 @@ import org.bukkit.entity.Player
 import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.Transformation
 import org.bukkit.util.Vector
@@ -55,7 +55,9 @@ private const val AREA_DEVELOPMENT_DOMAIN_DURATION_SECONDS = 60
 private const val AREA_DEVELOPMENT_CHAIN_DAMAGE = 1.0
 private const val AREA_DEVELOPMENT_EXECUTION_DAMAGE = 10.0
 
-class AreaDevelopment : GameClass() {
+class AreaDevelopment : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameEndHandler {
+    override fun onGameEnd() = clearDomains(listOf(playerData.uniqueId))
+    override val classId = "area-development"
     override val name = "<gray>영역전개"
     override val rank = Rank.S
     override val classItemMaterial = Material.BLACK_CONCRETE
@@ -64,6 +66,7 @@ class AreaDevelopment : GameClass() {
     override var passives: List<BasePassive> = listOf()
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "area-development/red-skill"
         override val name = "<bold>영역전개"
         override val description = listOf(
             "<gray>자신의 위치에 60초간 지름 20칸 크기의 영역을 전개한다.",
@@ -85,7 +88,7 @@ class AreaDevelopment : GameClass() {
         private val blindnessStatuses = mutableListOf<DomainBlindnessStatus>()
         private val allowedInsideIds = mutableSetOf<UUID>()
 
-        override fun use() {
+        override fun use(): Boolean {
             finishDomain(collapse = false)
             val origin = player.location.clone()
             center = origin
@@ -123,7 +126,7 @@ class AreaDevelopment : GameClass() {
             playOpeningEffect(origin)
 
             var elapsedTicks = 0
-            domainTask = playerData.trackTask(object : BukkitRunnable() {
+            domainTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 override fun run() {
                     if (!active || !player.isOnline || playerStatus.isDead) {
                         finishDomain(collapse = false)
@@ -143,6 +146,7 @@ class AreaDevelopment : GameClass() {
                     elapsedTicks += 2
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 2L))
+            return true
         }
 
         private fun launchFallingChain(targetData: EntityData, origin: Location) {
@@ -171,7 +175,7 @@ class AreaDevelopment : GameClass() {
             }
 
             sounds.play(sky, Sound.BLOCK_CHAIN_PLACE, volume = 1.0f, pitch = 0.62f)
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 private var animationTick = 0
                 private var damageApplied = false
                 private var landed = false
@@ -347,7 +351,7 @@ class AreaDevelopment : GameClass() {
             particles.spawn(origin.clone().add(0.0, 2.2, 0.0), Particle.SONIC_BOOM, count = 1)
 
             var phase = 0
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 override fun run() {
                     if (phase >= 8) {
                         particles.spawn(origin.clone().add(0.0, 1.2, 0.0), Particle.EXPLOSION_EMITTER, count = 3, spread = 2.8)
@@ -391,7 +395,7 @@ class AreaDevelopment : GameClass() {
             sounds.play(origin, Sound.BLOCK_AMETHYST_BLOCK_RESONATE, volume = 0.8f, pitch = 0.85f)
 
             var phase = 0
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 override fun run() {
                     if (phase > 10) {
                         particles.spawn(origin.clone().add(0.0, 5.5, 0.0), Particle.REVERSE_PORTAL, count = 90, spread = 5.0, speed = 0.08)

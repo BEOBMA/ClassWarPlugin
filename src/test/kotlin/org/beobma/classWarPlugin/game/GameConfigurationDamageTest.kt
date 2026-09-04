@@ -7,7 +7,7 @@ import kotlin.test.assertEquals
 class GameConfigurationDamageTest {
     @Test
     fun `defaults preserve every current damage value`() {
-        val settings = GameConfiguration()
+        val settings = GameConfiguration(startingItems = emptyList())
 
         DamageMultiplierType.entries.forEach { type ->
             assertEquals(1.0, settings.damageMultipliers[type])
@@ -18,6 +18,7 @@ class GameConfigurationDamageTest {
     @Test
     fun `overall and specific damage multipliers compose`() {
         val settings = GameConfiguration(
+            startingItems = emptyList(),
             damageMultipliers = DamageMultiplierType.entries.associateWith { type ->
                 when (type) {
                     DamageMultiplierType.OVERALL -> 1.5
@@ -33,6 +34,7 @@ class GameConfigurationDamageTest {
     @Test
     fun `damage paths use their matching multiplier`() {
         val settings = GameConfiguration(
+            startingItems = emptyList(),
             damageMultipliers = DamageMultiplierType.entries.associateWith { type ->
                 if (type == DamageMultiplierType.BASIC_ATTACK) 0.0 else 1.0
             },

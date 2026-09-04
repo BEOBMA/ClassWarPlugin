@@ -20,7 +20,7 @@ import org.bukkit.FluidCollisionMode
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import java.util.UUID
 import kotlin.math.ceil
 
@@ -29,6 +29,7 @@ private const val MARS_DASH_COOLDOWN_SECONDS = 40
 class Mars : PlanetClass() {
     private var solarCopy = false
     internal fun asSolarCopy(): Mars = apply { solarCopy = true }
+    override val classId = "mars"
     override val name = "<gray>화성"
     override val rank = Rank.A
     override val classItemMaterial = Material.RED_SAND
@@ -37,8 +38,8 @@ class Mars : PlanetClass() {
     private var dashing = false
 
     private inner class RedSkill : Skill() {
-        override val id: String
-            get() = if (solarCopy) "${javaClass.name}:solar" else javaClass.name
+        override val definitionId = "mars/red-skill"
+        override fun matchesId(candidate: String): Boolean = super.matchesId(candidate) || (solarCopy && candidate == "${javaClass.name}:solar")
         override val name = "<bold>화성"
         override val description = listOf(
             "<gray>바라보는 방향으로 10칸 돌진한다.",
@@ -60,7 +61,7 @@ class Mars : PlanetClass() {
             return true
         }
 
-        override fun use() {
+        override fun use(): Boolean {
             dashing = true
             val direction = player.eyeLocation.direction.normalize()
             val start = player.location.clone()
@@ -79,7 +80,7 @@ class Mars : PlanetClass() {
 
             particles.spawn(player, Particle.EXPLOSION, count = 1)
             sounds.play(player, Sound.ENTITY_BREEZE_WIND_BURST, volume = 0.8f, pitch = 0.72f)
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 var currentStep = 0
                 var previousCenter = player.boundingBox.center
                 override fun run() {
@@ -94,7 +95,7 @@ class Mars : PlanetClass() {
                     }
                     player.teleport(destination)
                     val currentCenter = player.boundingBox.center
-                    playerData.radius(currentCenter.toLocation(player.world), TargetType.Enemy, 2.0, false)
+                    playerData.radius(currentCenter.toLocation(player.world), TargetType.Enemy, 2.0, false, hitAttackableObjects = true)
                         .filter { it.entity.uniqueId !in hit }
                         .filter { HitboxUtil.intersectsSegment(it.entity.boundingBox, previousCenter, currentCenter, 0.65) }
                         .forEach { target ->
@@ -109,6 +110,7 @@ class Mars : PlanetClass() {
                     currentStep++
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
+            return true
         }
     }
 

@@ -1,5 +1,8 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.ability.Control
+import org.beobma.classWarPlugin.ability.ControlLease
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.entity.player.PlayerData
@@ -27,7 +30,7 @@ import org.bukkit.entity.Display
 import org.bukkit.entity.ItemDisplay
 import org.bukkit.event.player.PlayerToggleSneakEvent
 import org.bukkit.inventory.ItemStack
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.BoundingBox
 import org.bukkit.util.Transformation
@@ -43,6 +46,7 @@ private const val TRAIN_RIDE_COOLDOWN_SECONDS = 30
 private const val TRAIN_MAX_STATIONS = 8
 
 class Train : GameClass(), SneakInputHandler, WhenHitHandler, GameEndHandler, PlayerDeathHandler {
+    override val classId = "train"
     override val name = "<gray>기차"
     override val rank = Rank.A
     override val classItemMaterial = Material.RAIL
@@ -50,7 +54,7 @@ class Train : GameClass(), SneakInputHandler, WhenHitHandler, GameEndHandler, Pl
     override var passives = emptyList<org.beobma.classWarPlugin.skill.Passive>()
 
     private data class Station(val location: Location, val display: BlockDisplay)
-    private data class PassengerState(val data: PlayerData, val canMove: Boolean, val canSkillUse: Boolean)
+    private data class PassengerState(val data: PlayerData, val controls: ControlLease)
 
     private val stations = mutableListOf<Station>()
     private val railDisplays = mutableListOf<BlockDisplay>()
@@ -69,8 +73,10 @@ class Train : GameClass(), SneakInputHandler, WhenHitHandler, GameEndHandler, Pl
 
     override fun onGameEnd() = clearAll()
     override fun onPlayerDeath() = clearAll()
+    override fun onSuspend() = stopRide()
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "train/red-skill"
         override val name = "<bold>기차역"
         override val description = listOf(
             "<gray>사용 시 현재 블록에 기차역을 설치한다.",
@@ -86,7 +92,7 @@ class Train : GameClass(), SneakInputHandler, WhenHitHandler, GameEndHandler, Pl
             return true
         }
 
-        override fun use() {
+        override fun use(): Boolean {
             val location = player.location.block.location.add(0.0, 0.06, 0.0)
             stations.removeAll { station ->
                 if (HitboxUtil.distanceSquared(player.boundingBox, station.location.toVector()) > 2.25) return@removeAll false
@@ -105,10 +111,12 @@ class Train : GameClass(), SneakInputHandler, WhenHitHandler, GameEndHandler, Pl
             rebuildRails()
             particles.spawn(location, Particle.ELECTRIC_SPARK, count = 20, spread = 0.75, speed = 0.08)
             sounds.play(location, Sound.BLOCK_BELL_USE, volume = 0.8f, pitch = 1.25f)
+            return true
         }
     }
 
     private inner class OrangeSkill : Skill() {
+        override val definitionId = "train/orange-skill"
         override val name = "<bold>기차놀이"
         override val description = listOf(
             "<gray>기차역에 서 있을 때에만 사용할 수 있다.", "",
@@ -140,10 +148,11 @@ class Train : GameClass(), SneakInputHandler, WhenHitHandler, GameEndHandler, Pl
             return true
         }
 
-        override fun use() {
-            val selected = route ?: return
+        override fun use(): Boolean {
+            val selected = route ?: return false
             route = null
             beginRide(selected.first.location, selected.second.location)
+            return true
         }
     }
 
@@ -163,7 +172,7 @@ class Train : GameClass(), SneakInputHandler, WhenHitHandler, GameEndHandler, Pl
         TemporaryDisplayManager.mark(display, player.uniqueId)
         trainDisplay = display
         sounds.play(from, Sound.ENTITY_MINECART_RIDING, volume = 1.0f, pitch = 0.72f)
-        rideTask = object : BukkitRunnable() {
+        rideTask = object : BukkitRunnable(abilityScope) {
             var index = 0
             override fun run() {
                 if (index > steps || disembarkRequested || !player.isOnline || playerStatus.isDead) {
@@ -200,9 +209,10 @@ class Train : GameClass(), SneakInputHandler, WhenHitHandler, GameEndHandler, Pl
 
     private fun capturePassenger(target: PlayerData) {
         if (passengers.containsKey(target.uniqueId)) return
-        passengers[target.uniqueId] = PassengerState(target, target.entityStatus.canMove, target.entityStatus.canSkillUse)
-        target.entityStatus.canMove = false
-        target.entityStatus.canSkillUse = false
+        val controls = ControlLease(abilityScope, target.entityStatus)
+        controls.allow(Control.MOVE, false)
+        controls.allow(Control.SKILL, false)
+        passengers[target.uniqueId] = PassengerState(target, controls)
         target.addStatus(Silence(), playerData).applyStatus(duration = 2, powerSet = 1)
         particles.spawn(target.player, Particle.POOF, count = 14, spread = 0.45, speed = 0.07)
         sounds.play(target.player, Sound.ENTITY_MINECART_INSIDE, volume = 0.8f, pitch = 0.8f)
@@ -266,8 +276,7 @@ class Train : GameClass(), SneakInputHandler, WhenHitHandler, GameEndHandler, Pl
         trainDisplay?.remove()
         trainDisplay = null
         passengers.values.forEach { state ->
-            state.data.entityStatus.canMove = state.canMove
-            state.data.entityStatus.canSkillUse = state.canSkillUse
+            state.controls.close()
         }
         passengers.clear()
         disembarkRequested = false

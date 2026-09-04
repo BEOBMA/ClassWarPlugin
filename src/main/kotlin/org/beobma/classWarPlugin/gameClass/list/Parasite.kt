@@ -21,7 +21,7 @@ import org.bukkit.Sound
 import org.bukkit.FluidCollisionMode
 import org.bukkit.entity.Player
 import org.bukkit.event.entity.EntityDamageEvent
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import kotlin.math.cos
@@ -36,6 +36,7 @@ private const val THIRD_PERSON_MINIMUM_DISTANCE = 0.45
 private const val THIRD_PERSON_WALL_PADDING = 0.35
 
 class Parasite : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
+    override val classId = "parasite"
     override val name = "<gray>기생충"
     override val rank = Rank.S
     override val classItemMaterial = Material.SILVERFISH_SPAWN_EGG
@@ -95,7 +96,7 @@ class Parasite : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
 
     private fun startFollowingHost() {
         followTask?.cancel()
-        followTask = playerData.trackTask(object : BukkitRunnable() {
+        followTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
                 val currentHost = host
                 if (currentHost == null) {
@@ -141,6 +142,7 @@ class Parasite : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
     }
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "parasite/red-skill"
         override val name = "<bold>부화"
         override val description = listOf(
             "<gray>기생 상태를 해제하고, 기생한 숙주의 몸을 뚫고 나온다.",
@@ -155,7 +157,7 @@ class Parasite : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
             return false
         }
 
-        override fun use() = hatch(automatic = false)
+        override fun use(): Boolean { hatch(automatic = false); return true }
 
         fun hatch(automatic: Boolean) {
             val currentHost = host ?: return

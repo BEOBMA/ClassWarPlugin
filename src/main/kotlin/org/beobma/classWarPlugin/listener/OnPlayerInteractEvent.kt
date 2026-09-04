@@ -1,5 +1,8 @@
 package org.beobma.classWarPlugin.listener
 
+import org.beobma.classWarPlugin.ability.AbilityTree
+import org.beobma.classWarPlugin.ability.AbilityExecution
+
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
@@ -68,24 +71,24 @@ class OnPlayerInteractEvent : Listener {
         val skillId = getSkillId(clickedItem, player.uniqueId)
         if (skillId == null) {
             val hasValidWeaponTag = taggedClassId != null &&
-                playerData.gameClasses.any { it.javaClass.name == taggedClassId }
-            playerData.gameClasses
+                AbilityTree.nodes(playerData.gameClasses, activeOnly = true).any { (it.classId == taggedClassId || it.javaClass.name == taggedClassId) }
+            AbilityTree.nodes(playerData.gameClasses, activeOnly = true)
                 .filter { gameClass ->
-                    if (hasValidWeaponTag) gameClass.javaClass.name == taggedClassId
+                    if (hasValidWeaponTag) (gameClass.classId == taggedClassId || gameClass.javaClass.name == taggedClassId)
                     else clickedItem.type == gameClass.weapon.material
                 }
-                .filterIsInstance<WeaponInputHandler>()
-                .forEach { handler ->
-                    if (isRightClick) handler.onWeaponRightClick(event) else handler.onWeaponLeftClick(event)
+                .let { AbilityTree.handlers(it, WeaponInputHandler::class.java, includeDescendants = false) }
+                .forEach { bound ->
+                    bound.call { handler -> if (isRightClick) handler.onWeaponRightClick(event) else handler.onWeaponLeftClick(event) }
                     if (event.useInteractedBlock() == Event.Result.DENY) return
                 }
             return
         }
-        val ownerClass = playerData.gameClasses.find { gameClass -> gameClass.skills.any { it.id == skillId } } ?: return
-        val skill = ownerClass.skills.find { it.id == skillId } ?: return
-        val inputHandler = ownerClass as? SkillInputHandler
+        val ownerClass = playerData.gameClasses.find { gameClass -> gameClass.skills.any { it.matchesId(skillId) } } ?: return
+        val skill = ownerClass.skills.find { it.matchesId(skillId) } ?: return
+        val inputHandler = skill.ownerClass as? SkillInputHandler
         if (inputHandler != null) {
-            if (!inputHandler.prepareSkillInput(event, skill)) return
+            if (!AbilityExecution.with(skill.abilityScope) { inputHandler.prepareSkillInput(event, skill) }) return
         } else if (!isRightClick) {
             return
         }

@@ -20,7 +20,7 @@ import org.bukkit.entity.Player
 import org.bukkit.entity.Projectile
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDamageEvent
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
 // 밸런스 조정 상수
@@ -31,6 +31,7 @@ private const val DARKNESS_BONUS_ATTACK_DAMAGE = 2.0
 private const val DARKNESS_FIRST_HIT_DAMAGE_TAKEN_MULTIPLIER = 1.5
 
 class Darkness : GameClass(), EnvironmentalDamageHandler {
+    override val classId = "darkness"
     override val name = "<gray>어둠"
     override val rank = Rank.B
     override val classItemMaterial = Material.BLACK_CONCRETE
@@ -40,7 +41,7 @@ class Darkness : GameClass(), EnvironmentalDamageHandler {
     private var artificialDarknessUntilTick = 0L
 
     private fun isInDarkness(): Boolean =
-        player.world.fullTime < artificialDarknessUntilTick || player.eyeLocation.block.lightFromBlocks.toInt() == 0
+        game.combatTick < artificialDarknessUntilTick || player.eyeLocation.block.lightFromBlocks.toInt() == 0
 
     override fun onEnvironmentalDamage(event: EntityDamageEvent) {
         if (!playerData.entityStatus.isAttackable || event.damage <= 0.0) return
@@ -52,17 +53,18 @@ class Darkness : GameClass(), EnvironmentalDamageHandler {
     }
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "darkness/red-skill"
         override val name = "<bold>어둠 확산"
         override val description = listOf(
             "<gray>6초 동안 빛이 있는 곳에 있더라도 빛이 없는 곳으로 간주한다."
         )
         override val cooldown = DARKNESS_SPREAD_COOLDOWN_SECONDS
 
-        override fun use() {
-            artificialDarknessUntilTick = player.world.fullTime + DARKNESS_SPREAD_DURATION_TICKS
+        override fun use(): Boolean {
+            artificialDarknessUntilTick = game.combatTick + DARKNESS_SPREAD_DURATION_TICKS
             passives.filterIsInstance<Passive>().firstOrNull()?.refreshDarknessState()
             sounds.play(player, Sound.ENTITY_WARDEN_HEARTBEAT, volume = 0.75f, pitch = 0.55f)
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 var ticks = 0
                 override fun run() {
                     if (ticks++ >= DARKNESS_SPREAD_DURATION_TICKS || !player.isOnline || player.isDead) {
@@ -81,6 +83,7 @@ class Darkness : GameClass(), EnvironmentalDamageHandler {
                     }
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
+            return true
         }
     }
 
@@ -102,7 +105,7 @@ class Darkness : GameClass(), EnvironmentalDamageHandler {
         override fun onGameTimePasses() = refreshDarknessState()
 
         fun refreshDarknessState() {
-            val stealthSuppressed = player.world.fullTime < stealthSuppressedUntilTick
+            val stealthSuppressed = game.combatTick < stealthSuppressedUntilTick
             if (isInDarkness() && !stealthSuppressed) {
                 if (grantedStealth?.let { it.power == 1 && playerData.statusAbnormalitys.contains(it) } == true) return
                 grantedStealth = playerData.addStatus(Stealth(), playerData) as Stealth
@@ -135,14 +138,14 @@ class Darkness : GameClass(), EnvironmentalDamageHandler {
         }
 
         private fun suppressStealth() {
-            stealthSuppressedUntilTick = player.world.fullTime + DARKNESS_STEALTH_SUPPRESSION_TICKS
+            stealthSuppressedUntilTick = game.combatTick + DARKNESS_STEALTH_SUPPRESSION_TICKS
             val wasStealthed = grantedStealth != null
             removeGrantedStealth()
             if (wasStealthed) {
                 particles.spawn(player, Particle.LARGE_SMOKE, count = 14, spread = 0.45, speed = 0.025)
                 sounds.play(player, Sound.BLOCK_SCULK_SENSOR_CLICKING, volume = 0.4f, pitch = 1.5f)
             }
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 override fun run() {
                     if (!player.isOnline || player.isDead) return
                     refreshDarknessState()

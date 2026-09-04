@@ -41,7 +41,7 @@ import org.bukkit.inventory.EquipmentSlot
 import org.bukkit.inventory.ItemFlag
 import org.bukkit.inventory.ItemStack
 import org.bukkit.persistence.PersistentDataType
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.Vector
 import java.util.UUID
@@ -58,6 +58,7 @@ private const val BRAVE_MINIMUM_SITE_DISTANCE_SQUARED = 100.0
 private const val BRAVE_BASIC_ATTACK_MULTIPLIER = 0.6
 
 class Brave : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler, OnHitHandler {
+    override val classId = "brave"
     override val name = "<gray>용사"
     override val rank = Rank.S
     override val classItemMaterial = Material.COPPER_SWORD
@@ -134,7 +135,7 @@ class Brave : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler
             swordSites += SwordSite(variant, location.clone(), display)
         }
 
-        swordVisualTask = playerData.trackTask(object : BukkitRunnable() {
+        swordVisualTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var tick = 0
 
             override fun run() {
@@ -238,7 +239,7 @@ class Brave : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler
         val base = site.location
         if (player.world != base.world || !player.boundingBox.expand(BRAVE_PULL_REACH).contains(base.toVector())) return false
 
-        val now = player.world.fullTime
+        val now = game.combatTick
         swordSites.filter { it !== site }.forEach { it.pullProgress = 0 }
         if (now - site.lastPullTick > BRAVE_PULL_COMBO_TICKS) {
             site.pullProgress = (site.pullProgress - 3).coerceAtLeast(0)
@@ -306,7 +307,7 @@ class Brave : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler
     }
 
     private fun applyBurn(target: EntityData) {
-        val now = target.entity.world.fullTime
+        val now = game.combatTick
         val existing = burns[target.entity.uniqueId]
         val status = target.getOrCreateStatus(playerData) { BurningPainStatus() }
         if (existing != null) {
@@ -319,7 +320,7 @@ class Brave : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler
         val record = BurnRecord(target, status, stacks = 1, expiresAtTick = now + BRAVE_BURN_DURATION_SECONDS * 20L)
         burns[target.entity.uniqueId] = record
         status.applyStatus(duration = BRAVE_BURN_DURATION_SECONDS, powerSet = 1)
-        record.task = playerData.trackTask(object : BukkitRunnable() {
+        record.task = playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
                 val active = burns[target.entity.uniqueId]
                 val living = target.entity as? LivingEntity
@@ -329,7 +330,7 @@ class Brave : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler
                     return
                 }
 
-                val currentTick = living.world.fullTime
+                val currentTick = game.combatTick
                 if (currentTick > record.expiresAtTick) {
                     burns.remove(target.entity.uniqueId, record)
                     cancel()

@@ -15,6 +15,7 @@ private const val DWARF_SCALE_MULTIPLIER = 0.3
 private const val DWARF_MAX_HEALTH_MULTIPLIER = 0.25
 
 class Dwarf : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler {
+    override val classId = "dwarf"
     override val name = "<gray>난쟁이"
     override val rank = Rank.B
     override val classItemMaterial = Material.CHICKEN_SPAWN_EGG
@@ -22,21 +23,14 @@ class Dwarf : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler
     override var passives: List<BasePassive> = listOf(Passive())
 
     private var initialized = false
-    private var originalScale: Double? = null
-    private var originalMaxHealth: Double? = null
+    private var scaleEffect: AutoCloseable? = null
+    private var healthEffect: AutoCloseable? = null
 
     override fun onBattleStart() {
         if (initialized) return
         initialized = true
-        player.getAttribute(Attribute.SCALE)?.let { attribute ->
-            originalScale = attribute.baseValue
-            attribute.baseValue = (attribute.baseValue * DWARF_SCALE_MULTIPLIER).coerceAtLeast(0.1)
-        }
-        player.getAttribute(Attribute.MAX_HEALTH)?.let { attribute ->
-            originalMaxHealth = attribute.baseValue
-            attribute.baseValue = (attribute.baseValue * DWARF_MAX_HEALTH_MULTIPLIER).coerceAtLeast(1.0)
-            player.health = player.health.coerceAtMost(attribute.value)
-        }
+        scaleEffect = playerData.attributeEffects.multiply(abilityScope, Attribute.SCALE, DWARF_SCALE_MULTIPLIER)
+        healthEffect = playerData.attributeEffects.multiply(abilityScope, Attribute.MAX_HEALTH, DWARF_MAX_HEALTH_MULTIPLIER)
         sounds.play(player, Sound.ENTITY_CHICKEN_AMBIENT, volume = 0.75f, pitch = 1.75f)
     }
 
@@ -49,20 +43,10 @@ class Dwarf : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler
         if (!initialized) return
 
         initialized = false
-        val scale = originalScale
-        val maximumHealth = originalMaxHealth
-        originalScale = null
-        originalMaxHealth = null
-
-        scale?.let { player.getAttribute(Attribute.SCALE)?.baseValue = it }
-        maximumHealth?.let { maximum ->
-            player.getAttribute(Attribute.MAX_HEALTH)?.let { attribute ->
-                attribute.baseValue = maximum
-                if (!player.isDead && player.health > 0.0) {
-                    player.health = player.health.coerceAtMost(attribute.value)
-                }
-            }
-        }
+        scaleEffect?.close()
+        healthEffect?.close()
+        scaleEffect = null
+        healthEffect = null
     }
 
     private class Passive : BasePassive() {

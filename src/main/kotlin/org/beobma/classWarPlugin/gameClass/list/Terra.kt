@@ -11,10 +11,11 @@ import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.attribute.Attribute
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import kotlin.math.floor
 
 class Terra : PlanetClass(), GameStatusHandler {
+    override val classId = "terra"
     override val name = "<gray>지구"
     override val rank = Rank.A
     override val classItemMaterial = Material.GRASS_BLOCK
@@ -22,7 +23,7 @@ class Terra : PlanetClass(), GameStatusHandler {
     override var passives: List<BasePassive> = listOf(Passive())
 
     override fun onBattleStart() {
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
                 if (!player.isOnline || playerStatus.isDead) {
                     cancel()

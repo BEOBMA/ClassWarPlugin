@@ -19,12 +19,13 @@ import org.bukkit.Sound
 import org.bukkit.entity.Display
 import org.bukkit.entity.ItemDisplay
 import org.bukkit.inventory.ItemStack
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.util.Transformation
 import org.joml.Quaternionf
 import org.joml.Vector3f
 
 class Exodia : GameClass(), GameStatusHandler {
+    override val classId = "exodia"
     override val name = "<gray>엑조디아"
     override val rank = Rank.B
     override val classItemMaterial = Material.TRIAL_KEY
@@ -62,7 +63,7 @@ class Exodia : GameClass(), GameStatusHandler {
             TemporaryDisplayManager.mark(display, player.uniqueId)
             parts += Part(label, material, display, location.y)
         }
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var tick = 0
             override fun run() {
                 if (!player.isOnline || playerStatus.isDead || parts.isEmpty()) {

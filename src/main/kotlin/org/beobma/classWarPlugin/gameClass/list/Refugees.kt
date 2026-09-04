@@ -14,6 +14,7 @@ import kotlin.math.abs
 import kotlin.math.max
 
 class Refugees : GameClass(), GameStatusHandler {
+    override val classId = "refugees"
     override val name = "<gray>피난민"
     override val rank = Rank.C
     override val classItemMaterial = Material.WHITE_HARNESS

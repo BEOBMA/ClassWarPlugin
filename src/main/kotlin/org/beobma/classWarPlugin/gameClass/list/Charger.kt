@@ -25,7 +25,7 @@ import org.bukkit.Sound
 import org.bukkit.event.player.PlayerInputEvent
 import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.event.player.PlayerToggleSneakEvent
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import kotlin.math.sqrt
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
@@ -37,6 +37,7 @@ private const val CHARGER_MAX_DAMAGE = 20.0
 
 class Charger : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler,
     MovementInputHandler, SneakInputHandler, StatusPlayerMoveHandler {
+    override val classId = "charger"
     override val name = "<gray>충전기"
     override val rank = Rank.A
     override val classItemMaterial = Material.REDSTONE_BLOCK
@@ -58,7 +59,7 @@ class Charger : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
             it.configureMaximum(null)
             it.clearCharge()
         }
-        chargeTask = playerData.trackTask(object : BukkitRunnable() {
+        chargeTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
                 if (!player.isOnline || playerStatus.isDead) {
                     resetCharge()
@@ -79,6 +80,7 @@ class Charger : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
     }
 
     override fun onGameTimePasses() = Unit
+    override fun onResume() { hasMovementInput = false }
 
     override fun onPlayerInput(event: PlayerInputEvent) {
         hasMovementInput = event.input.run {
@@ -174,6 +176,7 @@ class Charger : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
         (5.0 * sqrt(charge / CHARGER_REQUIRED_CHARGE.toDouble())).coerceAtMost(CHARGER_MAX_DAMAGE)
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "charger/red-skill"
         override val name = "<bold>방출"
         override val description = listOf(
             "{keyword:Charge}이 100 이상일 때에만 사용할 수 있다.",
@@ -192,13 +195,13 @@ class Charger : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
             return false
         }
 
-        override fun use() {
+        override fun use(): Boolean {
             val charge = chargeStatus?.consumeAll() ?: 0
             val damage = releaseDamage(charge)
             warningTick = 0
 
             val center = player.location.clone().add(0.0, 1.0, 0.0)
-            playerData.radius(player.location, TargetType.Enemy, CHARGER_RELEASE_RADIUS, false)
+            playerData.radius(player.location, TargetType.Enemy, CHARGER_RELEASE_RADIUS, false, hitAttackableObjects = true)
                 .forEach { target ->
                     target.damage(damage, DamageType.Normal, playerData, damagePath = DamagePath.SKILL)
                     particles.spawn(target.entity, Particle.ELECTRIC_SPARK, count = 18, spread = 0.5, speed = 0.14)
@@ -213,6 +216,7 @@ class Charger : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
             particles.spawn(center, Particle.END_ROD, count = 45, spread = 1.35, speed = 0.22)
             sounds.play(player, Sound.ENTITY_LIGHTNING_BOLT_IMPACT, volume = 1.15f, pitch = 0.72f)
             sounds.play(player, Sound.ENTITY_GENERIC_EXPLODE, volume = 0.75f, pitch = 1.35f)
+            return true
         }
     }
 

@@ -14,7 +14,7 @@ import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.SoundCategory
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 
 // 밸런스 조정 상수
 private const val LIGHTNING_WIZARD_CUMULONIMBUS_COOLDOWN_SECONDS = 8
@@ -23,6 +23,7 @@ private const val LIGHTNING_WIZARD_LIGHTNING_DAMAGE = 4.0
 
 class LightningWizard : GameClass() {
     private val markers: MutableList<Marker> = mutableListOf()
+    override val classId = "lightning-wizard"
     override val name = "<gray>뇌운술사"
     override val rank = Rank.B
     override val classItemMaterial = Material.LIGHTNING_ROD
@@ -47,7 +48,7 @@ class LightningWizard : GameClass() {
         val marker = Marker(location.clone())
         markers += marker
         sounds.play(location, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, volume = 0.7f, pitch = 1.7f)
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
                 if (marker !in markers) { cancel(); return }
                 marker.ageSeconds++
@@ -91,6 +92,7 @@ class LightningWizard : GameClass() {
     }
 
     private class RedSkill : Skill() {
+        override val definitionId = "lightning-wizard/red-skill"
         override val name = "<bold>적란운"
         override val description = listOf(
             "<gray>10칸 내의 바라보는 블럭에 적란운을 생성한다.",
@@ -100,20 +102,20 @@ class LightningWizard : GameClass() {
         )
         override val cooldown = LIGHTNING_WIZARD_CUMULONIMBUS_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             val location = if (player.isSneaking) {
                 player.location.clone().add(0.0, 1.0, 0.0)
             }
             else {
                 playerData.shotLaserGetBlock(10.0)?.location?.add(0.5, 1.0, 0.5) ?: run {
                     player.sendMiniMessage("<red><bold>[!] 바라보는 대상이 올바르지 않습니다.")
-                    return
+                    return false
                 }
             }
 
-            val gameClass = playerData.findGameClass(LightningWizard::class.java) ?: return
+            val gameClass = (ownerClass as? LightningWizard) ?: return false
             gameClass.createMarker(location)
-            return
+            return true
         }
 
         override fun isUseSuccess(): Boolean {
@@ -127,6 +129,7 @@ class LightningWizard : GameClass() {
         }
     }
     private class OrangeSkill : Skill() {
+        override val definitionId = "lightning-wizard/orange-skill"
         override val name = "<bold>과부하"
         override val description = listOf(
             "<gray>적란운을 5초간 과부하시킨다.",
@@ -134,20 +137,21 @@ class LightningWizard : GameClass() {
         )
         override val cooldown = LIGHTNING_WIZARD_OVERLOAD_COOLDOWN_SECONDS
 
-        override fun use() {
-            val gameClass = playerData.findGameClass(LightningWizard::class.java) ?: return
+        override fun use(): Boolean {
+            val gameClass = (ownerClass as? LightningWizard) ?: return false
             val markerList = gameClass.markers
             if (markerList.isEmpty()) {
                 player.sendMiniMessage("<red><bold>[!] 생성된 표식이 존재하지 않습니다.")
-                return
+                return false
             }
 
             markerList.forEach { marker -> marker.isOverload = true; marker.ageSeconds = 0 }
             sounds.play(player, Sound.BLOCK_BEACON_POWER_SELECT, pitch = 1.8f)
+            return true
         }
 
         override fun isUseSuccess(): Boolean {
-            val gameClass = playerData.findGameClass(LightningWizard::class.java) ?: return false
+            val gameClass = (ownerClass as? LightningWizard) ?: return false
             val markerList = gameClass.markers
             if (markerList.isEmpty()) {
                 player.sendMiniMessage("<red><bold>[!] 생성된 표식이 존재하지 않습니다.")

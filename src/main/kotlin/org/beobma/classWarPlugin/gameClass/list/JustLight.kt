@@ -14,9 +14,10 @@ import org.bukkit.Sound
 import org.bukkit.block.Block
 import org.bukkit.block.data.BlockData
 import org.bukkit.block.data.type.Light
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 
 class JustLight : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler {
+    override val classId = "just-light"
     override val name = "<gray>그저 빛"
     override val rank = Rank.C
     override val classItemMaterial = Material.GLOWSTONE
@@ -33,7 +34,7 @@ class JustLight : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHan
 
     override fun onBattleStart() {
         refreshLight()
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
                 if (!player.isOnline || playerStatus.isDead) {
                     clearLight()
@@ -41,7 +42,7 @@ class JustLight : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHan
                     return
                 }
                 refreshLight()
-                if (player.world.fullTime % 6L == 0L) {
+                if (game.combatTick % 6L == 0L) {
                     particles.spawn(player, Particle.GLOW, count = 10, spread = 2.5, speed = 0.015)
                 }
             }

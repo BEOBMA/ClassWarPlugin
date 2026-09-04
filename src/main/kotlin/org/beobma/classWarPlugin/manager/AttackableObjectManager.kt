@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.manager
 
+import org.beobma.classWarPlugin.ability.AbilityExecution
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.util.HitboxUtil
 import org.bukkit.Location
@@ -76,9 +78,14 @@ object AttackableObjectManager {
         onHit: () -> Unit,
     ): Registration {
         val id = UUID.randomUUID()
-        targets[id] = Target(ownerId, world.uid, acceptsAreaSkills, canBeHitBy, hitboxes, onHit)
+        val scope = AbilityExecution.current
+        targets[id] = Target(ownerId, world.uid, acceptsAreaSkills,
+            { attacker -> (scope == null || (!scope.isClosed && !scope.game.isPaused)) && canBeHitBy(attacker) },
+            hitboxes, { AbilityExecution.with(scope, onHit) })
         ensureProjectileTask()
-        return Registration(id)
+        return Registration(id).also { registration ->
+            scope?.resources?.own(isAlive = { targets.containsKey(id) }) { registration.unregister() }
+        }
     }
 
     /** 커스텀 스킬 투사체의 한 틱 이동 구간을 검사한다. */

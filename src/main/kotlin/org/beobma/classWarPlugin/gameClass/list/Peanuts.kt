@@ -18,13 +18,14 @@ import org.beobma.classWarPlugin.util.HitboxUtil
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import kotlin.math.cos
 
 private const val PEANUTS_VIEW_RANGE = 48.0
 private const val PEANUTS_VIEW_HALF_ANGLE_DEGREES = 42.0
 
 class Peanuts : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler {
+    override val classId = "peanuts"
     override val name = "<gray>땅콩이"
     override val rank = Rank.B
     override val classItemMaterial = Material.RABBIT_HIDE
@@ -36,7 +37,7 @@ class Peanuts : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
 
     override fun onBattleStart() {
         refreshVisibilityState()
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
                 if (!player.isOnline || playerStatus.isDead) {
                     clearSpeed()

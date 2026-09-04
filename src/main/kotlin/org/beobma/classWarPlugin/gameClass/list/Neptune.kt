@@ -13,10 +13,11 @@ import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.AttackSpeedIncrease
 import org.bukkit.Material
 import org.bukkit.Particle
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.util.Vector
 
 class Neptune : PlanetClass(), GameStatusHandler, OnHitHandler {
+    override val classId = "neptune"
     override val name = "<gray>해왕성"
     override val rank = Rank.A
     override val classItemMaterial = Material.LAPIS_BLOCK
@@ -26,7 +27,7 @@ class Neptune : PlanetClass(), GameStatusHandler, OnHitHandler {
 
     override fun onBattleStart() {
         attackSpeedStatus = null
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
                 if (!player.isOnline || playerStatus.isDead) {
                     attackSpeedStatus?.remove()
@@ -53,7 +54,7 @@ class Neptune : PlanetClass(), GameStatusHandler, OnHitHandler {
         context.addDamageDealtMultiplier(0.67)
         val living = context.target.entity as? org.bukkit.entity.LivingEntity ?: return
         val before = living.velocity.clone()
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
                 if (!living.isValid || living.isDead) return
                 val after = living.velocity

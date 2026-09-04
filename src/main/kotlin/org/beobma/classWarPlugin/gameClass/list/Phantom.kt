@@ -1,5 +1,8 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.ability.Control
+import org.beobma.classWarPlugin.ability.ControlLease
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
@@ -36,13 +39,14 @@ import org.bukkit.entity.Player
 import org.bukkit.entity.Projectile
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.inventory.ItemStack
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.Vector
 import java.util.UUID
 import kotlin.math.min
 
 class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
+    override val classId = "phantom"
     override val name = "<gray>팬텀"
     override val rank = Rank.S
     override val classItemMaterial = Material.PHANTOM_MEMBRANE
@@ -58,18 +62,17 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
     private var cooldownItem: ItemStack? = null
     private var returnTask: BukkitTask? = null
     private var returnStateSaved = false
+    private var controls: ControlLease? = null
     private var savedGravity = true
     private var savedInvulnerable = false
     private var savedCollidable = true
-    private var savedCanMove = true
-    private var savedCanAttack = true
-    private var savedCanSkillUse = true
     private val marks = linkedMapOf<EntityData, PhantomSlashMarkStatus>()
 
     override fun onGameEnd() = cleanup(releaseMarks = false)
     override fun onPlayerDeath() = cleanup(releaseMarks = false)
 
     private inner class DepartureSkill : Skill(), MovementSkill {
+        override val definitionId = "phantom/departure-skill"
         override val name = "<bold>이탈"
         override val description = listOf(
             "<gray>자신의 육체를 남기고 전방으로 도약하며, 20초간 {keyword:Stealth} 상태가 되고 <gold><bold>이동 속도가 20% 증가</bold><gray>한다.",
@@ -81,14 +84,15 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
         override val cooldown = 80
         override val isOnOffSKill = true
 
-        override fun use() {
+        override fun use(): Boolean {
             if (active) {
                 if (!returning) beginReturn()
-                return
+                return true
             }
             cooldownItem = player.inventory.itemInMainHand.clone()
             beginDeparture()
             multiplyCurrentCooldown(0.0)
+            return true
         }
     }
 
@@ -117,7 +121,7 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
         player.velocity = player.eyeLocation.direction.normalize().multiply(1.2).setY(0.38)
         particles.spawn(origin.clone().add(0.0, 1.0, 0.0), Particle.SOUL, count = 65, spread = 0.75, speed = 0.14)
         sounds.play(origin, Sound.ENTITY_PHANTOM_FLAP, volume = 0.85f, pitch = 0.65f)
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var ticks = 0
             override fun run() {
                 if (!active || !player.isOnline || playerStatus.isDead) {
@@ -151,12 +155,11 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
         savedGravity = player.hasGravity()
         savedInvulnerable = player.isInvulnerable
         savedCollidable = player.isCollidable
-        savedCanMove = playerStatus.canMove
-        savedCanAttack = playerStatus.canAttack
-        savedCanSkillUse = playerStatus.canSkillUse
-        playerStatus.canMove = false
-        playerStatus.canAttack = false
-        playerStatus.canSkillUse = false
+        controls?.close()
+        controls = ControlLease(abilityScope, playerStatus)
+        controls?.allow(Control.MOVE, false)
+        controls?.allow(Control.ATTACK, false)
+        controls?.allow(Control.SKILL, false)
         player.setGravity(false)
         player.isInvulnerable = true
         player.isCollidable = false
@@ -164,7 +167,7 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
         particles.spawn(player, Particle.REVERSE_PORTAL, count = 42, spread = 0.55, speed = 0.12)
         sounds.play(player, Sound.ENTITY_PHANTOM_SWOOP, volume = 0.9f, pitch = 1.25f)
 
-        returnTask = playerData.trackTask(object : BukkitRunnable() {
+        returnTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var ticks = 0
             override fun run() {
                 if (!active || !returning || !player.isOnline || playerStatus.isDead || body?.isValid != true) {
@@ -263,12 +266,10 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
         if (!returnStateSaved) return
         returnStateSaved = false
         if (!player.isOnline) return
+        controls?.close(); controls = null
         player.setGravity(savedGravity)
         player.isInvulnerable = savedInvulnerable
         player.isCollidable = savedCollidable
-        playerStatus.canMove = savedCanMove
-        playerStatus.canAttack = savedCanAttack
-        playerStatus.canSkillUse = savedCanSkillUse
         player.velocity = Vector()
     }
 

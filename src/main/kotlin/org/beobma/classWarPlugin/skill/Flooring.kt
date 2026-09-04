@@ -1,22 +1,22 @@
 package org.beobma.classWarPlugin.skill
 
+import org.beobma.classWarPlugin.ability.AbilityScope
+import org.beobma.classWarPlugin.ability.AbilityExecution
+
+import org.beobma.classWarPlugin.ability.Targeting
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.effect.EffectApiAccess
-import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
-import org.beobma.classWarPlugin.entity.mob.MobEntityData
 import org.beobma.classWarPlugin.game.Game
-import org.beobma.classWarPlugin.manager.PlayerTagManager
-import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.entity.player.PlayerStatus
 import org.beobma.classWarPlugin.util.TargetType
 import org.beobma.classWarPlugin.util.HitboxUtil
 import org.bukkit.Location
 import org.bukkit.entity.Player
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
-import java.util.UUID
 
 /**
  * 고정된 구형 범위 안의 대상을 매 틱 추적하는 장판 효과의 기반 형식이다.
@@ -26,8 +26,9 @@ import java.util.UUID
  */
 abstract class Flooring : EffectApiAccess {
     protected lateinit var playerData: PlayerData
-    protected lateinit var player: Player
+    protected val player: Player get() = playerData.player
     protected lateinit var playerStatus: PlayerStatus
+    protected lateinit var abilityScope: AbilityScope
     protected lateinit var game: Game
 
     abstract var location: Location
@@ -42,9 +43,9 @@ abstract class Flooring : EffectApiAccess {
     fun inject(playerData: PlayerData) {
         if (playerData.entityStatus !is PlayerStatus) return
         this.playerData = playerData
-        this.player = playerData.player
         this.playerStatus = playerData.entityStatus
         this.game = playerData.initGame
+        this.abilityScope = checkNotNull(AbilityExecution.current)
     }
 
     /** 시간 제한을 제거하고 [predicate]가 참인 동안 장판을 유지한다. */
@@ -76,66 +77,33 @@ abstract class Flooring : EffectApiAccess {
 
         var previousTargets: MutableSet<EntityData> = HashSet()
         var currentTargets: MutableSet<EntityData> = HashSet()
-        val trainingCandidates: MutableList<EntityData> = ArrayList()
-        val trainingCandidateIds: MutableSet<UUID> = HashSet()
 
-        val task = object : BukkitRunnable() {
+        val task = object : BukkitRunnable(abilityScope) {
+            override fun onCancel() {
+                previousTargets.toList().forEach { onFlooringEntityOut(it, currentLocation) }
+                previousTargets.clear()
+                currentTargets.clear()
+                onFlooringEnd()
+            }
+
             override fun run() {
                 if (time == null) {
                     if (continueWhile?.invoke() == false) {
-                        onFlooringEnd()
                         cancel()
                         return
                     }
                 } else {
                     if (ticks++ >= time * 20) {
-                        onFlooringEnd()
                         cancel()
                         return
                     }
                 }
 
-                val isTraining = PlayerTagManager.isTraining(player)
-                val targetCandidates = if (isTraining) {
-                    trainingCandidates.clear()
-                    trainingCandidateIds.clear()
-                    game.playerDatas.forEach { data ->
-                        val entityId = data.entity.uniqueId
-                        if (trainingCandidateIds.add(entityId)) {
-                            trainingCandidates.add(data)
-                        }
-                    }
-                    for (livingEntity in player.world.livingEntities) {
-                        if (livingEntity == player || livingEntity is Player) continue
-                        val data = game.playerDatas.find { it.entity == livingEntity }
-                            ?: if (livingEntity.isMannequin()) DummyEntityData(livingEntity, game)
-                            else MobEntityData(livingEntity, game)
-                        if (data !in game.playerDatas) game.playerDatas.add(data)
-                        val entityId = livingEntity.uniqueId
-                        if (trainingCandidateIds.add(entityId)) {
-                            trainingCandidates.add(data)
-                        }
-                    }
-                    trainingCandidates
-                } else {
-                    game.playerDatas
-                }
-
                 currentTargets.clear()
-                for (targetData in targetCandidates) {
-                    if (targetType == TargetType.Enemy && targetData == playerData) continue
-                    if (!targetData.entityStatus.isSkillTargeting) continue
-                    if (!HitboxUtil.intersectsSphere(targetData.entity.boundingBox, currentLocation.toVector(), radius)) continue
-                    val isValidTarget = when (targetType) {
-                        TargetType.Self -> targetData == playerData
-                        TargetType.Enemy -> targetData !is PlayerData && isTraining ||
-                            (targetData is PlayerData && playerData.isEnemyOf(targetData))
-                        TargetType.All -> true
+                Targeting.select(playerData, targetType, currentLocation.world, includeSelf = true)
+                    .filterTo(currentTargets) {
+                        HitboxUtil.intersectsSphere(it.entity.boundingBox, currentLocation.toVector(), radius)
                     }
-                    if (isValidTarget) {
-                        currentTargets.add(targetData)
-                    }
-                }
 
                 for (exited in previousTargets) {
                     if (!currentTargets.contains(exited)) {

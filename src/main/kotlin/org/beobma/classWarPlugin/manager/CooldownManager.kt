@@ -8,17 +8,17 @@ import java.util.UUID
 import kotlin.math.ceil
 
 /**
- * 플레이어·스킬 조합별 재사용 대기시간을 단조 시계로 추적한다.
+ * 플레이어·스킬 조합별 재사용 대기시간을 경기의 전투 시계로 추적한다.
  * Bukkit 아이템 쿨다운은 같은 재료를 쓰는 활성 스킬 중 가장 긴 남은 시간으로 동기화된다.
  */
 object CooldownManager {
-    private const val NANOS_PER_TICK = 50_000_000L
 
     private data class CooldownKey(val playerId: UUID, val skillId: String)
     private data class CooldownEntry(
-        val expiresAtNanos: Long,
+        val expiresAtTick: Long,
         val material: Material,
-        val pausedAtNanos: Long? = null,
+        val clock: () -> Long,
+        val pausedAtTick: Long? = null,
     )
 
     private val cooldowns: MutableMap<CooldownKey, CooldownEntry> = mutableMapOf()
@@ -48,7 +48,8 @@ object CooldownManager {
         }
         val flowMultiplier = ClassBalanceManager.cooldownFlowMultiplier(player, skill)
         val effectiveTicks = effectiveCooldownTicks(ticks, flowMultiplier)
-        cooldowns[key] = CooldownEntry(System.nanoTime() + effectiveTicks * NANOS_PER_TICK, item.type)
+        val clock = { skill.abilityScope.game.combatTick }
+        cooldowns[key] = CooldownEntry(clock() + effectiveTicks, item.type, clock)
         refreshMaterialCooldown(player, item.type)
     }
 
@@ -64,7 +65,7 @@ object CooldownManager {
         if (ticks <= 0) return
         val key = CooldownKey(player.uniqueId, skill.id)
         val entry = cooldowns[key] ?: return
-        cooldowns[key] = entry.copy(expiresAtNanos = entry.expiresAtNanos - ticks * NANOS_PER_TICK)
+        cooldowns[key] = entry.copy(expiresAtTick = entry.expiresAtTick - ticks)
         refreshMaterialCooldown(player, entry.material)
     }
 
@@ -73,10 +74,10 @@ object CooldownManager {
         if (multiplier <= 0.0) return
         val key = CooldownKey(player.uniqueId, skill.id)
         val entry = cooldowns[key] ?: return
-        val now = entry.pausedAtNanos ?: System.nanoTime()
-        val remainingNanos = (entry.expiresAtNanos - now).coerceAtLeast(0L)
-        val multiplied = (remainingNanos.toDouble() * multiplier).toLong()
-        cooldowns[key] = entry.copy(expiresAtNanos = now + multiplied)
+        val now = entry.pausedAtTick ?: entry.clock()
+        val remainingTicks = (entry.expiresAtTick - now).coerceAtLeast(0L)
+        val multiplied = (remainingTicks.toDouble() * multiplier).toLong()
+        cooldowns[key] = entry.copy(expiresAtTick = now + multiplied)
         refreshMaterialCooldown(player, entry.material)
     }
 
@@ -84,19 +85,19 @@ object CooldownManager {
     fun pauseCooldown(player: Player, skill: Skill) {
         val key = CooldownKey(player.uniqueId, skill.id)
         val entry = cooldowns[key] ?: return
-        if (entry.pausedAtNanos != null) return
-        cooldowns[key] = entry.copy(pausedAtNanos = System.nanoTime())
+        if (entry.pausedAtTick != null) return
+        cooldowns[key] = entry.copy(pausedAtTick = entry.clock())
         refreshMaterialCooldown(player, entry.material)
     }
 
-    /** 정지 중 경과한 실제 시간을 만료 시각에 더해 흐름을 재개한다. */
+    /** 정지 중 경과한 전투 시간을 만료 시각에 더해 흐름을 재개한다. */
     fun resumeCooldown(player: Player, skill: Skill) {
         val key = CooldownKey(player.uniqueId, skill.id)
         val entry = cooldowns[key] ?: return
-        val pausedAt = entry.pausedAtNanos ?: return
+        val pausedAt = entry.pausedAtTick ?: return
         cooldowns[key] = entry.copy(
-            expiresAtNanos = entry.expiresAtNanos + (System.nanoTime() - pausedAt),
-            pausedAtNanos = null,
+            expiresAtTick = entry.expiresAtTick + (entry.clock() - pausedAt),
+            pausedAtTick = null,
         )
         refreshMaterialCooldown(player, entry.material)
     }
@@ -126,8 +127,8 @@ object CooldownManager {
     }
 
     private fun remainingTicks(entry: CooldownEntry): Int {
-        val now = entry.pausedAtNanos ?: System.nanoTime()
-        return ceil((entry.expiresAtNanos - now).toDouble() / NANOS_PER_TICK).toInt().coerceAtLeast(0)
+        val now = entry.pausedAtTick ?: entry.clock()
+        return (entry.expiresAtTick - now).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
     }
 
     internal fun effectiveCooldownTicks(ticks: Int, flowMultiplier: Double): Long {

@@ -1,12 +1,12 @@
 package org.beobma.classWarPlugin.gameClass.list
 
-import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.ability.Targeting
+
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.manager.ClassBalanceManager
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
-import org.beobma.classWarPlugin.manager.SkillManager.getTargetCandidates
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
@@ -19,7 +19,7 @@ import org.beobma.classWarPlugin.util.HitboxUtil
 import org.bukkit.*
 import org.bukkit.util.Vector
 import org.bukkit.entity.BlockDisplay
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.util.Transformation
 import org.joml.Quaternionf
 import org.joml.Vector3f
@@ -36,7 +36,9 @@ private const val LIGHT_WIZARD_MAX_PRISMS = 5
 private const val LIGHT_WIZARD_PRISM_PULSE_RADIUS = 2.0
 private const val LIGHT_WIZARD_PRISM_PULSE_POINTS = 48
 
-class LightWizard : GameClass() {
+class LightWizard : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameEndHandler {
+    override fun onGameEnd() { prisms.forEach { it.display.remove() }; prisms.clear() }
+    override val classId = "light-wizard"
     override val name = "<gray>프리즘"
     override val rank = Rank.A
     override val classItemMaterial = Material.LIGHT
@@ -79,7 +81,7 @@ class LightWizard : GameClass() {
         )
         val prism = Prism(location.clone(), display)
         prisms.addLast(prism)
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var tick = 0
             override fun run() {
                 if (prism !in prisms || !display.isValid) {
@@ -134,8 +136,7 @@ class LightWizard : GameClass() {
         val start = beam.start.toVector()
         val finish = end.toVector()
         if (finish.distanceSquared(start) <= 0.0) return
-        playerData.getTargetCandidates().filter { it != playerData && it.entityStatus.isSkillTargeting }.forEach { target ->
-            if (target is PlayerData && !playerData.isEnemyOf(target)) return@forEach
+        Targeting.select(playerData, org.beobma.classWarPlugin.util.TargetType.Enemy, beam.start.world).forEach { target ->
             if (!HitboxUtil.intersectsSegment(target.entity.boundingBox, start, finish, expansion = 0.25)) return@forEach
             damageWithLight(target, beam.depth)
         }
@@ -183,11 +184,9 @@ class LightWizard : GameClass() {
     }
 
     private fun hitPrismPulseTargets(center: Location, depth: Int) {
-        playerData.getTargetCandidates()
-            .filter { it != playerData && it.entityStatus.isSkillTargeting }
+        Targeting.select(playerData, org.beobma.classWarPlugin.util.TargetType.Enemy, center.world)
             .forEach { target ->
-                if (target is PlayerData && !playerData.isEnemyOf(target)) return@forEach
-                if (!HitboxUtil.intersectsSphere(
+                    if (!HitboxUtil.intersectsSphere(
                         target.entity.boundingBox,
                         center.toVector(),
                         LIGHT_WIZARD_PRISM_PULSE_RADIUS,
@@ -211,6 +210,7 @@ class LightWizard : GameClass() {
     )
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "light-wizard/red-skill"
         override val name = "<bold>프리즘"
         override val description = listOf(
             "<gray>10칸 내의 바라보는 블럭에 프리즘을 설치한다. (최대 5개)",
@@ -218,8 +218,8 @@ class LightWizard : GameClass() {
         )
         override val cooldown = LIGHT_WIZARD_PRISM_COOLDOWN_SECONDS
 
-        override fun use() {
-            placePrism()
+        override fun use(): Boolean {
+            return placePrism()
         }
 
         override fun isUseSuccess(): Boolean {
@@ -230,6 +230,7 @@ class LightWizard : GameClass() {
     }
 
     private inner class OrangeSkill : Skill() {
+        override val definitionId = "light-wizard/orange-skill"
         override val name = "<bold>분광"
         override val description = listOf(
             "<gray>바라보는 방향으로 빛의 광선을 발사한다.",
@@ -248,8 +249,9 @@ class LightWizard : GameClass() {
         )
         override val cooldown = LIGHT_WIZARD_SPECTRUM_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             fireBeams()
+            return true
         }
     }
 

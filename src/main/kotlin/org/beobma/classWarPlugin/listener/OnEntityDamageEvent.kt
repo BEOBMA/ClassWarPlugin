@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.listener
 
+import org.beobma.classWarPlugin.ability.AbilityTree
+
 import org.beobma.classWarPlugin.manager.GameManager.trainingInstance
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.game.GamePhase
@@ -64,8 +66,8 @@ class OnEntityDamageEvent : Listener {
             event.isCancelled = true
             return
         }
-        handlerData?.gameClasses?.filterIsInstance<EnvironmentalDamageHandler>()?.forEach { handler ->
-            handler.onEnvironmentalDamage(event)
+        handlerData?.let { AbilityTree.handlers(it.gameClasses, EnvironmentalDamageHandler::class.java) }?.forEach { bound ->
+            bound.call { it.onEnvironmentalDamage(event) }
             if (event.isCancelled) return
         }
         if (event.isCancelled) return

@@ -9,7 +9,6 @@ import org.beobma.classWarPlugin.manager.PlayerManager.heal
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
-import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.MoveSpeedDecrease
@@ -30,6 +29,7 @@ private const val GAMBLER_MOVE_SPEED_BONUS_PERCENT = 15
 private const val GAMBLER_MOVE_SPEED_PENALTY_PERCENT = 10
 
 class Gambler : GameClass(), GameStatusHandler {
+    override val classId = "gambler"
     override val name = "<gray>도박사"
     override val rank = Rank.B
     override val classItemMaterial = Material.PAPER
@@ -125,24 +125,27 @@ class Gambler : GameClass(), GameStatusHandler {
 
     private fun setDamageMultiplier(multiplier: Double, seconds: Int) {
         damageMultiplier = multiplier
-        damageMultiplierUntil = player.world.fullTime + seconds * 20L
+        damageMultiplierUntil = game.combatTick + seconds * 20L
     }
 
     private enum class Outcome { NONE, JACKPOT, BUST }
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "gambler/red-skill"
         override val name = "<bold>히트"
         override val description = listOf(
             "<gray>덱에서 {keyword:Card}를 1장 뽑는다."
         )
         override val cooldown = GAMBLER_HIT_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             drawCard()
+            return true
         }
     }
 
     private inner class OrangeSkill : Skill() {
+        override val definitionId = "gambler/orange-skill"
         override val name = "<bold>스탠드"
         override val description = listOf(
             "<gray>패를 덱으로 되돌리고 덱을 섞는다.",
@@ -151,12 +154,14 @@ class Gambler : GameClass(), GameStatusHandler {
         )
         override val cooldown = GAMBLER_STAND_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             stand()
+            return true
         }
     }
 
     private inner class YellowSkill : Skill() {
+        override val definitionId = "gambler/yellow-skill"
         override val name = "<bold>더블"
         override val description = listOf(
             "<gray>덱에서 {keyword:Card}를 1장 뽑는다.",
@@ -166,9 +171,10 @@ class Gambler : GameClass(), GameStatusHandler {
         )
         override val cooldown = GAMBLER_DOUBLE_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             val outcome = drawCard(doubled = true)
             if (outcome == Outcome.NONE) stand(2)
+            return true
         }
     }
 
@@ -193,7 +199,7 @@ class Gambler : GameClass(), GameStatusHandler {
         )
 
         override fun onHit(context: DamageContext) {
-            if (player.world.fullTime >= damageMultiplierUntil) damageMultiplier = 1.0
+            if (game.combatTick >= damageMultiplierUntil) damageMultiplier = 1.0
             context.addDamageDealtMultiplier(damageMultiplier)
         }
     }

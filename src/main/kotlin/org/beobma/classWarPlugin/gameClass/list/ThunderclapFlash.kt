@@ -16,13 +16,12 @@ import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.TargetType
-import org.bukkit.Bukkit
 import org.bukkit.Color
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.util.Vector
 import java.util.UUID
 import kotlin.math.PI
@@ -35,6 +34,7 @@ private const val THUNDERCLAP_MAX_CHARGES = 6
 private const val THUNDERCLAP_RECHARGE_SECONDS = 12
 
 class ThunderclapFlash : GameClass(), GameStatusHandler {
+    override val classId = "thunderclap-flash"
     override val name = "<gray>벽력일섬"
     override val rank = Rank.A
     override val classItemMaterial = Material.GOLDEN_HORSE_ARMOR
@@ -66,6 +66,7 @@ class ThunderclapFlash : GameClass(), GameStatusHandler {
     }
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "thunderclap-flash/red-skill"
         override val name = "<bold>벽력일섬"
         override val description = listOf(
             "<gray>최대 6회 충전되는 충전형 스킬.", "",
@@ -74,7 +75,7 @@ class ThunderclapFlash : GameClass(), GameStatusHandler {
             "<gray>6초 안에 이 스킬로 여러번 피해를 입으면 피해량이 50%씩 감소한다. (최소 1의 피해를 보장함)"
         )
         override val cooldown = 0
-        private var selectedTarget: EntityData? = null
+        private var selectedTarget: EntityData? by requestValue { null }
 
         override fun isUseSuccess(): Boolean {
             if (charges <= 0) {
@@ -86,8 +87,8 @@ class ThunderclapFlash : GameClass(), GameStatusHandler {
             return selectedTarget != null
         }
 
-        override fun use() {
-            val target = selectedTarget ?: return
+        override fun use(): Boolean {
+            val target = selectedTarget ?: return false
             selectedTarget = null
             charges--
             rechargeSeconds = 0
@@ -108,7 +109,7 @@ class ThunderclapFlash : GameClass(), GameStatusHandler {
             val from = player.location.clone()
             player.teleport(destination)
 
-            val now = Bukkit.getCurrentTick().toLong()
+            val now = game.combatTick
             val previous = hitHistory[target.entity.uniqueId]
             val count = if (previous != null && now - previous.first <= 120L) previous.second else 0
             val damage = (4.0 * 0.5.pow(count)).coerceAtLeast(1.0)
@@ -120,6 +121,7 @@ class ThunderclapFlash : GameClass(), GameStatusHandler {
             sounds.play(target.entity, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, volume = 0.52f, pitch = 1.8f)
             sounds.play(player, Sound.ENTITY_BREEZE_SHOOT, volume = 0.9f, pitch = 1.65f)
             sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_SWEEP, volume = 1.0f, pitch = 1.45f)
+            return true
         }
     }
 
@@ -179,7 +181,7 @@ class ThunderclapFlash : GameClass(), GameStatusHandler {
         particles.spawn(impact, Particle.CRIT, count = 42, spread = 0.8, speed = 0.18)
         particles.spawn(impact, Particle.SWEEP_ATTACK, count = 5, spread = 0.65, speed = 0.08)
 
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var tick = 0
             override fun run() {
                 if (tick >= 7 || !player.isOnline) {

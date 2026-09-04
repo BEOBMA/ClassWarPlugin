@@ -20,12 +20,13 @@ import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
 class Luna : PlanetClass(), GameStatusHandler {
+    override val classId = "luna"
     override val name = "<gray>달"
     override val rank = Rank.B
     override val classItemMaterial = Material.COBBLESTONE
@@ -47,7 +48,7 @@ class Luna : PlanetClass(), GameStatusHandler {
         attackPower = 0
         attackSpeedPower = 0
         moveSpeedPower = 0
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var tick = 0
             override fun run() {
                 if (!player.isOnline || playerStatus.isDead) {
@@ -61,7 +62,7 @@ class Luna : PlanetClass(), GameStatusHandler {
                     return
                 }
                 restoreAppliedStats()
-                val now = player.world.fullTime
+                val now = game.combatTick
                 val current = lightLocation
                 if (current != null && (current.world != player.world || current.distanceSquared(player.location) > 196.0)) {
                     lightLocation = null
@@ -129,7 +130,7 @@ class Luna : PlanetClass(), GameStatusHandler {
         particles.spawn(light, Particle.TOTEM_OF_UNDYING, count = 28, spread = 0.55, speed = 0.09)
         sounds.play(player, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, volume = 0.65f, pitch = 1.65f)
         lightLocation = null
-        nextLightTick = player.world.fullTime + 200L
+        nextLightTick = game.combatTick + 200L
     }
 
     private fun restoreAppliedStats() {

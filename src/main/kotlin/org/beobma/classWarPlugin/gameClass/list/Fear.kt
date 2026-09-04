@@ -25,7 +25,7 @@ import org.bukkit.entity.BlockDisplay
 import org.bukkit.entity.Display
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.util.Transformation
 import org.bukkit.util.Vector
 import org.joml.Quaternionf
@@ -53,6 +53,7 @@ private enum class FearStage {
 }
 
 class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler {
+    override val classId = "fear"
     override val name = "<gray>공포"
     override val rank = Rank.SPECIAL
     override val classItemMaterial = Material.CRYING_OBSIDIAN
@@ -294,7 +295,7 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
         }
         val right = Vector(-backward.z, 0.0, backward.x)
         val sideOffset = Random.nextDouble(-2.2, 2.2)
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var step = 0
             override fun run() {
                 if (!victim.isOnline || target.entityStatus.isDead || !isInsideActiveDomain(victim.location) || step > 5) {
@@ -342,7 +343,7 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
         if (changedLocations.isEmpty()) return
         hallucinatedBlocks.getOrPut(target.uniqueId) { mutableSetOf() }.addAll(changedLocations)
         sounds.playTo(victim, Sound.BLOCK_SCULK_SHRIEKER_SHRIEK, 0.72f, 0.62f, SoundCategory.MASTER, wallCenter)
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
                 restoreHallucinatedBlocks(target, changedLocations)
             }
@@ -390,7 +391,7 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
         victim.showEntity(ClassWarPlugin.instance, display)
         sounds.playTo(victim, Sound.ENTITY_ENDERMAN_STARE, 0.48f, 0.46f, SoundCategory.MASTER, start)
 
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var ticks = 0
             var finished = false
 
@@ -551,6 +552,7 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
     }
 
     private inner class NightmareDomain : Skill() {
+        override val definitionId = "fear/nightmare-domain"
         override val name = "<bold>악몽의 영역"
         override val description = listOf(
             "<gray>자신의 위치를 중심으로 반경 48칸의 악몽 영역을 30초간 생성한다.",
@@ -559,7 +561,7 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
         )
         override val cooldown = FEAR_DOMAIN_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             if (activeDomainCenter != null) endDomain()
             activeDomainCenter = player.location.clone()
             activeDomainSeconds = FEAR_DOMAIN_DURATION_SECONDS
@@ -567,6 +569,7 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
             particles.spawn(player, Particle.SOUL, count = 60, spread = 1.15, speed = 0.15)
             particles.spawn(player, Particle.SCULK_SOUL, count = 40, spread = 2.0, speed = 0.12)
             sounds.play(player, Sound.ENTITY_WARDEN_EMERGE, volume = 0.75f, pitch = 0.48f)
+            return true
         }
     }
 

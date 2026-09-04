@@ -39,7 +39,7 @@ object GameClassManager {
                 persistentDataContainer.set(
                     weaponClassKey,
                     PersistentDataType.STRING,
-                    this@toWeaponItemStack.javaClass.name,
+                    this@toWeaponItemStack.classId,
                 )
             }
         }

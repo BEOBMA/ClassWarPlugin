@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.manager
 
+import org.beobma.classWarPlugin.ability.AbilityExecution
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.entity.EntityData
@@ -9,9 +11,6 @@ import org.beobma.classWarPlugin.manager.GameClassManager.getWeaponClassId
 import org.beobma.classWarPlugin.skill.Skill
 import org.bukkit.configuration.file.FileConfiguration
 import org.bukkit.entity.Player
-import java.lang.StackWalker
-import java.util.Locale
-import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.round
 import kotlin.math.roundToInt
 
@@ -79,8 +78,6 @@ object ClassBalanceManager {
     private const val MAXIMUM_MULTIPLIER = 10.0
     private val miniMessageTagPattern = Regex("<[^>]+>")
     private val camelCaseBoundary = Regex("([a-z0-9])([A-Z])")
-    private val stackWalker = StackWalker.getInstance()
-    private val callerKeyCache = ConcurrentHashMap<String, String>()
 
     private data class ClassDescriptor(val canonicalName: String, val configKey: String)
 
@@ -97,7 +94,6 @@ object ClassBalanceManager {
     fun load(config: FileConfiguration, classes: Collection<GameClass>) {
         val uniqueClasses = classes.distinctBy { it.javaClass.name }
         descriptors = uniqueClasses.map { ClassDescriptor(it.javaClass.name, configKey(it)) }
-        callerKeyCache.clear()
 
         defaultModifiers = readModifiers(config, "$ROOT_PATH.defaults", ClassBalanceModifiers())
         val loaded = linkedMapOf<String, ClassBalanceModifiers>()
@@ -131,7 +127,7 @@ object ClassBalanceManager {
     }
 
     /** 클래스 단순 이름을 안정적인 kebab-case 설정 키로 변환한다. */
-    fun configKey(gameClass: GameClass): String = configKey(gameClass.javaClass.simpleName)
+    fun configKey(gameClass: GameClass): String = gameClass.classId
 
     /** [gameClass]의 현재 배율을 반환하며 미등록 클래스에는 기본 배율을 사용한다. */
     fun modifiers(gameClass: GameClass): ClassBalanceModifiers =
@@ -169,8 +165,8 @@ object ClassBalanceManager {
             ?.filterIsInstance<PlayerData>()
             ?.firstOrNull { it.uniqueId == player.uniqueId }
             ?: return globalMultiplier
-        val key = resolveSkillKey(playerData, skill)
-        val classMultiplier = key?.let { modifiersByKey[it] }?.cooldownFlowMultiplier ?: 1.0
+        val key = resolveSkillKey(skill)
+        val classMultiplier = modifiersByKey[key]?.cooldownFlowMultiplier ?: 1.0
         return (globalMultiplier * classMultiplier).coerceAtLeast(MINIMUM_MULTIPLIER)
     }
 
@@ -208,35 +204,14 @@ object ClassBalanceManager {
     fun scaleStatusPower(caster: PlayerData?, power: Int): Int =
         scalePositiveInt(power, effective(caster?.let(::resolveCallerKey), ClassBalanceField.STATUS_POWER))
 
-    private fun resolveSkillKey(playerData: PlayerData, skill: Skill): String? {
-        keyForClassName(skill.javaClass.name)?.let { return it }
-        playerData.gameClasses.firstOrNull { owner -> owner.skills.any { it === skill || it.id == skill.id } }
-            ?.let { return configKey(it) }
-        return resolveCallerKey(playerData)
-    }
+    private fun resolveSkillKey(skill: Skill): String = skill.definitionId.substringBefore('/')
 
-    private fun resolveCallerKey(playerData: PlayerData): String? {
-        val frameNames = stackWalker.walk { frames ->
-            frames.limit(48).map { it.className }.toList()
-        }
-        frameNames.forEach { className ->
-            callerKeyCache[className]?.let { return it }
-            keyForClassName(className)?.let { key ->
-                callerKeyCache[className] = key
-                return key
-            }
-            if (className.startsWith("org.beobma.classWarPlugin.util.ElementalistRuntime")) {
-                descriptors.firstOrNull { it.canonicalName.endsWith(".Elementalist") }?.configKey?.let { key ->
-                    callerKeyCache[className] = key
-                    return key
-                }
-            }
-        }
-        return playerData.gameClasses.singleOrNull()?.let(::configKey)
-    }
+    private fun resolveCallerKey(playerData: PlayerData): String? =
+        AbilityExecution.current
+            ?.takeIf { it.playerData === playerData }?.classId
 
     private fun keyForClassName(className: String): String? = descriptors.firstOrNull { descriptor ->
-        className == descriptor.canonicalName || className.startsWith("${descriptor.canonicalName}\$")
+        className == descriptor.configKey || className == descriptor.canonicalName || className.startsWith("${descriptor.canonicalName}\$")
     }?.configKey
 
     private fun readModifiers(
@@ -275,10 +250,6 @@ object ClassBalanceManager {
         val scaled = (value.toDouble() * multiplier).roundToInt()
         return if (value > 0) scaled.coerceAtLeast(1) else scaled.coerceAtMost(-1)
     }
-
-    private fun configKey(simpleName: String): String = simpleName
-        .replace(camelCaseBoundary, "$1-$2")
-        .lowercase(Locale.ROOT)
 
     private fun normalize(value: Double): Double =
         round(value.coerceIn(MINIMUM_MULTIPLIER, MAXIMUM_MULTIPLIER) * 10.0) / 10.0

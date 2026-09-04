@@ -18,13 +18,14 @@ import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.entity.BlockDisplay
 import org.bukkit.entity.Display
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.util.Transformation
 import org.joml.Quaternionf
 import org.joml.Vector3f
 import kotlin.math.min
 
 class Stalker : GameClass(), GameStatusHandler {
+    override val classId = "stalker"
     override val name = "<gray>스토커"
     override val rank = Rank.B
     override val classItemMaterial = Material.SCULK_SENSOR
@@ -45,7 +46,7 @@ class Stalker : GameClass(), GameStatusHandler {
         playerData.getOrCreateStatus(playerData) { StalkerTrailStatus() }.updatePower(0)
         val stalkingTarget = target ?: return
         var lastTrailLocation = stalkingTarget.player.location.clone()
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var tick = 0
             override fun run() {
                 if (!player.isOnline || playerStatus.isDead || stalkingTarget.entityStatus.isDead) {
@@ -54,7 +55,7 @@ class Stalker : GameClass(), GameStatusHandler {
                     cancel()
                     return
                 }
-                val now = player.world.fullTime
+                val now = game.combatTick
                 trails.toList().filter { now - it.createdAt >= 200L || !it.display.isValid }.forEach {
                     it.display.remove()
                     trails.remove(it)
@@ -86,7 +87,7 @@ class Stalker : GameClass(), GameStatusHandler {
         }
         TemporaryDisplayManager.mark(display, player.uniqueId)
         player.showEntity(ClassWarPlugin.instance, display)
-        trails += Trail(location, player.world.fullTime, display)
+        trails += Trail(location, game.combatTick, display)
     }
 
     private fun absorbTrail(trail: Trail) {

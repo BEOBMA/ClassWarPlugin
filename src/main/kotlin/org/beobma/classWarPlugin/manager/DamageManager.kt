@@ -1,5 +1,8 @@
 package org.beobma.classWarPlugin.manager
 
+import org.beobma.classWarPlugin.ability.AbilityTree
+import org.beobma.classWarPlugin.ability.AbilityExecution
+
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.entity.player.PlayerData
@@ -41,9 +44,10 @@ object DamageManager {
      * @return 취소되지 않았으며 최종 피해가 양수인지 여부
      */
     fun process(context: DamageContext): Boolean {
-        if (context.damage <= 0.0) return false
-        if (context.attacker.gameClasses.filterIsInstance<Parasite>().any { it.isParasitizing() }) return false
-        if ((context.target as? PlayerData)?.gameClasses?.filterIsInstance<Parasite>()
+        if (context.damage <= 0.0 || context.attacker.game.isPaused) return false
+        if (AbilityExecution.current?.isClosed == true && context.path != DamagePath.STATUS_EFFECT) return false
+        if (AbilityTree.nodes(context.attacker.gameClasses, activeOnly = true).filterIsInstance<Parasite>().any { it.isParasitizing() }) return false
+        if ((context.target as? PlayerData)?.findGameClass(Parasite::class.java)?.let { listOf(it) }
                 ?.any { it.isParasitizing() } == true
         ) return false
         if (context.target.hasStatus<Invincibility>()) return false
@@ -99,27 +103,23 @@ object DamageManager {
     private fun dispatchHandlers(context: DamageContext) {
         val targetPlayer = context.target as? PlayerData
 
-        context.attacker.gameClasses.forEach { gameClass ->
-            (gameClass as? OnHitHandler)?.dispatchOnHit(context)
-            gameClass.passives.filterIsInstance<OnHitHandler>().forEach { it.dispatchOnHit(context) }
-            gameClass.skills.filterIsInstance<OnHitHandler>().forEach { it.dispatchOnHit(context) }
-        }
-        targetPlayer?.gameClasses?.forEach { gameClass ->
-            (gameClass as? WhenHitHandler)?.dispatchWhenHit(context)
-            gameClass.passives.filterIsInstance<WhenHitHandler>().forEach { it.dispatchWhenHit(context) }
-            gameClass.skills.filterIsInstance<WhenHitHandler>().forEach { it.dispatchWhenHit(context) }
+        AbilityTree.handlers(context.attacker.gameClasses, OnHitHandler::class.java)
+            .forEach { bound -> bound.call { it.dispatchOnHit(context) } }
+        targetPlayer?.let { target ->
+            AbilityTree.handlers(target.gameClasses, WhenHitHandler::class.java)
+                .forEach { bound -> bound.call { it.dispatchWhenHit(context) } }
         }
 
         context.attacker.statusAbnormalitys.filterIsInstance<OnHitHandler>()
-            .forEach { it.dispatchOnHit(context) }
+            .forEach { (it as org.beobma.classWarPlugin.status.StatusAbnormality).fromSource { it.dispatchOnHit(context) } }
         context.target.statusAbnormalitys.filterIsInstance<WhenHitHandler>()
-            .forEach { it.dispatchWhenHit(context) }
+            .forEach { (it as org.beobma.classWarPlugin.status.StatusAbnormality).fromSource { it.dispatchWhenHit(context) } }
 
         if (context.path.isBasicAttack) {
             context.attacker.statusAbnormalitys.filterIsInstance<StatusOnHitHandler>()
-                .forEach { it.onAttackHit(context) }
+                .forEach { (it as org.beobma.classWarPlugin.status.StatusAbnormality).fromSource { it.onAttackHit(context) } }
             context.target.statusAbnormalitys.filterIsInstance<StatusWhenHitHandler>()
-                .forEach { it.whenAttackHit(context) }
+                .forEach { (it as org.beobma.classWarPlugin.status.StatusAbnormality).fromSource { it.whenAttackHit(context) } }
         }
     }
 

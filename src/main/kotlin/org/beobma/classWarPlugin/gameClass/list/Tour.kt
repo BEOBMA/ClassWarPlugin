@@ -12,7 +12,7 @@ import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
 // 밸런스 조정 상수
@@ -22,6 +22,7 @@ private const val TOUR_MIN_VISITS = 8
 private const val TOUR_VISIT_INTERVAL_TICKS = 60L
 
 class Tour : GameClass() {
+    override val classId = "tour"
     override val name = "<gray>순회공연"
     override val rank = Rank.C
     override val classItemMaterial = Material.GOAT_HORN
@@ -29,6 +30,7 @@ class Tour : GameClass() {
     override var passives: List<BasePassive> = listOf()
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "tour/red-skill"
         override val name = "<bold>순회공연 시작!"
         override val description = listOf(
             "<gray>6칸 내의 바라보는 적이 순회공연을 하게 만든다.", "",
@@ -38,7 +40,7 @@ class Tour : GameClass() {
         )
         override val cooldown = TOUR_START_COOLDOWN_SECONDS
 
-        private var selectedTarget: PlayerData? = null
+        private var selectedTarget: PlayerData? by requestValue { null }
 
         override fun isUseSuccess(): Boolean {
             selectedTarget = playerData.shotLaserGetEntityData(TOUR_TARGET_RANGE, TargetType.Enemy, false) as? PlayerData
@@ -47,13 +49,13 @@ class Tour : GameClass() {
             return false
         }
 
-        override fun use() {
-            val target = selectedTarget ?: return
+        override fun use(): Boolean {
+            val target = selectedTarget ?: return false
             selectedTarget = null
             val originalLocation = target.player.location.clone()
             val performers = game.playerDatas.filterIsInstance<PlayerData>()
                 .filter { !it.entityStatus.isDead && it.player.isOnline }
-            if (performers.isEmpty()) return
+            if (performers.isEmpty()) return false
             val totalVisits = if (performers.size <= TOUR_MIN_VISITS) TOUR_MIN_VISITS else performers.size
 
             game.playerDatas.filterIsInstance<PlayerData>()
@@ -76,8 +78,16 @@ class Tour : GameClass() {
                 sounds.play(target.player, Sound.BLOCK_NOTE_BLOCK_BELL, volume = 0.85f, pitch = 1.25f)
             }
 
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope, cancelOnDisconnect = true) {
                 private var visits = 0
+                private var returned = false
+                private fun returnHome() {
+                    if (returned) return
+                    returned = true
+                    if (target.player.isOnline && !target.entityStatus.isDead) teleportWithShow(originalLocation)
+                    else target.returnFromAbility(originalLocation)
+                }
+                override fun onCancel() = returnHome()
 
                 override fun run() {
                     if (!target.player.isOnline || target.entityStatus.isDead) {
@@ -85,7 +95,7 @@ class Tour : GameClass() {
                         return
                     }
                     if (visits >= totalVisits) {
-                        teleportWithShow(originalLocation)
+                        returnHome()
                         target.player.sendMiniMessage("<light_purple><bold>[순회공연]</bold> <gray>공연이 종료되어 원래 위치로 돌아왔습니다.")
                         sounds.play(target.player, Sound.ENTITY_FIREWORK_ROCKET_BLAST, volume = 0.9f, pitch = 1.3f)
                         cancel()
@@ -94,7 +104,7 @@ class Tour : GameClass() {
                     val alive = game.playerDatas.filterIsInstance<PlayerData>()
                         .filter { !it.entityStatus.isDead && it.player.isOnline && it.player.world == target.player.world }
                     if (alive.isEmpty()) {
-                        teleportWithShow(originalLocation)
+                        returnHome()
                         cancel()
                         return
                     }
@@ -106,6 +116,7 @@ class Tour : GameClass() {
                     visits++
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 0L, TOUR_VISIT_INTERVAL_TICKS))
+            return true
         }
     }
 }

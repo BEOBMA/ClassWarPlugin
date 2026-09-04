@@ -21,6 +21,7 @@ private const val ROULETTE_LOW_DAMAGE_MULTIPLIER = 0.5
 private const val ROULETTE_MIRACLE_DAMAGE = 0.0
 
 class Roulette : GameClass() {
+    override val classId = "roulette"
     override val name = "<gray>룰렛"
     override val rank = Rank.B
     override val classItemMaterial = Material.COMPASS

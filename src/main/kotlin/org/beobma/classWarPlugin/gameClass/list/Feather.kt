@@ -17,6 +17,7 @@ private const val FEATHER_JUMP_BOOST_AMPLIFIER = 1
 private const val FEATHER_SLOW_FALLING_AMPLIFIER = 0
 
 class Feather : GameClass() {
+    override val classId = "feather"
     override val name = "<gray>깃털"
     override val rank = Rank.C
     override val classItemMaterial = Material.FEATHER

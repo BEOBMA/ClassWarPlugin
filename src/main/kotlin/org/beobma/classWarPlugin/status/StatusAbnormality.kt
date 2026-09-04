@@ -1,5 +1,8 @@
 package org.beobma.classWarPlugin.status
 
+import org.beobma.classWarPlugin.ability.AbilityScope
+import org.beobma.classWarPlugin.ability.AbilityExecution
+
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.EntityStatus
 import org.beobma.classWarPlugin.entity.player.PlayerData
@@ -18,7 +21,22 @@ import org.bukkit.entity.Entity
 abstract class StatusAbnormality {
     protected lateinit var entityData: EntityData
     protected lateinit var casterData: PlayerData
-    protected lateinit var entity: Entity
+    protected val entity: Entity get() = entityData.entity
+    var effectSource: AbilityScope? = null
+        private set
+    private val owners = mutableSetOf<AbilityScope>()
+
+    /** Shared self resources remain attached until the last using class is removed. */
+    fun retain(scope: AbilityScope) {
+        if (!owners.add(scope)) return
+        scope.resources.own(isAlive = { this in entityData.statusAbnormalitys }) {
+            owners.remove(scope)
+            if (owners.isEmpty()) cleanupFromManager()
+            else if (effectSource === scope) effectSource = owners.first()
+        }
+    }
+
+    fun <T> fromSource(body: () -> T): T = AbilityExecution.with(effectSource, body)
     protected lateinit var entityStatus: EntityStatus
     protected lateinit var game: Game
 
@@ -39,16 +57,17 @@ abstract class StatusAbnormality {
     /** 상태의 대상 [entityData]와 밸런스 계산에 사용할 효과 출처 [victimData]를 연결한다. */
     fun inject(entityData: EntityData, victimData: PlayerData) {
         this.entityData = entityData
-        this.entity = entityData.entity
         this.entityStatus = entityData.entityStatus
         this.game = entityData.game
         this.casterData = victimData
+        effectSource = AbilityExecution.current
+            ?.takeIf { it.playerData === victimData }
+
     }
 
     /** 재접속 등으로 대상 엔티티 객체가 바뀌었을 때 출처는 유지하고 대상만 다시 연결한다. */
     fun rebindEntity(entityData: EntityData) {
         this.entityData = entityData
-        this.entity = entityData.entity
         this.entityStatus = entityData.entityStatus
         this.game = entityData.game
     }
@@ -115,7 +134,7 @@ abstract class StatusAbnormality {
         if (canRemove) {
             entityData.statusAbnormalitys.remove(this@StatusAbnormality)
             power = 0
-            onRemoveStatusAbnormality()
+            fromSource { onRemoveStatusAbnormality() }
         } else {
             power = 0
         }
@@ -191,14 +210,15 @@ abstract class StatusAbnormality {
     }
 
     internal fun tickStatusFromManager() {
-        tickStatus()
+        fromSource { tickStatus() }
     }
 
     internal fun cleanupFromManager() {
+        if (this !in entityData.statusAbnormalitys) return
         stopDurationTicking()
         entityData.statusAbnormalitys.remove(this)
         power = 0
-        onRemoveStatusAbnormality()
+        fromSource { onRemoveStatusAbnormality() }
     }
 
     private fun tickStatus() {
@@ -231,7 +251,7 @@ abstract class StatusAbnormality {
         if (canRemove) {
             entityData.statusAbnormalitys.remove(this@StatusAbnormality)
             power = 0
-            onRemoveStatusAbnormality()
+            fromSource { onRemoveStatusAbnormality() }
         } else {
             power = 0
         }

@@ -12,12 +12,11 @@ import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.TargetType
-import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.entity.BlockDisplay
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.util.Transformation
 import org.joml.Quaternionf
 import org.joml.Vector3f
@@ -26,6 +25,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 class Saturnus : PlanetClass(), GameStatusHandler, GameEndHandler {
+    override val classId = "saturnus"
     override val name = "<gray>토성"
     override val rank = Rank.A
     override val classItemMaterial = Material.SANDSTONE
@@ -45,7 +45,7 @@ class Saturnus : PlanetClass(), GameStatusHandler, GameEndHandler {
             it.respawnAt = 0L
             it.collisionEnabledAt = 0L
         }
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var tick = 0
             override fun run() {
                 if (!player.isOnline || playerStatus.isDead) {
@@ -57,7 +57,7 @@ class Saturnus : PlanetClass(), GameStatusHandler, GameEndHandler {
                     clearDisplays()
                     return
                 }
-                val now = Bukkit.getCurrentTick().toLong()
+                val now = game.combatTick
                 if (tick % 10 == 0) {
                     particles.circle(player.location.clone().add(0.0, 1.0, 0.0), Particle.CRIT, orbitRadius, 56)
                 }
@@ -81,7 +81,7 @@ class Saturnus : PlanetClass(), GameStatusHandler, GameEndHandler {
                     }
                     display.teleport(location)
                     if (now < rock.collisionEnabledAt) return@forEachIndexed
-                    val target = playerData.radius(location, TargetType.Enemy, 0.8, false)
+                    val target = playerData.radius(location, TargetType.Enemy, 0.8, false, hitAttackableObjects = true)
                         .firstOrNull { org.beobma.classWarPlugin.util.HitboxUtil.intersectsSphere(it.entity.boundingBox, location.toVector(), 0.72) }
                         ?: return@forEachIndexed
                     target.damage(2.0, DamageType.Normal, playerData, damagePath = DamagePath.SKILL)

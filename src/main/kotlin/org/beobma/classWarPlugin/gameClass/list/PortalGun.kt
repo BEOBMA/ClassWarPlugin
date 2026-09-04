@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.ability.AbilityExecution
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
@@ -21,7 +23,7 @@ import org.bukkit.entity.Player
 import org.bukkit.entity.Projectile as BukkitProjectile
 import org.bukkit.event.block.Action
 import org.bukkit.event.player.PlayerInteractEvent
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.Transformation
 import org.bukkit.util.Vector
@@ -44,7 +46,9 @@ private const val PORTAL_GUN_MAX_SPEED_GAIN = 0.42
 private const val PORTAL_GUN_MAX_PLAYER_SPEED = 4.2
 private const val PORTAL_GUN_MAX_ENTITY_SPEED = 6.0
 
-class PortalGun : GameClass(), SkillInputHandler {
+class PortalGun : GameClass(), SkillInputHandler, org.beobma.classWarPlugin.gameClass.handler.GameEndHandler {
+    override fun onGameEnd() = clearForPlayers(listOf(playerData.uniqueId))
+    override val classId = "portal-gun"
     override val name = "<gray>포탈건"
     override val rank = Rank.B
     override val classItemMaterial = Material.LIGHT_BLUE_STAINED_GLASS_PANE
@@ -88,6 +92,7 @@ class PortalGun : GameClass(), SkillInputHandler {
     )
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "portal-gun/red-skill"
         override val name = "<bold>포탈건 발사"
         override val description = listOf(
             "<gray>좌클릭 시 파란색 포탈을 발사한다.",
@@ -98,7 +103,7 @@ class PortalGun : GameClass(), SkillInputHandler {
         override val cooldown = PORTAL_GUN_FIRE_COOLDOWN_SECONDS
 
         var nextColor = PortalColor.ORANGE
-        private var pendingPlacement: Placement? = null
+        private var pendingPlacement: Placement? by requestValue { null }
         private var bluePortal: PortalData? = null
         private var orangePortal: PortalData? = null
         private var portalTask: BukkitTask? = null
@@ -125,8 +130,8 @@ class PortalGun : GameClass(), SkillInputHandler {
             return true
         }
 
-        override fun use() {
-            val placement = pendingPlacement ?: return
+        override fun use(): Boolean {
+            val placement = pendingPlacement ?: return false
             pendingPlacement = null
             val portal = createPortal(placement, nextColor)
             when (nextColor) {
@@ -155,6 +160,7 @@ class PortalGun : GameClass(), SkillInputHandler {
                 sounds.play(player, Sound.BLOCK_BEACON_ACTIVATE, volume = 0.75f, pitch = 1.65f)
                 particles.spawn(player, Particle.PORTAL, count = 30, spread = 0.55, speed = 0.12)
             }
+            return true
         }
 
         private fun createPortal(placement: Placement, color: PortalColor): PortalData {
@@ -187,7 +193,7 @@ class PortalGun : GameClass(), SkillInputHandler {
         private fun ensurePortalTask() {
             if (portalTask != null) return
             allPortalSkills += this
-            portalTask = playerData.trackTask(object : BukkitRunnable() {
+            portalTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 private var ticks = 0
 
                 override fun run() {
@@ -206,8 +212,8 @@ class PortalGun : GameClass(), SkillInputHandler {
                         teleportBukkitEntities(blue, orange)
                     }
                     if (ticks % 20 == 0) {
-                        entityCooldowns.entries.removeIf { player.world.fullTime - it.value > 20L }
-                        portalMomentumByEntity.entries.removeIf { player.world.fullTime - it.value.lastTransitTick > 100L }
+                        entityCooldowns.entries.removeIf { game.combatTick - it.value > 20L }
+                        portalMomentumByEntity.entries.removeIf { game.combatTick - it.value.lastTransitTick > 100L }
                     }
                     ticks++
                 }
@@ -244,7 +250,7 @@ class PortalGun : GameClass(), SkillInputHandler {
             val currentIds = mutableSetOf<UUID>()
             for (entity in candidates) {
                 currentIds += entity.uniqueId
-                val now = entity.world.fullTime
+                val now = game.combatTick
                 val currentCenter = entity.boundingBox.center
                 val previousCenter = previousEntityCenters.put(entity.uniqueId, currentCenter.clone())
                     ?: currentCenter.clone().subtract(entity.velocity)
@@ -353,7 +359,7 @@ class PortalGun : GameClass(), SkillInputHandler {
                 return 0
             }
 
-            val now = exit.center.world.fullTime
+            val now = game.combatTick
             val momentum = portalMomentumByEntity[entity.uniqueId]
             val chain = if (momentum != null && now - momentum.lastTransitTick <= PORTAL_GUN_MOMENTUM_CHAIN_TICKS) {
                 (momentum.chain + 1).coerceAtMost(PORTAL_GUN_MAX_MOMENTUM_CHAIN)
@@ -426,7 +432,7 @@ class PortalGun : GameClass(), SkillInputHandler {
                 val relative = point.clone().subtract(entry.center.toVector())
                 abs(relative.dot(entry.normal)) <= 0.85 && insidePortal(entry, point, 0.2, 0.2, 0.2)
             } ?: return false
-            val now = projectile.world.fullTime
+            val now = game.combatTick
             if (now < entityCooldowns.getOrDefault(projectile.uniqueId, Long.MIN_VALUE)) return false
             if (projectile.velocity.lengthSquared() < 1.0E-5) {
                 val fallback = projectile.location.direction.normalize().multiply(0.65)
@@ -503,12 +509,12 @@ class PortalGun : GameClass(), SkillInputHandler {
             distance: Double,
         ): Boolean {
             return activePortalSkills.toList().any {
-                it.tryTeleportCustomProjectile(projectileOwnerId, location, direction, distance)
+                AbilityExecution.with(it.abilityScope) { it.tryTeleportCustomProjectile(projectileOwnerId, location, direction, distance) }
             }
         }
 
         fun teleportCollidedProjectile(projectile: BukkitProjectile): Boolean =
-            activePortalSkills.toList().any { it.tryTeleportCollidedProjectile(projectile) }
+            activePortalSkills.toList().any { AbilityExecution.with(it.abilityScope) { it.tryTeleportCollidedProjectile(projectile) } }
 
         fun clearForPlayers(playerIds: Collection<UUID>) {
             allPortalSkills.toList()

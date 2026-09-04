@@ -12,7 +12,7 @@ import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.attribute.Attribute
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 
 private const val PLUTO_SKILL_COOLDOWN_SECONDS = 40
 private const val PLUTO_DURATION_TICKS = 15L * 20L
@@ -20,6 +20,7 @@ private const val PLUTO_DURATION_TICKS = 15L * 20L
 class Pluto : PlanetClass(), OnHitHandler, GameEndHandler {
     private var solarCopy = false
     internal fun asSolarCopy(): Pluto = apply { solarCopy = true }
+    override val classId = "pluto"
     override val name = "<gray>명왕성"
     override val rank = Rank.B
     override val classItemMaterial = Material.ORANGE_CONCRETE_POWDER
@@ -27,7 +28,7 @@ class Pluto : PlanetClass(), OnHitHandler, GameEndHandler {
     override var passives: List<BasePassive> = emptyList()
 
     private var miniature = false
-    private var originalScale: Double? = null
+    private var scaleEffect: AutoCloseable? = null
 
     override fun onHit(context: DamageContext) {
         if (miniature && isPowerEnabled()) context.addDamageDealtMultiplier(0.5)
@@ -38,8 +39,8 @@ class Pluto : PlanetClass(), OnHitHandler, GameEndHandler {
     }
 
     private inner class RedSkill : Skill() {
-        override val id: String
-            get() = if (solarCopy) "${javaClass.name}:solar" else javaClass.name
+        override val definitionId = "pluto/red-skill"
+        override fun matchesId(candidate: String): Boolean = super.matchesId(candidate) || (solarCopy && candidate == "${javaClass.name}:solar")
         override val name = "<bold>명왕성"
         override val description = listOf(
             "<gray>15초간 자신의 크기가 95% 감소한다.",
@@ -59,16 +60,15 @@ class Pluto : PlanetClass(), OnHitHandler, GameEndHandler {
             return true
         }
 
-        override fun use() {
-            val scale = player.getAttribute(Attribute.SCALE) ?: return
-            originalScale = scale.baseValue
-            scale.baseValue = (scale.baseValue * 0.05).coerceAtLeast(0.0625)
+        override fun use(): Boolean {
+            if (player.getAttribute(Attribute.SCALE) == null) return false
+            scaleEffect = playerData.attributeEffects.multiply(abilityScope, Attribute.SCALE, 0.05)
             miniature = true
             particles.spawn(player, Particle.POOF, count = 42, spread = 0.8, speed = 0.12)
             particles.spawn(player, Particle.REVERSE_PORTAL, count = 30, spread = 0.65, speed = 0.08)
             sounds.play(player, Sound.ENTITY_ENDERMAN_TELEPORT, volume = 0.7f, pitch = 1.8f)
 
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 var elapsedTicks = 0L
                 override fun run() {
                     if (!player.isOnline || playerStatus.isDead || !isPowerEnabled()) {
@@ -87,14 +87,15 @@ class Pluto : PlanetClass(), OnHitHandler, GameEndHandler {
                         Particle.REVERSE_PORTAL, count = 3, spread = 0.18, speed = 0.025)
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 1L, 2L))
+            return true
         }
     }
 
     private fun restoreScale() {
-        if (!miniature && originalScale == null) return
-        originalScale?.let { player.getAttribute(Attribute.SCALE)?.baseValue = it }
+        if (!miniature && scaleEffect == null) return
+        scaleEffect?.close()
         miniature = false
-        originalScale = null
+        scaleEffect = null
         if (player.isOnline && !playerStatus.isDead) {
             particles.spawn(player, Particle.POOF, count = 28, spread = 0.55, speed = 0.08)
             sounds.play(player, Sound.ENTITY_ENDERMAN_TELEPORT, volume = 0.45f, pitch = 1.15f)

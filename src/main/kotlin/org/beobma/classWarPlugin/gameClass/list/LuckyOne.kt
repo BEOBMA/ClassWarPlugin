@@ -25,6 +25,7 @@ private const val LUCKY_FALL_SAVE_CHANCE = 0.35
 private const val LUCKY_ATTACK_PROC_CHANCE = 0.35
 
 class LuckyOne : GameClass(), EnvironmentalDamageHandler, OnHitHandler, WhenHitHandler {
+    override val classId = "lucky-one"
     override val name = "<gray>행운아"
     override val rank = Rank.A
     override val classItemMaterial = Material.GOLD_BLOCK

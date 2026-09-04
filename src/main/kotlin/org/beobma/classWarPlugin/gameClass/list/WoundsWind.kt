@@ -25,6 +25,7 @@ import java.util.UUID
 import kotlin.math.ceil
 
 class WoundsWind : GameClass(), OnHitHandler, WeaponInputHandler {
+    override val classId = "wounds-wind"
     override val name = "<gray>바람의 상처"
     override val rank = Rank.A
     override val classItemMaterial = Material.WIND_CHARGE
@@ -36,7 +37,7 @@ class WoundsWind : GameClass(), OnHitHandler, WeaponInputHandler {
     override fun onWeaponRightClick(event: PlayerInteractEvent) {
         event.isCancelled = true
         if (!playerStatus.canAttack || playerStatus.isDead) return
-        val now = player.world.fullTime
+        val now = game.combatTick
         if (now < slashReadyTick) {
             player.sendMiniMessage("<red><bold>[!] 기본 공격을 다시 사용할 수 있을 때까지 검기를 발사할 수 없습니다.")
             return

@@ -9,13 +9,12 @@ import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.manager.TemporaryDisplayManager
 import org.beobma.classWarPlugin.skill.Skill
-import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.entity.ItemDisplay
 import org.bukkit.inventory.ItemStack
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.util.Transformation
 import org.joml.Quaternionf
 import org.joml.Vector3f
@@ -28,6 +27,7 @@ private const val BARRIER_SHIELD_DURATION_TICKS = 80L
 private const val BARRIER_DAMAGE_TAKEN_MULTIPLIER = 0.4
 
 class Barrier : GameClass(), GameStatusHandler, GameEndHandler {
+    override val classId = "barrier"
     override val name = "<gray>방벽"
     override val rank = Rank.C
     override val classItemMaterial = Material.SHIELD
@@ -40,6 +40,7 @@ class Barrier : GameClass(), GameStatusHandler, GameEndHandler {
     override fun onGameEnd() = shieldSkill.reset()
 
     private inner class RedSkill : Skill(), WhenHitHandler {
+        override val definitionId = "barrier/red-skill"
         override val name = "<bold>방패 세우기"
         override val description = listOf(
             "<gray>4초간 방패를 들어 바라보는 방향에서 <gold><bold>받는 피해를 60% 감소</bold><gray>시킨다."
@@ -51,10 +52,10 @@ class Barrier : GameClass(), GameStatusHandler, GameEndHandler {
         private var activeDisplay: ItemDisplay? = null
         private var lastBlockSoundTick = Long.MIN_VALUE
 
-        override fun use() {
+        override fun use(): Boolean {
             reset()
             active = true
-            activeUntilTick = Bukkit.getCurrentTick().toLong() + BARRIER_SHIELD_DURATION_TICKS
+            activeUntilTick = game.combatTick + BARRIER_SHIELD_DURATION_TICKS
             val display = player.world.spawn(player.location, ItemDisplay::class.java).apply {
                 setItemStack(ItemStack(Material.SHIELD))
                 itemDisplayTransform = ItemDisplay.ItemDisplayTransform.FIXED
@@ -70,10 +71,10 @@ class Barrier : GameClass(), GameStatusHandler, GameEndHandler {
             activeDisplay = display
             sounds.play(player, Sound.ITEM_ARMOR_EQUIP_IRON, volume = 1.0f, pitch = 0.75f)
 
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 override fun run() {
                     if (!active || activeDisplay !== display || !player.isOnline || player.isDead ||
-                        Bukkit.getCurrentTick().toLong() >= activeUntilTick
+                        game.combatTick >= activeUntilTick
                     ) {
                         if (activeDisplay === display) stopShield(playSound = player.isOnline)
                         else if (display.isValid) display.remove()
@@ -87,7 +88,7 @@ class Barrier : GameClass(), GameStatusHandler, GameEndHandler {
                     displayLocation.pitch = 0.0f
                     display.teleport(displayLocation)
 
-                    if (Bukkit.getCurrentTick() % 2 == 0) {
+                    if (game.combatTick % 2 == 0L) {
                         repeat(7) { index ->
                             val angle = Math.toRadians(-54.0 + index * 18.0)
                             val horizontal = forward.clone().setY(0.0)
@@ -99,10 +100,11 @@ class Barrier : GameClass(), GameStatusHandler, GameEndHandler {
                     }
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
+            return true
         }
 
         override fun whenHit(context: DamageContext) {
-            val now = Bukkit.getCurrentTick().toLong()
+            val now = game.combatTick
             if (!active || now >= activeUntilTick) {
                 if (active) stopShield(playSound = player.isOnline)
                 return

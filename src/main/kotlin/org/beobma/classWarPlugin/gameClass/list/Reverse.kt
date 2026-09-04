@@ -6,7 +6,6 @@ import org.beobma.classWarPlugin.effect.ParticleOptions
 import org.beobma.classWarPlugin.effect.SoundApi
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
-import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.GameEndHandler
@@ -20,14 +19,13 @@ import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.beobma.classWarPlugin.status.list.*
 import org.beobma.classWarPlugin.util.HitboxUtil
-import org.bukkit.Bukkit
 import org.bukkit.Color
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.entity.LivingEntity
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import java.util.Collections
 import java.util.IdentityHashMap
 import java.util.UUID
@@ -37,6 +35,7 @@ private const val REVERSE_ZONE_DURATION_TICKS = 200L
 private const val REVERSE_ZONE_RADIUS = 6.0
 
 class Reverse : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler {
+    override val classId = "reverse"
     override val name = "<gray>리버스"
     override val rank = Rank.A
     override val classItemMaterial = Material.JIGSAW
@@ -60,6 +59,7 @@ class Reverse : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
     override fun onPlayerDeath() = removeZones(player.uniqueId)
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "reverse/red-skill"
         override val name = "<bold>반전 영역"
         override val description = listOf(
             "<gray>10초간 자신의 위치에 반전 영역을 설치한다.", "",
@@ -68,15 +68,15 @@ class Reverse : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
         )
         override val cooldown = REVERSE_ZONE_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             val center = player.location.clone()
-            val zone = Zone(playerData, center, Bukkit.getCurrentTick().toLong() + REVERSE_ZONE_DURATION_TICKS)
+            val zone = Zone(playerData, center, game.combatTick + REVERSE_ZONE_DURATION_TICKS)
             activeZones += zone
             sounds.play(center, Sound.BLOCK_RESPAWN_ANCHOR_SET_SPAWN, volume = 0.9f, pitch = 0.65f)
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 var tick = 0L
                 override fun run() {
-                    if (Bukkit.getCurrentTick().toLong() >= zone.expiresAtTick || playerStatus.isDead || !player.isOnline) {
+                    if (game.combatTick >= zone.expiresAtTick || playerStatus.isDead || !player.isOnline) {
                         activeZones.remove(zone)
                         particles.spawn(center, Particle.REVERSE_PORTAL, count = 30, spread = REVERSE_ZONE_RADIUS, speed = 0.05)
                         sounds.play(center, Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE, volume = 0.65f, pitch = 1.4f)
@@ -95,6 +95,7 @@ class Reverse : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
                     tick += 2L
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 2L))
+            return true
         }
     }
 
@@ -116,8 +117,7 @@ class Reverse : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
 
         fun shouldReverse(target: EntityData): Boolean {
             if (target is PlayerData && target.gameClasses.any { it is Reverse }) return true
-            val now = Bukkit.getCurrentTick().toLong()
-            activeZones.removeIf { it.expiresAtTick <= now }
+            activeZones.removeIf { it.expiresAtTick <= it.owner.game.combatTick }
             return activeZones.any { zone ->
                 if (zone.owner.game !== target.game || zone.owner.entityStatus.isDead) return@any false
                 if (target is PlayerData && !zone.owner.isEnemyOf(target)) return@any false

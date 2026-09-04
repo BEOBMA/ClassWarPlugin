@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.ability.AbilityExecution
+
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
@@ -28,6 +30,7 @@ import org.bukkit.inventory.ItemStack
 import org.bukkit.util.Vector
 
 class Sagittarius : GameClass() {
+    override val classId = "sagittarius"
     override val name = "<gray>궁수자리"
     override val rank = Rank.A
     override val classItemMaterial = Material.BOW
@@ -128,7 +131,9 @@ class Sagittarius : GameClass() {
             val shooter = arrow.shooter as? Player ?: return
             val data = findGameForPlayer(shooter)?.playerDatas?.filterIsInstance<PlayerData>()
                 ?.find { it.uniqueId == shooter.uniqueId } ?: return
-            data.findGameClass(Sagittarius::class.java)?.launchLightArrows(arrow, target)
+            data.findGameClass(Sagittarius::class.java)?.let { ability ->
+                AbilityExecution.with(ability.abilityScope) { ability.launchLightArrows(arrow, target) }
+            }
         }
     }
 }

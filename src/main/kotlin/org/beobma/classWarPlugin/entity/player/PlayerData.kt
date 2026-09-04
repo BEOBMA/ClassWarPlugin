@@ -1,5 +1,8 @@
 package org.beobma.classWarPlugin.entity.player
 
+import org.beobma.classWarPlugin.ability.AttributeEffects
+import org.beobma.classWarPlugin.ability.AbilityTree
+
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.EntityStatus
 import org.beobma.classWarPlugin.game.Game
@@ -18,6 +21,23 @@ class PlayerData(
     var player: Player,
     val initGame: Game,
 ) : EntityData() {
+    val attributeEffects = AttributeEffects(this)
+    private var pendingAbilityReturn: org.bukkit.Location? = null
+
+    /** A cancelled transport also returns a participant who was offline during cleanup. */
+    fun returnFromAbility(location: org.bukkit.Location) {
+        if (entityStatus.isDead) return
+        if (player.isOnline) {
+            player.teleport(location)
+            player.fallDistance = 0f
+        } else pendingAbilityReturn = location.clone()
+    }
+
+    fun restoreAbilityPosition() {
+        val location = pendingAbilityReturn ?: return
+        pendingAbilityReturn = null
+        returnFromAbility(location)
+    }
     val gameClasses: MutableList<GameClass> = mutableListOf()
     /**
      * 단일 클래스 모드와의 호환을 위한 첫 번째 클래스 접근자다.
@@ -39,8 +59,10 @@ class PlayerData(
 
     /** 작업을 플레이어와 경기 양쪽 정리 목록에 등록하고 그대로 반환한다. */
     fun trackTask(task: BukkitTask): BukkitTask {
-        bukkitTasks.add(task)
-        game.tasks.add(task)
+        if (!task.isCancelled) {
+            if (task !in bukkitTasks) bukkitTasks.add(task)
+            if (task !in game.tasks) game.tasks.add(task)
+        }
         return task
     }
 
@@ -56,7 +78,8 @@ class PlayerData(
 
     /** 배정된 클래스 중 [type]과 호환되는 첫 인스턴스를 반환한다. */
     fun <T : GameClass> findGameClass(type: Class<T>): T? =
-        gameClasses.firstOrNull { type.isInstance(it) }?.let(type::cast)
+        AbilityTree.nodes(gameClasses, activeOnly = true)
+            .firstOrNull { type.isInstance(it) }?.let(type::cast)
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

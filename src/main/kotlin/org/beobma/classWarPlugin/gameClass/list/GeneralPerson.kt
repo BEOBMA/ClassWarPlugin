@@ -18,6 +18,7 @@ private const val GENERAL_PERSON_NEARBY_RANGE_SQUARED = 100.0
 private const val GENERAL_PERSON_MOVE_SPEED_BONUS_PERCENT = 20
 
 class GeneralPerson : GameClass() {
+    override val classId = "general-person"
     override val name = "<gray>일반인"
     override val rank = Rank.C
     override val classItemMaterial = Material.WHITE_BANNER

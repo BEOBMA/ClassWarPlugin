@@ -11,6 +11,7 @@ private const val DUMMY_RED_SKILL_COOLDOWN_SECONDS = 35
 private const val DUMMY_BLUE_SKILL_COOLDOWN_SECONDS = 35
 
 class Dummy : GameClass() {
+    override val classId = "dummy"
     override val name = "<gray>더미"
     override val rank = Rank.C
     override val classItemMaterial = Material.BLACK_CONCRETE
@@ -24,24 +25,28 @@ class Dummy : GameClass() {
     )
 
     private class RedSkill : Skill() {
+        override val definitionId = "dummy/red-skill"
         override val name = "<bold>더미 스킬"
         override val description = listOf(
             "<gray>더미 설명"
         )
         override val cooldown = DUMMY_RED_SKILL_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
+            return true
         }
     }
 
     private class OrangeSkill : Skill() {
+        override val definitionId = "dummy/orange-skill"
         override val name = "<bold>더미 스킬"
         override val description = listOf(
             "<gray>더미 설명"
         )
         override val cooldown = DUMMY_BLUE_SKILL_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
+            return true
         }
     }
 

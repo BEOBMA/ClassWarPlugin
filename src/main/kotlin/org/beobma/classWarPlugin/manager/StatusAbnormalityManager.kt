@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.manager
 
+import org.beobma.classWarPlugin.ability.AbilityExecution
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
@@ -82,17 +84,20 @@ object StatusAbnormalityManager {
     fun EntityData.addStatus(status: StatusAbnormality, victimData: PlayerData): StatusAbnormality {
         status.inject(this, victimData)
         statusAbnormalitys.add(status)
+        if (this === victimData) status.effectSource?.let(status::retain)
         return status
     }
 
     /** 기존 [T]를 재사용하거나 [creator]로 생성해 주입·등록한다. */
     inline fun <reified T : StatusAbnormality> EntityData.getOrCreateStatus(victimData: PlayerData, creator: () -> T): T {
         val existing = statusAbnormalitys.firstOrNull { it is T } as? T
-        if (existing != null) return existing
+        if (existing != null) {
+            if (this === victimData) AbilityExecution.current?.let(existing::retain)
+            return existing
+        }
 
         val newStatus = creator()
-        newStatus.inject(this, victimData)
-        statusAbnormalitys.add(newStatus)
+        addStatus(newStatus, victimData)
         return newStatus
     }
 
@@ -107,6 +112,11 @@ object StatusAbnormalityManager {
             }
         }
 
+        if (this is PlayerData) {
+            attributeEffects.setContribution("status/ATTACK_SPEED", Attribute.ATTACK_SPEED,
+                if (statusAbnormalitys.any { it is AttackSpeedIncrease || it is AttackSpeedDecrease }) increaseFactor * decreaseFactor.coerceAtLeast(0.0) else null)
+            return
+        }
         val entity = entity
         if (entity is LivingEntity) {
             val attributeInstance = entity.getAttribute(Attribute.ATTACK_SPEED) ?: return
@@ -136,6 +146,11 @@ object StatusAbnormalityManager {
             }
         }
 
+        if (this is PlayerData) {
+            attributeEffects.setContribution("status/MOVEMENT_SPEED", Attribute.MOVEMENT_SPEED,
+                if (statusAbnormalitys.any { it is MoveSpeedIncrease || it is MoveSpeedDecrease }) increaseFactor * decreaseFactor.coerceAtLeast(0.0) else null)
+            return
+        }
         val entity = entity
         if (entity is LivingEntity) {
             val attributeInstance = entity.getAttribute(Attribute.MOVEMENT_SPEED) ?: return

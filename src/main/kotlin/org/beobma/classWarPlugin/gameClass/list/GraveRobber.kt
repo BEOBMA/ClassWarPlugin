@@ -1,16 +1,14 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.ability.AbilityCatalog
+
+import org.beobma.classWarPlugin.ability.AbilityTree
+
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
-import org.beobma.classWarPlugin.gameClass.handler.EnvironmentalDamageHandler
-import org.beobma.classWarPlugin.gameClass.handler.MovementInputHandler
-import org.beobma.classWarPlugin.gameClass.handler.OnSkillUseHandler
-import org.beobma.classWarPlugin.gameClass.handler.SneakInputHandler
-import org.beobma.classWarPlugin.gameClass.handler.WeaponInputHandler
-import org.beobma.classWarPlugin.event.PlayerSkillUseEvent
 import org.beobma.classWarPlugin.manager.PlayerManager.classSet
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Skill
@@ -18,22 +16,15 @@ import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
-import org.bukkit.event.entity.EntityDamageEvent
-import org.bukkit.event.player.PlayerInputEvent
-import org.bukkit.event.player.PlayerInteractEvent
-import org.bukkit.event.player.PlayerMoveEvent
-import org.bukkit.event.player.PlayerSwapHandItemsEvent
-import org.bukkit.event.player.PlayerToggleSneakEvent
 import java.util.IdentityHashMap
-import org.beobma.classWarPlugin.status.handler.StatusPlayerMoveHandler
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
 // 밸런스 조정 상수
 private const val GRAVE_ROBBER_ROB_COOLDOWN_SECONDS = 360
 private const val GRAVE_ROBBER_INTERACTION_RANGE_SQUARED = 4.0
 
-class GraveRobber : GameClass(), GameStatusHandler, OnSkillUseHandler, EnvironmentalDamageHandler,
-    MovementInputHandler, SneakInputHandler, StatusPlayerMoveHandler, WeaponInputHandler {
+class GraveRobber : GameClass() {
+    override val classId = "grave-robber"
     override val name = "<gray>도굴꾼"
     override val rank = Rank.B
     override val classItemMaterial = Material.IRON_SHOVEL
@@ -41,43 +32,12 @@ class GraveRobber : GameClass(), GameStatusHandler, OnSkillUseHandler, Environme
     override var passives: List<BasePassive> = listOf(Passive())
 
     private val inheritedClasses: MutableList<GameClass> = mutableListOf()
-    private val inheritedClassTypes: MutableSet<Class<out GameClass>> = mutableSetOf()
+    private val inheritedClassIds = mutableSetOf<String>()
 
-    override fun onBattleStart() = Unit
-
-    override fun onGameTimePasses() {
-        inheritedClasses.filterIsInstance<GameStatusHandler>().forEach(GameStatusHandler::onGameTimePasses)
-    }
-
-    override fun onSkillUse(event: PlayerSkillUseEvent) {
-        inheritedClasses.filterIsInstance<OnSkillUseHandler>().forEach { it.onSkillUse(event) }
-    }
-
-    override fun onEnvironmentalDamage(event: EntityDamageEvent) {
-        inheritedClasses.filterIsInstance<EnvironmentalDamageHandler>().forEach { it.onEnvironmentalDamage(event) }
-    }
-
-    override fun onPlayerInput(event: PlayerInputEvent) {
-        inheritedClasses.filterIsInstance<MovementInputHandler>().forEach { it.onPlayerInput(event) }
-    }
-
-    override fun onPlayerToggleSneak(event: PlayerToggleSneakEvent) {
-        inheritedClasses.filterIsInstance<SneakInputHandler>().forEach { it.onPlayerToggleSneak(event) }
-    }
-
-    override fun onPlayerMove(event: PlayerMoveEvent, playerData: PlayerData) {
-        inheritedClasses.filterIsInstance<StatusPlayerMoveHandler>().forEach { it.onPlayerMove(event, playerData) }
-    }
-
-    override fun onWeaponRightClick(event: PlayerInteractEvent) {
-        inheritedClasses.filterIsInstance<WeaponInputHandler>().forEach { it.onWeaponRightClick(event) }
-    }
-
-    override fun onWeaponSwapHand(event: PlayerSwapHandItemsEvent) {
-        inheritedClasses.filterIsInstance<WeaponInputHandler>().forEach { it.onWeaponSwapHand(event) }
-    }
+    override val childAbilities: List<GameClass> get() = inheritedClasses
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "grave-robber/red-skill"
         override val name = "<bold>도굴"
         override val description = listOf(
             "<gray>다른 플레이어가 사망한 위치에서만 사용할 수 있다.",
@@ -86,7 +46,7 @@ class GraveRobber : GameClass(), GameStatusHandler, OnSkillUseHandler, Environme
         )
         override val cooldown = GRAVE_ROBBER_ROB_COOLDOWN_SECONDS
 
-        private var selectedRecord: DeathRecord? = null
+        private var selectedRecord: DeathRecord? by requestValue { null }
 
         override fun isUseSuccess(): Boolean {
             selectedRecord = recordsFor(game)
@@ -100,41 +60,41 @@ class GraveRobber : GameClass(), GameStatusHandler, OnSkillUseHandler, Environme
             return true
         }
 
-        override fun use() {
-            val record = selectedRecord ?: return
+        override fun use(): Boolean {
+            val record = selectedRecord ?: return false
             selectedRecord = null
-            if (!recordsFor(game).remove(record)) return
+            if (record !in recordsFor(game)) return false
 
             val stolenClasses = runCatching {
-                record.classTypes.map { it.getDeclaredConstructor().newInstance() }
+                record.classIds.map { AbilityCatalog.create(it) }
+                    .filter { it.classId !in inheritedClassIds && it.classId != classId }
             }.getOrElse {
                 player.sendMiniMessage("<red><bold>[!] 사망한 플레이어의 클래스를 복원하지 못했습니다.")
-                return
+                return false
             }
-            stolenClasses.forEach { it.inject(playerData) }
 
-            val existingSkillIds = skills.mapTo(mutableSetOf()) { it.id }
-            val addedSkills = stolenClasses.flatMap { it.skills }.filter { existingSkillIds.add(it.id) }
+            if (stolenClasses.isEmpty()) return false
+            if (!recordsFor(game).remove(record)) return false
+            val existingSkillIds = skills.mapTo(mutableSetOf()) { it.definitionId }
+            val addedSkills = stolenClasses.flatMap { it.skills }.filter { existingSkillIds.add(it.definitionId) }
             val existingPassiveTypes = passives.mapTo(mutableSetOf()) { it.javaClass.name }
             val addedPassives = stolenClasses.flatMap { it.passives }
                 .filter { existingPassiveTypes.add(it.javaClass.name) }
             skills = skills + addedSkills
             passives = passives + addedPassives
 
-            playerData.classSet(initializeHandlers = false)
-            addedPassives.filterIsInstance<GameStatusHandler>().forEach(GameStatusHandler::onBattleStart)
             stolenClasses.forEach { stolenClass ->
-                if (inheritedClassTypes.add(stolenClass.javaClass)) {
-                    inheritedClasses += stolenClass
-                    if (stolenClass is GameStatusHandler) stolenClass.onBattleStart()
-                }
+                if (inheritedClassIds.add(stolenClass.classId)) inheritedClasses += stolenClass
             }
+            playerData.classSet(initializeHandlers = false)
+            AbilityTree.start(inheritedClasses)
 
             particles.spawn(player.location.clone().add(0.0, 1.0, 0.0), Particle.SOUL_FIRE_FLAME, count = 34, spread = 0.8, speed = 0.08)
             particles.spawn(record.location.clone().add(0.0, 0.5, 0.0), Particle.SCULK_SOUL, count = 18, spread = 0.45, speed = 0.05)
             sounds.play(player, Sound.BLOCK_SCULK_SHRIEKER_SHRIEK, volume = 0.7f, pitch = 0.65f)
             sounds.play(player, Sound.ENTITY_WITHER_SPAWN, volume = 0.35f, pitch = 1.45f)
             player.sendMiniMessage("<green><bold>[!] ${record.victimName}님의 능력과 패시브를 획득했습니다.")
+            return true
         }
     }
 
@@ -180,7 +140,7 @@ class GraveRobber : GameClass(), GameStatusHandler, OnSkillUseHandler, Environme
             val victimId: java.util.UUID,
             val victimName: String,
             val location: Location,
-            val classTypes: List<Class<out GameClass>>,
+            val classIds: List<String>,
         )
 
         private val recordsByGame: IdentityHashMap<Game, MutableList<DeathRecord>> = IdentityHashMap()
@@ -189,7 +149,10 @@ class GraveRobber : GameClass(), GameStatusHandler, OnSkillUseHandler, Environme
             recordsByGame.getOrPut(game) { mutableListOf() }
 
         fun recordDeath(playerData: PlayerData) {
-            val fallenClasses = playerData.gameClasses.map { it.javaClass }
+            fun acquiredIds(ability: GameClass): List<String> = if (ability is GraveRobber) {
+                ability.childAbilities.flatMap(::acquiredIds)
+            } else listOf(ability.classId)
+            val fallenClasses = playerData.gameClasses.flatMap(::acquiredIds).distinct()
             if (fallenClasses.isEmpty()) return
             recordsFor(playerData.initGame) += DeathRecord(
                 playerData.uniqueId,

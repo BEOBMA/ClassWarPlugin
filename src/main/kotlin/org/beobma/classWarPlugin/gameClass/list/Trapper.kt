@@ -19,7 +19,7 @@ import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.BoundingBox
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
@@ -29,6 +29,7 @@ private const val TRAPPER_TRAP_DAMAGE = 4.0
 private const val TRAPPER_ANCHOR_RANGE = 6.0
 
 class Trapper : GameClass() {
+    override val classId = "trapper"
     override val name = "<gray>트래퍼"
     override val rank = Rank.B
     override val classItemMaterial = Material.STRING
@@ -36,6 +37,7 @@ class Trapper : GameClass() {
     override var passives: List<BasePassive> = listOf()
 
     private class RedSkill : Skill() {
+        override val definitionId = "trapper/red-skill"
         override val name = "<bold>선"
         override val description = listOf(
             "<gray>${TRAPPER_ANCHOR_RANGE.toInt()}칸 내의 바라보는 블럭에 기준점을 설치한다.",
@@ -59,7 +61,7 @@ class Trapper : GameClass() {
         }
 
         private var firstAnchor: Location? = null
-        private var selectedAnchor: Location? = null
+        private var selectedAnchor: Location? by requestValue { null }
         private val lines: ArrayDeque<TrapLine> = ArrayDeque()
         private var scannerTask: BukkitTask? = null
         private var visualTick = 0
@@ -98,8 +100,8 @@ class Trapper : GameClass() {
             return true
         }
 
-        override fun use() {
-            val anchor = selectedAnchor ?: return
+        override fun use(): Boolean {
+            val anchor = selectedAnchor ?: return false
             selectedAnchor = null
             ensureScanner()
             val first = firstAnchor
@@ -107,7 +109,7 @@ class Trapper : GameClass() {
                 firstAnchor = anchor.clone()
                 showAnchor(anchor, firstPoint = true)
                 player.sendMiniMessage("<green><bold>[!] 첫 번째 기준점을 설치했습니다.")
-                return
+                return true
             }
 
             firstAnchor = null
@@ -122,11 +124,12 @@ class Trapper : GameClass() {
             sounds.play(first, Sound.BLOCK_TRIPWIRE_ATTACH, volume = 0.85f, pitch = 1.2f)
             sounds.play(anchor, Sound.BLOCK_TRIPWIRE_ATTACH, volume = 0.85f, pitch = 1.35f)
             player.sendMiniMessage("<green><bold>[!] 보이지 않는 선을 설치했습니다. <gray>(${lines.size}/10)")
+            return true
         }
 
         private fun ensureScanner() {
             if (scannerTask != null) return
-            scannerTask = playerData.trackTask(object : BukkitRunnable() {
+            scannerTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 override fun run() {
                     if (!player.isOnline || player.isDead) {
                         scannerTask = null

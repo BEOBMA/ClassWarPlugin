@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.manager
 
+import org.beobma.classWarPlugin.ability.AbilityExecution
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.bukkit.Bukkit
 import org.bukkit.World
@@ -14,6 +16,9 @@ object TemporaryDisplayManager {
 
     /** [display]에 소유자 태그를 붙이고 현재 가시성 억제 규칙을 즉시 적용한다. */
     fun mark(display: Display, ownerId: UUID) {
+        AbilityExecution.current
+            ?.takeIf { it.playerData.uniqueId == ownerId }?.resources
+            ?.own(isAlive = { display.isValid }) { display.remove() }
         display.addScoreboardTag(ownerTag(ownerId))
         display.isPersistent = false
         visibilitySuppressions.asSequence()

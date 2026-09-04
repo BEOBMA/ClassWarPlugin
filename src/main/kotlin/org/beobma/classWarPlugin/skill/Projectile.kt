@@ -1,32 +1,29 @@
 package org.beobma.classWarPlugin.skill
 
+import org.beobma.classWarPlugin.ability.AbilityScope
+import org.beobma.classWarPlugin.ability.AbilityExecution
+
+import org.beobma.classWarPlugin.ability.Targeting
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.effect.EffectApiAccess
 import org.beobma.classWarPlugin.entity.EntityData
-import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
-import org.beobma.classWarPlugin.entity.mob.MobEntityData
 import org.beobma.classWarPlugin.game.Game
-import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.beobma.classWarPlugin.manager.TemporaryDisplayManager
 import org.beobma.classWarPlugin.manager.AttackableObjectManager
 import org.beobma.classWarPlugin.manager.ClassBalanceManager
-import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.entity.player.PlayerStatus
 import org.beobma.classWarPlugin.util.TargetType
 import org.beobma.classWarPlugin.gameClass.list.PortalGun
-import org.beobma.classWarPlugin.util.TargetType.All
-import org.beobma.classWarPlugin.util.TargetType.Enemy
 import org.beobma.classWarPlugin.util.TargetType.Self
 import org.bukkit.Location
 import org.bukkit.block.Block
 import org.bukkit.entity.ItemDisplay
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
-import org.bukkit.util.BoundingBox
-import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -39,8 +36,9 @@ import kotlin.math.roundToInt
  */
 abstract class Projectile : EffectApiAccess {
     protected lateinit var playerData: PlayerData
-    protected lateinit var player: Player
+    protected val player: Player get() = playerData.player
     protected lateinit var playerStatus: PlayerStatus
+    protected lateinit var abilityScope: AbilityScope
     protected lateinit var game: Game
 
     abstract var location: Location
@@ -66,9 +64,9 @@ abstract class Projectile : EffectApiAccess {
     fun inject(playerData: PlayerData) {
         if (playerData.entityStatus !is PlayerStatus) return
         this.playerData = playerData
-        this.player = playerData.player
         this.playerStatus = playerData.entityStatus
         this.game = playerData.initGame
+        this.abilityScope = checkNotNull(AbilityExecution.current)
     }
 
     /** 시간 제한을 제거하고 [predicate]가 참인 동안 투사체를 유지한다. */
@@ -76,7 +74,6 @@ abstract class Projectile : EffectApiAccess {
         this.continueWhile = predicate
         time = null
     }
-
 
     open fun onProjectileMove(location: Location) {}
 
@@ -114,20 +111,19 @@ abstract class Projectile : EffectApiAccess {
         var elapsedTicks = 0
         var durationTicks = 0
         var currentSpeed = 0.0
-        val trainingCandidates: MutableList<EntityData> = ArrayList()
-        val trainingCandidateIds: MutableSet<UUID> = HashSet()
 
         spawnItemDisplay(currentLocation)
 
-        val task = object : BukkitRunnable() {
+        val task = object : BukkitRunnable(abilityScope) {
             var stopped = false
 
-            private fun stop() {
+            private fun stop() = cancel()
+
+            override fun onCancel() {
                 if (stopped) return
                 stopped = true
                 removeItemDisplay()
                 onProjectileEnd(currentLocation)
-                cancel()
             }
 
             override fun run() {
@@ -150,46 +146,10 @@ abstract class Projectile : EffectApiAccess {
                 }
 
                 if (isPlayerHit) {
-                    val isTraining = PlayerTagManager.isTraining(player)
-                    val targetCandidates = if (isTraining) {
-                        trainingCandidates.clear()
-                        trainingCandidateIds.clear()
-                        game.playerDatas.forEach { data ->
-                            val entityId = data.entity.uniqueId
-                            if (trainingCandidateIds.add(entityId)) {
-                                trainingCandidates.add(data)
-                            }
-                        }
-                        for (livingEntity in player.world.livingEntities) {
-                            if (livingEntity == player || livingEntity is Player) continue
-                            val data = game.playerDatas.find { it.entity == livingEntity }
-                                ?: if (livingEntity.isMannequin()) DummyEntityData(livingEntity, game)
-                                else MobEntityData(livingEntity, game)
-                            if (data !in game.playerDatas) game.playerDatas.add(data)
-                            val entityId = livingEntity.uniqueId
-                            if (trainingCandidateIds.add(entityId)) {
-                                trainingCandidates.add(data)
-                            }
-                        }
-                        trainingCandidates
-                    } else {
-                        game.playerDatas
-                    }
-                    var collidedEntityData: EntityData? = null
-                    for (targetData in targetCandidates) {
-                        if (targetData == playerData || !targetData.entityStatus.isSkillTargeting) continue
-                        val bb = targetData.entity.boundingBox.expand(xSize, ySize, zSize)
-                        if (!bb.contains(currentLocation.x, currentLocation.y, currentLocation.z)) continue
-                        val isValidTarget = when (targetType) {
-                            Self -> targetData == playerData
-                            Enemy -> targetData !is PlayerData && isTraining ||
-                                (targetData is PlayerData && playerData.isEnemyOf(targetData))
-                            All -> true
-                        }
-                        if (isValidTarget) {
-                            collidedEntityData = targetData
-                            break
-                        }
+                    val collidedEntityData = Targeting.select(playerData, targetType, currentLocation.world,
+                        includeSelf = targetType == Self).firstOrNull { target ->
+                        target.entity.boundingBox.expand(xSize, ySize, zSize)
+                            .contains(currentLocation.x, currentLocation.y, currentLocation.z)
                     }
 
                     if (collidedEntityData != null) {

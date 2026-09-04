@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.ability.AbilityExecution
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.effect.ParticleApi
 import org.beobma.classWarPlugin.effect.ParticleOptions
@@ -28,9 +30,10 @@ import org.bukkit.entity.Player
 import org.bukkit.event.entity.EntityShootBowEvent
 import org.bukkit.inventory.ItemStack
 import org.bukkit.persistence.PersistentDataType
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 
 class Uranus : PlanetClass() {
+    override val classId = "uranus"
     override val name = "<gray>천왕성"
     override val rank = Rank.A
     override val classItemMaterial = Material.ICE
@@ -64,6 +67,7 @@ class Uranus : PlanetClass() {
             val arrow = event.projectile as? AbstractArrow ?: return
             val playerData = findGameForPlayer(shooter)?.playerDatas?.filterIsInstance<PlayerData>()
                 ?.find { it.uniqueId == shooter.uniqueId } ?: return
+            val abilityScope = playerData.findGameClass(Uranus::class.java)?.abilityScope ?: return
             if (!PlanetPowerRegistry.hasPower(playerData, Uranus::class.java)) return
 
             arrow.persistentDataContainer.set(icicleKey, PersistentDataType.BYTE, 1)
@@ -82,10 +86,10 @@ class Uranus : PlanetClass() {
                 teleportDuration = 1
                 isPersistent = false
             }
-            TemporaryDisplayManager.mark(display, shooter.uniqueId)
+            AbilityExecution.with(abilityScope) { TemporaryDisplayManager.mark(display, shooter.uniqueId) }
             orientIcicle(display, arrow)
 
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 override fun run() {
                     if (!arrow.isValid || arrow.isDead || arrow.isInBlock || arrow.isOnGround) {
                         display.remove()

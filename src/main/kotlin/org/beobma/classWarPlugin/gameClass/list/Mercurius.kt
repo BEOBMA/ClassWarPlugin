@@ -10,9 +10,10 @@ import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.MoveSpeedIncrease
 import org.bukkit.Material
 import org.bukkit.Particle
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 
 class Mercurius : PlanetClass(), GameStatusHandler {
+    override val classId = "mercurius"
     override val name = "<gray>수성"
     override val rank = Rank.B
     override val classItemMaterial = Material.REDSTONE
@@ -22,7 +23,7 @@ class Mercurius : PlanetClass(), GameStatusHandler {
 
     override fun onBattleStart() {
         speedStatus = null
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var tick = 0
             override fun run() {
                 if (!player.isOnline || playerStatus.isDead) {

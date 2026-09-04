@@ -14,6 +14,10 @@ class SkillContext(
     val clickedItem: ItemStack,
     val baseCooldownTicks: Int,
 ) {
+    internal val preparedValues = mutableMapOf<String, Any?>()
+    private val successActions = mutableListOf<() -> Unit>()
+    fun afterSuccess(action: () -> Unit) { successActions += action }
+    internal fun commit() { successActions.toList().also { successActions.clear() }.forEach { it() } }
     var isCancelled: Boolean = false
     var cooldownMultiplier: Double = 1.0
         private set

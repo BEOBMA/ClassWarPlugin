@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.ability.Control
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.GameClass
@@ -11,11 +13,12 @@ import org.beobma.classWarPlugin.util.TargetType
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 
 private const val PAT_AND_MATT_COOLDOWN_SECONDS = 40
 
 class PatAndMatt : GameClass() {
+    override val classId = "pat-and-matt"
     override val name = "<gray>패트와 매트"
     override val rank = Rank.B
     override val classItemMaterial = Material.LEATHER
@@ -23,10 +26,11 @@ class PatAndMatt : GameClass() {
     override var passives = emptyList<org.beobma.classWarPlugin.skill.Passive>()
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "pat-and-matt/red-skill"
         override val name = "<bold>패트와 매트"
         override val description = listOf("<gray>6칸 내의 바라보는 적이 4초간 자신의 행동을 따라하게 만든다.")
         override val cooldown = PAT_AND_MATT_COOLDOWN_SECONDS
-        private var selectedTarget: PlayerData? = null
+        private var selectedTarget: PlayerData? by requestValue { null }
 
         override fun isUseSuccess(): Boolean {
             selectedTarget = playerData.shotLaserGetEntityData(6.0, TargetType.Enemy, false) as? PlayerData
@@ -34,26 +38,20 @@ class PatAndMatt : GameClass() {
             return selectedTarget != null
         }
 
-        override fun use() {
-            val target = selectedTarget ?: return
+        override fun use(): Boolean {
+            val target = selectedTarget ?: return false
             selectedTarget = null
             val status = target.entityStatus
-            val originalCanMove = status.canMove
-            val originalCanAttack = status.canAttack
-            val originalCanSkillUse = status.canSkillUse
-            status.canMove = false
-            status.canAttack = false
-            status.canSkillUse = false
+            val lock = status.controlLocks.acquire(Control.MOVE, Control.ATTACK, Control.SKILL)
+            val release = abilityScope.resources.own { lock.close() }
             var previousCasterLocation = player.location.clone()
             sounds.play(player, Sound.ENTITY_ALLAY_AMBIENT_WITH_ITEM, volume = 0.8f, pitch = 1.15f)
             sounds.play(target.player, Sound.ENTITY_ALLAY_AMBIENT_WITH_ITEM, volume = 0.8f, pitch = 0.8f)
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope, cancelOnDisconnect = true) {
                 var tick = 0
+                override fun onCancel() { release.close() }
                 override fun run() {
                     if (tick >= 80 || !player.isOnline || !target.player.isOnline || playerStatus.isDead || status.isDead) {
-                        status.canMove = originalCanMove
-                        status.canAttack = originalCanAttack
-                        status.canSkillUse = originalCanSkillUse
                         particles.spawn(target.player, Particle.POOF, count = 16, spread = 0.5, speed = 0.07)
                         cancel()
                         return
@@ -79,6 +77,7 @@ class PatAndMatt : GameClass() {
                     tick++
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
+            return true
         }
     }
 }

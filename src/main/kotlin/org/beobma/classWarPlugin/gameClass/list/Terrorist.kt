@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.ability.TickPolicy
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.entity.player.PlayerData
@@ -20,7 +22,7 @@ import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.entity.BlockDisplay
 import org.bukkit.entity.Display
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.Transformation
 import org.bukkit.util.Vector
@@ -32,6 +34,8 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 class Terrorist : GameClass(), PlayerDeathHandler, GameEndHandler {
+    override val survivesDeath = true
+    override val classId = "terrorist"
     override val name = "<gray>테러리스트"
     override val rank = Rank.C
     override val classItemMaterial = Material.TNT
@@ -69,9 +73,9 @@ class Terrorist : GameClass(), PlayerDeathHandler, GameEndHandler {
         }
         sounds.play(origin, Sound.ENTITY_TNT_PRIMED, volume = 1.25f, pitch = 0.72f)
         particles.spawn(origin, Particle.LARGE_SMOKE, count = 35, spread = 1.1, speed = 0.09)
-        pendingUntil[game] = org.bukkit.Bukkit.getCurrentTick().toLong() + 60L
+        pendingUntil[game] = game.combatTick + 60L
 
-        bombTask = object : BukkitRunnable() {
+        bombTask = object : BukkitRunnable(abilityScope, TickPolicy.AFTER_DEATH) {
             var tick = 0
             override fun run() {
                 if (tick < 60) {
@@ -98,7 +102,7 @@ class Terrorist : GameClass(), PlayerDeathHandler, GameEndHandler {
                     val center = bomb.location.clone()
                     bomb.display.remove()
                     bombDisplays.remove(bomb.display)
-                    playerData.radius(center, TargetType.Enemy, 3.0, false).filterIsInstance<PlayerData>().forEach { target ->
+                    playerData.radius(center, TargetType.Enemy, 3.0, false, hitAttackableObjects = true).filterIsInstance<PlayerData>().forEach { target ->
                         target.damage(5.0, DamageType.Normal, playerData, damagePath = DamagePath.STATUS_EFFECT)
                     }
                     particles.spawn(center, Particle.EXPLOSION, count = 2, spread = 0.25)
@@ -110,8 +114,6 @@ class Terrorist : GameClass(), PlayerDeathHandler, GameEndHandler {
                 cancel()
             }
         }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L)
-        val task = bombTask ?: return
-        game.tasks.add(task)
     }
 
     override fun onGameEnd() {
@@ -143,7 +145,7 @@ class Terrorist : GameClass(), PlayerDeathHandler, GameEndHandler {
         private val finishScheduled = java.util.Collections.newSetFromMap(java.util.WeakHashMap<Game, Boolean>())
 
         fun pendingExplosionTicks(game: Game): Long =
-            ((pendingUntil[game] ?: 0L) - org.bukkit.Bukkit.getCurrentTick().toLong()).coerceAtLeast(0L)
+            ((pendingUntil[game] ?: 0L) - game.combatTick).coerceAtLeast(0L)
 
         fun markFinishScheduled(game: Game): Boolean = finishScheduled.add(game)
 

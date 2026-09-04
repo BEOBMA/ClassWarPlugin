@@ -22,6 +22,7 @@ private const val BLACKSMITH_MAX_ENHANCEMENT = 30
 private const val BLACKSMITH_BASIC_ATTACK_MULTIPLIER = 0.6
 
 class Blacksmith : GameClass(), GameStatusHandler, OnHitHandler {
+    override val classId = "blacksmith"
     override val name = "<gray>대장장이"
     override val rank = Rank.B
     override val classItemMaterial = Material.ANVIL
@@ -113,6 +114,7 @@ class Blacksmith : GameClass(), GameStatusHandler, OnHitHandler {
     }
 
     private inner class EnhanceSkill : Skill() {
+        override val definitionId = "blacksmith/enhance-skill"
         override val name = "<bold>강화"
         override val description = listOf(
             "<gray>검 강화를 시도한다.",
@@ -130,7 +132,7 @@ class Blacksmith : GameClass(), GameStatusHandler, OnHitHandler {
             return false
         }
 
-        override fun use() {
+        override fun use(): Boolean {
             val before = enhancementLevel
             val chance = chanceAt(before)
             val roll = Random.nextDouble(100.0)
@@ -170,6 +172,7 @@ class Blacksmith : GameClass(), GameStatusHandler, OnHitHandler {
                     )
                 }
             }
+            return true
         }
     }
 }

@@ -11,12 +11,13 @@ import org.beobma.classWarPlugin.util.HitboxUtil
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import kotlin.math.cos
 
 private const val SHY_VIEW_RANGE = 48.0
 
 class ShyPerson : GameClass(), GameStatusHandler {
+    override val classId = "shy-person"
     override val name = "<gray>부끄럼쟁이"
     override val rank = Rank.B
     override val classItemMaterial = Material.PUFFERFISH
@@ -26,7 +27,7 @@ class ShyPerson : GameClass(), GameStatusHandler {
 
     override fun onBattleStart() {
         visibleObservers.clear()
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var tick = 0
             override fun run() {
                 if (!player.isOnline || playerStatus.isDead) {

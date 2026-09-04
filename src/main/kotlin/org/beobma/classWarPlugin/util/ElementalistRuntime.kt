@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.util
 
+import org.beobma.classWarPlugin.ability.AbilityExecution
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.effect.EffectApiAccess
@@ -33,7 +35,7 @@ import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.inventory.ItemStack
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.BoundingBox
 import org.bukkit.util.Transformation
@@ -101,7 +103,8 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
         private const val RESONANCE_RANGE_MULTIPLIER = 1.4
     }
 
-    private val player = playerData.player
+    private val player get() = playerData.player
+    private val abilityScope = checkNotNull(AbilityExecution.current)
     private val queue = ArrayDeque<Element>()
     private val history = mutableListOf<ElementRecord>()
     private val resonanceReady = mutableSetOf<Element>()
@@ -155,8 +158,8 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
         return false
     }
 
-    fun transpose() {
-        if (!canTranspose()) return
+    fun transpose(): Boolean {
+        if (!canTranspose()) return false
         val first = queue.removeFirst()
         val second = queue.removeFirst()
         queue.addFirst(first)
@@ -179,10 +182,11 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
         }
         sounds.play(player, Sound.BLOCK_ENCHANTMENT_TABLE_USE, volume = 0.95f, pitch = 1.35f)
         sounds.play(player, Sound.BLOCK_AMETHYST_BLOCK_RESONATE, volume = 0.68f, pitch = 1.7f)
+        return true
     }
 
-    fun cast(mode: ElementCastMode) {
-        if (!canCast(mode)) return
+    fun cast(mode: ElementCastMode): Boolean {
+        if (!canCast(mode)) return false
         val element = queue.first
         val context = prepareContext(element, mode)
 
@@ -193,6 +197,7 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
         }
 
         finishConsumption(context)
+        return true
     }
 
     fun consumeFallImmunity(event: EntityDamageEvent): Boolean {
@@ -243,7 +248,7 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
     }
 
     private fun prepareContext(element: Element, mode: ElementCastMode): ElementCastContext {
-        val now = player.world.fullTime
+        val now = playerData.game.combatTick
         history.removeIf { now - it.tick > COMBO_WINDOW_TICKS }
         val previous = history.lastOrNull()?.takeIf {
             now - it.tick <= COMBO_WINDOW_TICKS && it.element != element
@@ -273,7 +278,7 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
     }
 
     private fun finishConsumption(context: ElementCastContext) {
-        val now = player.world.fullTime
+        val now = playerData.game.combatTick
         val previous = history.lastOrNull()
         if (previous != null && previous.element == context.element && now - previous.tick <= COMBO_WINDOW_TICKS) {
             resonanceReady += context.element
@@ -297,7 +302,7 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
     }
 
     private fun updateArrayStatus() {
-        val now = player.world.fullTime
+        val now = playerData.game.combatTick
         history.removeIf { now - it.tick > COMBO_WINDOW_TICKS }
         arrayStatus?.update(queue.take(5), stored, resonanceReady, history.toList(), now)
     }
@@ -531,7 +536,7 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
                 )
             }
             if (tick % 5 == 0) {
-                playerData.radius(center, TargetType.Enemy, 4.5, false).forEach { target ->
+                playerData.radius(center, TargetType.Enemy, 4.5, false, hitAttackableObjects = true).forEach { target ->
                     if (target.entity.boundingBox.overlaps(contactBox)) {
                         affectTarget(context, target, target.entity.location)
                     }
@@ -576,7 +581,7 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
                 particles.spawn(center.clone().add(0.0, 0.65, 0.0), Particle.LARGE_SMOKE, count = 8, spread = 2.1, speed = 0.03)
             }
             val inside = mutableSetOf<UUID>()
-            playerData.radius(center, TargetType.Enemy, 3.0, false).forEach { target ->
+            playerData.radius(center, TargetType.Enemy, 3.0, false, hitAttackableObjects = true).forEach { target ->
                 inside += target.entity.uniqueId
                 val burn = target.getStatus<Burn>()
                 if (burn != null && burn.power > 0) {
@@ -623,7 +628,7 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
                 )
             }
             if (tick % 5 == 0) {
-                playerData.radius(center, TargetType.Enemy, range, false).forEach { target ->
+                playerData.radius(center, TargetType.Enemy, range, false, hitAttackableObjects = true).forEach { target ->
                     applySlow(target, slow, 1)
                     affectTarget(context, target, target.entity.location)
                 }
@@ -668,7 +673,7 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
             if (tick % 20 == 0) {
                 sounds.play(center, Sound.ENTITY_BREEZE_WIND_BURST, volume = 0.35f, pitch = 1.35f)
             }
-            playerData.radius(center, TargetType.Enemy, radius, false).forEach { target ->
+            playerData.radius(center, TargetType.Enemy, radius, false, hitAttackableObjects = true).forEach { target ->
                 val living = target.entity as? LivingEntity ?: return@forEach
                 val pull = center.toVector().subtract(target.entity.boundingBox.center)
                 if (pull.lengthSquared() > 0.04) living.velocity = living.velocity.add(pull.normalize().multiply(0.1))
@@ -695,7 +700,7 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
                     particles.spawn(location.clone().add(0.0, 0.3, 0.0), Particle.SMOKE, count = 2, spread = 0.22, speed = 0.015)
                     spawnElementDust(location.clone().add(0.0, 0.12, 0.0), Element.FIRE, 3, 0.25, 0.02, 0.8f)
                 }
-                playerData.radius(location, TargetType.Enemy, 0.9, false).forEach { target ->
+                playerData.radius(location, TargetType.Enemy, 0.9, false, hitAttackableObjects = true).forEach { target ->
                     val last = lastBurnTick[target.entity.uniqueId] ?: Int.MIN_VALUE
                     if (tick - last < 15) return@forEach
                     lastBurnTick[target.entity.uniqueId] = tick
@@ -723,7 +728,7 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
                 particles.circle(center.clone().add(0.0, 0.3, 0.0), particle, radius, 18)
             }
             if (tick % 5 == 0) {
-                playerData.radius(center, TargetType.Enemy, radius, false).forEach { onTarget(it, it.entity.location) }
+                playerData.radius(center, TargetType.Enemy, radius, false, hitAttackableObjects = true).forEach { onTarget(it, it.entity.location) }
             }
             true
         }
@@ -770,7 +775,7 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
     }
 
     private fun fusionExplosion(location: Location) {
-        playerData.radius(location, TargetType.Enemy, 2.0, false).forEach {
+        playerData.radius(location, TargetType.Enemy, 2.0, false, hitAttackableObjects = true).forEach {
             it.damage(2.0, DamageType.Normal, playerData, damagePath = DamagePath.SKILL)
         }
         particles.spawn(location, Particle.EXPLOSION, count = 4, spread = 0.55, speed = 0.07)
@@ -787,7 +792,7 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
         particles.spawn(location, Particle.ASH, count = 22, spread = 0.65, speed = 0.04)
         sounds.play(location, Sound.BLOCK_POINTED_DRIPSTONE_LAND, volume = 0.65f, pitch = 0.55f)
         trackLater(20L) {
-            playerData.radius(location, TargetType.Enemy, 2.25, false).forEach { target ->
+            playerData.radius(location, TargetType.Enemy, 2.25, false, hitAttackableObjects = true).forEach { target ->
                 target.damage(2.0, DamageType.Normal, playerData, damagePath = DamagePath.SKILL)
                 (target.entity as? LivingEntity)?.velocity = (target.entity as LivingEntity).velocity.setY(0.85)
             }
@@ -866,7 +871,7 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
         var tick = 0
         trackTimer(0L, 1L) {
             if (tick++ >= 80) return@trackTimer false
-            val targets = playerData.radius(center, TargetType.Enemy, 3.5, false)
+            val targets = playerData.radius(center, TargetType.Enemy, 3.5, false, hitAttackableObjects = true)
             targets.forEach { target ->
                 val living = target.entity as? LivingEntity ?: return@forEach
                 val pull = center.toVector().subtract(target.entity.boundingBox.center)
@@ -930,7 +935,7 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
                 particles.spawn(center.clone().add(0.0, 1.0, 0.0), Particle.TOTEM_OF_UNDYING, count = 18, spread = 2.1, speed = 0.11)
             }
             if (tick % 10 == 0) {
-                playerData.radius(center, TargetType.Enemy, 3.5, false).forEach { applySlow(it, 20, 1) }
+                playerData.radius(center, TargetType.Enemy, 3.5, false, hitAttackableObjects = true).forEach { applySlow(it, 20, 1) }
             }
             if (tick % 20 == 0) {
                 playerData.heal(1.0, DamageType.Normal, playerData)
@@ -942,7 +947,7 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
 
     private fun startEruption(center: Location) {
         announceLiberation(center, Sound.ENTITY_GENERIC_EXPLODE)
-        playerData.radius(center, TargetType.Enemy, 3.25, false).forEach { target ->
+        playerData.radius(center, TargetType.Enemy, 3.25, false, hitAttackableObjects = true).forEach { target ->
             target.damage(2.0, DamageType.Normal, playerData, damagePath = DamagePath.SKILL)
             (target.entity as? LivingEntity)?.velocity = (target.entity as LivingEntity).velocity.setY(1.0)
         }
@@ -984,7 +989,7 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
         trackTimer(5L, 1L) {
             if (tick++ >= 14) {
                 removeDisplay(display)
-                playerData.radius(impact, TargetType.Enemy, 0.9, false).forEach {
+                playerData.radius(impact, TargetType.Enemy, 0.9, false, hitAttackableObjects = true).forEach {
                     it.damage(1.0, DamageType.Normal, playerData, damagePath = DamagePath.SKILL)
                 }
                 particles.spawn(impact, Particle.BLOCK, Material.MAGMA_BLOCK.createBlockData(), ParticleOptions.spread(32, 0.7, 0.18))
@@ -1374,7 +1379,7 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
 
     private fun trackTimer(delay: Long, period: Long, body: () -> Boolean): BukkitTask {
         lateinit var task: BukkitTask
-        task = object : BukkitRunnable() {
+        task = object : BukkitRunnable(abilityScope) {
             override fun run() {
                 if (cleaned || !body()) {
                     tasks.remove(task)
@@ -1389,7 +1394,7 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
 
     private fun trackLater(delay: Long, body: () -> Unit): BukkitTask {
         lateinit var task: BukkitTask
-        task = object : BukkitRunnable() {
+        task = object : BukkitRunnable(abilityScope) {
             override fun run() {
                 tasks.remove(task)
                 if (!cleaned) body()

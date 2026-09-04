@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.listener
 
+import org.beobma.classWarPlugin.ability.AbilityTree
+
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.handler.SneakInputHandler
 import org.beobma.classWarPlugin.info.Info.isGaming
@@ -18,15 +20,14 @@ class OnPlayerToggleSneakEvent : Listener {
         val playerData = findGameForPlayer(player)?.playerDatas?.filterIsInstance<PlayerData>()
             ?.find { it.uniqueId == player.uniqueId } ?: return
         if (!playerData.canDispatchClassHandlers()) return
-        for (gameClass in playerData.gameClasses) {
-            if (gameClass !is SneakInputHandler) continue
-            gameClass.onPlayerToggleSneak(event)
+        for (bound in AbilityTree.handlers(playerData.gameClasses, SneakInputHandler::class.java)) {
+            bound.call { it.onPlayerToggleSneak(event) }
             if (event.isCancelled) return
         }
         playerData.statusAbnormalitys.toList()
             .filterIsInstance<SneakInputHandler>()
             .forEach { status ->
-                status.onPlayerToggleSneak(event)
+                (status as org.beobma.classWarPlugin.status.StatusAbnormality).fromSource { status.onPlayerToggleSneak(event) }
                 if (event.isCancelled) return
             }
     }

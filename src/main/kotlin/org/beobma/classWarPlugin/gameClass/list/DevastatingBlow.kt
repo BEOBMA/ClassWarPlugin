@@ -27,11 +27,12 @@ import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.inventory.ItemStack
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.Vector
 
 class DevastatingBlow : GameClass(), EnvironmentalDamageHandler, GameEndHandler, PlayerDeathHandler {
+    override val classId = "devastating-blow"
     override val name = "<gray>파멸의 일격"
     override val rank = Rank.A
     override val classItemMaterial = Material.POINTED_DRIPSTONE
@@ -43,7 +44,7 @@ class DevastatingBlow : GameClass(), EnvironmentalDamageHandler, GameEndHandler,
     private var savedGravity = true
     private var savedAllowFlight = false
     private var savedFlying = false
-    private var savedWalkSpeed = 0.2f
+    private var walkEffect: AutoCloseable? = null
     private var savedFlySpeed = 0.1f
     private var descentX = 0.0
     private var descentZ = 0.0
@@ -62,6 +63,7 @@ class DevastatingBlow : GameClass(), EnvironmentalDamageHandler, GameEndHandler,
     override fun onPlayerDeath() = cleanup()
 
     private inner class RedSkill : Skill(), MovementSkill {
+        override val definitionId = "devastating-blow/red-skill"
         override val name = "<bold>파멸의 일격"
         override val description = listOf(
             "<gray>10초간 하늘 높은 곳으로 올라가 자유롭게 이동하며 {keyword:Stealth} 상태가 된다.",
@@ -71,15 +73,16 @@ class DevastatingBlow : GameClass(), EnvironmentalDamageHandler, GameEndHandler,
         )
         override val cooldown = 80
         override val isOnOffSKill = true
-        override fun use() {
+        override fun use(): Boolean {
             if (active && !descending) {
                 beginDescent(automatic = false)
-                return
+                return true
             }
-            if (active) return
+            if (active) return false
             cooldownItem = player.inventory.itemInMainHand.clone()
             beginAscension()
             multiplyCurrentCooldown(1.0 / cooldown)
+            return true
         }
         override fun isUseSuccess(): Boolean = !descending
     }
@@ -90,7 +93,6 @@ class DevastatingBlow : GameClass(), EnvironmentalDamageHandler, GameEndHandler,
         savedGravity = player.hasGravity()
         savedAllowFlight = player.allowFlight
         savedFlying = player.isFlying
-        savedWalkSpeed = player.walkSpeed
         savedFlySpeed = player.flySpeed
         val destination = player.location.clone().apply {
             y = (y + 22.0).coerceAtMost((world.maxHeight - 5).toDouble())
@@ -106,7 +108,7 @@ class DevastatingBlow : GameClass(), EnvironmentalDamageHandler, GameEndHandler,
         stealth = (playerData.addStatus(Stealth(), playerData) as Stealth).also { it.applyStatus(duration = 10, powerSet = 1) }
         particles.spawn(player, Particle.REVERSE_PORTAL, count = 75, spread = 0.8, speed = 0.16)
         sounds.play(player, Sound.ENTITY_BREEZE_WIND_BURST, volume = 1.0f, pitch = 0.65f)
-        hoverTask = playerData.trackTask(object : BukkitRunnable() {
+        hoverTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var ticks = 0
             override fun run() {
                 if (!active || descending || playerStatus.isDead) {
@@ -139,11 +141,11 @@ class DevastatingBlow : GameClass(), EnvironmentalDamageHandler, GameEndHandler,
         player.isFlying = false
         player.allowFlight = false
         player.setGravity(false)
-        player.walkSpeed = 0f
+        walkEffect = playerData.attributeEffects.walkSpeed(abilityScope, 0.0)
         player.flySpeed = 0f
         player.velocity = Vector()
         sounds.play(player, Sound.BLOCK_RESPAWN_ANCHOR_CHARGE, volume = 0.9f, pitch = 0.58f)
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var ticks = 0
             var falling = false
             override fun run() {
@@ -194,7 +196,7 @@ class DevastatingBlow : GameClass(), EnvironmentalDamageHandler, GameEndHandler,
 
     private fun impact() {
         val center = player.location.clone()
-        playerData.radius(center, TargetType.Enemy, 5.0, false).forEach { target ->
+        playerData.radius(center, TargetType.Enemy, 5.0, false, hitAttackableObjects = true).forEach { target ->
             target.damage(6.0, DamageType.Normal, playerData, damagePath = DamagePath.SKILL)
             target.getOrCreateStatus(playerData) { Stun() }.applyStatus(duration = 1, powerSet = 1)
         }
@@ -229,7 +231,7 @@ class DevastatingBlow : GameClass(), EnvironmentalDamageHandler, GameEndHandler,
             player.setGravity(savedGravity)
             player.allowFlight = savedAllowFlight
             player.isFlying = savedFlying && savedAllowFlight
-            player.walkSpeed = savedWalkSpeed
+            walkEffect?.close(); walkEffect = null
             player.flySpeed = savedFlySpeed
             player.fallDistance = 0f
         }

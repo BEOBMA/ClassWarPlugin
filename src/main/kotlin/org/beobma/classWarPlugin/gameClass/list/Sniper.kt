@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.ability.Targeting
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
@@ -10,28 +12,23 @@ import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.handler.WeaponInputHandler
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.entity.EntityData
-import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.manager.ClassBalanceManager
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
-import org.beobma.classWarPlugin.manager.PlayerTagManager
-import org.beobma.classWarPlugin.manager.SkillManager.getTargetCandidates
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
-import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.hasStatus
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.MoveSpeedDecrease
 import org.beobma.classWarPlugin.status.list.SniperAmmoStatus
-import org.beobma.classWarPlugin.status.list.Stealth
 import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.TargetType
 import org.beobma.classWarPlugin.util.HitboxUtil
 import org.bukkit.*
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.event.player.PlayerSwapHandItemsEvent
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.util.Vector
 import kotlin.random.Random
 
@@ -43,6 +40,7 @@ private const val SNIPER_CLOSE_SLOW_PERCENT = 20
 private const val SNIPER_LONG_SLOW_PERCENT = 5
 
 class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
+    override val classId = "sniper"
     override val name = "<gray>저격수"
     override val rank = Rank.B
     override val classItemMaterial = Material.SPYGLASS
@@ -55,6 +53,13 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
     override var passives: List<BasePassive> = listOf(
         Passive()
     )
+
+    private var speedEffect: AutoCloseable? = null
+    private fun setSpeed(multiplier: Double) {
+        speedEffect?.close()
+        speedEffect = if (multiplier == 1.0) null else playerData.attributeEffects.walkSpeed(abilityScope, multiplier)
+    }
+    override fun onSuspend() { aiming = false; if (!reloading) setSpeed(1.0) }
 
     private var loaded = true
     private var aiming = false
@@ -70,7 +75,9 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
         ammoStatus().setLoaded(true)
     }
 
-    override fun onGameTimePasses() = Unit
+    override fun onGameTimePasses() {
+        if (aiming && !player.isHandRaised) { aiming = false; setSpeed(1.0) }
+    }
 
     private data class ShotTrace(val target: EntityData?, val end: Location)
 
@@ -79,18 +86,9 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
         val maximumRange = ClassBalanceManager.scaleRange(playerData, 64.0)
         val blockHit = start.world.rayTraceBlocks(start, normalized, maximumRange)
         val blockDistance = blockHit?.hitPosition?.distance(start.toVector()) ?: maximumRange
-        val isTraining = PlayerTagManager.isTraining(player)
-
-        val targetHit = playerData.getTargetCandidates().asSequence()
-            .filter { candidate ->
-                candidate != playerData &&
-                    candidate.entityStatus.isSkillTargeting &&
-                    !candidate.hasStatus<Stealth>() &&
-                    when (candidate) {
-                        is PlayerData -> playerData.isEnemyOf(candidate)
-                        else -> isTraining
-                    }
-            }
+        val targetHit = Targeting.select(
+            playerData, TargetType.Enemy, start.world, includeStealth = false,
+        ).asSequence()
             .mapNotNull { candidate ->
                 HitboxUtil.rayIntersectionDistance(
                     candidate.entity.boundingBox,
@@ -127,7 +125,7 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
             return
         }
         aiming = true
-        player.walkSpeed = 0.08f
+        setSpeed(0.4)
     }
 
     override fun onWeaponSwapHand(event: PlayerSwapHandItemsEvent) {
@@ -140,14 +138,14 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
         loaded = false
         ammoStatus().setLoaded(false)
         aiming = false
-        player.walkSpeed = 0.2f
+        setSpeed(1.0)
         val start = player.eyeLocation.clone()
         val shotDirection = if (isPreciseShot) start.direction.normalize() else inaccurateDirection(start.direction)
         val trace = traceShot(start, shotDirection, expansion = if (isPreciseShot) 0.3 else 0.15)
         val target = trace.target
         val end = trace.end
         particles.line(start, end, Particle.ELECTRIC_SPARK, spacing = 0.35)
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var tick = 0
             override fun run() {
                 if (tick >= 12) {
@@ -170,9 +168,10 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
         reloading = true
         ammoStatus().setReloading(2)
         aiming = false
-        player.walkSpeed = 0.12f
+        setSpeed(0.6)
         sounds.play(player, Sound.BLOCK_IRON_TRAPDOOR_CLOSE, pitch = 1.5f)
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
+            override fun onCancel() { reloading = false; setSpeed(1.0) }
             var ticksRemaining = 40
             override fun run() {
                 if (!player.isOnline || player.isDead) {
@@ -187,14 +186,13 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
                 loaded = true
                 reloading = false
                 ammoStatus().setLoaded(true)
-                player.walkSpeed = 0.2f
+                setSpeed(1.0)
                 sounds.play(player, Sound.BLOCK_IRON_TRAPDOOR_OPEN, pitch = 1.8f)
                 particles.spawn(player, Particle.CRIT, count = 8, spread = 0.3)
                 cancel()
             }
         }.runTaskTimer(ClassWarPlugin.instance, 1L, 1L))
     }
-
 
     private class Weapon : BaseWeapon() {
         override val name = "<gray>저격총"
@@ -213,6 +211,7 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
     }
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "sniper/red-skill"
         override val name = "<gray><bold>재장전"
         override val description = listOf(
             "<gray>사용 시 저격총을 재장전한다.",
@@ -220,8 +219,9 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
         )
         override val cooldown = SNIPER_RELOAD_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             this@Sniper.reload()
+            return true
         }
 
         override fun isUseSuccess(): Boolean = !reloading && !loaded

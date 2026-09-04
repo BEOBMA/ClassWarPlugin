@@ -1,5 +1,8 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.ability.Control
+import org.beobma.classWarPlugin.ability.ControlLease
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
@@ -40,7 +43,7 @@ import org.bukkit.entity.Projectile
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.inventory.ItemStack
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.Transformation
 import org.bukkit.util.Vector
@@ -59,7 +62,9 @@ private const val VAMPIRE_BLOOD_PLAGUE_COOLDOWN_SECONDS = 120
 private const val VAMPIRE_REFLECTED_DAMAGE_MULTIPLIER = 2.0
 private const val VAMPIRE_BLOOD_PLAGUE_DURATION_SECONDS = 4
 
-class Vampire : GameClass() {
+class Vampire : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameEndHandler {
+    override fun onGameEnd() = clearForms(listOf(playerData.uniqueId))
+    override val classId = "vampire"
     override val name = "<gray>흡혈귀"
     override val rank = Rank.S
     override val classItemMaterial = Material.BAT_SPAWN_EGG
@@ -74,12 +79,11 @@ class Vampire : GameClass() {
     private var transformationStealth: Stealth? = null
     private var savedAllowFlight = false
     private var savedFlying = false
+    private var controls: ControlLease? = null
     private var savedGravity = true
-    private var savedCanAttack = true
-    private var savedAttackable = true
-    private var savedSkillTargeting = true
 
     private inner class RedSkill : Skill(), org.beobma.classWarPlugin.skill.MovementSkill {
+        override val definitionId = "vampire/red-skill"
         override val name = "<bold>박쥐화"
         override val description = listOf(
             "<gray>자신은 박쥐로 변신하여 날아다닐 수 있게 된다.",
@@ -94,13 +98,14 @@ class Vampire : GameClass() {
         override val canUseWhileSilenced: Boolean
             get() = transformed
 
-        override fun use() {
+        override fun use(): Boolean {
             if (transformed) {
                 endTransformation(batDied = false)
             } else {
                 beginTransformation()
                 multiplyCurrentCooldown(0.0)
             }
+            return true
         }
     }
 
@@ -110,16 +115,15 @@ class Vampire : GameClass() {
         savedAllowFlight = player.allowFlight
         savedFlying = player.isFlying
         savedGravity = player.hasGravity()
-        savedCanAttack = playerStatus.canAttack
-        savedAttackable = playerStatus.isAttackable
-        savedSkillTargeting = playerStatus.isSkillTargeting
 
         player.allowFlight = true
         player.isFlying = true
         player.setGravity(false)
-        playerStatus.canAttack = false
-        playerStatus.isAttackable = false
-        playerStatus.isSkillTargeting = false
+        controls?.close()
+        controls = ControlLease(abilityScope, playerStatus)
+        controls?.allow(Control.ATTACK, false)
+        controls?.allow(Control.ATTACKABLE, false)
+        controls?.allow(Control.TARGETABLE, false)
         transformationSilence = (playerData.addStatus(Silence(), playerData) as Silence).also {
             it.applyStatus(powerSet = 1)
         }
@@ -140,7 +144,7 @@ class Vampire : GameClass() {
         sounds.play(player, Sound.ENTITY_BAT_TAKEOFF, volume = 1.0f, pitch = 0.65f)
         player.sendMiniMessage("<dark_red><bold>[박쥐화]</bold> <gray>비행 상태가 되었습니다. 스킬을 다시 사용하면 해제합니다.")
 
-        batTask = playerData.trackTask(object : BukkitRunnable() {
+        batTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
             private var ticks = 0
 
             override fun run() {
@@ -188,12 +192,10 @@ class Vampire : GameClass() {
         transformationStealth?.remove()
         transformationStealth = null
 
+        controls?.close(); controls = null
         player.allowFlight = savedAllowFlight
         player.isFlying = savedFlying && savedAllowFlight
         player.setGravity(savedGravity)
-        playerStatus.canAttack = savedCanAttack
-        playerStatus.isAttackable = savedAttackable
-        playerStatus.isSkillTargeting = savedSkillTargeting
         player.fallDistance = 0f
         particles.spawn(player, Particle.SMOKE, count = 26, spread = 0.55, speed = 0.1)
         sounds.play(player, if (batDied) Sound.ENTITY_BAT_DEATH else Sound.ENTITY_BAT_TAKEOFF, volume = 0.9f, pitch = if (batDied) 0.5f else 1.35f)
@@ -233,10 +235,8 @@ class Vampire : GameClass() {
             else -> DamagePath.SKILL
         }
 
-        val wasAttackable = playerStatus.isAttackable
-        val wasTargeting = playerStatus.isSkillTargeting
-        playerStatus.isAttackable = true
-        playerStatus.isSkillTargeting = true
+        controls?.allow(Control.ATTACKABLE, true)
+        controls?.allow(Control.TARGETABLE, true)
         try {
             playerData.damage(
                 incoming * VAMPIRE_REFLECTED_DAMAGE_MULTIPLIER,
@@ -246,8 +246,8 @@ class Vampire : GameClass() {
             )
         } finally {
             if (transformed) {
-                playerStatus.isAttackable = wasAttackable
-                playerStatus.isSkillTargeting = wasTargeting
+                controls?.allow(Control.ATTACKABLE, false)
+                controls?.allow(Control.TARGETABLE, false)
             }
         }
         particles.spawn(currentBat, Particle.DAMAGE_INDICATOR, count = 12, spread = 0.35, speed = 0.08)
@@ -258,6 +258,7 @@ class Vampire : GameClass() {
     }
 
     private inner class OrangeSkill : Skill() {
+        override val definitionId = "vampire/orange-skill"
         override val name = "<bold>혈사병"
         override val description = listOf(
             "<gray>6초간 10칸 내의 범위에 혈사병을 일으킨다.",
@@ -266,13 +267,13 @@ class Vampire : GameClass() {
         )
         override val cooldown = VAMPIRE_BLOOD_PLAGUE_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             val affected = mutableMapOf<UUID, EntityData>()
             val locks = mutableMapOf<UUID, Pair<EntityData, BleedingLock>>()
             sounds.play(player, Sound.ENTITY_WITHER_AMBIENT, volume = 0.75f, pitch = 1.4f)
             particles.spawn(player.location.clone().add(0.0, 1.0, 0.0), Particle.DUST, Particle.DustOptions(Color.MAROON, 1.7f), org.beobma.classWarPlugin.effect.ParticleOptions.spread(42, 1.2, 0.12))
 
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 private var elapsedTicks = 0
 
                 private fun finishPlague() {
@@ -289,7 +290,7 @@ class Vampire : GameClass() {
                         finishPlague()
                         return
                     }
-                    val inside = playerData.radius(player.location, TargetType.Enemy, 10.0, false)
+                    val inside = playerData.radius(player.location, TargetType.Enemy, 10.0, false, hitAttackableObjects = true)
                     val insideIds = inside.mapTo(mutableSetOf()) { it.entity.uniqueId }
                     inside.forEach { target ->
                         val id = target.entity.uniqueId
@@ -311,6 +312,7 @@ class Vampire : GameClass() {
                     elapsedTicks++
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
+            return true
         }
 
         private fun drawPlagueCircle(center: Location, tick: Int) {
@@ -366,7 +368,7 @@ class Vampire : GameClass() {
                 TemporaryDisplayManager.mark(this, player.uniqueId)
             }
             particles.spawn(bloodLocation, Particle.FALLING_DUST, Material.REDSTONE_BLOCK.createBlockData(), org.beobma.classWarPlugin.effect.ParticleOptions.spread(8, 0.25, 0.03))
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 private var elapsedTicks = 0
 
                 override fun run() {

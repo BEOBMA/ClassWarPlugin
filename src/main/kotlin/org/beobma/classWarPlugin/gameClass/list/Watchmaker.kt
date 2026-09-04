@@ -18,7 +18,7 @@ import org.beobma.classWarPlugin.status.list.TimePhaseStatus
 import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.HitboxUtil
 import org.bukkit.*
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.entity.Display
 import org.bukkit.entity.TextDisplay
 import org.bukkit.util.Transformation
@@ -40,6 +40,7 @@ private const val WATCHMAKER_SHIELD_DURATION_SECONDS = 5
 private const val WATCHMAKER_SHIELD_POWER = 4
 
 class Watchmaker : GameClass(), GameStatusHandler {
+    override val classId = "watchmaker"
     override val name = "<gray>시계공"
     override val rank = Rank.B
     override val classItemMaterial = Material.WOODEN_SWORD
@@ -77,6 +78,7 @@ class Watchmaker : GameClass(), GameStatusHandler {
     }
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "watchmaker/red-skill"
         override val name = "<bold>시계침"
         override val description = listOf(
             "<gray>현재 위치에 6초 동안 시계침을 배치하고 회전시킨다.",
@@ -89,7 +91,7 @@ class Watchmaker : GameClass(), GameStatusHandler {
         )
         override val cooldown = WATCHMAKER_HAND_COOLDOWN_SECONDS
 
-        override fun use()  {
+        override fun use(): Boolean {
             val center = player.location.clone()
             val lineStart = center.clone().add(0.0, 0.7, 0.0)
             val hit = mutableSetOf<UUID>()
@@ -124,7 +126,7 @@ class Watchmaker : GameClass(), GameStatusHandler {
                 }
             }
             var tick = 0
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 override fun run() {
                     if (tick >= 120) {
                         numeralDisplays.forEach(TextDisplay::remove)
@@ -166,6 +168,7 @@ class Watchmaker : GameClass(), GameStatusHandler {
                     tick++
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
+            return true
         }
     }
 

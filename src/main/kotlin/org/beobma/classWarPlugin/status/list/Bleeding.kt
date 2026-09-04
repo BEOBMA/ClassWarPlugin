@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.status.list
 
+import org.beobma.classWarPlugin.ability.AbilityTree
+
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.gameClass.handler.BleedingDamageHandler
@@ -29,8 +31,8 @@ class Bleeding : StatusAbnormality(), StatusOnHitHandler {
     override fun onAttackHit(context: DamageContext) {
         if (power <= 0) return
         context.attacker.damage(power.toDouble(), DamageType.StatusAbnormality, casterData)
-        casterData.gameClasses.flatMap { it.passives }.filterIsInstance<BleedingDamageHandler>()
-            .forEach { it.onBleedingDamage(context.attacker, power) }
+        AbilityTree.handlers(casterData.gameClasses, BleedingDamageHandler::class.java)
+            .forEach { bound -> bound.call { it.onBleedingDamage(context.attacker, power) } }
         if (entityData.hasStatus<BleedingLock>()) return
         if (power / 2 <= 0) {
             this.remove()

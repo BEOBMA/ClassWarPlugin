@@ -3,11 +3,9 @@ package org.beobma.classWarPlugin.gameClass.list
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.entity.player.PlayerData
-import org.beobma.classWarPlugin.event.PlayerSkillUseEvent
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
-import org.beobma.classWarPlugin.gameClass.handler.OnSkillUseHandler
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.gameClass.handler.EnvironmentalDamageHandler
 import org.beobma.classWarPlugin.gameClass.handler.MovementInputHandler
@@ -16,7 +14,6 @@ import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.CooldownManager
 import org.beobma.classWarPlugin.manager.TemporaryDisplayManager
-import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
@@ -37,7 +34,7 @@ import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.event.player.PlayerInputEvent
 import org.bukkit.event.player.PlayerToggleSneakEvent
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.Vector
 import org.bukkit.util.BoundingBox
@@ -53,6 +50,7 @@ private const val ASSASSIN_BACKSTAB_BONUS_DAMAGE = 2.0
 
 class Assassin : GameClass(), EnvironmentalDamageHandler, StatusPlayerMoveHandler, SneakInputHandler,
     MovementInputHandler {
+    override val classId = "assassin"
     override val name = "<gray>암살자"
     override val rank = Rank.B
     override val classItemMaterial = Material.NETHERITE_HELMET
@@ -199,7 +197,7 @@ class Assassin : GameClass(), EnvironmentalDamageHandler, StatusPlayerMoveHandle
         TemporaryDisplayManager.mark(display, player.uniqueId)
         DisplayOrientationUtil.alignSwordBladeVertically(display, bladeDirection, scale = 1.45f)
         embeddedDaggerDisplay = display
-        embeddedDaggerTask = playerData.trackTask(object : BukkitRunnable() {
+        embeddedDaggerTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
                 if (!display.isValid || !playerData.hasStatus<Stealth>()) {
                     removeEmbeddedDagger()
@@ -216,7 +214,6 @@ class Assassin : GameClass(), EnvironmentalDamageHandler, StatusPlayerMoveHandle
         embeddedDaggerTask = null
     }
 
-
     private class Weapon : BaseWeapon() {
         override val name = "단검"
         override val description = listOf("")
@@ -224,6 +221,7 @@ class Assassin : GameClass(), EnvironmentalDamageHandler, StatusPlayerMoveHandle
     }
 
     private inner class RedSkill : Skill(), org.beobma.classWarPlugin.skill.MovementSkill {
+        override val definitionId = "assassin/red-skill"
         override val name = "<bold>단검 투척"
         override val description = listOf(
             "<gray>바라보는 방향으로 단검을 투척한다.",
@@ -237,12 +235,13 @@ class Assassin : GameClass(), EnvironmentalDamageHandler, StatusPlayerMoveHandle
         )
         override val cooldown = ASSASSIN_DAGGER_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             ignoreNextFallDamage = true
             val assassinsDaggerProjectile = DaggerProjectile()
             assassinsDaggerProjectile.location = player.eyeLocation.clone()
             assassinsDaggerProjectile.spawnProjectile(playerData)
             sounds.play(player, Sound.ENTITY_SKELETON_SHOOT, pitch = 2f)
+            return true
         }
     }
 
@@ -350,7 +349,7 @@ class Assassin : GameClass(), EnvironmentalDamageHandler, StatusPlayerMoveHandle
             val originalGravity = player.hasGravity()
             player.setGravity(false)
 
-            val task = object : BukkitRunnable() {
+            val task = object : BukkitRunnable(abilityScope) {
                 var ticks = 0
 
                 private fun attachToWall() {
@@ -379,7 +378,7 @@ class Assassin : GameClass(), EnvironmentalDamageHandler, StatusPlayerMoveHandle
                     }
                     CooldownManager.pauseCooldown(player, skills.first())
                     wallHoldTask?.cancel()
-                    wallHoldTask = playerData.trackTask(object : BukkitRunnable() {
+                    wallHoldTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
                         var attachedTicks = 0
 
                         override fun run() {

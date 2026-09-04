@@ -13,10 +13,11 @@ import org.beobma.classWarPlugin.util.TargetType
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import java.util.UUID
 
 class Venus : PlanetClass(), GameStatusHandler {
+    override val classId = "venus"
     override val name = "<gray>금성"
     override val rank = Rank.A
     override val classItemMaterial = Material.BLACK_CONCRETE
@@ -26,7 +27,7 @@ class Venus : PlanetClass(), GameStatusHandler {
 
     override fun onBattleStart() {
         cooldownUntil.clear()
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var tick = 0
             override fun run() {
                 if (!player.isOnline || playerStatus.isDead) {
@@ -34,9 +35,9 @@ class Venus : PlanetClass(), GameStatusHandler {
                     return
                 }
                 if (!isPowerEnabled() || game.isPaused) return
-                val now = player.world.fullTime
+                val now = game.combatTick
                 cooldownUntil.entries.removeIf { it.value <= now }
-                playerData.radius(player.location, TargetType.Enemy, 5.0, false)
+                playerData.radius(player.location, TargetType.Enemy, 5.0, false, hitAttackableObjects = true)
                     .filter { (cooldownUntil[it.entity.uniqueId] ?: 0L) <= now }
                     .forEach { target ->
                         cooldownUntil[target.entity.uniqueId] = now + 400L

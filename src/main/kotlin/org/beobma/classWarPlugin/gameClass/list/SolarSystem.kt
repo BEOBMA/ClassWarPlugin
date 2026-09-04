@@ -1,8 +1,9 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.ability.AbilityTree
+
 import net.kyori.adventure.text.minimessage.MiniMessage
 import org.beobma.classWarPlugin.ClassWarPlugin
-import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.effect.ParticleOptions
 import org.beobma.classWarPlugin.entity.player.PlayerData
@@ -10,7 +11,6 @@ import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.GameEndHandler
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
-import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
 import org.beobma.classWarPlugin.manager.GameClassManager.getWeaponClassId
 import org.beobma.classWarPlugin.manager.GameClassManager.toWeaponItemStack
 import org.beobma.classWarPlugin.manager.InventoryManager.skillDyeMaterial
@@ -32,7 +32,6 @@ import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.HitboxUtil
 import org.beobma.classWarPlugin.util.TargetType
 import org.bukkit.Color
-import org.bukkit.Bukkit
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.Particle
@@ -40,7 +39,7 @@ import org.bukkit.Sound
 import org.bukkit.entity.BlockDisplay
 import org.bukkit.entity.Display
 import org.bukkit.inventory.ItemStack
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.Transformation
 import org.bukkit.util.BoundingBox
@@ -51,7 +50,7 @@ import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.sin
 
-class SolarSystem : GameClass(), GameStatusHandler, GameEndHandler, OnHitHandler {
+class SolarSystem : GameClass(), GameStatusHandler, GameEndHandler {
     private val sol = Sol()
     private val luna = Luna()
     private val mercurius = Mercurius()
@@ -66,6 +65,13 @@ class SolarSystem : GameClass(), GameStatusHandler, GameEndHandler, OnHitHandler
     private val planets: List<PlanetClass> =
         listOf(sol, luna, mercurius, venus, terra, mars, jupiter, saturnus, uranus, neptune, pluto)
 
+    init { planets.forEach { planet -> planet.bindSolarPower { isPlanetActive(planet.javaClass) } } }
+
+    override val childAbilities: List<GameClass> get() = planets
+    override fun isChildActive(child: GameClass): Boolean =
+        child is PlanetClass && !hasDirectCopy(child) && isPlanetActive(child.javaClass)
+
+    override val classId = "solar-system"
     override val name = "<gray>태양계"
     override val rank = Rank.L
     override val classItemMaterial = Material.AMETHYST_BLOCK
@@ -81,17 +87,7 @@ class SolarSystem : GameClass(), GameStatusHandler, GameEndHandler, OnHitHandler
     override fun onBattleStart() {
         clearBodies()
         destroyedUntil.clear()
-        planets.forEach { planet ->
-            planet.bindSolarPower { isPlanetActive(planet.javaClass) }
-            planet.inject(playerData)
-            planet.skills.forEach { it.inject(playerData) }
-            planet.passives.forEach { it.inject(playerData) }
-        }
         saturnus.useSolarSystemOrbit()
-        planets.filterNot(::hasDirectCopy).forEach { planet ->
-            planet.passives.filterIsInstance<GameStatusHandler>().forEach { it.onBattleStart() }
-            (planet as? GameStatusHandler)?.onBattleStart()
-        }
         createPlanetStatuses()
         createBodies()
         ensureUranusEquipment()
@@ -103,20 +99,7 @@ class SolarSystem : GameClass(), GameStatusHandler, GameEndHandler, OnHitHandler
     override fun onGameEnd() {
         clearBodies()
         clearPlanetStatuses()
-        planets.filterIsInstance<GameEndHandler>().forEach { it.onGameEnd() }
     }
-
-    override fun onHit(context: DamageContext) =
-        activeDelegates<OnHitHandler>().forEach { it.onHit(context) }
-
-    override fun onAttackHit(context: DamageContext) =
-        activeDelegates<OnHitHandler>().forEach { it.onAttackHit(context) }
-
-    override fun onSkillAttackHit(context: DamageContext) =
-        activeDelegates<OnHitHandler>().forEach { it.onSkillAttackHit(context) }
-
-    override fun onStatusEffectAttackHit(context: DamageContext) =
-        activeDelegates<OnHitHandler>().forEach { it.onStatusEffectAttackHit(context) }
 
     internal fun <T : PlanetClass> isPlanetActive(type: Class<T>): Boolean {
         val planet = planets.firstOrNull(type::isInstance) ?: return false
@@ -131,7 +114,8 @@ class SolarSystem : GameClass(), GameStatusHandler, GameEndHandler, OnHitHandler
         .toList()
 
     private fun hasDirectCopy(planet: PlanetClass): Boolean =
-        playerData.gameClasses.any { it !== this && planet.javaClass.isInstance(it) }
+        AbilityTree.nodes(playerData.gameClasses)
+            .filterIsInstance<PlanetClass>().any { !it.isSolarAbility && planet.javaClass.isInstance(it) }
 
     private fun createBodies() {
         val definitions = listOf(
@@ -187,7 +171,7 @@ class SolarSystem : GameClass(), GameStatusHandler, GameEndHandler, OnHitHandler
     }
 
     private fun startOrbitTask() {
-        orbitTask = playerData.trackTask(object : BukkitRunnable() {
+        orbitTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var tick = 0
             override fun run() {
                 if (!player.isOnline || playerStatus.isDead) {
@@ -373,7 +357,7 @@ class SolarSystem : GameClass(), GameStatusHandler, GameEndHandler, OnHitHandler
         pitch = 0.0f
     }
 
-    private fun currentTick() = Bukkit.getCurrentTick().toLong()
+    private fun currentTick() = game.combatTick
 
     private fun clearBodies() {
         orbitTask?.cancel()

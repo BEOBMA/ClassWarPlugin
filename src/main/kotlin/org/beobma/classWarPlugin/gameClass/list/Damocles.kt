@@ -17,13 +17,14 @@ import org.bukkit.Sound
 import org.bukkit.entity.Display
 import org.bukkit.entity.ItemDisplay
 import org.bukkit.inventory.ItemStack
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.util.Vector
 import kotlin.random.Random
 
 private const val DAMOCLES_SWORD_SCALE = 1.0f
 
 class Damocles : GameClass(), GameStatusHandler {
+    override val classId = "damocles"
     override val name = "<gray>다모클레스"
     override val rank = Rank.S
     override val classItemMaterial = Material.MUSIC_DISC_11
@@ -51,7 +52,7 @@ class Damocles : GameClass(), GameStatusHandler {
         DisplayOrientationUtil.alignSwordBladeVertically(display, Vector(0.0, -1.0, 0.0), DAMOCLES_SWORD_SCALE)
         TemporaryDisplayManager.mark(display, player.uniqueId)
         sword = display
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var tick = 0
             override fun run() {
                 val current = sword
@@ -79,7 +80,7 @@ class Damocles : GameClass(), GameStatusHandler {
     private fun startDeathChecks() {
         if (deathCheckStarted) return
         deathCheckStarted = true
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
                 if (playerStatus.isDead || sword?.isValid != true) {
                     cancel()

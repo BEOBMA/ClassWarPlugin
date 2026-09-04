@@ -35,7 +35,7 @@ import org.bukkit.entity.BlockDisplay
 import org.bukkit.entity.Display
 import org.bukkit.entity.ItemDisplay
 import org.bukkit.inventory.ItemStack
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.Transformation
 import org.bukkit.util.Vector
@@ -76,6 +76,7 @@ private const val WEAPON_MASTER_CHAIN_SHIELD_POWER = 2
 private const val WEAPON_MASTER_CHAIN_BURST_DAMAGE = 4.0
 
 class WeaponMaster : GameClass(), GameStatusHandler {
+    override val classId = "weapon-master"
     override val name = "<gray>웨폰마스터"
     override val rank = Rank.L
     override val classItemMaterial = Material.MUSIC_DISC_BOUNCE
@@ -127,6 +128,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
     }
 
     private inner class ScimitarSkill : Skill(), org.beobma.classWarPlugin.skill.MovementSkill {
+        override val definitionId = "weapon-master/scimitar-skill"
         override val name = "<bold>시미터"
         override val description = listOf(
             "<gray>바라보는 방향으로 돌진하여 모든 적을 베어 2의 피해를 입힌다.", "",
@@ -134,20 +136,20 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         )
         override val cooldown = WEAPON_MASTER_SCIMITAR_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             val direction = horizontalDirection()
             player.velocity = direction.clone().multiply(1.45).setY(0.16)
             val hit = mutableSetOf<UUID>()
             var previous = player.boundingBox.center
             var tick = 0
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 override fun run() {
                     if (!player.isOnline || playerStatus.isDead || tick++ >= 8) {
                         cancel()
                         return
                     }
                     val current = player.boundingBox.center
-                    playerData.radius(current.toLocation(player.world), TargetType.Enemy, 2.2, false).forEach { target ->
+                    playerData.radius(current.toLocation(player.world), TargetType.Enemy, 2.2, false, hitAttackableObjects = true).forEach { target ->
                         if (target.entity.uniqueId in hit) return@forEach
                         if (!HitboxUtil.intersectsSegment(target.entity.boundingBox, previous, current, 0.85)) return@forEach
                         hit += target.entity.uniqueId
@@ -162,10 +164,12 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_SWEEP, volume = 1.0f, pitch = 1.35f)
             sounds.play(player, Sound.ENTITY_BREEZE_WIND_BURST, volume = 0.55f, pitch = 1.6f)
             returnToWeapon()
+            return true
         }
     }
 
     private inner class ShotgunSkill : Skill() {
+        override val definitionId = "weapon-master/shotgun-skill"
         override val name = "<bold>샷건"
         override val description = listOf(
             "<gray>바라보는 방향으로 샷건을 발사하여 3의 피해를 입힌 뒤 자신은 후방으로 밀려난다.", "",
@@ -173,7 +177,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         )
         override val cooldown = WEAPON_MASTER_SHOTGUN_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             val eye = player.eyeLocation
             val direction = eye.direction.normalize()
             var sideDirection = direction.clone().crossProduct(Vector(0.0, 1.0, 0.0))
@@ -182,7 +186,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             val shotgunRange = ClassBalanceManager.scaleRange(playerData, 8.0)
             val blockDistance = player.world.rayTraceBlocks(eye, direction, shotgunRange)?.hitPosition
                 ?.distance(eye.toVector()) ?: shotgunRange
-            playerData.getConeTargets(8.0, 42.0, TargetType.Enemy, false).forEach { target ->
+            playerData.getConeTargets(8.0, 42.0, TargetType.Enemy, false, hitAttackableObjects = true).forEach { target ->
                 val closest = HitboxUtil.closestPoint(target.entity.boundingBox, eye.toVector())
                 if (closest.distance(eye.toVector()) <= blockDistance + 0.3) {
                     skillDamage(target, WEAPON_MASTER_SHOTGUN_DAMAGE)
@@ -200,10 +204,12 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             sounds.play(eye, Sound.ITEM_CROSSBOW_SHOOT, volume = 1.0f, pitch = 0.62f)
             player.velocity = direction.clone().multiply(-0.85).setY(0.28)
             returnToWeapon()
+            return true
         }
     }
 
     private inner class ClawSkill : Skill(), org.beobma.classWarPlugin.skill.MovementSkill {
+        override val definitionId = "weapon-master/claw-skill"
         override val name = "<bold>클로"
         override val description = listOf(
             "<gray>공중에서만 사용할 수 있다.", "",
@@ -218,20 +224,20 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             return false
         }
 
-        override fun use() {
+        override fun use(): Boolean {
             val direction = horizontalDirection()
             player.velocity = direction.clone().multiply(1.05).setY(-0.85)
             val hit = mutableSetOf<UUID>()
             var previous = player.boundingBox.center
             var tick = 0
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 override fun run() {
                     if (!player.isOnline || playerStatus.isDead || tick >= 11 || (tick > 2 && isGrounded())) {
                         cancel()
                         return
                     }
                     val current = player.boundingBox.center
-                    playerData.radius(current.toLocation(player.world), TargetType.Enemy, 2.0, false).forEach { target ->
+                    playerData.radius(current.toLocation(player.world), TargetType.Enemy, 2.0, false, hitAttackableObjects = true).forEach { target ->
                         if (target.entity.uniqueId in hit) return@forEach
                         if (!HitboxUtil.intersectsSegment(target.entity.boundingBox, previous, current, 0.75)) return@forEach
                         hit += target.entity.uniqueId
@@ -245,10 +251,12 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
             sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_CRIT, volume = 0.85f, pitch = 1.55f)
             returnToWeapon()
+            return true
         }
     }
 
     private inner class BrickSkill : Skill() {
+        override val definitionId = "weapon-master/brick-skill"
         override val name = "<bold>브릭"
         override val description = listOf(
             "<gray>전방을 향해 짧게 점프하며 벽돌을 내려 찍어 모든 적에게 4의 피해를 입힌다.", "",
@@ -256,10 +264,10 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         )
         override val cooldown = WEAPON_MASTER_BRICK_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             player.velocity = horizontalDirection().multiply(0.58).setY(0.72)
             var tick = 0
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 override fun run() {
                     if (!player.isOnline || playerStatus.isDead) {
                         cancel()
@@ -276,10 +284,11 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
             sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_KNOCKBACK, volume = 0.65f, pitch = 0.7f)
             returnToWeapon()
+            return true
         }
 
         private fun slam(location: Location) {
-            playerData.radius(location, TargetType.Enemy, 3.25, false)
+            playerData.radius(location, TargetType.Enemy, 3.25, false, hitAttackableObjects = true)
                 .forEach { skillDamage(it, WEAPON_MASTER_BRICK_DAMAGE) }
             particles.spawn(location, Particle.BLOCK, Material.BRICKS.createBlockData(), org.beobma.classWarPlugin.effect.ParticleOptions.spread(90, 2.2, 0.24))
             particles.circle(location.clone().add(0.0, 0.12, 0.0), Particle.DUST_PLUME, 3.25, 52)
@@ -290,6 +299,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
     }
 
     private inner class BombSkill : Skill() {
+        override val definitionId = "weapon-master/bomb-skill"
         override val name = "<bold>봄"
         override val description = listOf(
             "<gray>폭탄을 던진 뒤 후방으로 도주한다.",
@@ -298,7 +308,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         )
         override val cooldown = WEAPON_MASTER_BOMB_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             val direction = player.eyeLocation.direction.normalize()
             val start = player.eyeLocation.clone().add(direction.clone().multiply(0.6))
             val display = start.world.spawn(start, BlockDisplay::class.java).apply {
@@ -315,7 +325,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             player.velocity = direction.clone().multiply(-0.8).setY(0.3)
             var stuck = false
             var tick = 0
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 override fun run() {
                     if (!player.isOnline || playerStatus.isDead) {
                         display.remove()
@@ -343,10 +353,11 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
             sounds.play(start, Sound.ENTITY_TNT_PRIMED, volume = 0.8f, pitch = 1.25f)
             returnToWeapon()
+            return true
         }
 
         private fun explode(location: Location) {
-            playerData.radius(location, TargetType.Enemy, 3.6, false)
+            playerData.radius(location, TargetType.Enemy, 3.6, false, hitAttackableObjects = true)
                 .forEach { skillDamage(it, WEAPON_MASTER_BOMB_DAMAGE) }
             particles.spawn(location, Particle.EXPLOSION_EMITTER, count = 2, spread = 0.8)
             particles.spawn(location, Particle.FLAME, count = 70, spread = 2.2, speed = 0.2)
@@ -356,6 +367,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
     }
 
     private inner class KnifeSkill : Skill() {
+        override val definitionId = "weapon-master/knife-skill"
         override val name = "<bold>나이프"
         override val description = listOf(
             "<gray>전후방을 베어내어 모든 적에게 5의 피해를 입힌다.", "",
@@ -363,11 +375,11 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         )
         override val cooldown = WEAPON_MASTER_KNIFE_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             val origin = player.boundingBox.center
             val forward = horizontalDirection()
             val threshold = cos(Math.toRadians(58.0))
-            playerData.radius(origin.toLocation(player.world), TargetType.Enemy, 4.0, false).forEach { target ->
+            playerData.radius(origin.toLocation(player.world), TargetType.Enemy, 4.0, false, hitAttackableObjects = true).forEach { target ->
                 val closest = HitboxUtil.closestPoint(target.entity.boundingBox, origin)
                 val relative = closest.subtract(origin)
                 if (relative.lengthSquared() <= 1.0E-8 || abs(forward.dot(relative.normalize())) >= threshold) {
@@ -385,10 +397,12 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_SWEEP, volume = 1.2f, pitch = 0.65f)
             sounds.play(player, Sound.ITEM_TRIDENT_THROW, volume = 0.65f, pitch = 1.55f)
             returnToWeapon()
+            return true
         }
     }
 
     private inner class WingDaggerSkill : Skill() {
+        override val definitionId = "weapon-master/wing-dagger-skill"
         override val name = "<bold>윙대거"
         override val description = listOf(
             "<gray>일정 시간 후 폭발하는 수리검을 던진다. 재사용하면 폭발시킬 수 있다.",
@@ -402,16 +416,17 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         private var activeTask: BukkitTask? = null
         private var cooldownItem: ItemStack? = null
 
-        override fun use() {
+        override fun use(): Boolean {
             if (activeDisplay != null) {
                 explode(startCooldown = false)
                 returnToWeapon()
-                return
+                return true
             }
             cooldownItem = player.inventory.itemInMainHand.clone()
             multiplyCurrentCooldown(0.0)
             launch()
             returnToWeapon()
+            return true
         }
 
         private fun launch() {
@@ -427,7 +442,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             activeLocation = location
             var stuck = false
             var tick = 0
-            activeTask = playerData.trackTask(object : BukkitRunnable() {
+            activeTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 override fun run() {
                     if (activeDisplay !== display || !player.isOnline || playerStatus.isDead) {
                         cleanup()
@@ -441,7 +456,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
                     }
                     if (!stuck) {
                         val next = current.clone().add(velocity)
-                        val hitTarget = playerData.radius(next, TargetType.Enemy, 1.3, false)
+                        val hitTarget = playerData.radius(next, TargetType.Enemy, 1.3, false, hitAttackableObjects = true)
                             .firstOrNull { HitboxUtil.intersectsSegment(it.entity.boundingBox, current.toVector(), next.toVector(), 0.35) }
                         if (hitTarget != null) {
                             skillDamage(hitTarget, WEAPON_MASTER_WING_DAGGER_DAMAGE)
@@ -478,7 +493,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
             activeDisplay?.remove()
             activeDisplay = null
             activeLocation = null
-            playerData.radius(location, TargetType.Enemy, 3.2, false)
+            playerData.radius(location, TargetType.Enemy, 3.2, false, hitAttackableObjects = true)
                 .forEach { skillDamage(it, WEAPON_MASTER_WING_DAGGER_EXPLOSION_DAMAGE) }
             particles.spawn(location, Particle.EXPLOSION, count = 4, spread = 1.2, speed = 0.08)
             particles.spawn(location, Particle.END_ROD, count = 55, spread = 2.0, speed = 0.18)
@@ -501,6 +516,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
     }
 
     private inner class NeedleBatSkill : Skill() {
+        override val definitionId = "weapon-master/needle-bat-skill"
         override val name = "<bold>니들배트"
         override val description = listOf(
             "<gray>전방을 향해 방망이를 내려찍는다.",
@@ -513,13 +529,13 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         private var comboToken = 0
         private var cooldownItem: ItemStack? = null
 
-        override fun use() {
+        override fun use(): Boolean {
             cooldownItem = player.inventory.itemInMainHand.clone()
             combo = (combo + 1).coerceAtMost(WEAPON_MASTER_NEEDLE_BAT_MAX_COMBO)
             val step = combo
             val damage = WEAPON_MASTER_NEEDLE_BAT_START_DAMAGE +
                 (step - 1) * WEAPON_MASTER_NEEDLE_BAT_DAMAGE_PER_COMBO
-            playerData.getConeTargets(3.8, 82.0, TargetType.Enemy, false).forEach { skillDamage(it, damage) }
+            playerData.getConeTargets(3.8, 82.0, TargetType.Enemy, false, hitAttackableObjects = true).forEach { skillDamage(it, damage) }
             drawBatSwing(step)
             sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_STRONG, volume = 0.85f, pitch = 1.2f - step * 0.14f)
             if (step < WEAPON_MASTER_NEEDLE_BAT_MAX_COMBO) {
@@ -531,6 +547,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
                 particles.spawn(player, Particle.EXPLOSION, count = 2, spread = 0.55, speed = 0.04)
             }
             returnToWeapon()
+            return true
         }
 
         private fun drawBatSwing(step: Int) {
@@ -547,7 +564,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
 
         private fun scheduleComboTimeout() {
             val token = ++comboToken
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 override fun run() {
                     if (token != comboToken || combo == 0) return
                     combo = 0
@@ -576,7 +593,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         )
 
         override fun onAttackHit(context: DamageContext) {
-            lastBasicAttackHitTick = player.world.fullTime
+            lastBasicAttackHitTick = game.combatTick
         }
 
         override fun onSkillAttackHit(context: DamageContext) {
@@ -588,7 +605,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         }
 
         override fun onSkillUse(event: PlayerSkillUseEvent) {
-            val elapsed = player.world.fullTime - lastBasicAttackHitTick
+            val elapsed = game.combatTick - lastBasicAttackHitTick
             if (elapsed !in 0L..20L) return
             gainMasteryStack()
         }
@@ -621,7 +638,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         val origin = player.boundingBox.center.toLocation(player.world)
         var tick = 0
         sounds.play(origin, Sound.BLOCK_CHAIN_PLACE, volume = 1.0f, pitch = 0.7f)
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
                 if (!player.isOnline || playerStatus.isDead || tick > 12) {
                     chainBurstActive = false
@@ -643,7 +660,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
                 }
                 if (tick == 7) {
                     val hit = mutableSetOf<UUID>()
-                    playerData.radius(origin, TargetType.Enemy, 6.5, false).forEach { target ->
+                    playerData.radius(origin, TargetType.Enemy, 6.5, false, hitAttackableObjects = true).forEach { target ->
                         val intersects = (0 until 12).any { spoke ->
                             val angle = 2.0 * PI * spoke / 12.0
                             val end = origin.toVector().add(Vector(cos(angle) * 6.2, 0.1, sin(angle) * 6.2))

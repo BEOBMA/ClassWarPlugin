@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.ability.AttributeEffects
+
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
@@ -16,6 +18,7 @@ import org.bukkit.attribute.Attribute
 import kotlin.random.Random
 
 class Error : GameClass(), GameStatusHandler, GameEndHandler {
+    override val classId = "error"
     override val name = "<obfuscated>AIJ9wjfjo2</obfuscated>"
     override val rank = Rank.A
     override val classItemMaterial = Material.GRAY_STAINED_GLASS_PANE
@@ -24,15 +27,16 @@ class Error : GameClass(), GameStatusHandler, GameEndHandler {
     private var seconds = 0
     private var dealtMultiplier = 1.0
     private var takenMultiplier = 1.0
-    private val originalAttributes = mutableMapOf<Attribute, Double>()
+    private val effects = mutableMapOf<Attribute, AttributeEffects.Lease>()
 
     override fun onBattleStart() {
         seconds = 0
         dealtMultiplier = 1.0
         takenMultiplier = 1.0
-        originalAttributes.clear()
+        effects.values.forEach { it.close() }
+        effects.clear()
         listOf(Attribute.MAX_HEALTH, Attribute.MOVEMENT_SPEED, Attribute.JUMP_STRENGTH, Attribute.SCALE).forEach { attribute ->
-            player.getAttribute(attribute)?.let { originalAttributes[attribute] = it.baseValue }
+            effects[attribute] = playerData.attributeEffects.multiply(abilityScope, attribute, 1.0)
         }
     }
     override fun onGameTimePasses() {
@@ -40,22 +44,18 @@ class Error : GameClass(), GameStatusHandler, GameEndHandler {
         randomizeStats()
     }
     override fun onGameEnd() {
-        originalAttributes.forEach { (attribute, value) -> player.getAttribute(attribute)?.baseValue = value }
+        effects.values.forEach { it.close() }
+        effects.clear()
     }
 
     private fun randomizeStats() {
         dealtMultiplier = Random.nextDouble(0.25, 2.5)
         takenMultiplier = Random.nextDouble(0.25, 2.5)
         fun factor(min: Double, max: Double) = Random.nextDouble(min, max)
-        originalAttributes[Attribute.MAX_HEALTH]?.let { base ->
-            player.getAttribute(Attribute.MAX_HEALTH)?.let {
-                it.baseValue = (base * factor(0.3, 2.2)).coerceAtLeast(1.0)
-                player.health = player.health.coerceAtMost(it.value)
-            }
-        }
-        originalAttributes[Attribute.MOVEMENT_SPEED]?.let { player.getAttribute(Attribute.MOVEMENT_SPEED)?.baseValue = it * factor(0.35, 2.0) }
-        originalAttributes[Attribute.JUMP_STRENGTH]?.let { player.getAttribute(Attribute.JUMP_STRENGTH)?.baseValue = it * factor(0.4, 2.1) }
-        originalAttributes[Attribute.SCALE]?.let { player.getAttribute(Attribute.SCALE)?.baseValue = (it * factor(0.35, 1.9)).coerceAtLeast(0.3) }
+        effects[Attribute.MAX_HEALTH]?.setMultiplier(factor(0.3, 2.2))
+        effects[Attribute.MOVEMENT_SPEED]?.setMultiplier(factor(0.35, 2.0))
+        effects[Attribute.JUMP_STRENGTH]?.setMultiplier(factor(0.4, 2.1))
+        effects[Attribute.SCALE]?.setMultiplier(factor(0.35, 1.9))
         particles.spawn(player, Particle.WITCH, count = 55, spread = 0.9, speed = 0.16)
         particles.spawn(player, Particle.ELECTRIC_SPARK, count = 28, spread = 0.75, speed = 0.12)
         sounds.play(player, Sound.BLOCK_RESPAWN_ANCHOR_CHARGE, volume = 0.65f, pitch = Random.nextDouble(0.5, 1.8).toFloat())

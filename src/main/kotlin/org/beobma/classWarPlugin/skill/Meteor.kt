@@ -1,24 +1,22 @@
 package org.beobma.classWarPlugin.skill
 
+import org.beobma.classWarPlugin.ability.AbilityScope
+import org.beobma.classWarPlugin.ability.AbilityExecution
+
+import org.beobma.classWarPlugin.ability.Targeting
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.EntityData
-import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
-import org.beobma.classWarPlugin.entity.mob.MobEntityData
 import org.beobma.classWarPlugin.effect.EffectApiAccess
 import org.beobma.classWarPlugin.game.Game
-import org.beobma.classWarPlugin.manager.PlayerTagManager
-import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.entity.player.PlayerStatus
 import org.beobma.classWarPlugin.util.TargetType
-import org.beobma.classWarPlugin.util.HitboxUtil
-import org.beobma.classWarPlugin.util.TargetType.All
-import org.beobma.classWarPlugin.util.TargetType.Enemy
 import org.beobma.classWarPlugin.util.TargetType.Self
 import org.bukkit.Location
 import org.bukkit.block.Block
 import org.bukkit.entity.Player
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 
 /**
@@ -30,8 +28,9 @@ abstract class Meteor(
 
 ) : EffectApiAccess {
     protected lateinit var playerData: PlayerData
-    protected lateinit var player: Player
+    protected val player: Player get() = playerData.player
     protected lateinit var playerStatus: PlayerStatus
+    protected lateinit var abilityScope: AbilityScope
     protected lateinit var game: Game
 
     abstract var location: Location
@@ -47,9 +46,9 @@ abstract class Meteor(
     fun inject(playerData: PlayerData) {
         if (playerData.entityStatus !is PlayerStatus) return
         this.playerData = playerData
-        this.player = playerData.player
         this.playerStatus = playerData.entityStatus
         this.game = playerData.initGame
+        this.abilityScope = checkNotNull(AbilityExecution.current)
     }
 
     /** 충돌하지 않은 각 이동 틱에 호출된다. */
@@ -69,29 +68,20 @@ abstract class Meteor(
         inject(playerData)
         val currentLocation = location.clone()
         val time = time
-        val isTraining = PlayerTagManager.isTraining(player)
         var ticks = 0
 
-        val task = object : BukkitRunnable() {
+        val task = object : BukkitRunnable(abilityScope) {
             var stopped = false
 
-            private fun stop() {
+            private fun stop() = cancel()
+
+            override fun onCancel() {
                 if (stopped) return
                 stopped = true
                 onMeteorEnd(currentLocation)
-                cancel()
             }
 
             override fun run() {
-                if (isTraining) {
-                    player.world.livingEntities.filter { it != player && it !is Player }.forEach { livingEntity ->
-                        if (game.playerDatas.any { it.entity == livingEntity }) return@forEach
-                        game.playerDatas.add(
-                            if (livingEntity.isMannequin()) DummyEntityData(livingEntity, game)
-                            else MobEntityData(livingEntity, game)
-                        )
-                    }
-                }
                 if (time == null) {
                     if (continueWhile?.invoke() == false) {
                         stop()
@@ -110,20 +100,9 @@ abstract class Meteor(
                     return
                 }
 
-                var collidedEntityData: EntityData? = null
-                for (targetData in game.playerDatas) {
-                    if (targetData == playerData || !targetData.entityStatus.isSkillTargeting) continue
-                    if (!targetData.entity.boundingBox.contains(currentLocation.toVector())) continue
-                    val isValidTarget = when (targetType) {
-                        Self -> targetData == playerData
-                        Enemy -> targetData !is PlayerData && isTraining ||
-                            (targetData is PlayerData && playerData.isEnemyOf(targetData))
-                        All -> true
-                    }
-                    if (isValidTarget) {
-                        collidedEntityData = targetData
-                        break
-                    }
+                val collidedEntityData = Targeting.select(playerData, targetType, currentLocation.world,
+                    includeSelf = targetType == Self).firstOrNull {
+                    it.entity.boundingBox.contains(currentLocation.toVector())
                 }
 
                 if (collidedEntityData != null) {

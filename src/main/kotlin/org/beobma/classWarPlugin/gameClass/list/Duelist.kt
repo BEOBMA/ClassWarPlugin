@@ -2,7 +2,6 @@ package org.beobma.classWarPlugin.gameClass.list
 
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamageContext
-import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
@@ -21,7 +20,7 @@ import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.TargetType
 import org.beobma.classWarPlugin.util.HitboxUtil
 import org.bukkit.*
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import java.util.UUID
 
 // 밸런스 조정 상수
@@ -35,6 +34,7 @@ private const val DUELIST_OUTSIDER_DAMAGE_MULTIPLIER = 0.7
 private const val DUELIST_DISRUPTED_DAMAGE_TAKEN_MULTIPLIER = 1.25
 
 class Duelist : GameClass() {
+    override val classId = "duelist"
     override val name = "<gray>결투가"
     override val rank = Rank.C
     override val classItemMaterial = Material.SPECTRAL_ARROW
@@ -52,7 +52,7 @@ class Duelist : GameClass() {
     private var fenteChain = 0
     private var disrupted = false
 
-    private fun inDuel(): Boolean = opponentId != null && player.world.fullTime < duelUntil
+    private fun inDuel(): Boolean = opponentId != null && game.combatTick < duelUntil
 
     private class DuelMark(private val duelistId: UUID) : StatusAbnormality(), WhenHitHandler {
         override val name = "<gold><bold>결투"
@@ -71,6 +71,7 @@ class Duelist : GameClass() {
     }
 
     private inner class RedSkill : Skill(), org.beobma.classWarPlugin.skill.MovementSkill {
+        override val definitionId = "duelist/red-skill"
         override val name = "<bold>팡트"
         override val description = listOf(
             "<gray>바라보는 방향으로 짧게 도약한다.",
@@ -80,12 +81,12 @@ class Duelist : GameClass() {
         )
         override val cooldown = DUELIST_FENTE_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             player.velocity = player.location.direction.normalize().multiply(1.15).setY(0.18)
             sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_SWEEP, pitch = 1.5f)
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 override fun run() {
-                    val candidates = playerData.radius(player.location, TargetType.Enemy, 2.0, false)
+                    val candidates = playerData.radius(player.location, TargetType.Enemy, 2.0, false, hitAttackableObjects = true)
                     val target = candidates.firstOrNull { it.entity.uniqueId == opponentId }
                         ?: candidates.minByOrNull { HitboxUtil.distanceSquared(it.entity.boundingBox, player.boundingBox) }
                     if (target == null) {
@@ -107,10 +108,12 @@ class Duelist : GameClass() {
                     } else fenteChain = 0
                 }
             }.runTaskLater(ClassWarPlugin.instance, 4L))
+            return true
         }
     }
 
     private inner class OrangeSkill : Skill() {
+        override val definitionId = "duelist/orange-skill"
         override val name = "<bold>앙 가르드"
         override val description = listOf(
             "<gray>10칸 내의 바라보는 적에게 15초간 결투를 선포한다.",
@@ -123,15 +126,16 @@ class Duelist : GameClass() {
         )
         override val cooldown = DUELIST_EN_GARDE_COOLDOWN_SECONDS
 
-        override fun use() {
-            val target = playerData.shotLaserGetEntityData(10.0, TargetType.Enemy, false) ?: return
+        override fun use(): Boolean {
+            val target = playerData.shotLaserGetEntityData(10.0, TargetType.Enemy, false) ?: return false
             opponentId = target.entity.uniqueId
-            duelUntil = player.world.fullTime + 300L
+            duelUntil = game.combatTick + 300L
             fenteChain = 0; disrupted = false
             target.addStatus(DuelMark(player.uniqueId), playerData)
                 .applyStatus(duration = DUELIST_MARK_DURATION_SECONDS, powerSet = 1)
             particles.line(player.eyeLocation, target.entity.location.add(0.0, target.entity.height / 2.0, 0.0), Particle.ENCHANT, 0.25)
             sounds.play(player, Sound.ENTITY_ENDER_DRAGON_GROWL, volume = 0.6f, pitch = 1.5f)
+            return true
         }
 
         override fun isUseSuccess(): Boolean {

@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.ability.AbilityTree
+
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.GameClass
 
@@ -11,12 +13,14 @@ abstract class PlanetClass : GameClass() {
         solarPowerProvider = provider
     }
 
+    internal val isSolarAbility: Boolean get() = solarPowerProvider != null
+
     internal fun isPowerEnabled(): Boolean = solarPowerProvider?.invoke() ?: true
 }
 
 object PlanetPowerRegistry {
     fun <T : PlanetClass> hasPower(playerData: PlayerData, type: Class<T>): Boolean =
-        playerData.gameClasses.any { gameClass ->
+        AbilityTree.nodes(playerData.gameClasses, activeOnly = true).any { gameClass ->
             when {
                 type.isInstance(gameClass) -> type.cast(gameClass).isPowerEnabled()
                 gameClass is SolarSystem -> gameClass.isPlanetActive(type)

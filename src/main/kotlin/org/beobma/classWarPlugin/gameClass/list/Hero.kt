@@ -21,6 +21,7 @@ import kotlin.math.ceil
 import kotlin.random.Random
 
 class Hero : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
+    override val classId = "hero"
     override val name = "<gray>영웅"
     override val rank = Rank.S
     override val classItemMaterial = Material.TOTEM_OF_UNDYING

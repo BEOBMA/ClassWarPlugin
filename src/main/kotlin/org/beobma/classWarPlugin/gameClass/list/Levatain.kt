@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.ability.AbilityExecution
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.effect.ParticleOptions
@@ -23,7 +25,7 @@ import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.attribute.Attribute
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import kotlin.math.PI
 import kotlin.math.cos
@@ -41,6 +43,7 @@ private const val LEVATAIN_SEALED_DAMAGE_TAKEN_MULTIPLIER = 0.8
 private const val LEVATAIN_RELEASED_DAMAGE_TAKEN_MULTIPLIER = 0.7
 
 class Levatain : GameClass(), GameStatusHandler {
+    override val classId = "levatain"
     override val name = "<gray>레바테인"
     override val rank = Rank.L
     override val classItemMaterial = Material.NETHERITE_SWORD
@@ -134,7 +137,7 @@ class Levatain : GameClass(), GameStatusHandler {
             2 -> Particle.ELECTRIC_SPARK
             else -> Particle.FLAME
         }
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var tick = 0
 
             override fun run() {
@@ -184,7 +187,7 @@ class Levatain : GameClass(), GameStatusHandler {
 
     private fun startFinalAura() {
         finalAuraTask?.cancel()
-        val task = object : BukkitRunnable() {
+        val task = object : BukkitRunnable(abilityScope) {
             var tick = 0
 
             override fun run() {
@@ -293,7 +296,7 @@ class Levatain : GameClass(), GameStatusHandler {
         }
 
         private fun playLevatainHitAfterimage(target: org.bukkit.entity.Entity) {
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 var frame = 0
 
                 override fun run() {
@@ -315,7 +318,7 @@ class Levatain : GameClass(), GameStatusHandler {
 
         override fun whenHit(context: DamageContext) {
             addRelease(7)
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 override fun run() = checkHealthThresholds()
             }.runTaskLater(ClassWarPlugin.instance, 1L))
         }
@@ -375,7 +378,9 @@ class Levatain : GameClass(), GameStatusHandler {
             val currentGame = findGameForPlayer(killer) ?: return
             val killerData = currentGame.playerDatas.filterIsInstance<PlayerData>()
                 .find { it.uniqueId == id } ?: return
-            killerData.findGameClass(Levatain::class.java)?.addRelease(100)
+            killerData.findGameClass(Levatain::class.java)?.let { ability ->
+                AbilityExecution.with(ability.abilityScope) { ability.addRelease(100) }
+            }
         }
     }
 }

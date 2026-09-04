@@ -18,13 +18,14 @@ import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.entity.LivingEntity
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.util.Vector
 import kotlin.math.min
 
 private const val BULL_MAX_MOVE_SPEED_BONUS_PERCENT = 200
 
 class Bull : GameClass(), GameStatusHandler {
+    override val classId = "bull"
     override val name = "<gray>황소"
     override val rank = Rank.B
     override val classItemMaterial = Material.COPPER_NAUTILUS_ARMOR
@@ -37,7 +38,7 @@ class Bull : GameClass(), GameStatusHandler {
         chargeTicks = 0
         inactiveTicks = 0
         var lastLocation = player.location.clone()
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
                 if (!player.isOnline || playerStatus.isDead) {
                     cancel()
@@ -78,7 +79,7 @@ class Bull : GameClass(), GameStatusHandler {
                 if (chargeTicks % 4 == 0) {
                     particles.spawn(player.location.clone().add(0.0, 0.15, 0.0), Particle.CLOUD, count = 4, spread = 0.25, speed = 0.035)
                 }
-                val target = playerData.radius(player.location, TargetType.Enemy, 1.45, false)
+                val target = playerData.radius(player.location, TargetType.Enemy, 1.45, false, hitAttackableObjects = true)
                     .firstOrNull { player.boundingBox.expand(0.35).overlaps(it.entity.boundingBox) }
                     ?: return
                 val horizontalSpeed = Vector(player.velocity.x, 0.0, player.velocity.z).length()

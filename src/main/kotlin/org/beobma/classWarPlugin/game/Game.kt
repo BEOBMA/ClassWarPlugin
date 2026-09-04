@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.game
 
+import org.beobma.classWarPlugin.ability.GameClock
+
 import org.beobma.classWarPlugin.entity.EntityData
 import org.beobma.classWarPlugin.gameClass.GameClass
 import net.kyori.adventure.bossbar.BossBar
@@ -16,7 +18,7 @@ import java.util.UUID
  * [settings]는 경기 생성 시점의 스냅샷이므로 이후 서버 설정 변경에 영향을 받지 않는다.
  * [tasks]와 표시 엔티티 등의 자원은 경기 종료 시 매니저가 일괄 정리한다.
  */
-data class Game(
+class Game(
     val playerDatas: MutableList<EntityData>,
     val settings: GameConfiguration = GameSettings.snapshot(),
     val mode: MatchMode = MatchMode.CLASSIC,
@@ -39,9 +41,14 @@ data class Game(
     var originalBorderSize: Double? = null,
     var originalWorldTime: Long? = null,
     var originalDaylightCycle: Boolean? = null,
+    val tickSource: () -> Long = { org.bukkit.Bukkit.getCurrentTick().toLong() },
     val finalBorderDisplays: MutableList<BlockDisplay> = mutableListOf(),
 ) {
-    var isPaused: Boolean = false
+    private val combatClock = GameClock(tickSource)
+    val combatTick: Long get() = combatClock.now()
+    var isPaused: Boolean
+        get() = combatClock.paused
+        set(value) { combatClock.paused = value }
     var roundCenterX: Double = settings.centerX
     var roundCenterZ: Double = settings.centerZ
     var battleMapView: MapView? = null

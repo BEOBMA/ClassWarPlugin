@@ -17,6 +17,7 @@ import org.bukkit.attribute.Attribute
 import org.bukkit.entity.LivingEntity
 
 class Ghost : GameClass(), GameStatusHandler {
+    override val classId = "ghost"
     override val name = "<gray>유령"
     override val rank = Rank.C
     override val classItemMaterial = Material.WHITE_STAINED_GLASS_PANE
@@ -24,7 +25,7 @@ class Ghost : GameClass(), GameStatusHandler {
     override var passives: List<BasePassive> = listOf(Passive())
 
     override fun onBattleStart() {
-        player.getAttribute(Attribute.MAX_HEALTH)?.baseValue = 1.0
+        playerData.attributeEffects.multiply(abilityScope, Attribute.MAX_HEALTH, 1.0, maximum = 1.0)
         player.health = 1.0
         particles.spawn(player, Particle.SOUL, count = 35, spread = 0.65, speed = 0.06)
         sounds.play(player, Sound.ENTITY_VEX_AMBIENT, volume = 0.65f, pitch = 0.55f)

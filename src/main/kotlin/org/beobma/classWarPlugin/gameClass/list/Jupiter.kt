@@ -12,16 +12,16 @@ import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.HitboxUtil
-import org.bukkit.Bukkit
 import org.bukkit.Color
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import java.util.UUID
 
 class Jupiter : PlanetClass(), GameStatusHandler {
+    override val classId = "jupiter"
     override val name = "<gray>목성"
     override val rank = Rank.B
     override val classItemMaterial = Material.SCULK
@@ -34,7 +34,7 @@ class Jupiter : PlanetClass(), GameStatusHandler {
         clouds.clear()
         lastDamageTick.clear()
         var lastLocation = player.location.clone()
-        playerData.trackTask(object : BukkitRunnable() {
+        playerData.trackTask(object : BukkitRunnable(abilityScope) {
             var tick = 0
             override fun run() {
                 if (!player.isOnline || playerStatus.isDead) {
@@ -47,7 +47,7 @@ class Jupiter : PlanetClass(), GameStatusHandler {
                     lastLocation = player.location.clone()
                     return
                 }
-                val now = Bukkit.getCurrentTick().toLong()
+                val now = game.combatTick
                 clouds.removeIf { it.expiresAt <= now || it.location.world != player.world }
                 val current = player.location
                 val moved = current.world == lastLocation.world && current.distanceSquared(lastLocation) >= 0.09

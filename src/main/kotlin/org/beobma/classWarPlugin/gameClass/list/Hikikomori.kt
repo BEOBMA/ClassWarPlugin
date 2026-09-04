@@ -16,6 +16,7 @@ import org.bukkit.Material
 import org.bukkit.Particle
 
 class Hikikomori : GameClass(), GameStatusHandler {
+    override val classId = "hikikomori"
     override val name = "<gray>히키코모리"
     override val rank = Rank.C
     override val classItemMaterial = Material.AXOLOTL_BUCKET
@@ -25,7 +26,7 @@ class Hikikomori : GameClass(), GameStatusHandler {
     override fun onBattleStart() = Unit
     override fun onGameTimePasses() {
         if (!player.isOnline || playerStatus.isDead) return
-        playerData.radius(player.location, TargetType.Enemy, 10.0, false).forEach { target ->
+        playerData.radius(player.location, TargetType.Enemy, 10.0, false, hitAttackableObjects = true).forEach { target ->
             target.getOrCreateStatus(playerData) { HikikomoriSlowStatus() }
                 .applyStatus(duration = 2, powerSet = 50)
             particles.spawn(target.entity, Particle.ASH, count = 5, spread = 0.4, speed = 0.01)

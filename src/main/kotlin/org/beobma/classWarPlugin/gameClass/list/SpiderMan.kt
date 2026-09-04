@@ -30,7 +30,7 @@ import org.bukkit.Sound
 import org.bukkit.entity.BlockDisplay
 import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.event.player.PlayerInputEvent
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.Transformation
 import org.bukkit.util.BoundingBox
@@ -50,6 +50,7 @@ private const val SPIDER_MAN_RECHARGE_TICKS = 120
 class SpiderMan : GameClass(), GameStatusHandler, GameEndHandler, MovementInputHandler, EnvironmentalDamageHandler {
     private val webSkill = RedSkill()
 
+    override val classId = "spider-man"
     override val name = "<gray>스파이더맨"
     override val rank = Rank.A
     override val classItemMaterial = Material.SPIDER_SPAWN_EGG
@@ -71,6 +72,7 @@ class SpiderMan : GameClass(), GameStatusHandler, GameEndHandler, MovementInputH
     }
 
     private class RedSkill : Skill(), org.beobma.classWarPlugin.skill.MovementSkill {
+        override val definitionId = "spider-man/red-skill"
         override val name = "<bold>거미줄"
         override val description = listOf(
             "<gray>최대 5회 충전되는 충전형 스킬.",
@@ -144,7 +146,7 @@ class SpiderMan : GameClass(), GameStatusHandler, GameEndHandler, MovementInputH
 
         private fun ensureRechargeTask() {
             if (rechargeTask != null) return
-            rechargeTask = playerData.trackTask(object : BukkitRunnable() {
+            rechargeTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 override fun run() {
                     if (!player.isOnline || player.isDead) {
                         rechargeTask = null
@@ -178,7 +180,6 @@ class SpiderMan : GameClass(), GameStatusHandler, GameEndHandler, MovementInputH
         }
 
         override fun isUseSuccess(): Boolean {
-            initialize()
             if (webInFlight || swinging) {
                 player.sendMiniMessage("<red><bold>[!] 이미 거미줄을 사용 중입니다. 웅크려서 놓을 수 있습니다.")
                 return false
@@ -191,7 +192,7 @@ class SpiderMan : GameClass(), GameStatusHandler, GameEndHandler, MovementInputH
             return true
         }
 
-        override fun use() {
+        override fun use(): Boolean {
             multiplyCurrentCooldown(0.0)
             val status = playerData.getOrCreateStatus(playerData) { SpiderWebChargeStatus() }
             status.updateState(status.power - 1, SPIDER_MAN_RECHARGE_TICKS - rechargeProgressTicks)
@@ -206,6 +207,7 @@ class SpiderMan : GameClass(), GameStatusHandler, GameEndHandler, MovementInputH
                 spawnProjectile(playerData)
             }
             sounds.play(player, Sound.ENTITY_FISHING_BOBBER_THROW, volume = 1.0f, pitch = 1.45f)
+            return true
         }
 
         private fun startSwing(anchorProvider: () -> Location?, pullsToEntity: Boolean) {
@@ -268,7 +270,7 @@ class SpiderMan : GameClass(), GameStatusHandler, GameEndHandler, MovementInputH
             )
 
             swingTask?.cancel()
-            swingTask = playerData.trackTask(object : BukkitRunnable() {
+            swingTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 private fun finishSwing(voluntaryRelease: Boolean = false) {
                     if (voluntaryRelease) {
                         val releaseVelocity = player.velocity.clone()

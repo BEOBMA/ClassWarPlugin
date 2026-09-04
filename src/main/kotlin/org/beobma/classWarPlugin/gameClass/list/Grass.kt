@@ -21,12 +21,11 @@ import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.status.list.Stealth
 import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.HitboxUtil
-import org.bukkit.Bukkit
 import org.bukkit.Material
 import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.event.entity.EntityDamageEvent
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.BoundingBox
 import kotlin.math.floor
@@ -35,6 +34,7 @@ private const val GRASS_THORN_RADIUS = 4.0
 private const val GRASS_STEALTH_SUPPRESSION_TICKS = 60L
 
 class Grass : GameClass(), GameStatusHandler, OnHitHandler, WhenHitHandler, EnvironmentalDamageHandler {
+    override val classId = "grass"
     override val name = "<gray>풀"
     override val rank = Rank.C
     override val classItemMaterial = Material.SHORT_GRASS
@@ -77,7 +77,7 @@ class Grass : GameClass(), GameStatusHandler, OnHitHandler, WhenHitHandler, Envi
     fun suppressStealthFromDamage() = suppressStealth()
 
     private fun refreshPlantStealth(): Boolean {
-        if (!touchesPlant() || Bukkit.getCurrentTick().toLong() < stealthSuppressedUntilTick) {
+        if (!touchesPlant() || game.combatTick < stealthSuppressedUntilTick) {
             removePlantStealth()
             return false
         }
@@ -91,7 +91,7 @@ class Grass : GameClass(), GameStatusHandler, OnHitHandler, WhenHitHandler, Envi
     }
 
     private fun suppressStealth() {
-        stealthSuppressedUntilTick = Bukkit.getCurrentTick().toLong() + GRASS_STEALTH_SUPPRESSION_TICKS
+        stealthSuppressedUntilTick = game.combatTick + GRASS_STEALTH_SUPPRESSION_TICKS
         val wasStealthed = playerData.statusAbnormalitys.any { it is Stealth && it.power > 0 }
         playerData.statusAbnormalitys.filterIsInstance<Stealth>().toList().forEach { it.remove() }
         plantStealth = null
@@ -101,11 +101,11 @@ class Grass : GameClass(), GameStatusHandler, OnHitHandler, WhenHitHandler, Envi
         }
 
         suppressionTask?.cancel()
-        suppressionTask = playerData.trackTask(object : BukkitRunnable() {
+        suppressionTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
                 suppressionTask = null
                 if (!player.isOnline || playerStatus.isDead) return
-                if (Bukkit.getCurrentTick().toLong() < stealthSuppressedUntilTick) return
+                if (game.combatTick < stealthSuppressedUntilTick) return
                 refreshPlantStealth()
             }
         }.runTaskLater(ClassWarPlugin.instance, GRASS_STEALTH_SUPPRESSION_TICKS))

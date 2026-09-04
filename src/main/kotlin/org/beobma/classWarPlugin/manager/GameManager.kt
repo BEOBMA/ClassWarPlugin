@@ -1,5 +1,11 @@
 package org.beobma.classWarPlugin.manager
 
+import org.beobma.classWarPlugin.ability.AbilityCatalog
+import org.beobma.classWarPlugin.ability.Targeting
+
+import org.beobma.classWarPlugin.ability.AbilityTree
+import org.beobma.classWarPlugin.ability.EndReason
+
 import net.kyori.adventure.bossbar.BossBar
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.minimessage.MiniMessage
@@ -14,7 +20,6 @@ import org.beobma.classWarPlugin.game.PlayerSnapshot
 import org.beobma.classWarPlugin.game.damageMultiplier
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
-import org.beobma.classWarPlugin.gameClass.handler.GameEndHandler
 import org.beobma.classWarPlugin.gameClass.list.*
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.manager.InventoryManager.openAssignedClassInventory
@@ -107,33 +112,12 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
 
     // 이 목록에 등록된 클래스만 실제 배정, 클래스 목록 및 훈련 선택에 노출된다.
     // 심판자, 숨바꼭질, 공포, 백룸은 비활성화 대상으로 의도적으로 등록하지 않는다.
-    private val gameClassFactories: List<() -> GameClass> = listOf(
-        ::Berserker, ::Sniper, ::Meteor, ::TimeManiqulator, ::LandWizard,
-        ::Gambler, ::Knight, ::LightningWizard, ::LightWizard,
-        ::AbyssalVeil, ::Warlock, ::Geometer,
-        ::Duelist, ::Astronomer, ::Assassin, ::IceWizard,
-        ::GunBlader, ::Watchmaker,
-        ::Barrier, ::Darkness, ::Feather, ::GeneralPerson,
-        ::GraveRobber, ::Hacker, ::SpiderMan, ::Trapper,
-        ::Mathematician, ::PortalGun, ::Tour, ::Pacifist, ::Roulette,
-        ::AreaDevelopment, ::Parasite, ::Chubby, ::Vampire,
-        ::Contractor, ::Levatain, ::WeaponMaster, ::DeathNote, ::Swordplay,
-        ::Anchor, ::Avenger, ::Bull, ::ConArtist, ::Conflict, ::Damocles,
-        ::DevastatingBlow, ::Error, ::Exodia, ::Ghost, ::Grass,
-        ::Hero, ::HighJumper, ::Hikikomori, ::Phantom, ::Refugees, ::Stalker, ::Tonic,
-        ::Chameleon, ::Dwarf, ::JustLight, ::LuckyOne,
-        ::PatAndMatt, ::Peanuts, ::RainbowBridge, ::Reverse, ::Sagittarius, ::ShyPerson,
-        ::Terrorist, ::ThunderclapFlash, ::Train, ::TrainCarriage, ::WoundsWind,
-        ::Blacksmith, ::Brave, ::Charger, ::Elementalist,
-        ::SolarSystem, ::Sol, ::Luna, ::Mercurius, ::Venus, ::Terra,
-        ::Mars, ::Jupiter, ::Saturnus, ::Uranus, ::Neptune, ::Pluto,
-    )
 
     private val miniMessageTagPattern = Regex("<[^>]+>")
 
     /** 매 조회마다 새 클래스 인스턴스를 만들고 등급·표시 이름 순으로 정렬한 목록이다. */
     val gameClassList: List<GameClass>
-        get() = gameClassFactories.map { it() }
+        get() = AbilityCatalog.enabledClasses()
             .sortedWith(
                 compareBy<GameClass> { it.rank.ordinal }
                     .thenBy { it.name.replace(miniMessageTagPattern, "") }
@@ -291,8 +275,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         return selected
     }
 
-    private fun availableClassesFor(mode: MatchMode): List<GameClass> = gameClassFactories
-        .map { it() }
+    private fun availableClassesFor(mode: MatchMode): List<GameClass> = AbilityCatalog.enabledClasses()
         .filterNot { !mode.allowsParasite && it is Parasite }
 
     private fun Game.beginCountdown() {
@@ -596,11 +579,8 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
                     !disconnectedPlayers.contains(it.player.uniqueId) &&
                         battleInitializedPlayers.contains(it.player.uniqueId)
                 }.forEach { playerData ->
-                    playerData.gameClasses.forEach { gameClass ->
-                        gameClass.passives.filterIsInstance<GameStatusHandler>()
-                            .forEach { it.onGameTimePasses() }
-                        (gameClass as? GameStatusHandler)?.onGameTimePasses()
-                    }
+                    if (!playerData.initGame.isPaused) AbilityTree.handlers(playerData.gameClasses, GameStatusHandler::class.java)
+                        .forEach { bound -> bound.call { it.onGameTimePasses() } }
                 }
             }
         }.runTaskTimer(ClassWarPlugin.instance, 20L, 20L)
@@ -1386,8 +1366,9 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         TemporaryDisplayManager.clear(playerData.player.world, playerData.uniqueId)
         unregisterAllTickingStatuses(playerData.statusAbnormalitys)
         playerData.statusAbnormalitys.clear()
-        playerData.bukkitTasks.forEach { it.cancel() }
+        playerData.bukkitTasks.toList().forEach { it.cancel() }
         playerData.bukkitTasks.clear()
+        AbilityTree.end(playerData.gameClasses, EndReason.DEATH)
         playerData.player.gameMode = GameMode.SPECTATOR
 
         val survivors = currentGame.contenders()
@@ -1396,12 +1377,14 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
             if (pendingExplosionTicks > 0L && Terrorist.markFinishScheduled(currentGame)) {
                 val task = object : BukkitRunnable() {
                     override fun run() {
+                        if (currentGame.isPaused || Terrorist.pendingExplosionTicks(currentGame) > 0L) return
+                        cancel()
                         Terrorist.clearPending(currentGame)
                         if (currentGame.phase == GamePhase.RUNNING) {
                             currentGame.finish(currentGame.contenders().firstOrNull())
                         }
                     }
-                }.runTaskLater(ClassWarPlugin.instance, pendingExplosionTicks + 2L)
+                }.runTaskTimer(ClassWarPlugin.instance, pendingExplosionTicks + 2L, 1L)
                 currentGame.track(task)
             } else if (pendingExplosionTicks <= 0L) {
                 currentGame.finish(survivors.firstOrNull())
@@ -1430,6 +1413,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         PortalGun.clearForPlayers(listOf(player.uniqueId))
         AreaDevelopment.clearDomains(listOf(player.uniqueId))
         if (!currentGame.disconnectedPlayers.add(player.uniqueId)) return
+        AbilityTree.suspend(playerData.gameClasses.filter { it.isInjectedFor(playerData) })
 
         PlayerTagManager.clear(player)
         currentGame.disablePlayerInteraction(playerData)
@@ -1544,6 +1528,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
                 playerData.entityStatus.isSkillTargeting = true
                 player.gameMode = GameMode.ADVENTURE
                 currentGame.borderBossBar?.let { player.showBossBar(it) }
+                playerData.restoreAbilityPosition()
                 player.sendMessage(miniMessage.deserialize("<green><bold>[!] 게임에 정상적으로 복귀했습니다."))
                 if (currentGame.mode.usesTailTagRules) currentGame.sendTailTargetNotice(playerData)
             }
@@ -1560,6 +1545,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
     }
 
     private fun Game.permanentlyEliminateDisconnectedPlayer(playerData: PlayerData) {
+        AbilityTree.end(playerData.gameClasses.filter { it.isInjectedFor(playerData) }, EndReason.REMOVED)
         removeTailParticipant(playerData.uniqueId)
         playerData.entityStatus.isDead = true
         StealthVisibilityManager.reveal(playerData)
@@ -1651,10 +1637,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         if (wasRunning) broadcastClassSummary()
         val participantIds = activePlayers().map { it.uniqueId }
         activePlayers().forEach { data ->
-            data.gameClasses.filter { it.isInjectedFor(data) }.forEach { assigned ->
-                assigned.passives.filterIsInstance<GameEndHandler>().forEach { it.onGameEnd() }
-                (assigned as? GameEndHandler)?.onGameEnd()
-            }
+            AbilityTree.end(data.gameClasses.filter { it.isInjectedFor(data) }, EndReason.GAME_END)
         }
         originalWorldTime?.let { gameWorld.time = it }
         originalDaylightCycle?.let { gameWorld.setGameRule(GameRules.ADVANCE_TIME, it) }
@@ -1867,14 +1850,12 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         CooldownManager.clear(listOf(playerData.uniqueId))
         playerData.player.inventory.clear()
         if (playerData.gameClasses.isNotEmpty()) playerData.classSet(initializeHandlers = false)
-        initializedClass?.passives?.filterIsInstance<GameStatusHandler>()?.forEach { it.onBattleStart() }
-        (initializedClass as? GameStatusHandler)?.onBattleStart()
+        AbilityTree.start(playerData.gameClasses)
         playerData.player.inventory.heldItemSlot = 0
     }
 
     private fun endAssignedClass(gameClass: GameClass) {
-        gameClass.passives.filterIsInstance<GameEndHandler>().forEach { it.onGameEnd() }
-        (gameClass as? GameEndHandler)?.onGameEnd()
+        AbilityTree.end(listOf(gameClass), EndReason.REMOVED)
     }
 
     private fun matchesClassQuery(gameClass: GameClass, query: String): Boolean {
@@ -1909,6 +1890,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         playerData.gameClass = gameClass
         trainingInstance.add(trainingGame)
         PlayerTagManager.addFlag(this, PlayerFlag.TRAINING)
+        Targeting.synchronizeTraining(playerData)
         playerData.classSet()
         trainingGame.battleInitializedPlayers.add(uniqueId)
         inventory.heldItemSlot = 0
@@ -1919,11 +1901,9 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
 
         val task = object : BukkitRunnable() {
             override fun run() {
-                playerData.gameClasses.forEach { gameClass ->
-                    gameClass.passives.filterIsInstance<GameStatusHandler>()
-                        .forEach { it.onGameTimePasses() }
-                    (gameClass as? GameStatusHandler)?.onGameTimePasses()
-                }
+                Targeting.synchronizeTraining(playerData)
+                if (!playerData.initGame.isPaused) AbilityTree.handlers(playerData.gameClasses, GameStatusHandler::class.java)
+                    .forEach { bound -> bound.call { it.onGameTimePasses() } }
             }
         }.runTaskTimer(ClassWarPlugin.instance, 20L, 20L)
         trainingGame.track(task)
@@ -1933,10 +1913,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
     fun Player.stopTraining() {
         val trainingGame = trainingInstance.find { it.activePlayers().any { data -> data.player == this } } ?: return
         trainingGame.activePlayers().forEach { data ->
-            data.gameClasses.filter { it.isInjectedFor(data) }.forEach { assigned ->
-                assigned.passives.filterIsInstance<GameEndHandler>().forEach { it.onGameEnd() }
-                (assigned as? GameEndHandler)?.onGameEnd()
-            }
+            AbilityTree.end(data.gameClasses.filter { it.isInjectedFor(data) }, EndReason.GAME_END)
         }
         Contractor.clearSessions(listOf(uniqueId))
         DeathNote.clearSessions(listOf(uniqueId))
@@ -1946,7 +1923,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         Vampire.clearForms(listOf(uniqueId))
         PortalGun.clearForPlayers(listOf(uniqueId))
         AreaDevelopment.clearDomains(listOf(uniqueId))
-        trainingGame.tasks.forEach { it.cancel() }
+        trainingGame.tasks.toList().forEach { it.cancel() }
         TemporaryDisplayManager.clear(world, uniqueId)
         trainingGame.playerDatas.forEach { entityData ->
             (entityData as? PlayerData)?.let(StealthVisibilityManager::reveal)
@@ -1978,10 +1955,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
                 if (playerData.player.isOnline) {
                     playerData.player.stopTraining()
                 } else {
-                    playerData.gameClasses.filter { it.isInjectedFor(playerData) }.forEach { assigned ->
-                        assigned.passives.filterIsInstance<GameEndHandler>().forEach { it.onGameEnd() }
-                        (assigned as? GameEndHandler)?.onGameEnd()
-                    }
+                    AbilityTree.end(playerData.gameClasses.filter { it.isInjectedFor(playerData) }, EndReason.GAME_END)
                     StealthVisibilityManager.reveal(playerData)
                     TemporaryDisplayManager.clear(playerData.player.world, playerData.uniqueId)
                     unregisterAllTickingStatuses(playerData.statusAbnormalitys)
@@ -2022,10 +1996,10 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
 
     private fun Game.rebindPlayer(playerData: PlayerData, player: Player) {
         playerData.player = player
-        playerData.gameClasses.forEach { gameClass ->
-            gameClass.inject(playerData)
-            gameClass.skills.forEach { it.inject(playerData) }
-            gameClass.passives.forEach { it.inject(playerData) }
+        playerData.attributeEffects.refresh()
+        AbilityTree.bind(playerData.gameClasses, playerData)
+        if (battleInitializedPlayers.contains(player.uniqueId) && !playerData.entityStatus.isDead) {
+            AbilityTree.resume(playerData.gameClasses)
         }
         playerData.statusAbnormalitys.forEach { it.rebindEntity(playerData) }
         StealthVisibilityManager.refreshAll()

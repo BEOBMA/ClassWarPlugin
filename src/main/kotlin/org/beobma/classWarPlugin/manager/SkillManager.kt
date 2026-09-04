@@ -1,11 +1,9 @@
 package org.beobma.classWarPlugin.manager
 
+import org.beobma.classWarPlugin.ability.Targeting
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.entity.EntityData
-import org.beobma.classWarPlugin.entity.PlayerOwnedEntityData
-import org.beobma.classWarPlugin.entity.dummy.DummyEntityData
-import org.beobma.classWarPlugin.entity.mob.MobEntityData
-import org.beobma.classWarPlugin.manager.UtilManager.isMannequin
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.event.PlayerSkillUseEvent
@@ -13,7 +11,6 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.hasStatus
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.skill.SkillContext
 import org.beobma.classWarPlugin.status.list.Silence
-import org.beobma.classWarPlugin.status.list.Stealth
 import org.beobma.classWarPlugin.status.list.Stun
 import org.beobma.classWarPlugin.status.list.Enchantment
 import org.beobma.classWarPlugin.status.list.Fix
@@ -26,7 +23,6 @@ import org.bukkit.Location
 import org.bukkit.NamespacedKey
 import org.bukkit.block.Block
 import org.bukkit.entity.LivingEntity
-import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import org.bukkit.persistence.PersistentDataType
 import java.util.UUID
@@ -54,37 +50,8 @@ object SkillManager {
         return container.get(skillIdKey, PersistentDataType.STRING)
     }
 
-    private fun EntityData.isTraining(): Boolean = when (this) {
-        is PlayerData -> PlayerTagManager.isTraining(player)
-        else -> false
-    }
-
-    private fun PlayerData.isEnemyCandidate(candidate: EntityData, training: Boolean): Boolean = when (candidate) {
-        is PlayerData -> isEnemyOf(candidate)
-        is PlayerOwnedEntityData -> isEnemyOf(candidate.ownerData)
-        else -> training
-    }
-
-    /**
-     * 현재 경기에서 스킬 대상이 될 수 있는 엔티티 데이터의 중복 없는 목록을 만든다.
-     * 훈련 중에는 월드의 비플레이어 생명체도 필요할 때 데이터로 등록한다.
-     */
-    fun EntityData.getTargetCandidates(): List<EntityData> {
-        val candidates: MutableList<EntityData> = game.playerDatas.toMutableList()
-        val sourcePlayer = this as? PlayerData
-        if (sourcePlayer != null && isTraining()) {
-            sourcePlayer.player.world.livingEntities
-                .filter { it.uniqueId != sourcePlayer.uniqueId && it !is Player }
-                .forEach { livingEntity ->
-                val data = game.playerDatas.find { it.entity == livingEntity }
-                    ?: if (livingEntity.isMannequin()) DummyEntityData(livingEntity, game)
-                    else MobEntityData(livingEntity, game)
-                if (data !in game.playerDatas) game.playerDatas.add(data)
-                candidates.add(data)
-            }
-        }
-        return candidates.distinctBy { it.entity.uniqueId }
-    }
+    /** Returns a read-only candidate snapshot. Training registration belongs to the session tick. */
+    fun EntityData.getTargetCandidates(): List<EntityData> = Targeting.candidates(this)
 
     /**
      * 상태·침묵·쿨다운·이동 제한을 검사한 뒤 스킬 이벤트와 효과를 실행한다.
@@ -93,6 +60,8 @@ object SkillManager {
      */
     fun EntityData.use(skill: Skill, clickedItem: ItemStack): Boolean {
         val playerData = this as? PlayerData ?: return false
+        if (skill.abilityScope.playerData !== playerData || skill.abilityScope.isClosed ||
+            skill.abilityScope.suspended || entityStatus.isDead || game.isPaused) return false
         if (!entityStatus.canSkillUse) {
             playerData.player.sendMiniMessage("<red><bold>[!] 현재 스킬을 사용할 수 없는 상태입니다.")
             return false
@@ -120,23 +89,17 @@ object SkillManager {
             else -> cooldown.coerceAtLeast(0) * 20
         }
 
-        if (!skill.isUseSuccess()) {
-            return false
-        }
-
         val context = SkillContext(playerData, skill, clickedItem, baseCooldownTicks)
         val playerSkillUseEvent = PlayerSkillUseEvent(context)
-        Bukkit.getServer().pluginManager.callEvent(playerSkillUseEvent)
-        if (playerSkillUseEvent.isCancelled) {
-            return false
+        val success = skill.request(context) {
+            Bukkit.getServer().pluginManager.callEvent(playerSkillUseEvent)
+            !playerSkillUseEvent.isCancelled
         }
-
-        skill.execute(context)
+        if (!success) return false
         if (context.cooldownTicks > 0) {
             CooldownManager.setCooldown(playerData.player, skill, clickedItem, context.cooldownTicks)
         }
-
-
+        context.commit()
 
         return true
     }
@@ -149,53 +112,27 @@ object SkillManager {
         targetType: TargetType,
         radius: Double,
         oneself: Boolean,
-        hitAttackableObjects: Boolean = true,
+        hitAttackableObjects: Boolean = false,
     ): List<EntityData> {
         val effectiveRadius = ClassBalanceManager.scaleRange(this, radius)
-        val isTraining = isTraining()
-        val sourcePlayer = this as? PlayerData
-        if (hitAttackableObjects && sourcePlayer != null && targetType == Enemy) {
-            AttackableObjectManager.hitSphere(sourcePlayer.uniqueId, location, effectiveRadius)
+        if (hitAttackableObjects && this is PlayerData && targetType == Enemy) {
+            AttackableObjectManager.hitSphere(uniqueId, location, effectiveRadius)
         }
-        val world = entity.world
-        val nearbyEntities = world.getNearbyEntities(location, effectiveRadius, effectiveRadius, effectiveRadius)
-            .filterIsInstance<LivingEntity>()
-        val entityDatas = getTargetCandidates().filter { entityData ->
-            val playerStatus = entityData.entityStatus
-            return@filter !playerStatus.isDead && playerStatus.isSkillTargeting
-        }
-        val nearbyEntityData = nearbyEntities.mapNotNull { target ->
-            entityDatas.find { it.entity == target }
-        }.filter { candidate ->
-            HitboxUtil.intersectsSphere(candidate.entity.boundingBox, location.toVector(), effectiveRadius)
-        }
-
-        return when (targetType) {
-            Self -> if (oneself) nearbyEntityData.filter { it == this } else emptyList()
-
-            Enemy -> {
-                nearbyEntityData.filter { candidate ->
-                    sourcePlayer?.isEnemyCandidate(candidate, isTraining) == true
-                }
-            }
-
-            All -> {
-                nearbyEntityData
-            }
-        }
+        val candidates = Targeting.select(this, targetType, location.world, includeSelf = oneself)
+            .associateBy { it.entity.uniqueId }
+        return location.world.getNearbyEntities(location, effectiveRadius, effectiveRadius, effectiveRadius)
+            .mapNotNull { candidates[it.uniqueId] }
+            .filter { HitboxUtil.intersectsSphere(it.entity.boundingBox, location.toVector(), effectiveRadius) }
     }
+
     /**
      * 시선 광선이 가장 먼저 만나는 유효 대상을 반환한다.
      * [wallShot]이 `false`면 대상보다 앞에 있는 블록이 광선을 차단한다.
      */
     fun EntityData.shotLaserGetEntityData(maxRange: Double, targetType: TargetType, wallShot: Boolean): EntityData? {
         val sourcePlayer = this as? PlayerData ?: return null
-        val isTraining = isTraining()
-        val world = this.entity.world
-        val playerDatas = getTargetCandidates().filter { entityData ->
-            val playerStatus = entityData.entityStatus
-            return@filter !playerStatus.isDead && playerStatus.isSkillTargeting && !entityData.hasStatus<Stealth>()
-        }
+        val world = entity.world
+        val playerDatas = Targeting.select(this, targetType, includeStealth = false)
         val entity = entity
         if (entity !is LivingEntity) return null
         val startLocation = entity.eyeLocation
@@ -204,15 +141,6 @@ object SkillManager {
         val maxDistance = ClassBalanceManager.scaleRange(this, maxRange)
 
         val hitEntityData = playerDatas.asSequence()
-            .filter { candidate ->
-                val hitEntity = candidate.entity
-                if (hitEntity === this.entity || hitEntity !is LivingEntity) return@filter false
-                when (targetType) {
-                    Self -> false
-                    Enemy -> sourcePlayer.isEnemyCandidate(candidate, isTraining)
-                    All -> true
-                }
-            }
             .mapNotNull { candidate ->
                 HitboxUtil.rayIntersectionDistance(
                     candidate.entity.boundingBox,
@@ -235,24 +163,9 @@ object SkillManager {
                 return null
             }
         }
-        if (hitEntity !is LivingEntity) return null
-        val targetData = hitEntityData.first
-        if (targetData.entityStatus.isSkillTargeting) {
-            if (isTraining && hitEntity !is Player) {
-                return targetData
-            }
-            val isValidTarget = when (targetType) {
-                Self -> false
-                Enemy -> sourcePlayer.isEnemyCandidate(targetData, isTraining)
-                All -> true
-            }
-            if (!isValidTarget) {
-                return null
-            }
-            return targetData
-        }
-        return null
+        return hitEntityData.first
     }
+
     /** 클래스 사거리 배율을 적용한 시선 광선이 처음 만나는 블록을 반환한다. */
     fun EntityData.shotLaserGetBlock(maxRange: Double): Block? {
         val sourcePlayer = this as? PlayerData ?: return null
@@ -269,29 +182,16 @@ object SkillManager {
      * 플레이어 시선 기준 [angle]도의 원뿔과 [radius] 블록 안에 있는 유효 대상을 반환한다.
      * 반경에는 클래스 사거리 배율이 적용된다.
      */
-    fun EntityData.getConeTargets(radius: Double, angle: Double, targetType: TargetType, includeSelf: Boolean): List<EntityData> {
+    fun EntityData.getConeTargets(radius: Double, angle: Double, targetType: TargetType, includeSelf: Boolean, hitAttackableObjects: Boolean = false): List<EntityData> {
         val sourcePlayer = this as? PlayerData ?: return emptyList()
         val effectiveRadius = ClassBalanceManager.scaleRange(this, radius)
-        if (targetType == Enemy) {
+        if (hitAttackableObjects && targetType == Enemy) {
             AttackableObjectManager.hitCone(sourcePlayer.uniqueId, sourcePlayer.player.eyeLocation, effectiveRadius, angle)
         }
-        val isTraining = isTraining()
         val playerLocation = sourcePlayer.player.location
         val playerDirection = playerLocation.direction.normalize()
 
-        return getTargetCandidates().filter { targetPlayerData ->
-            if (!targetPlayerData.entityStatus.isSkillTargeting || targetPlayerData.entityStatus.isDead)
-                return@filter false
-
-            if (!includeSelf && targetPlayerData == this)
-                return@filter false
-
-            when (targetType) {
-                Self -> if (targetPlayerData != sourcePlayer) return@filter false
-                Enemy -> if (!sourcePlayer.isEnemyCandidate(targetPlayerData, isTraining)) return@filter false
-                All -> Unit
-            }
-
+        return Targeting.select(this, targetType, includeSelf = includeSelf).filter { targetPlayerData ->
             val distanceSquared = HitboxUtil.distanceSquared(targetPlayerData.entity.boundingBox, playerLocation.toVector())
             if (distanceSquared > effectiveRadius * effectiveRadius) return@filter false
             if (distanceSquared == 0.0) return@filter true

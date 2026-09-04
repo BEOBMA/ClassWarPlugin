@@ -18,6 +18,7 @@ import org.bukkit.attribute.Attribute
 import kotlin.random.Random
 
 class Tonic : GameClass(), GameStatusHandler {
+    override val classId = "tonic"
     override val name = "<gray>보약"
     override val rank = Rank.C
     override val classItemMaterial = Material.OMINOUS_BOTTLE
@@ -36,10 +37,11 @@ class Tonic : GameClass(), GameStatusHandler {
     override fun onGameTimePasses() = Unit
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "tonic/red-skill"
         override val name = "<bold>'보약' 사용"
         override val description = listOf("<gray>몸에 좋다.")
         override val cooldown = 10
-        override fun use() {
+        override fun use(): Boolean {
             uses++
             damageDealtMultiplier = 1.0 + uses * 0.05
             playerData.getOrCreateStatus(playerData) { TonicStackStatus() }.updatePower(uses)
@@ -48,6 +50,7 @@ class Tonic : GameClass(), GameStatusHandler {
             particles.spawn(player, Particle.HAPPY_VILLAGER, count = 24, spread = 0.55, speed = 0.08)
             particles.spawn(player, Particle.EFFECT, count = 12, spread = 0.4, speed = 0.05)
             sounds.play(player, Sound.ENTITY_GENERIC_DRINK, volume = 0.85f, pitch = 0.82f)
+            return true
         }
     }
 
@@ -55,22 +58,21 @@ class Tonic : GameClass(), GameStatusHandler {
         val escalation = (uses - 4).coerceAtLeast(1)
         val severity = (0.08 + escalation * 0.035).coerceAtMost(0.55)
         when (Random.nextInt(6)) {
-            0 -> player.getAttribute(Attribute.MAX_HEALTH)?.let {
+            0 -> playerData.attributeEffects.changeBase(Attribute.MAX_HEALTH) { base ->
                 val healthLoss = (1.5 + escalation * 0.65).coerceAtMost(9.0)
-                it.baseValue = (it.baseValue - healthLoss).coerceAtLeast(1.0)
-                player.health = player.health.coerceAtMost(it.value)
+                (base - healthLoss).coerceAtLeast(1.0)
             }
-            1 -> player.getAttribute(Attribute.MOVEMENT_SPEED)?.let {
-                it.baseValue = (it.baseValue * (1.0 - severity)).coerceAtLeast(0.012)
+            1 -> playerData.attributeEffects.changeBase(Attribute.MOVEMENT_SPEED) { base ->
+                (base * (1.0 - severity)).coerceAtLeast(0.012)
             }
-            2 -> player.getAttribute(Attribute.ATTACK_SPEED)?.let {
-                it.baseValue = (it.baseValue * (1.0 - severity * 0.9)).coerceAtLeast(0.25)
+            2 -> playerData.attributeEffects.changeBase(Attribute.ATTACK_SPEED) { base ->
+                (base * (1.0 - severity * 0.9)).coerceAtLeast(0.25)
             }
-            3 -> player.getAttribute(Attribute.JUMP_STRENGTH)?.let {
-                it.baseValue = (it.baseValue * (1.0 - severity)).coerceAtLeast(0.05)
+            3 -> playerData.attributeEffects.changeBase(Attribute.JUMP_STRENGTH) { base ->
+                (base * (1.0 - severity)).coerceAtLeast(0.05)
             }
-            4 -> player.getAttribute(Attribute.SCALE)?.let {
-                it.baseValue = (it.baseValue * (1.0 - severity * 0.65)).coerceAtLeast(0.25)
+            4 -> playerData.attributeEffects.changeBase(Attribute.SCALE) { base ->
+                (base * (1.0 - severity * 0.65)).coerceAtLeast(0.25)
             }
             else -> damageTakenMultiplier = (damageTakenMultiplier * (1.0 + severity * 1.6)).coerceAtMost(8.0)
         }

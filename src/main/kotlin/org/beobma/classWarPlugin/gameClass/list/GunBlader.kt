@@ -38,6 +38,7 @@ private const val GUN_BLADER_BREAKTHROUGH_VIBRATION_POWER = 3
 private const val GUN_BLADER_VIBRATION_POWER = 1
 
 class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUseHandler {
+    override val classId = "gun-blader"
     override val name = "<gray>총검사"
     override val rank = Rank.A
     override val classItemMaterial = Material.IRON_SWORD
@@ -101,6 +102,7 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
     }
 
     private inner class RedSkill : Skill(), org.beobma.classWarPlugin.skill.MovementSkill {
+        override val definitionId = "gun-blader/red-skill"
         override val name = "<bold>돌파"
         override val description = listOf(
             "<gray>바라보는 방향으로 3칸 돌진한다.",
@@ -110,13 +112,13 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
         )
         override val cooldown = GUN_BLADER_BREAKTHROUGH_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             val bullets = bulletStatus()
             val boosted = bullets.power > 0
             if (boosted) bullets.decreasePower(1)
             idleSeconds = 0
             player.velocity = player.location.direction.normalize().multiply(if (boosted) 1.8 else 1.05).setY(0.12)
-            val target = playerData.getConeTargets(if (boosted) 6.0 else 3.0, 45.0, TargetType.Enemy, false).firstOrNull()
+            val target = playerData.getConeTargets(if (boosted) 6.0 else 3.0, 45.0, TargetType.Enemy, false, hitAttackableObjects = true).firstOrNull()
             target?.let {
                 it.damage(GUN_BLADER_BREAKTHROUGH_DAMAGE, DamageType.Normal, playerData)
                 it.getOrCreateStatus(playerData) { Vibration() }.applyStatus(
@@ -126,10 +128,12 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
                 particles.spawn(it.entity, Particle.SWEEP_ATTACK, count = 2, spread = 0.2)
             }
             sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_SWEEP, pitch = 0.8f)
+            return true
         }
     }
 
     private inner class OrangeSkill : Skill() {
+        override val definitionId = "gun-blader/orange-skill"
         override val name = "<bold>전탄 격발"
         override val description = listOf(
             "<gray>16칸 내의 바라보는 적을 조준하고 장전된 {keyword:Bullet}을 모두 소모하여 사격한다.",
@@ -138,8 +142,8 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
         )
         override val cooldown = GUN_BLADER_FULL_BURST_COOLDOWN_SECONDS
 
-        override fun use() {
-            val target = playerData.shotLaserGetEntityData(16.0, TargetType.Enemy, false) ?: return
+        override fun use(): Boolean {
+            val target = playerData.shotLaserGetEntityData(16.0, TargetType.Enemy, false) ?: return false
             val bullets = bulletStatus()
             val shots = bullets.power
             bullets.updatePower(0); idleSeconds = 0
@@ -153,6 +157,7 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
             }
             particles.line(player.eyeLocation, target.entity.location.add(0.0, target.entity.height / 2, 0.0), Particle.ELECTRIC_SPARK, 0.2)
             sounds.play(player, Sound.ENTITY_GENERIC_EXPLODE, volume = 1.3f, pitch = 1.7f)
+            return true
         }
 
         override fun isUseSuccess(): Boolean {

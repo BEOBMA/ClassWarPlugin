@@ -11,7 +11,7 @@ import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.skill.Skill
 import org.beobma.classWarPlugin.util.DamageType
 import org.bukkit.*
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.scheduler.BukkitTask
 import org.bukkit.util.Vector
 import org.bukkit.util.BoundingBox
@@ -32,6 +32,7 @@ private const val GEOMETER_MAX_COMPRESSION_DAMAGE = 16.0
 private const val GEOMETER_MIN_COMPRESSION_DAMAGE = 5.0
 
 class Geometer : GameClass() {
+    override val classId = "geometer"
     override val name = "<gray>기하학자"
     override val rank = Rank.A
     override val classItemMaterial = Material.SHULKER_SHELL
@@ -87,7 +88,7 @@ class Geometer : GameClass() {
 
     private fun startBoxDisplay(a: Location, b: Location) {
         boxDisplayTask?.cancel()
-        boxDisplayTask = playerData.trackTask(object : BukkitRunnable() {
+        boxDisplayTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
                 if (first == null || second == null) { cancel(); return }
                 showBox(a, b)
@@ -113,6 +114,7 @@ class Geometer : GameClass() {
     }
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "geometer/red-skill"
         override val name = "<bold>좌표 설정"
         override val description = listOf(
             "<gray>${GEOMETER_COORDINATE_RANGE.toInt()}칸 내의 바라보는 블럭에 좌표를 지정한다.",
@@ -127,9 +129,9 @@ class Geometer : GameClass() {
         )
         override val cooldown = GEOMETER_COORDINATE_COOLDOWN_SECONDS
 
-        override fun use() {
-            if (player.isSneaking) { clearCoordinates(); return }
-            val targetBlock = playerData.shotLaserGetBlock(GEOMETER_COORDINATE_RANGE) ?: return
+        override fun use(): Boolean {
+            if (player.isSneaking) { clearCoordinates(); return true }
+            val targetBlock = playerData.shotLaserGetBlock(GEOMETER_COORDINATE_RANGE) ?: return false
             val point = targetBlock.location.add(0.5, 1.0, 0.5)
             val firstPoint = first
             if (firstPoint == null || second != null) {
@@ -142,7 +144,7 @@ class Geometer : GameClass() {
                     "<red><bold>[!] 부피 ${GEOMETER_MAX_VOLUME.toInt()}, " +
                         "변 길이 ${GEOMETER_MAX_AXIS_LENGTH.toInt()} 제한을 초과합니다."
                 )
-                return
+                return false
             }
             particles.spawn(point, Particle.HAPPY_VILLAGER, count = 12, spread = 0.2)
             sounds.play(point, Sound.BLOCK_NOTE_BLOCK_PLING, pitch = if (second == null) 1.0f else 1.6f)
@@ -151,6 +153,7 @@ class Geometer : GameClass() {
                 showBox(selectedFirstPoint, secondPoint)
                 startBoxDisplay(selectedFirstPoint.clone(), secondPoint.clone())
             }
+            return true
         }
 
         override fun isUseSuccess(): Boolean {
@@ -163,6 +166,7 @@ class Geometer : GameClass() {
     }
 
     private inner class OrangeSkill : Skill() {
+        override val definitionId = "geometer/orange-skill"
         override val name = "<bold>압축"
         override val description = listOf(
             "<gray>직육면체를 중심으로 압축한다.",
@@ -174,9 +178,9 @@ class Geometer : GameClass() {
         )
         override val cooldown = GEOMETER_COMPRESSION_COOLDOWN_SECONDS
 
-        override fun use() {
-            val a = first ?: return
-            val b = second ?: return
+        override fun use(): Boolean {
+            val a = first ?: return false
+            val b = second ?: return false
             val damage = compressionDamage(a, b)
             val minX = minOf(a.x, b.x); val maxX = maxOf(a.x, b.x)
             val minY = minOf(a.y, b.y); val maxY = maxOf(a.y, b.y)
@@ -192,7 +196,7 @@ class Geometer : GameClass() {
             first = null; second = null
             sounds.play(center, Sound.BLOCK_PISTON_CONTRACT, volume = 1.4f, pitch = 0.6f)
 
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 var tick = 0
                 override fun run() {
                     if (tick < 20) {
@@ -224,6 +228,7 @@ class Geometer : GameClass() {
                     if (burstTick >= 9) cancel()
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
+            return true
         }
 
         override fun isUseSuccess(): Boolean {

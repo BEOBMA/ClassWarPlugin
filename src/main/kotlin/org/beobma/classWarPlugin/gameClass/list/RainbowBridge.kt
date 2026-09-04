@@ -18,7 +18,7 @@ import org.bukkit.block.Block
 import org.bukkit.block.BlockState
 import org.bukkit.entity.Snowball
 import org.bukkit.event.entity.ProjectileHitEvent
-import org.bukkit.scheduler.BukkitRunnable
+import org.beobma.classWarPlugin.ability.AbilityRunnable as BukkitRunnable
 import org.bukkit.util.BoundingBox
 import org.bukkit.util.Vector
 import java.util.UUID
@@ -30,6 +30,7 @@ private const val RAINBOW_BRIDGE_DURATION_TICKS = 200
 private const val RAINBOW_SNOWBALL_TAG = "classwar_rainbow_bridge"
 
 class RainbowBridge : GameClass(), GameEndHandler, PlayerDeathHandler {
+    override val classId = "rainbow-bridge"
     override val name = "<gray>무지개 다리"
     override val rank = Rank.B
     override val classItemMaterial = Material.PINK_GLAZED_TERRACOTTA
@@ -49,6 +50,7 @@ class RainbowBridge : GameClass(), GameEndHandler, PlayerDeathHandler {
     override fun onPlayerDeath() = clearAllBridges()
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "rainbow-bridge/red-skill"
         override val name = "<bold>무지개"
         override val description = listOf(
             "<gray>바라보는 방향으로 눈덩이를 던져 경로를 따라 10초간 무지개 다리를 설치한다.",
@@ -56,7 +58,7 @@ class RainbowBridge : GameClass(), GameEndHandler, PlayerDeathHandler {
         )
         override val cooldown = RAINBOW_BRIDGE_COOLDOWN_SECONDS
 
-        override fun use() {
+        override fun use(): Boolean {
             val forward = player.eyeLocation.direction.clone().apply {
                 y = y.coerceIn(-0.42, 0.42)
             }.normalize()
@@ -109,7 +111,7 @@ class RainbowBridge : GameClass(), GameEndHandler, PlayerDeathHandler {
             activeProjectiles += snowball
             addBridgeCenter(start)
             sounds.play(start, Sound.ENTITY_SNOWBALL_THROW, volume = 1.0f, pitch = 1.25f)
-            playerData.trackTask(object : BukkitRunnable() {
+            playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 var tick = 0
                 var bridgeAge = 0
                 var previous = start.clone()
@@ -165,6 +167,7 @@ class RainbowBridge : GameClass(), GameEndHandler, PlayerDeathHandler {
                     tick++
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
+            return true
         }
     }
 

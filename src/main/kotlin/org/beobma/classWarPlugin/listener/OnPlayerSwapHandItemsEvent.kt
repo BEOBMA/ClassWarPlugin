@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.listener
 
+import org.beobma.classWarPlugin.ability.AbilityTree
+
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.handler.WeaponInputHandler
 import org.beobma.classWarPlugin.info.Info.isGaming
@@ -21,14 +23,14 @@ class OnPlayerSwapHandItemsEvent : Listener {
         if (!playerData.canDispatchClassHandlers()) return
         val heldItem = player.inventory.itemInMainHand
         val taggedClassId = getWeaponClassId(heldItem)
-        playerData.gameClasses
+        AbilityTree.nodes(playerData.gameClasses, activeOnly = true)
             .filter { gameClass ->
-                if (taggedClassId != null) gameClass.javaClass.name == taggedClassId
+                if (taggedClassId != null) (gameClass.classId == taggedClassId || gameClass.javaClass.name == taggedClassId)
                 else heldItem.type == gameClass.weapon.material
             }
-            .filterIsInstance<WeaponInputHandler>()
-            .forEach { handler ->
-                handler.onWeaponSwapHand(event)
+            .let { AbilityTree.handlers(it, WeaponInputHandler::class.java, includeDescendants = false) }
+            .forEach { bound ->
+                bound.call { it.onWeaponSwapHand(event) }
                 if (event.isCancelled) return
             }
     }

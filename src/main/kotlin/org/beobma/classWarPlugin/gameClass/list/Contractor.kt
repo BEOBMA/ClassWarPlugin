@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.gameClass.list
 
+import org.beobma.classWarPlugin.ability.AbilityExecution
+
 import net.kyori.adventure.text.minimessage.MiniMessage
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.entity.player.PlayerData
@@ -26,7 +28,9 @@ import org.beobma.classWarPlugin.skill.Passive as BasePassive
 private const val CONTRACTOR_CONTRACT_COOLDOWN_SECONDS = 40
 private const val CONTRACTOR_SUCCESS_DAMAGE = 5.0
 
-class Contractor : GameClass() {
+class Contractor : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameEndHandler {
+    override fun onGameEnd() = clearSessions(listOf(playerData.uniqueId))
+    override val classId = "contractor"
     override val name = "<gray>청부업자"
     override val rank = Rank.B
     override val classItemMaterial = Material.SULFUR_CUBE_BUCKET
@@ -36,6 +40,7 @@ class Contractor : GameClass() {
     private val miniMessage = MiniMessage.miniMessage()
 
     private inner class RedSkill : Skill() {
+        override val definitionId = "contractor/red-skill"
         override val name = "<bold>청부"
         override val description = listOf(
             "<gray>사용 시 무작위 플레이어의 직업을 맞출 수 있는 인벤토리가 열린다.",
@@ -43,7 +48,7 @@ class Contractor : GameClass() {
         )
         override val cooldown = CONTRACTOR_CONTRACT_COOLDOWN_SECONDS
 
-        private var pendingTarget: PlayerData? = null
+        private var pendingTarget: PlayerData? by requestValue { null }
 
         override fun isUseSuccess(): Boolean {
             pendingTarget = game.playerDatas.filterIsInstance<PlayerData>()
@@ -54,10 +59,11 @@ class Contractor : GameClass() {
             return false
         }
 
-        override fun use() {
-            val target = pendingTarget ?: return
+        override fun use(): Boolean {
+            val target = pendingTarget ?: return false
             pendingTarget = null
             openGuessInventory(target)
+            return true
         }
     }
 
@@ -147,7 +153,7 @@ class Contractor : GameClass() {
 
         fun handleInventoryClick(player: Player, rawSlot: Int) {
             val session = activeGuesses[player.uniqueId] ?: return
-            session.owner.resolveGuess(session, rawSlot)
+            AbilityExecution.with(session.owner.abilityScope) { session.owner.resolveGuess(session, rawSlot) }
         }
 
         fun handleInventoryClose(player: Player) {
