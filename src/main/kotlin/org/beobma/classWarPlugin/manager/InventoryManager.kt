@@ -7,6 +7,7 @@ import net.kyori.adventure.text.minimessage.MiniMessage
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
+import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.game.DamageMultiplierType
 import org.beobma.classWarPlugin.game.GameSettings
 import org.beobma.classWarPlugin.game.MatchMode
@@ -19,6 +20,7 @@ import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.entity.Player
 import org.bukkit.inventory.Inventory
+import org.bukkit.inventory.InventoryHolder
 import org.bukkit.inventory.ItemStack
 import org.bukkit.persistence.PersistentDataType
 
@@ -104,6 +106,37 @@ object InventoryManager {
             displayName(miniMessage.deserialize("<gray>비어있음"))
         }
     }
+
+    private class KeywordInventoryHolder : InventoryHolder {
+        lateinit var backingInventory: Inventory
+        override fun getInventory(): Inventory = backingInventory
+    }
+
+    /** 설명이 등록된 모든 키워드를 아이콘과 툴팁으로 보여준다. */
+    fun Player.openKeywordInventory() {
+        val holder = KeywordInventoryHolder()
+        val inventory = Bukkit.createInventory(
+            holder,
+            36,
+            miniMessage.deserialize("<dark_gray>키워드 사전"),
+        )
+        holder.backingInventory = inventory
+        Keyword.describedEntries.forEachIndexed { slot, keyword ->
+            inventory.setItem(slot, createDescriptionItem(
+                keyword.icon,
+                keyword.string,
+                listOf(
+                    keyword.requireDescription(),
+                    "",
+                    "<dark_gray>영문명: <gray>${keyword.name}",
+                ),
+            ))
+        }
+        openInventory(inventory)
+    }
+
+    fun isKeywordInventory(inventory: Inventory): Boolean =
+        inventory.holder is KeywordInventoryHolder
 
     fun Player.openClassListInventory(page: Int) {
         val visibleClasses = gameClassList.filter { isOp || it.rank != Rank.SPECIAL }

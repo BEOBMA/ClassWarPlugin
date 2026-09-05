@@ -19,6 +19,7 @@ import org.beobma.classWarPlugin.manager.InventoryManager.getOpenConfigCategory
 import org.beobma.classWarPlugin.manager.InventoryManager.getClassFromItem
 import org.beobma.classWarPlugin.manager.InventoryManager.getMatchModeFromItem
 import org.beobma.classWarPlugin.manager.InventoryManager.openTrainingClassListInventory
+import org.beobma.classWarPlugin.manager.InventoryManager.isKeywordInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassBalanceListInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassBalanceDetailInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.getOpenClassBalancePage
@@ -67,6 +68,10 @@ class OnInventoryClickEvent : Listener {
     fun onClickItem(event: InventoryClickEvent) {
         val player = event.whoClicked as? Player ?: return
         val inventory = event.view
+        if (isKeywordInventory(inventory.topInventory)) {
+            event.isCancelled = true
+            return
+        }
         if (Contractor.isGuessInventoryOpen(player)) {
             event.isCancelled = true
             if (event.rawSlot !in 0 until inventory.topInventory.size) return
