@@ -149,11 +149,24 @@ enum class Keyword(
         "Keyword '$name'에 설명이 등록되지 않았습니다."
     }
 
+    /** 명령어 검색과 탭 완성에 사용하는 서식 없는 게임 내 표시명. */
+    val displayName: String
+        get() = miniMessageTag.replace(string, "")
+
     companion object {
+        private val miniMessageTag = "<[^>]+>".toRegex()
         private val explanationPrefix = "^\\s*\\{keyword:[A-Za-z]+}:".toRegex()
         private val keywordToken = "\\{keyword:([A-Za-z]+)}".toRegex()
         private val keywordsByName by lazy { entries.associateBy { it.name } }
         private val registeredExplanations by lazy { entries.mapNotNull { it.description }.toSet() }
+
+        /** 플레이어가 키워드 사전에서 조회할 수 있는 키워드 목록. */
+        val describedEntries: List<Keyword> by lazy { entries.filter { it.description != null } }
+
+        /** 영문 enum 이름 또는 게임 내 한글 표시명으로 키워드를 찾는다. */
+        fun find(query: String): Keyword? = describedEntries.firstOrNull {
+            it.name.equals(query, ignoreCase = true) || it.displayName.equals(query, ignoreCase = true)
+        }
 
         /** 짧은 키워드 사용 문장이 아니라, 키워드 사전에서 덧붙인 해설 줄인지 판별한다. */
         fun isExplanation(line: String): Boolean =

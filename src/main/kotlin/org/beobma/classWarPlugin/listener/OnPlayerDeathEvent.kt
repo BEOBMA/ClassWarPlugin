@@ -2,8 +2,9 @@ package org.beobma.classWarPlugin.listener
 
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.entity.player.PlayerData
-import org.beobma.classWarPlugin.manager.GameManager.handleDeath
+import org.beobma.classWarPlugin.manager.GameManager.handleCombatDeath
 import org.beobma.classWarPlugin.manager.GameManager.recordPlayerKill
+import org.beobma.classWarPlugin.manager.GameManager.rewardKiller
 import org.beobma.classWarPlugin.manager.DamageManager
 import net.kyori.adventure.text.minimessage.MiniMessage
 import org.bukkit.GameMode
@@ -66,7 +67,8 @@ class OnPlayerDeathEvent : Listener{
         PortalGun.clearForPlayers(listOf(player.uniqueId))
         AreaDevelopment.clearDomains(listOf(player.uniqueId))
         GraveRobber.recordDeath(playerData)
-        handleDeath(playerData)
+        val outcome = handleCombatDeath(playerData)
+        rewardKiller(killerId, player.uniqueId, outcome)
     }
 
     private fun buildDeathMessage(victimName: String, killerName: String?, cause: String?): String {

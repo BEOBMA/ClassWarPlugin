@@ -50,6 +50,11 @@ display:
   player-list-visible: false
 
 combat:
+  # 참가자마다 주어지는 추가 목숨입니다. 0이면 첫 사망에 바로 탈락합니다.
+  player-lives: 1
+  elimination-rewards:
+    # 플레이어 처치 시 BREAK/TERMINATE 타이틀과 체력 회복을 적용합니다.
+    enabled: false
   damage-indicators:
     enabled: true
   death-messages:

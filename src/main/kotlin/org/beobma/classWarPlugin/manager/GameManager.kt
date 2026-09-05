@@ -20,6 +20,7 @@ import org.beobma.classWarPlugin.game.PlayerSnapshot
 import org.beobma.classWarPlugin.game.damageMultiplier
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
+import org.beobma.classWarPlugin.gameClass.handler.PlayerDeathHandler
 import org.beobma.classWarPlugin.gameClass.list.*
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.manager.InventoryManager.openAssignedClassInventory
@@ -69,6 +70,7 @@ import kotlin.random.Random
 object GameManager {
     /** 운영자 능력 변경 명령의 성공 여부와 사용자용 결과 메시지다. */
     data class AbilityChangeResult(val success: Boolean, val message: String)
+    enum class DeathOutcome { BREAK, TERMINATE }
 
     private val miniMessage = MiniMessage.miniMessage()
     private const val RECONNECT_GRACE_TICKS = 5L * 60L * 20L
@@ -414,6 +416,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
 
     private fun Game.beginBattle() {
         phase = GamePhase.RUNNING
+        contenders().forEach { livesRemaining.putIfAbsent(it.uniqueId, settings.playerLives) }
         if (mode.usesTailTagRules && tailTargets.isEmpty()) {
             initializeTailTargets(contenders())
         }
@@ -823,6 +826,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
 
                 if (!descentCompleted && elapsedTicks >= totalTicks) {
                     descentCompleted = true
+                    finalBorderCompleted = true
                     bossBar.progress(0.0F)
                     bossBar.name(miniMessage.deserialize("<red><bold>최종 자기장이 맵 전체를 덮었습니다"))
                     activePlayers().filter { it.player.isOnline }.forEach { playerData ->
@@ -1390,6 +1394,96 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
                 currentGame.finish(survivors.firstOrNull())
             }
         }
+    }
+
+    /** 남은 목숨과 최종 자기장 상태를 반영해 재투입 또는 영구 탈락을 처리한다. */
+    fun handleCombatDeath(playerData: PlayerData): DeathOutcome {
+        val currentGame = playerData.initGame
+        val remainingLives = currentGame.livesRemaining.getOrPut(playerData.uniqueId) {
+            currentGame.settings.playerLives
+        }
+        if (currentGame.phase != GamePhase.RUNNING || currentGame.finalBorderCompleted || remainingLives <= 0) {
+            handleDeath(playerData)
+            return DeathOutcome.TERMINATE
+        }
+
+        currentGame.livesRemaining[playerData.uniqueId] = remainingLives - 1
+        currentGame.prepareForRespawn(playerData)
+        return DeathOutcome.BREAK
+    }
+
+    /** 설정이 켜진 경우 실제 처치자에게 결과 타이틀과 최대 체력 비례 회복을 지급한다. */
+    fun rewardKiller(killerId: UUID?, victimId: UUID, outcome: DeathOutcome) {
+        val currentGame = game ?: return
+        if (!currentGame.settings.eliminationRewardsEnabled) return
+        val creditedId = killerId?.takeIf { it != victimId } ?: return
+        val killerData = currentGame.findParticipant(creditedId)
+            ?.takeUnless { it.entityStatus.isDead } ?: return
+        val killer = killerData.player.takeIf { it.isOnline } ?: return
+        val fraction = if (outcome == DeathOutcome.TERMINATE) 0.5 else 0.35
+        val maximumHealth = killer.getAttribute(Attribute.MAX_HEALTH)?.value ?: killer.getPlayerMaxHealth()
+        killer.health = (killer.health + maximumHealth * fraction).coerceAtMost(maximumHealth)
+        killer.showTitle(
+            Title.title(
+                miniMessage.deserialize(if (outcome == DeathOutcome.TERMINATE) "<dark_red><bold>TERMINATE" else "<gold><bold>BREAK"),
+                Component.empty(),
+            )
+        )
+    }
+
+    private fun Game.prepareForRespawn(playerData: PlayerData) {
+        disablePlayerInteraction(playerData)
+        StealthVisibilityManager.reveal(playerData)
+        StealthVisibilityManager.revealTo(playerData.player)
+        TemporaryDisplayManager.clear(playerData.player.world, playerData.uniqueId)
+        unregisterAllTickingStatuses(playerData.statusAbnormalitys)
+        playerData.statusAbnormalitys.clear()
+        playerData.bukkitTasks.toList().forEach { it.cancel() }
+        playerData.bukkitTasks.clear()
+        AbilityTree.handlers(playerData.gameClasses, PlayerDeathHandler::class.java)
+            .forEach { bound -> bound.call { it.onPlayerDeath() } }
+
+        val respawningGame = this
+        object : BukkitRunnable() {
+            override fun run() {
+                if (game !== respawningGame || phase != GamePhase.RUNNING || !playerData.player.isOnline) return
+                playerData.player.spigot().respawn()
+                object : BukkitRunnable() {
+                    override fun run() {
+                        if (game !== respawningGame || phase != GamePhase.RUNNING || !playerData.player.isOnline) return
+                        val destination = findRespawnLocation(playerData)
+                        if (destination == null || !playerData.player.teleport(destination)) {
+                            livesRemaining[playerData.uniqueId] = 0
+                            handleDeath(playerData)
+                            return
+                        }
+                        playerData.player.gameMode = GameMode.ADVENTURE
+                        playerData.player.velocity = Vector()
+                        playerData.player.fallDistance = 0.0F
+                        playerData.entityStatus.canAttack = true
+                        playerData.entityStatus.canSkillUse = true
+                        playerData.entityStatus.canMove = true
+                        playerData.entityStatus.isAttackable = true
+                        playerData.entityStatus.isSkillTargeting = true
+                        playerData.player.sendMessage(miniMessage.deserialize(
+                            "<gold><bold>[BREAK]</bold> <gray>남은 목숨: <white>${livesRemaining[playerData.uniqueId] ?: 0}"
+                        ))
+                    }
+                }.runTaskLater(ClassWarPlugin.instance, 1L).also { track(it) }
+            }
+        }.runTaskLater(ClassWarPlugin.instance, 1L).also { track(it) }
+    }
+
+    private fun Game.findRespawnLocation(playerData: PlayerData): Location? {
+        val occupied = contenders()
+            .filter { it.uniqueId != playerData.uniqueId && it.player.isOnline && it.player.world == gameWorld }
+            .map { it.player.location }
+        val minimumDistanceSquared = settings.minimumPlayerDistance * settings.minimumPlayerDistance
+        repeat(8) {
+            val candidate = findSpawnLocations(gameWorld, 1).firstOrNull() ?: return@repeat
+            if (occupied.none { it.distanceSquared(candidate) < minimumDistanceSquared }) return candidate
+        }
+        return null
     }
 
     /** 유효한 타인 처치만 [playerKillCounts]에 기록한다. */

@@ -5,6 +5,7 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.game.GameSettings
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.info.Info.isGaming
+import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.manager.ClassBalanceManager
 import org.beobma.classWarPlugin.manager.GameManager
 import org.beobma.classWarPlugin.manager.GameManager.abilityClassSuggestions
@@ -19,6 +20,7 @@ import org.beobma.classWarPlugin.manager.InventoryManager.openConfigInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openGameModeInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openTrainingClassListInventory
 import org.beobma.classWarPlugin.manager.PlayerTagManager
+import org.beobma.classWarPlugin.manager.UtilManager
 import org.beobma.classWarPlugin.updater.GitHubReleaseUpdater.UpdateResult
 import org.bukkit.Bukkit
 import org.bukkit.command.Command
@@ -45,6 +47,7 @@ class Command : Listener, CommandExecutor, TabCompleter {
             "assign", "give", "능력배정" -> return handleAssign(sender, args)
             "remove", "take", "능력제거" -> return handleRemove(sender, args)
             "abilities", "ability", "능력" -> return handleAbilities(sender, args)
+            "keyword", "keywords", "키워드" -> return handleKeyword(sender, args)
             "stop" -> {
                 if (!requireOperator(sender)) return true
                 if (!isGaming()) {
@@ -159,6 +162,22 @@ class Command : Listener, CommandExecutor, TabCompleter {
         return true
     }
 
+    private fun handleKeyword(sender: CommandSender, args: Array<String>): Boolean {
+        if (args.size < 2) {
+            val names = Keyword.describedEntries.joinToString("<gray>, </gray>") { it.string }
+            sender.sendMessage(miniMessage.deserialize("<gold><bold>키워드 목록</bold></gold> <gray>- /cw keyword <키워드>로 효과를 확인하세요."))
+            sender.sendMessage(miniMessage.deserialize(names))
+            return true
+        }
+
+        val keyword = Keyword.find(args.drop(1).joinToString(" ")) ?: run {
+            sender.sendWarningMessage("해당 키워드를 찾을 수 없습니다. /cw keyword로 목록을 확인해 주세요.")
+            return true
+        }
+        sender.sendMessage(miniMessage.deserialize(UtilManager.applyKeywords(keyword.requireDescription())))
+        return true
+    }
+
     private fun handleReload(sender: CommandSender): Boolean {
         if (!requireOperator(sender)) return true
         val plugin = ClassWarPlugin.instance
@@ -200,6 +219,7 @@ class Command : Listener, CommandExecutor, TabCompleter {
             "<yellow>/cw training <gray>- 능력 연습을 시작합니다.",
             "<yellow>/cw exit <gray>- 능력 연습을 종료합니다.",
             "<yellow>/cw abilities [플레이어] <gray>- 현재 배정 능력을 확인합니다.",
+            "<yellow>/cw keyword [키워드] <gray>- 키워드 목록이나 효과를 확인합니다.",
             "<yellow>/cw target <gray>- 꼬리잡기 표적을 확인하고 나침반을 갱신합니다.",
             "<dark_gray>관리자 명령은 /cw help 2에서 확인할 수 있습니다.",
         ) else listOf(
@@ -221,7 +241,7 @@ class Command : Listener, CommandExecutor, TabCompleter {
         args: Array<String>,
     ): List<String> {
         if (!command.name.equals("classwar", ignoreCase = true)) return emptyList()
-        val playerCommands = listOf("help", "classlist", "training", "exit", "abilities", "target")
+        val playerCommands = listOf("help", "classlist", "training", "exit", "abilities", "keyword", "target")
         val adminCommands = listOf("start", "stop", "config", "assign", "remove", "reload", "update")
         return when (args.size) {
             1 -> (playerCommands + if (sender.isOp) adminCommands else emptyList())
@@ -230,6 +250,7 @@ class Command : Listener, CommandExecutor, TabCompleter {
                 "help" -> listOf("1", "2")
                 "assign", "give", "remove", "take" -> Bukkit.getOnlinePlayers().map(Player::getName)
                 "abilities", "ability" -> if (sender.isOp) Bukkit.getOnlinePlayers().map(Player::getName) else emptyList()
+                "keyword", "keywords", "키워드" -> Keyword.describedEntries.flatMap { listOf(it.displayName, it.name) }
                 else -> emptyList()
             }.filter { it.startsWith(args[1], ignoreCase = true) }
             3 -> when (args[0].lowercase(Locale.ROOT)) {

@@ -327,6 +327,8 @@ class OnInventoryClickEvent : Listener {
             14 -> GameSetting.DEATH_MESSAGES_SHOW_KILLER
             16 -> GameSetting.DEATH_MESSAGES_SHOW_CAUSE
             22 -> GameSetting.DAMAGE_INDICATORS_ENABLED
+            24 -> GameSetting.PLAYER_LIVES
+            26 -> GameSetting.ELIMINATION_REWARDS_ENABLED
             else -> null
         }
 

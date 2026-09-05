@@ -385,6 +385,12 @@ object InventoryManager {
                 inventory.setItem(14, createToggleItem("사망 메시지에 처치자 표시", settings.deathMessagesShowKiller))
                 inventory.setItem(16, createToggleItem("사망 메시지에 사망 사유 표시", settings.deathMessagesShowCause))
                 inventory.setItem(22, createToggleItem("피해량 텍스트 표시", settings.damageIndicatorsEnabled))
+                inventory.setItem(24, createSettingItem(Material.TOTEM_OF_UNDYING, "플레이어별 추가 목숨", settings.playerLives, "개"))
+                inventory.setItem(26, createToggleItem(
+                    "처치 보상",
+                    settings.eliminationRewardsEnabled,
+                    listOf("<gray>BREAK: 최대 체력의 35% 회복", "<gray>TERMINATE: 최대 체력의 50% 회복"),
+                ))
             }
 
             ConfigCategory.DAMAGE -> damageConfigItems.forEach { item ->

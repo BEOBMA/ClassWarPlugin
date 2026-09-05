@@ -56,6 +56,8 @@ enum class GameSetting {
     DEATH_MESSAGES_ENABLED,
     DEATH_MESSAGES_SHOW_KILLER,
     DEATH_MESSAGES_SHOW_CAUSE,
+    PLAYER_LIVES,
+    ELIMINATION_REWARDS_ENABLED,
     MINIMUM_PLAYER_DISTANCE,
     BORDER_INITIAL_SIZE,
     BORDER_DELAY_SECONDS,
@@ -87,6 +89,8 @@ private object GameConfigPath {
     const val DEATH_MESSAGES_ENABLED = "combat.death-messages.enabled"
     const val DEATH_MESSAGES_SHOW_KILLER = "combat.death-messages.show-killer"
     const val DEATH_MESSAGES_SHOW_CAUSE = "combat.death-messages.show-cause"
+    const val PLAYER_LIVES = "combat.player-lives"
+    const val ELIMINATION_REWARDS_ENABLED = "combat.elimination-rewards.enabled"
     const val CENTER_X = "map.center-x"
     const val CENTER_Z = "map.center-z"
     const val SCATTER_MINIMUM_RADIUS = "scatter.minimum-radius"
@@ -141,6 +145,7 @@ private object GameConfigStep {
     const val FINAL_BORDER_DAMAGE = 0.5
     const val FINAL_BORDER_DAMAGE_INTERVAL_SECONDS = 0.1
     const val DAMAGE_MULTIPLIER = 0.1
+    const val PLAYER_LIVES = 1
 }
 
 /**
@@ -160,6 +165,8 @@ data class GameConfiguration(
     val deathMessagesEnabled: Boolean = true,
     val deathMessagesShowKiller: Boolean = true,
     val deathMessagesShowCause: Boolean = true,
+    val playerLives: Int = 1,
+    val eliminationRewardsEnabled: Boolean = false,
     val damageMultipliers: Map<DamageMultiplierType, Double> = defaultDamageMultipliers,
     val rankWeights: Map<Rank, Int> = defaultRankWeights,
     val centerX: Double = 704.5,
@@ -247,6 +254,11 @@ object GameSettings {
             deathMessagesShowCause = config.getBoolean(
                 GameConfigPath.DEATH_MESSAGES_SHOW_CAUSE,
                 defaults.deathMessagesShowCause,
+            ),
+            playerLives = config.getInt(GameConfigPath.PLAYER_LIVES, defaults.playerLives),
+            eliminationRewardsEnabled = config.getBoolean(
+                GameConfigPath.ELIMINATION_REWARDS_ENABLED,
+                defaults.eliminationRewardsEnabled,
             ),
             damageMultipliers = DamageMultiplierType.entries.associateWith { type ->
                 config.getDouble(
@@ -361,6 +373,12 @@ object GameSettings {
             GameSetting.DEATH_MESSAGES_SHOW_CAUSE -> current.copy(
                 deathMessagesShowCause = !current.deathMessagesShowCause,
             )
+            GameSetting.PLAYER_LIVES -> current.copy(
+                playerLives = current.playerLives + direction * GameConfigStep.PLAYER_LIVES,
+            )
+            GameSetting.ELIMINATION_REWARDS_ENABLED -> current.copy(
+                eliminationRewardsEnabled = !current.eliminationRewardsEnabled,
+            )
             GameSetting.MINIMUM_PLAYER_DISTANCE -> current.copy(
                 minimumPlayerDistance = current.minimumPlayerDistance +
                     direction * GameConfigStep.MINIMUM_PLAYER_DISTANCE * multiplier,
@@ -436,6 +454,7 @@ object GameSettings {
         return copy(
             refreshChances = refreshChances.coerceIn(GameConfigLimit.REFRESH_CHANCES),
             countdownSeconds = countdownSeconds.coerceIn(GameConfigLimit.COUNTDOWN_SECONDS),
+            playerLives = playerLives.coerceAtLeast(0),
             cooldownFlowMultiplier = oneDecimal(
                 cooldownFlowMultiplier.finiteOr(defaults.cooldownFlowMultiplier).coerceIn(
                     GameConfigLimit.MINIMUM_COOLDOWN_FLOW_MULTIPLIER,
@@ -511,6 +530,8 @@ object GameSettings {
         put(GameConfigPath.DEATH_MESSAGES_ENABLED, deathMessagesEnabled)
         put(GameConfigPath.DEATH_MESSAGES_SHOW_KILLER, deathMessagesShowKiller)
         put(GameConfigPath.DEATH_MESSAGES_SHOW_CAUSE, deathMessagesShowCause)
+        put(GameConfigPath.PLAYER_LIVES, playerLives)
+        put(GameConfigPath.ELIMINATION_REWARDS_ENABLED, eliminationRewardsEnabled)
         DamageMultiplierType.entries.forEach { type ->
             put(GameConfigPath.damageMultiplier(type), oneDecimal(damageMultipliers.getValue(type)))
         }

@@ -28,6 +28,7 @@ class Game(
     val refreshesRemaining: MutableMap<UUID, Int> = mutableMapOf(),
     val confirmedPlayers: MutableSet<UUID> = mutableSetOf(),
     val playerKillCounts: MutableMap<UUID, Int> = mutableMapOf(),
+    val livesRemaining: MutableMap<UUID, Int> = mutableMapOf(),
     val spawnLocations: MutableList<Location> = mutableListOf(),
     val assignedSpawnLocations: MutableMap<UUID, Location> = mutableMapOf(),
     val disconnectedPlayers: MutableSet<UUID> = mutableSetOf(),
@@ -53,6 +54,7 @@ class Game(
     var roundCenterZ: Double = settings.centerZ
     var battleMapView: MapView? = null
     var battleMapRenderer: MapRenderer? = null
+    var finalBorderCompleted: Boolean = false
 
     /** 꼬리잡기 모드에서 [playerId]가 공격해야 하는 표적을 반환한다. */
     fun targetOf(playerId: UUID): UUID? = tailTargets[playerId]
