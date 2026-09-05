@@ -13,9 +13,9 @@ import org.bukkit.Material
 import org.bukkit.event.entity.EntityDamageEvent
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
-private const val ELEMENTALIST_MANIFEST_COOLDOWN_SECONDS = 5
-private const val ELEMENTALIST_RELEASE_COOLDOWN_SECONDS = 5
-private const val ELEMENTALIST_ATTUNE_COOLDOWN_SECONDS = 5
+private const val ELEMENTALIST_MANIFEST_COOLDOWN_SECONDS = 1
+private const val ELEMENTALIST_RELEASE_COOLDOWN_SECONDS = 1
+private const val ELEMENTALIST_ATTUNE_COOLDOWN_SECONDS = 1
 private const val ELEMENTALIST_TRANSPOSE_COOLDOWN_SECONDS = 0
 
 class Elementalist : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler,
