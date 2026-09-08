@@ -34,9 +34,11 @@ class KeywordTest {
     }
 
     @Test
-    fun `described keyword can be found by korean or english name`() {
+    fun `described keyword can be found by its plain korean name`() {
         assertSame(Keyword.VibrationExplosion, Keyword.find("진동 폭발"))
-        assertSame(Keyword.VibrationExplosion, Keyword.find("vibrationexplosion"))
+        assertSame(Keyword.VibrationExplosion, Keyword.find("  진동 폭발  "))
+        assertEquals(null, Keyword.find("vibrationexplosion"))
+        assertEquals(null, Keyword.find("<gold>진동 폭발"))
     }
 
     @Test
