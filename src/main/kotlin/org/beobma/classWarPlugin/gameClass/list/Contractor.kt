@@ -19,6 +19,26 @@ import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
+import org.beobma.classWarPlugin.ClassWarPlugin
+import org.beobma.classWarPlugin.ability.AbilityRunnable
+import org.beobma.classWarPlugin.ability.Targeting
+import org.beobma.classWarPlugin.damage.DamageContext
+import org.beobma.classWarPlugin.entity.EntityData
+import org.beobma.classWarPlugin.gameClass.handler.*
+import org.beobma.classWarPlugin.manager.CooldownManager
+import org.beobma.classWarPlugin.manager.SkillManager.getSkillId
+import org.beobma.classWarPlugin.manager.SkillManager.use
+import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
+import org.beobma.classWarPlugin.manager.SkillManager.radius
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
+import org.beobma.classWarPlugin.status.StatusAbnormality
+import org.beobma.classWarPlugin.skill.MovementSkill
+import org.beobma.classWarPlugin.skill.Projectile
+import org.beobma.classWarPlugin.util.HitboxUtil
+import org.beobma.classWarPlugin.util.TargetType
+import org.bukkit.Location
+import org.bukkit.entity.LivingEntity
+import org.bukkit.event.player.PlayerInteractEvent
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
@@ -30,7 +50,7 @@ private const val CONTRACTOR_ORANGE_COOLDOWN_SECONDS = 12
 private const val CONTRACTOR_YELLOW_COOLDOWN_SECONDS = 16
 private const val CONTRACTOR_GREEN_COOLDOWN_SECONDS = 90
 
-class Contractor : GameClass() {
+class Contractor : GameClass(), GameStatusHandler, ConfirmedHitHandler, WeaponInputHandler {
     override val classId = "contractor"
     override val name = "<gray>청부업자"
     override val rank = Rank.S
@@ -38,7 +58,77 @@ class Contractor : GameClass() {
     override var skills: List<Skill> = listOf(RedSkill(), OrangeSkill(), YellowSkill(), GreenSkill())
     override var passives: List<BasePassive> = listOf(Passive(), PassiveTwo())
 
-    private class RedSkill : Skill() {
+    private data class Dagger(val location: Location, val expires: Long)
+    private val daggers = mutableListOf<Dagger>()
+    private val marked = mutableMapOf<UUID, Long>()
+    private var stacks = 0
+    private var empowered = false
+    private var stabbing = false
+    private var stabHit = false
+    private inner class Processing : StatusAbnormality() {
+        override val name = "<gold>처리"
+        override val description = listOf("<gray>5스택에서 다음 기본 공격으로 단검을 생성합니다.")
+        override val canRemove = false
+        override val isClassMechanic = true
+        override var maxPower: Int? = 5
+        override var duration: Int? = null
+    }
+    private fun syncStacks() { playerData.getOrCreateStatus(playerData) { Processing() }.updatePower(stacks) }
+    override fun onBattleStart() {
+        daggers.clear(); marked.clear(); stacks = 0; empowered = false; syncStacks()
+        object : AbilityRunnable(abilityScope) {
+            override fun run() {
+                daggers.removeAll { it.expires <= game.combatTick }
+                marked.entries.removeIf { it.value <= game.combatTick }
+                daggers.toList().filter { it.location.world == player.world }.forEach { dagger ->
+                    particles.spawn(dagger.location, Particle.END_ROD)
+                    if (dagger.location.distanceSquared(player.location) <= 2.25) recover(dagger)
+                }
+            }
+            override fun onCancel() { daggers.clear(); marked.clear() }
+        }.runTaskTimer(ClassWarPlugin.instance, 1L, 2L)
+    }
+    override fun onGameTimePasses() {}
+    private fun spawnDagger(location: Location) {
+        if (daggers.size >= 16) daggers.removeAt(0)
+        daggers += Dagger(location.clone(), game.combatTick + 300)
+        particles.spawn(location, Particle.CRIT, count = 8, spread = 0.2)
+    }
+    private fun behind(target: EntityData): Location {
+        val delta = target.entity.location.toVector().subtract(player.location.toVector()).setY(0.0)
+        if (delta.lengthSquared() < 0.001) delta.setZ(1.0)
+        return target.entity.location.add(delta.normalize().multiply(1.2))
+    }
+    private fun recover(dagger: Dagger) {
+        if (!daggers.remove(dagger)) return
+        CooldownManager.resetCooldown(player, skills[1])
+        val target = Targeting.select(playerData, TargetType.Enemy).filter {
+            it.entity.location.distanceSquared(dagger.location) <= 64 && player.hasLineOfSight(it.entity)
+        }.sortedWith(compareByDescending<EntityData> { (marked[it.entity.uniqueId] ?: 0) > game.combatTick }
+            .thenBy { (it.entity as? LivingEntity)?.health ?: Double.MAX_VALUE }).firstOrNull() ?: return
+        particles.line(dagger.location, target.entity.location.add(0.0, 1.0, 0.0), Particle.CRIT, 0.2)
+        repeat(if ((marked[target.entity.uniqueId] ?: 0) > game.combatTick) 3 else 1) {
+            target.damage(1.0, DamageType.True, playerData)
+        }
+    }
+    override fun onConfirmedHit(context: DamageContext) {
+        if (context.target == playerData) return
+        if (context.path == DamagePath.SKILL) {
+            stacks = (stacks + 1).coerceAtMost(5)
+            if (stabbing) { stabHit = true; empowered = true }
+        } else if (context.path.isBasicAttack && !context.secondaryAttack && stacks >= 5) {
+            stacks = 0; spawnDagger(behind(context.target))
+        }
+        syncStacks()
+    }
+    override fun onWeaponRightClick(event: PlayerInteractEvent) {
+        event.isCancelled = true
+        val skill = skills[1]
+        val item = player.inventory.contents.filterNotNull().firstOrNull { getSkillId(it, player.uniqueId)?.let(skill::matchesId) == true } ?: return
+        playerData.use(skill, item)
+    }
+
+    private inner class RedSkill : Skill() {
         override val definitionId = "contractor/red-skill"
         override val name = "<bold>찌르기"
         override val description = listOf(
@@ -53,10 +143,23 @@ class Contractor : GameClass() {
 
         override fun isUseSuccess(): Boolean { return true }
 
-        override fun use(): Boolean { return true }
+        override fun use(): Boolean {
+            val range = if (empowered) 4.5 else 3.0
+            val enhanced = empowered; empowered = false; stabHit = false
+            val start = player.eyeLocation
+            val target = playerData.shotLaserGetEntityData(range, TargetType.Enemy, false)
+            val end = start.world.rayTraceBlocks(start, start.direction, range)?.hitPosition?.toLocation(start.world)
+                ?: start.clone().add(start.direction.multiply(range))
+            particles.line(start, end, Particle.CRIT, 0.15)
+            stabbing = true
+            try { target?.damage(3.0, DamageType.Normal, playerData) } finally { stabbing = false }
+            if (stabHit) multiplyCurrentCooldown(5.0 / 8.0)
+            if (enhanced) spawnDagger(end.clone().subtract(0.0, 1.0, 0.0))
+            return true
+        }
     }
 
-    private class OrangeSkill : Skill() {
+    private inner class OrangeSkill : Skill(), MovementSkill {
         override val definitionId = "contractor/orange-skill"
         override val name = "<bold>순보"
         override val description = listOf(
@@ -71,10 +174,27 @@ class Contractor : GameClass() {
 
         override fun isUseSuccess(): Boolean { return true }
 
-        override fun use(): Boolean { return true }
+        override fun use(): Boolean {
+            val start = player.location
+            val dagger = daggers.filter { it.location.world == player.world && it.location.distanceSquared(start) <= 64.0 }
+                .filter { val delta = it.location.toVector().subtract(player.eyeLocation.toVector());
+                    delta.lengthSquared() < 0.1 || delta.normalize().dot(player.eyeLocation.direction) >= 0.85 }
+                .minByOrNull { it.location.distanceSquared(start) }
+            val target = if (dagger == null) playerData.shotLaserGetEntityData(8.0, TargetType.Enemy, false) else null
+            val destination = dagger?.location?.clone() ?: target?.let(::behind) ?: return false
+            destination.yaw = start.yaw; destination.pitch = start.pitch
+            if (!destination.block.isPassable || !destination.clone().add(0.0, 1.0, 0.0).block.isPassable) return false
+            if (!player.teleport(destination)) return false
+            player.fallDistance = 0f
+            Targeting.select(playerData, TargetType.Enemy).filter {
+                HitboxUtil.intersectsSegment(it.entity.boundingBox, start.toVector(), destination.toVector(), 0.8)
+            }.forEach { it.damage(2.0, DamageType.Normal, playerData) }
+            if (dagger != null) { recover(dagger); multiplyCurrentCooldown(0.0) }
+            return true
+        }
     }
 
-    private class YellowSkill : Skill() {
+    private inner class YellowSkill : Skill(), MovementSkill {
         override val definitionId = "contractor/yellow-skill"
         override val name = "<bold>암살"
         override val description = listOf(
@@ -87,7 +207,27 @@ class Contractor : GameClass() {
 
         override fun isUseSuccess(): Boolean { return true }
 
-        override fun use(): Boolean { return true }
+        override fun use(): Boolean {
+            val origin = player.eyeLocation
+            player.velocity = origin.direction.multiply(-0.5).setY(0.15)
+            object : Projectile() {
+                override var location = origin
+                override var targetType = TargetType.Enemy
+                override var speed = 1.2
+                override var isWallHit = true
+                override var isPlayerHit = true
+                override val isPlayerHitRemove = true
+                override var time: Int? = 2
+                override val itemDisplayItem = ItemStack(Material.IRON_SWORD)
+                override fun onProjectileEntityHit(hitEntityData: EntityData, location: Location) {
+                    hitEntityData.damage(2.0, DamageType.Normal, playerData)
+                    marked[hitEntityData.entity.uniqueId] = game.combatTick + 100
+                    spawnDagger(behind(hitEntityData))
+                }
+                override fun onProjectileMove(location: Location) { particles.spawn(location, Particle.CRIT) }
+            }.spawnProjectile(playerData)
+            return true
+        }
     }
 
     //        †
@@ -96,7 +236,7 @@ class Contractor : GameClass() {
     //
     //        †
     // 위와 같은 형태
-    private class GreenSkill : Skill() {
+    private inner class GreenSkill : Skill() {
         override val definitionId = "contractor/green-skill"
         override val name = "<bold>장부 정리"
         override val description = listOf(
@@ -109,7 +249,19 @@ class Contractor : GameClass() {
 
         override fun isUseSuccess(): Boolean { return true }
 
-        override fun use(): Boolean { return true }
+        override fun use(): Boolean {
+            val start = player.location.add(0.0, 0.3, 0.0)
+            repeat(4) { index ->
+                val direction = org.bukkit.util.Vector(1.0, 0.0, 0.0).rotateAroundY(index * Math.PI / 2)
+                val hit = start.world.rayTraceBlocks(start, direction, 4.0)?.hitPosition
+                val end = hit?.subtract(direction.clone().multiply(0.3))?.toLocation(start.world)
+                    ?: start.clone().add(direction.multiply(4.0))
+                spawnDagger(end)
+            }
+            playerData.radius(player.location, TargetType.Enemy, 4.0, false).filter { player.hasLineOfSight(it.entity) }
+                .forEach { it.damage(2.0, DamageType.Normal, playerData) }
+            return true
+        }
     }
 
     private class Passive : BasePassive() {

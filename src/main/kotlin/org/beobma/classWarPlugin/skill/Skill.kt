@@ -66,7 +66,8 @@ abstract class Skill : EffectApiAccess {
         try {
             return AbilityExecution.with(abilityScope) {
                 abilityScope.isActive && isUseSuccess() && authorize() && abilityScope.isActive &&
-                    !playerStatus.isDead && !game.isPaused && use()
+                    !playerStatus.isDead && !game.isPaused &&
+                    org.beobma.classWarPlugin.ability.AbilityForecast.cast(playerData) { use() }
             }
         } finally {
             context.preparedValues.clear()

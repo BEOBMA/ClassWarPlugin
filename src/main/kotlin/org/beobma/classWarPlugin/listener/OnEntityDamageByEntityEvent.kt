@@ -101,6 +101,9 @@ class OnEntityDamageByEntityEvent : Listener {
             path = path,
             damageType = DamageType.Normal,
             baseDamage = if (isUranusIcicle) event.damage * 0.66 else event.damage,
+            weaponClassId = if (directDamager is Projectile) directDamager.persistentDataContainer.get(
+                OnEntityShootBowEvent.weaponKey, org.bukkit.persistence.PersistentDataType.STRING,
+            ) else org.beobma.classWarPlugin.manager.GameClassManager.getWeaponClassId(attacker.inventory.itemInMainHand),
         )
         if (!DamageManager.process(context)) {
             event.isCancelled = true
@@ -109,6 +112,7 @@ class OnEntityDamageByEntityEvent : Listener {
         if (isUranusIcicle) Uranus.applySuccessfulIcicleHit(targetData, attackerData)
 
         if (isMannequin) {
+            DamageManager.notifyConfirmedHit(context)
             event.isCancelled = true
             targetEntity.playHurtAnimation(0.0f)
             DamageIndicatorManager.show(targetEntity, context.damage, attackerGame.settings.damageIndicatorsEnabled)

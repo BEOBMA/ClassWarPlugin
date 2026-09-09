@@ -64,6 +64,10 @@ abstract class Meteor : EffectApiAccess {
     /** 낙하체를 생성하고 생성자 플레이어의 정리 대상 작업으로 등록한다. */
     fun spawnMeteor(playerData: PlayerData) {
         inject(playerData)
+        val down = org.bukkit.util.Vector(0.0, -1.0, 0.0)
+        val landing = location.world.rayTraceBlocks(location, down, 48.0)?.hitPosition?.toLocation(location.world)
+            ?: location.clone().add(down.multiply(48.0))
+        org.beobma.classWarPlugin.ability.AbilityForecast.line(playerData, location, landing, independent = true)
         val currentLocation = location.clone()
         val time = time
         var ticks = 0

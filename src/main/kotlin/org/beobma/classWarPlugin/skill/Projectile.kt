@@ -107,6 +107,10 @@ abstract class Projectile : EffectApiAccess {
         if (isFlatMove) location.pitch = 0F
 
         val direction = location.direction.normalize()
+        val forecastDistance = (speed * (durationLimitTicks ?: 20)).coerceIn(0.1, 48.0)
+        val forecastEnd = if (isWallHit) location.world.rayTraceBlocks(location, direction, forecastDistance)?.hitPosition?.toLocation(location.world) else null
+        org.beobma.classWarPlugin.ability.AbilityForecast.line(playerData, location,
+            forecastEnd ?: location.clone().add(direction.clone().multiply(forecastDistance)), independent = true)
         val currentLocation = location.clone()
         var elapsedTicks = 0
         var durationTicks = 0

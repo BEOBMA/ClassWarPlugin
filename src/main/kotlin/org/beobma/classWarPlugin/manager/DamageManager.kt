@@ -79,6 +79,7 @@ object DamageManager {
 
     /** 실제 피해 적용에 성공한 뒤 전투 상태와 사망 귀속 정보를 기록한다. */
     fun recordSuccessfulDamage(context: DamageContext) {
+        notifyConfirmedHit(context)
         val target = context.target.entity
         CombatManager.recordSuccessfulDamage(context)
         lastDamageByTarget[target.uniqueId] = Attribution(
@@ -87,6 +88,17 @@ object DamageManager {
             context.path,
             target.world.fullTime,
         )
+    }
+
+    fun notifyConfirmedHit(context: DamageContext) {
+        if (context.isCancelled || context.damage <= 0.0) return
+        AbilityTree.handlers(context.attacker.gameClasses, org.beobma.classWarPlugin.gameClass.handler.ConfirmedHitHandler::class.java)
+            .forEach { bound -> bound.call { it.onConfirmedHit(context) } }
+        (context.target as? PlayerData)?.let { target ->
+            AbilityTree.handlers(target.gameClasses, org.beobma.classWarPlugin.gameClass.handler.ConfirmedHitHandler::class.java)
+                .forEach { bound -> bound.call { it.onConfirmedDamageTaken(context) } }
+        }
+        org.beobma.classWarPlugin.gameClass.list.WarCorrespondent.recordCombat(context)
     }
 
     /** [target]의 최근 피해 기록을 한 번 꺼낸다. 10초가 지난 기록은 반환하지 않는다. */

@@ -70,6 +70,8 @@ abstract class Flooring : EffectApiAccess {
     fun spawnFlooring(playerData: PlayerData) {
         inject(playerData)
 
+        org.beobma.classWarPlugin.ability.AbilityForecast.circle(playerData, location, radius)
+
         val game = game
         val currentLocation = location.clone()
         val time = time

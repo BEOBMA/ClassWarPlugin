@@ -33,7 +33,20 @@ class OnPlayerInteractEvent : Listener {
     @EventHandler(priority = EventPriority.HIGH)
     fun onPlayerInteractEntity(event: PlayerInteractEntityEvent) {
         if (event.hand != EquipmentSlot.HAND) return
-        if (Brave.handlePullInteract(event.player, event.rightClicked)) event.isCancelled = true
+        if (Brave.handlePullInteract(event.player, event.rightClicked)) { event.isCancelled = true; return }
+        val data = findGameForPlayer(event.player)?.playerDatas?.filterIsInstance<PlayerData>()
+            ?.firstOrNull { it.player == event.player } ?: return
+        if (!data.canDispatchClassHandlers()) return
+        val item = event.player.inventory.itemInMainHand
+        if (item.type.isAir || getSkillId(item, event.player.uniqueId) != null) return
+        val tag = getWeaponClassId(item)
+        val active = AbilityTree.nodes(data.gameClasses, activeOnly = true)
+        val tagged = active.any { it.classId == tag || it.javaClass.name == tag }
+        val owners = active.filter {
+            if (tagged) it.classId == tag || it.javaClass.name == tag else it.weapon.material == item.type
+        }
+        AbilityTree.handlers(owners, WeaponInputHandler::class.java, includeDescendants = false)
+            .forEach { bound -> bound.call { it.onWeaponInteractEntity(event) } }
     }
 
     @EventHandler(priority = EventPriority.HIGH)

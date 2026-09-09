@@ -214,6 +214,7 @@ object PlayerManager {
         bypassShield: Boolean = false,
         damagePath: DamagePath? = null,
         armorIgnoreRatio: Double = 0.0,
+        secondaryAttack: Boolean = false,
     ) {
         if (damage <= 0.0) {
             return
@@ -232,7 +233,7 @@ object PlayerManager {
         }
 
         val path = damagePath ?: if (damageType == StatusAbnormality) DamagePath.STATUS_EFFECT else DamagePath.SKILL
-        val context = DamageContext(damager, this, path, damageType, damage, bypassShield, armorIgnoreRatio)
+        val context = DamageContext(damager, this, path, damageType, damage, bypassShield, armorIgnoreRatio, secondaryAttack = secondaryAttack)
         if (!DamageManager.process(context)) return
 
         val damageResult = DamageCalculator.calculate(context.damage, player, damageType, context.armorIgnoreRatio)
@@ -242,6 +243,7 @@ object PlayerManager {
         DamageIndicatorManager.show(player, damageResult.finalDamage, initGame.settings.damageIndicatorsEnabled)
         player.playHurtAnimation(0.0f)
         if (PlayerTagManager.isTraining(player)) {
+            DamageManager.notifyConfirmedHit(context)
             val formattedDamage = String.format("%.2f", damageResult.finalDamage)
             player.sendMiniMessage("<red>받은 피해 정보 - <gray>피해량: <gold><bold>$formattedDamage</bold></gold>")
             return
@@ -273,10 +275,11 @@ object PlayerManager {
         bypassShield: Boolean = false,
         damagePath: DamagePath? = null,
         armorIgnoreRatio: Double = 0.0,
+        secondaryAttack: Boolean = false,
     ) {
         when (this) {
             is PlayerData -> this.damage(
-                damage, damageType, damager, isInvincibilityTimeIgnore, bypassShield, damagePath, armorIgnoreRatio,
+                damage, damageType, damager, isInvincibilityTimeIgnore, bypassShield, damagePath, armorIgnoreRatio, secondaryAttack,
             )
             is DamageRedirectEntityData -> redirectDamage(
                 damage,
@@ -305,7 +308,7 @@ object PlayerManager {
                 }
 
                 val path = damagePath ?: if (damageType == StatusAbnormality) DamagePath.STATUS_EFFECT else DamagePath.SKILL
-                val context = DamageContext(damager, this, path, damageType, damage, bypassShield, armorIgnoreRatio)
+                val context = DamageContext(damager, this, path, damageType, damage, bypassShield, armorIgnoreRatio, secondaryAttack = secondaryAttack)
                 if (!DamageManager.process(context)) return
                 val damageResult = targetPlayer?.let {
                     DamageCalculator.calculate(context.damage, it, damageType, context.armorIgnoreRatio)
@@ -315,6 +318,7 @@ object PlayerManager {
                     return
                 }
                 val formattedDamage = String.format("%.2f", damageResult.finalDamage)
+                DamageManager.notifyConfirmedHit(context)
                 (entity as? LivingEntity)?.playHurtAnimation(0.0f)
                 damager.player.sendMiniMessage(
                     "<gray>피해 경로: ${path.displayName} <gray>피해량: <gold><bold>$formattedDamage</bold></gold>"
@@ -331,7 +335,7 @@ object PlayerManager {
                     lastDamageTicks[key] = currentTick
                 }
                 val path = damagePath ?: if (damageType == StatusAbnormality) DamagePath.STATUS_EFFECT else DamagePath.SKILL
-                val context = DamageContext(damager, this, path, damageType, damage, bypassShield, armorIgnoreRatio)
+                val context = DamageContext(damager, this, path, damageType, damage, bypassShield, armorIgnoreRatio, secondaryAttack = secondaryAttack)
                 if (!DamageManager.process(context)) return
                 val target = entity
                 val result = DamageCalculator.calculate(

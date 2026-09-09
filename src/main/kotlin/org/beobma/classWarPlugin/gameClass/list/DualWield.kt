@@ -4,15 +4,36 @@ import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.skill.Skill
 import org.bukkit.Material
+import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
 
-class DualWield : GameClass() {
+class DualWield : GameClass(), org.beobma.classWarPlugin.gameClass.handler.ConfirmedHitHandler {
     override val classId = "dualwield"
     override val name = "<gray>쌍수"
     override val rank = Rank.A
     override val classItemMaterial = Material.DIAMOND_SWORD
     override var skills: List<Skill> = listOf()
+    override val extraItemMaterials get() = listOf(org.bukkit.inventory.ItemStack(Material.IRON_SWORD))
+
+    override fun onConfirmedHit(context: org.beobma.classWarPlugin.damage.DamageContext) {
+        if (!context.path.isBasicAttack || context.secondaryAttack ||
+            !player.inventory.itemInOffHand.type.name.endsWith("_SWORD")) return
+        val offhand = player.inventory.itemInOffHand.clone()
+        // Reuse the original attack input so the common basic-attack multiplier is applied once.
+        val amount = context.baseDamage
+        object : org.beobma.classWarPlugin.ability.AbilityRunnable(abilityScope) {
+            override fun run() {
+                if (!player.inventory.itemInOffHand.isSimilar(offhand) ||
+                    !context.target.entity.isValid || context.target.entity.isDead || context.target.entityStatus.isDead ||
+                    context.target.entity.world != player.world ||
+                    context.target.entity.location.distanceSquared(player.location) > 16.0) return
+                player.swingOffHand()
+                context.target.damage(amount * 0.5, org.beobma.classWarPlugin.util.DamageType.Normal,
+                    playerData, damagePath = org.beobma.classWarPlugin.damage.DamagePath.BASIC_ATTACK, secondaryAttack = true)
+            }
+        }.runTaskLater(org.beobma.classWarPlugin.ClassWarPlugin.instance, 10L)
+    }
 
     override var passives: List<BasePassive> = listOf(
         Passive()

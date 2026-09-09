@@ -200,6 +200,16 @@ object BattleMapManager {
                     ))
                 }
             canvas.cursors = cursors
+            val reporter = game.playerDatas.filterIsInstance<PlayerData>().firstOrNull { it.uniqueId == player.uniqueId }
+                ?.let { org.beobma.classWarPlugin.ability.AbilityTree.nodes(it.gameClasses, activeOnly = true) }
+                ?.filterIsInstance<org.beobma.classWarPlugin.gameClass.list.WarCorrespondent>().orEmpty()
+            reporter.flatMap { it.mapReports() }.filter { it.location.world == mapView.world }.forEach { report ->
+                val x = ((report.location.x - mapView.centerX) * 2.0 / blocksPerPixel).roundToInt()
+                val z = ((report.location.z - mapView.centerZ) * 2.0 / blocksPerPixel).roundToInt()
+                cursors.addCursor(MapCursor(x.coerceIn(-128, 127).toByte(), z.coerceIn(-128, 127).toByte(), 0,
+                    if (report.death) MapCursor.Type.RED_X else MapCursor.Type.TARGET_POINT, true,
+                    Component.text(if (report.death) "사망 위치" else "교전 위치")))
+            }
         }
 
         private fun worldToPixel(worldCoordinate: Double, mapCenter: Int, blocksPerPixel: Double): Int =

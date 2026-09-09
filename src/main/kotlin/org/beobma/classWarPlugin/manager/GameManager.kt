@@ -1499,7 +1499,6 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         val currentGame = game ?: return
         if (currentGame.phase == GamePhase.WAITING || currentGame.phase == GamePhase.FINISHED) return
         val playerData = currentGame.findParticipant(player.uniqueId) ?: return
-        Contractor.clearSessions(listOf(player.uniqueId))
         DeathNote.clearSessions(listOf(player.uniqueId))
         Hacker.clearSessions(listOf(player.uniqueId))
         Mathematician.clearSessions(listOf(player.uniqueId))
@@ -1736,7 +1735,6 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         originalWorldTime?.let { gameWorld.time = it }
         originalDaylightCycle?.let { gameWorld.setGameRule(GameRules.ADVANCE_TIME, it) }
         GraveRobber.clearDeathRecords(this)
-        Contractor.clearSessions(participantIds)
         DeathNote.clearSessions(participantIds)
         Hacker.clearSessions(participantIds)
         Mathematician.clearSessions(participantIds)
@@ -2009,7 +2007,6 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         trainingGame.activePlayers().forEach { data ->
             AbilityTree.end(data.gameClasses.filter { it.isInjectedFor(data) }, EndReason.GAME_END)
         }
-        Contractor.clearSessions(listOf(uniqueId))
         DeathNote.clearSessions(listOf(uniqueId))
         Hacker.clearSessions(listOf(uniqueId))
         Mathematician.clearSessions(listOf(uniqueId))
@@ -2039,7 +2036,6 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
     /** 플러그인 종료 등을 위해 모든 개인 훈련 경기를 일괄 정리한다. */
     fun stopAllTraining() {
         val trainingPlayerIds = trainingInstance.flatMap { it.activePlayers() }.map { it.uniqueId }
-        Contractor.clearSessions(trainingPlayerIds)
         DeathNote.clearSessions(trainingPlayerIds)
         CombatManager.clear(trainingPlayerIds)
         CooldownManager.clear(trainingPlayerIds)
