@@ -30,8 +30,9 @@ class Freikugel : GameClass() {
             "<gray>우클릭 시 {keyword:Bullet} 혹은 {keyword:FreikugelBullet}을 1발 소모하고 사격한다.",
             "<gray>사격은 적중한 적에게 3의 피해를 입힌다.",
             "<gray>{keyword:FreikugelBullet}을 소모하였다면 자신이 2의 피해를 입는다.",
-            "<gray>사용 후 다른 스킬을 사용할 때까지 다시 사용할 수 없다.",
-            "<gray>이 공격은 기본 공격으로 간주한다."
+            "<gray>이 공격은 기본 공격으로 간주한다.",
+            "",
+            "<dark_gray>이 효과의 재사용 대기 시간은 2초이다."
         )
         override val material = Material.IRON_HORSE_ARMOR
     }
