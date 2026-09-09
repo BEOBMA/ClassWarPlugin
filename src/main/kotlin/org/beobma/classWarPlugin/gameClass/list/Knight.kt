@@ -153,7 +153,7 @@ class Knight : GameClass(), WeaponInputHandler {
 
         override fun whenAttackHit(context: DamageContext) {
             val now = game.combatTick
-            if (now > parryUntilTick || now < parryReadyTick) return
+            if (now !in parryReadyTick..parryUntilTick) return
             context.isCancelled = true
             parryUntilTick = 0L
             parryReadyTick = now + 24L * 20L

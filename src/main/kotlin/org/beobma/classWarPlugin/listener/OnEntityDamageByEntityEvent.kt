@@ -78,14 +78,13 @@ class OnEntityDamageByEntityEvent : Listener {
             attackerGame.playerDatas.find { it.entity.uniqueId == targetEntity.uniqueId }
                 ?: MobEntityData(targetEntity, attackerGame).also { attackerGame.playerDatas.add(it) }
         } else {
-            val player = targetPlayer
-            val targetGame = findGameForPlayer(player) ?: return
+            val targetGame = findGameForPlayer(targetPlayer) ?: return
             if (attackerGame !== targetGame) {
                 event.isCancelled = true
                 return
             }
             targetGame.playerDatas.filterIsInstance<PlayerData>()
-                .find { it.uniqueId == player.uniqueId } ?: run {
+                .find { it.uniqueId == targetPlayer.uniqueId } ?: run {
                 event.isCancelled = true
                 return
             }

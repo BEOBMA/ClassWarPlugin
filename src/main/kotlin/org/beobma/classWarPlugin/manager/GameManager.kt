@@ -922,7 +922,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
             lastDamageTicks[player.uniqueId] = currentTick
             applyFixedFinalBorderDamage(playerData)
             player.world.spawnParticle(
-                org.bukkit.Particle.BLOCK,
+                Particle.BLOCK,
                 player.boundingBox.center.toLocation(player.world),
                 14,
                 0.45,

@@ -24,9 +24,7 @@ import org.bukkit.scheduler.BukkitTask
  * [speed]는 틱당 블록, [time]은 초 단위다. 충돌하거나 지속 조건이 끝나면 [onMeteorEnd]가
  * 정확히 한 번 호출된다.
  */
-abstract class Meteor(
-
-) : EffectApiAccess {
+abstract class Meteor : EffectApiAccess {
     protected lateinit var playerData: PlayerData
     protected val player: Player get() = playerData.player
     protected lateinit var playerStatus: PlayerStatus

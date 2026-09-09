@@ -12,7 +12,6 @@ import org.beobma.classWarPlugin.status.handler.StatusOnHitHandler
 import org.beobma.classWarPlugin.status.handler.StatusPlayerMoveHandler
 import org.beobma.classWarPlugin.status.handler.StatusWhenHitHandler
 import org.beobma.classWarPlugin.util.DamageType
-import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.Material
 import org.bukkit.entity.BlockDisplay

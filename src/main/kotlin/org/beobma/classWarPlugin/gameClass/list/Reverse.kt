@@ -113,7 +113,7 @@ class Reverse : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
         private data class Inversion(val status: StatusAbnormality, val power: Int)
         private val activeZones = mutableListOf<Zone>()
         private val reversedStatuses: MutableSet<StatusAbnormality> =
-            Collections.newSetFromMap(IdentityHashMap<StatusAbnormality, Boolean>())
+            Collections.newSetFromMap(IdentityHashMap())
 
         fun shouldReverse(target: EntityData): Boolean {
             if (target is PlayerData && target.gameClasses.any { it is Reverse }) return true

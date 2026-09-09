@@ -420,9 +420,21 @@ class Referee : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.gameCl
                         defendant.player.sendMiniMessage("<red><bold>[진술 불일치]</bold> <gray>제시된 문장을 띄어쓰기까지 정확히 입력해야 합니다.")
                         courtroomSound(Sound.BLOCK_NOTE_BLOCK_BASS, 0.55F, 0.65F)
                     } else when (selected.kind) {
-                        DefenseKind.TRUTH -> beginVerdict(false, false, "진실한 변론이 증거와 일치했습니다.")
-                        DefenseKind.ADMISSION -> beginVerdict(true, false, "피고인이 혐의를 인정했습니다.")
-                        DefenseKind.LIE -> beginVerdict(true, true, "진술이 증거와 모순되어 위증이 성립했습니다.")
+                        DefenseKind.TRUTH -> beginVerdict(
+                            guilty = false,
+                            perjury = false,
+                            reason = "진실한 변론이 증거와 일치했습니다."
+                        )
+                        DefenseKind.ADMISSION -> beginVerdict(
+                            guilty = true,
+                            perjury = false,
+                            reason = "피고인이 혐의를 인정했습니다."
+                        )
+                        DefenseKind.LIE -> beginVerdict(
+                            guilty = true,
+                            perjury = true,
+                            reason = "진술이 증거와 모순되어 위증이 성립했습니다."
+                        )
                     }
                 }
                 else -> Unit
@@ -452,13 +464,17 @@ class Referee : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.gameCl
                     remainingTicks--; countdownCue()
                     if (remainingTicks <= 0) {
                         broadcast("<red><bold>[기소 기각]</bold> <gray>판사가 제한 시간 안에 죄목을 지명하지 못했습니다.")
-                        beginVerdict(false, false, "기소 제한 시간 30초가 만료되었습니다.")
+                        beginVerdict(guilty = false, perjury = false, reason = "기소 제한 시간 30초가 만료되었습니다.")
                     }
                 }
                 TrialPhase.DEFENSE -> {
                     updateBar("<aqua><bold>피고인의 변론", REFEREE_DEFENSE_SECONDS)
                     remainingTicks--; countdownCue()
-                    if (remainingTicks <= 0) beginVerdict(true, false, "피고인이 변론 제한 시간 ${REFEREE_DEFENSE_SECONDS}초 동안 답하지 않았습니다.")
+                    if (remainingTicks <= 0) beginVerdict(
+                        guilty = true,
+                        perjury = false,
+                        reason = "피고인이 변론 제한 시간 ${REFEREE_DEFENSE_SECONDS}초 동안 답하지 않았습니다."
+                    )
                 }
                 TrialPhase.VERDICT -> {
                     remainingTicks--

@@ -18,7 +18,6 @@ import org.beobma.classWarPlugin.manager.GameClassManager.getWeaponClassId
 import org.beobma.classWarPlugin.manager.SkillManager.markSkillItem
 import org.beobma.classWarPlugin.manager.SkillManager.getSkillId
 import org.beobma.classWarPlugin.manager.InventoryManager.skillDyeMaterial
-import org.beobma.classWarPlugin.manager.ItemDescriptionManager
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.util.DamageCalculator
 import org.beobma.classWarPlugin.util.DamageType

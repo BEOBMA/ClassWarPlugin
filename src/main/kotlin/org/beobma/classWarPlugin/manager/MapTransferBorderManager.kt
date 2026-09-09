@@ -43,7 +43,7 @@ object MapTransferBorderManager {
 
         expansions.remove(world)
         val border = world.worldBorder
-        border.setCenter(state.restoreCenter)
+        border.center = state.restoreCenter
         border.changeSize(state.restoreSize.coerceIn(1.0, border.maxSize), 0L)
     }
 
@@ -53,7 +53,7 @@ object MapTransferBorderManager {
         fun restore() {
             if (!active) return
             active = false
-            MapTransferBorderManager.restore(world)
+            restore(world)
         }
     }
 }

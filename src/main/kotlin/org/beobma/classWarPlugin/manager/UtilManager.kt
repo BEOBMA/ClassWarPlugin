@@ -9,12 +9,13 @@ import org.bukkit.entity.Entity
 import org.bukkit.entity.Player
 import org.bukkit.entity.EntityType
 import org.bukkit.util.Vector
+import kotlin.enums.enumEntries
 
 /** 여러 기능에서 공유하는 MiniMessage, 엔티티 판별 및 플레이어 편의 함수를 제공한다. */
 object UtilManager {
     val miniMessage = MiniMessage.miniMessage()
     private val keywordTokenRegex = "\\{keyword:([A-Za-z]+)}".toRegex()
-    private val keywordTokens = enumValues<Keyword>().associateBy { it.name }
+    private val keywordTokens = enumEntries<Keyword>().associateBy { it.name }
     private val dyeMaterials = listOf(
         Material.WHITE_DYE,
         Material.ORANGE_DYE,

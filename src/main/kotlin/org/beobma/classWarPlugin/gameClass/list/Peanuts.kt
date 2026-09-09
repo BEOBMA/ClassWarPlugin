@@ -57,7 +57,7 @@ class Peanuts : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
         val isWatched = game.playerDatas.asSequence().filterIsInstance<PlayerData>()
             .filter { it != playerData && it.player.isOnline && !it.entityStatus.isDead }
             .any(::canSeeMe)
-        if (watched == isWatched && speedStatus?.power ?: 0 > 0) return
+        if (watched == isWatched && (speedStatus?.power ?: 0) > 0) return
         watched = isWatched
         clearSpeed()
         speedStatus = if (isWatched) {
