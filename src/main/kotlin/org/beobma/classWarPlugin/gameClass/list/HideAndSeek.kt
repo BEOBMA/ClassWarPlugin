@@ -121,7 +121,7 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
         }
     }
 
-    private class Passive : org.beobma.classWarPlugin.skill.Passive() {
+    private class Passive : BasePassive() {
         override val name = "<bold>마지막 놀이"
         override val description = listOf(
             "<gray>패시브", "",
@@ -143,7 +143,39 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
             val blindness: PotionEffect?,
             val glowing: Boolean,
             val fireTicks: Int,
-        )
+        ) {
+            override fun equals(other: Any?): Boolean {
+                if (this === other) return true
+                if (javaClass != other?.javaClass) return false
+
+                other as PlayerSnapshot
+
+                if (glowing != other.glowing) return false
+                if (fireTicks != other.fireTicks) return false
+                if (data != other.data) return false
+                if (location != other.location) return false
+                if (gameMode != other.gameMode) return false
+                if (!storage.contentEquals(other.storage)) return false
+                if (!armor.contentEquals(other.armor)) return false
+                if (!extra.contentEquals(other.extra)) return false
+                if (blindness != other.blindness) return false
+
+                return true
+            }
+
+            override fun hashCode(): Int {
+                var result = glowing.hashCode()
+                result = 31 * result + fireTicks
+                result = 31 * result + data.hashCode()
+                result = 31 * result + location.hashCode()
+                result = 31 * result + gameMode.hashCode()
+                result = 31 * result + storage.contentHashCode()
+                result = 31 * result + armor.contentHashCode()
+                result = 31 * result + extra.contentHashCode()
+                result = 31 * result + (blindness?.hashCode() ?: 0)
+                return result
+            }
+        }
 
         private data class DeadSpectatorSnapshot(
             val player: Player,

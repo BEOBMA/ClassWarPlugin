@@ -59,7 +59,27 @@ class BackRoom : GameClass(), GameEndHandler, PlayerDeathHandler {
         val passages: Array<BooleanArray>,
         val entrance: MazeCell,
         val exit: MazeCell,
-    )
+    ) {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (javaClass != other?.javaClass) return false
+
+            other as MazeLayout
+
+            if (!passages.contentDeepEquals(other.passages)) return false
+            if (entrance != other.entrance) return false
+            if (exit != other.exit) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = passages.contentDeepHashCode()
+            result = 31 * result + entrance.hashCode()
+            result = 31 * result + exit.hashCode()
+            return result
+        }
+    }
 
     private var session: Session? = null
 
