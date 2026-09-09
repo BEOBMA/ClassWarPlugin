@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "org.beobma"
-version = "1.0.4.1"
+version = "1.0.5"
 
 repositories {
     mavenCentral()
