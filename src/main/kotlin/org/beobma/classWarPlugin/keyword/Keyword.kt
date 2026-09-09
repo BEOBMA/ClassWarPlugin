@@ -34,11 +34,6 @@ enum class Keyword(
         "{keyword:VibrationExplosion}: <gold><bold>(진동 수치 x 0.5)</bold><gray> 만큼 {keyword:AbnormalStatusDamage}를 입고 {keyword:Vibration}을 제거한다.",
         showDescriptionInBrief = true,
     ),
-    VibrationExplosionBurn(
-        "<gold><bold>화상/진동 폭발</bold><gray>",
-        "{keyword:VibrationExplosion}: <gold><bold>(진동 수치 x 0.5)</bold><gray> 만큼 {keyword:AbnormalStatusDamage}를 입고 {keyword:Vibration}을 제거한다.",
-        showDescriptionInBrief = true,
-    ),
     AbnormalStatusDamage(
         "<green><bold>상태이상 피해</bold><gray>",
         "{keyword:AbnormalStatusDamage}: 각종 피격 시 상호작용이 일어나지 않는다.",
