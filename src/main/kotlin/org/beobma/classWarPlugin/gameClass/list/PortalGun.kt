@@ -255,9 +255,9 @@ class PortalGun : GameClass(), SkillInputHandler, org.beobma.classWarPlugin.game
                 val previousCenter = previousEntityCenters.put(entity.uniqueId, currentCenter.clone())
                     ?: currentCenter.clone().subtract(entity.velocity)
                 if (now < entityCooldowns.getOrDefault(entity.uniqueId, Long.MIN_VALUE)) continue
-                val route = when {
-                    entity.world == blue.center.world && crossesPortal(blue, previousCenter, currentCenter, entity) -> blue to orange
-                    entity.world == orange.center.world && crossesPortal(orange, previousCenter, currentCenter, entity) -> orange to blue
+                val route = when (entity.world) {
+                    blue.center.world if crossesPortal(blue, previousCenter, currentCenter, entity) -> blue to orange
+                    orange.center.world if crossesPortal(orange, previousCenter, currentCenter, entity) -> orange to blue
                     else -> null
                 } ?: continue
                 if (teleportEntity(entity, route.first, route.second)) {

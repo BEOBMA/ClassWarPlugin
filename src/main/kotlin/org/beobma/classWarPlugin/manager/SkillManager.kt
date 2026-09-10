@@ -115,6 +115,7 @@ object SkillManager {
         hitAttackableObjects: Boolean = false,
     ): List<EntityData> {
         val effectiveRadius = ClassBalanceManager.scaleRange(this, radius)
+        (this as? PlayerData)?.let { org.beobma.classWarPlugin.ability.AbilityForecast.circle(it, location, effectiveRadius) }
         if (hitAttackableObjects && this is PlayerData && targetType == Enemy) {
             AttackableObjectManager.hitSphere(uniqueId, location, effectiveRadius)
         }
@@ -139,6 +140,10 @@ object SkillManager {
         val direction = startLocation.direction
 
         val maxDistance = ClassBalanceManager.scaleRange(this, maxRange)
+
+        val forecastEnd = world.rayTraceBlocks(startLocation, direction, maxDistance)?.hitPosition
+            ?.toLocation(world) ?: startLocation.clone().add(direction.clone().multiply(maxDistance))
+        org.beobma.classWarPlugin.ability.AbilityForecast.line(sourcePlayer, startLocation, forecastEnd)
 
         val hitEntityData = playerDatas.asSequence()
             .mapNotNull { candidate ->
@@ -190,6 +195,10 @@ object SkillManager {
         }
         val playerLocation = sourcePlayer.player.location
         val playerDirection = playerLocation.direction.normalize()
+        for (edge in listOf(-angle / 2, angle / 2)) {
+            org.beobma.classWarPlugin.ability.AbilityForecast.line(sourcePlayer, playerLocation,
+                playerLocation.clone().add(playerDirection.clone().rotateAroundY(Math.toRadians(edge)).multiply(effectiveRadius)))
+        }
 
         return Targeting.select(this, targetType, includeSelf = includeSelf).filter { targetPlayerData ->
             val distanceSquared = HitboxUtil.distanceSquared(targetPlayerData.entity.boundingBox, playerLocation.toVector())

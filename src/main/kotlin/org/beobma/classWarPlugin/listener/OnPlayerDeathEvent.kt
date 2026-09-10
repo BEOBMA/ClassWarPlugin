@@ -17,7 +17,6 @@ import org.beobma.classWarPlugin.gameClass.list.AreaDevelopment
 import org.beobma.classWarPlugin.gameClass.list.Mathematician
 import org.beobma.classWarPlugin.gameClass.list.Vampire
 import org.beobma.classWarPlugin.gameClass.list.PortalGun
-import org.beobma.classWarPlugin.gameClass.list.Contractor
 import org.beobma.classWarPlugin.gameClass.list.DeathNote
 import org.beobma.classWarPlugin.gameClass.list.Levatain
 import org.beobma.classWarPlugin.gameClass.list.Referee
@@ -34,6 +33,7 @@ class OnPlayerDeathEvent : Listener{
         val playerData = currentGame.playerDatas.filterIsInstance<PlayerData>()
             .find { it.player.uniqueId == player.uniqueId } ?: return
         val attribution = DamageManager.consumeAttribution(player)
+        org.beobma.classWarPlugin.gameClass.list.WarCorrespondent.recordDeath(playerData)
         val killerName = attribution?.takeIf { it.attackerId != player.uniqueId }?.attackerName
             ?: player.killer?.name
         event.deathMessage(null)
@@ -62,7 +62,6 @@ class OnPlayerDeathEvent : Listener{
         currentGame.recordPlayerKill(player.uniqueId, killerId)
         AreaDevelopment.handlePlayerDeath(playerData, killerId)
         Levatain.handleKill(killerId)
-        Contractor.clearSessions(listOf(player.uniqueId))
         DeathNote.clearSessions(listOf(player.uniqueId))
         PortalGun.clearForPlayers(listOf(player.uniqueId))
         AreaDevelopment.clearDomains(listOf(player.uniqueId))

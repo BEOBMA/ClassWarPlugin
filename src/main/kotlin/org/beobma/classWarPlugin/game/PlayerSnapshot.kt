@@ -62,4 +62,62 @@ data class PlayerSnapshot(
             scaleBase = player.getAttribute(Attribute.SCALE)?.baseValue,
         )
     }
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (javaClass != other?.javaClass) return false
+
+        other as PlayerSnapshot
+
+        if (health != other.health) return false
+        if (foodLevel != other.foodLevel) return false
+        if (saturation != other.saturation) return false
+        if (exhaustion != other.exhaustion) return false
+        if (level != other.level) return false
+        if (experience != other.experience) return false
+        if (totalExperience != other.totalExperience) return false
+        if (fireTicks != other.fireTicks) return false
+        if (allowFlight != other.allowFlight) return false
+        if (isFlying != other.isFlying) return false
+        if (hasGravity != other.hasGravity) return false
+        if (walkSpeed != other.walkSpeed) return false
+        if (flySpeed != other.flySpeed) return false
+        if (movementSpeedBase != other.movementSpeedBase) return false
+        if (attackSpeedBase != other.attackSpeedBase) return false
+        if (maxHealthBase != other.maxHealthBase) return false
+        if (jumpStrengthBase != other.jumpStrengthBase) return false
+        if (scaleBase != other.scaleBase) return false
+        if (location != other.location) return false
+        if (!inventoryContents.contentEquals(other.inventoryContents)) return false
+        if (gameMode != other.gameMode) return false
+        if (potionEffects != other.potionEffects) return false
+
+        return true
+    }
+
+    override fun hashCode(): Int {
+        var result = health.hashCode()
+        result = 31 * result + foodLevel
+        result = 31 * result + saturation.hashCode()
+        result = 31 * result + exhaustion.hashCode()
+        result = 31 * result + level
+        result = 31 * result + experience.hashCode()
+        result = 31 * result + totalExperience
+        result = 31 * result + fireTicks
+        result = 31 * result + allowFlight.hashCode()
+        result = 31 * result + isFlying.hashCode()
+        result = 31 * result + hasGravity.hashCode()
+        result = 31 * result + walkSpeed.hashCode()
+        result = 31 * result + flySpeed.hashCode()
+        result = 31 * result + (movementSpeedBase?.hashCode() ?: 0)
+        result = 31 * result + (attackSpeedBase?.hashCode() ?: 0)
+        result = 31 * result + (maxHealthBase?.hashCode() ?: 0)
+        result = 31 * result + (jumpStrengthBase?.hashCode() ?: 0)
+        result = 31 * result + (scaleBase?.hashCode() ?: 0)
+        result = 31 * result + location.hashCode()
+        result = 31 * result + inventoryContents.contentHashCode()
+        result = 31 * result + gameMode.hashCode()
+        result = 31 * result + potionEffects.hashCode()
+        return result
+    }
 }

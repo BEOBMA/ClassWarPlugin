@@ -6,7 +6,6 @@ import org.beobma.classWarPlugin.game.GamePhase
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassListInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openAssignedClassInventory
 import org.beobma.classWarPlugin.entity.player.PlayerData
-import org.beobma.classWarPlugin.gameClass.list.Contractor
 import org.beobma.classWarPlugin.gameClass.list.DeathNote
 import org.beobma.classWarPlugin.game.GameSettings
 import org.beobma.classWarPlugin.manager.PlayerFlag
@@ -23,11 +22,6 @@ class OnInventoryCloseEvent : Listener {
     @EventHandler
     fun onInventoryClose(event: InventoryCloseEvent) {
         val player = event.player as? Player ?: return
-
-        if (Contractor.isGuessInventoryOpen(player)) {
-            Contractor.handleInventoryClose(player)
-            return
-        }
 
         if (DeathNote.isSelectionInventoryOpen(player)) {
             DeathNote.handleInventoryClose(player)

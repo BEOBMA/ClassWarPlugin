@@ -78,14 +78,13 @@ class OnEntityDamageByEntityEvent : Listener {
             attackerGame.playerDatas.find { it.entity.uniqueId == targetEntity.uniqueId }
                 ?: MobEntityData(targetEntity, attackerGame).also { attackerGame.playerDatas.add(it) }
         } else {
-            val player = targetPlayer
-            val targetGame = findGameForPlayer(player) ?: return
+            val targetGame = findGameForPlayer(targetPlayer) ?: return
             if (attackerGame !== targetGame) {
                 event.isCancelled = true
                 return
             }
             targetGame.playerDatas.filterIsInstance<PlayerData>()
-                .find { it.uniqueId == player.uniqueId } ?: run {
+                .find { it.uniqueId == targetPlayer.uniqueId } ?: run {
                 event.isCancelled = true
                 return
             }
@@ -102,6 +101,9 @@ class OnEntityDamageByEntityEvent : Listener {
             path = path,
             damageType = DamageType.Normal,
             baseDamage = if (isUranusIcicle) event.damage * 0.66 else event.damage,
+            weaponClassId = if (directDamager is Projectile) directDamager.persistentDataContainer.get(
+                OnEntityShootBowEvent.weaponKey, org.bukkit.persistence.PersistentDataType.STRING,
+            ) else org.beobma.classWarPlugin.manager.GameClassManager.getWeaponClassId(attacker.inventory.itemInMainHand),
         )
         if (!DamageManager.process(context)) {
             event.isCancelled = true
@@ -110,6 +112,7 @@ class OnEntityDamageByEntityEvent : Listener {
         if (isUranusIcicle) Uranus.applySuccessfulIcicleHit(targetData, attackerData)
 
         if (isMannequin) {
+            DamageManager.notifyConfirmedHit(context)
             event.isCancelled = true
             targetEntity.playHurtAnimation(0.0f)
             DamageIndicatorManager.show(targetEntity, context.damage, attackerGame.settings.damageIndicatorsEnabled)
@@ -121,6 +124,7 @@ class OnEntityDamageByEntityEvent : Listener {
         }
 
         event.damage = context.damage
+        org.beobma.classWarPlugin.damage.VanillaArmorIgnore.apply(event, targetEntity, context.armorIgnoreRatio)
         if (targetPlayer == null) {
             DamageIndicatorManager.show(targetEntity, event.finalDamage, attackerGame.settings.damageIndicatorsEnabled)
         }

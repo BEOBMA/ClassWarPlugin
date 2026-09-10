@@ -19,158 +19,395 @@ import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
+import org.beobma.classWarPlugin.ClassWarPlugin
+import org.beobma.classWarPlugin.ability.AbilityRunnable
+import org.beobma.classWarPlugin.ability.Targeting
+import org.beobma.classWarPlugin.damage.DamageContext
+import org.beobma.classWarPlugin.entity.EntityData
+import org.beobma.classWarPlugin.gameClass.handler.*
+import org.beobma.classWarPlugin.manager.CooldownManager
+import org.beobma.classWarPlugin.manager.SkillManager.getSkillId
+import org.beobma.classWarPlugin.manager.SkillManager.use
+import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
+import org.beobma.classWarPlugin.manager.SkillManager.radius
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
+import org.beobma.classWarPlugin.status.StatusAbnormality
+import org.beobma.classWarPlugin.skill.MovementSkill
+import org.beobma.classWarPlugin.skill.Projectile
+import org.beobma.classWarPlugin.util.HitboxUtil
+import org.beobma.classWarPlugin.util.TargetType
+import org.bukkit.Location
+import org.bukkit.Color
+import org.beobma.classWarPlugin.effect.CombatVisuals
+import org.beobma.classWarPlugin.effect.EmbeddedWeaponDisplay
+import org.beobma.classWarPlugin.util.DisplayOrientationUtil
+import org.bukkit.entity.ItemDisplay
+import org.bukkit.util.Vector
+import org.bukkit.entity.LivingEntity
+import org.bukkit.event.player.PlayerInteractEvent
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.random.Random
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
 // 밸런스 조정 상수
-private const val CONTRACTOR_CONTRACT_COOLDOWN_SECONDS = 40
-private const val CONTRACTOR_SUCCESS_DAMAGE = 5.0
+private const val CONTRACTOR_CONTRACT_COOLDOWN_SECONDS = 8
+private const val CONTRACTOR_ORANGE_COOLDOWN_SECONDS = 12
+private const val CONTRACTOR_YELLOW_COOLDOWN_SECONDS = 16
+private const val CONTRACTOR_GREEN_COOLDOWN_SECONDS = 90
+private const val CONTRACTOR_RECOVERY_RADIUS = 8.0
+private const val CONTRACTOR_BLINK_HITBOX_EXPANSION = 0.5
 
-class Contractor : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameEndHandler {
-    override fun onGameEnd() = clearSessions(listOf(playerData.uniqueId))
+class Contractor : GameClass(), GameStatusHandler, ConfirmedHitHandler, WeaponInputHandler {
     override val classId = "contractor"
     override val name = "<gray>청부업자"
-    override val rank = Rank.B
+    override val rank = Rank.S
     override val classItemMaterial = Material.SULFUR_CUBE_BUCKET
-    override var skills: List<Skill> = listOf(RedSkill())
-    override var passives: List<BasePassive> = listOf()
+    override var skills: List<Skill> = listOf(RedSkill(), OrangeSkill(), YellowSkill(), GreenSkill())
+    override var passives: List<BasePassive> = listOf(Passive(), PassiveTwo())
 
-    private val miniMessage = MiniMessage.miniMessage()
+    private data class Dagger(val marker: EmbeddedWeaponDisplay, val expires: Long) {
+        val location: Location get() = marker.location
+    }
+    private val daggers = mutableListOf<Dagger>()
+    private val marked = mutableMapOf<UUID, Long>()
+    private var stacks = 0
+    private var empowered = false
+    private var stabbing = false
+    private var stabHit = false
+    private var nextDaggerSound = 0L
+    private var nextPickupSound = 0L
+    private val daggerColor = Particle.DustOptions(Color.fromRGB(165, 75, 210), 1.0f)
+    private inner class Processing : StatusAbnormality() {
+        override val name = "<gold>처리"
+        override val description = listOf("<gray>5스택에서 다음 기본 공격으로 단검을 생성합니다.")
+        override val canRemove = false
+        override val isClassMechanic = true
+        override var maxPower: Int? = 5
+        override var duration: Int? = null
+    }
+    private fun syncStacks() { playerData.getOrCreateStatus(playerData) { Processing() }.updatePower(stacks) }
+    override fun onBattleStart() {
+        daggers.forEach { it.marker.close() }
+        daggers.clear(); marked.clear(); stacks = 0; empowered = false; syncStacks()
+        object : AbilityRunnable(abilityScope) {
+            var frames = 0
+            override fun run() {
+                frames++
+                daggers.removeAll {
+                    (it.expires <= game.combatTick || !it.marker.isSupported).also { remove -> if (remove) it.marker.close() }
+                }
+                marked.entries.removeIf { it.value <= game.combatTick }
+                daggers.toList().filter { it.location.world == player.world }.forEach { dagger ->
+                    particles.spawn(dagger.location, Particle.END_ROD)
+                    if (frames % 5 == 0) {
+                        drawRecoveryRange(dagger.location)
+                        particles.circle(dagger.location.clone().add(0.0, 0.05, 0.0), Particle.ENCHANT, 0.3, 8)
+                        particles.line(dagger.location, dagger.location.clone().add(0.0, 0.55, 0.0), Particle.DUST, daggerColor, 0.15)
+                    }
+                    if (dagger.location.distanceSquared(player.location) <= 2.25) recover(dagger)
+                }
+            }
+            override fun onCancel() { daggers.forEach { it.marker.close() }; daggers.clear(); marked.clear() }
+        }.runTaskTimer(ClassWarPlugin.instance, 1L, 2L)
+    }
+    override fun onGameTimePasses() {}
+    private fun spawnDagger(requested: Location) {
+        val marker = EmbeddedWeaponDisplay.spawn(abilityScope, requested, Material.IRON_SWORD, 0.65f) ?: return
+        val location = marker.location
+        if (daggers.size >= 16) daggers.removeAt(0).marker.close()
+        daggers += Dagger(marker, game.combatTick + 300)
+        particles.spawn(location, Particle.CRIT, count = 8, spread = 0.2)
+        particles.circle(location, Particle.WITCH, 0.35, 12)
+        CombatVisuals.pulse(abilityScope, location, Vector(0.0, 1.0, 0.0), 0.7, CombatVisuals.VIOLET)
+        drawRecoveryRange(location)
+        if (game.combatTick >= nextDaggerSound) {
+            nextDaggerSound = game.combatTick + 3
+            sounds.play(location, Sound.ITEM_TRIDENT_HIT_GROUND, volume = 0.45f, pitch = 1.8f)
+        }
+    }
+    private fun drawRecoveryRange(location: Location) {
+        repeat(64) { index ->
+            val angle = index * Math.PI * 2.0 / 64
+            particles.spawn(
+                location.clone().add(
+                    kotlin.math.cos(angle) * CONTRACTOR_RECOVERY_RADIUS,
+                    0.08,
+                    kotlin.math.sin(angle) * CONTRACTOR_RECOVERY_RADIUS
+                ),
+                Particle.DUST,
+                daggerColor
+            )
+        }
+    }
+    private fun showBlinkTrail(start: Location, end: Location) {
+        if (start.world != end.world) return
+        val from = start.clone().add(0.0, 0.7, 0.0)
+        val to = end.clone().add(0.0, 0.7, 0.0)
+        // Keep the entire path visible briefly, with bounded samples even if teleport is redirected.
+        val spacing = maxOf(0.2, from.distance(to) / 96.0)
+        fun drawTrail() {
+            particles.line(from, to, Particle.DUST, daggerColor, spacing)
+        }
+        drawTrail()
+        particles.line(from, to, Particle.END_ROD, spacing * 2.0)
+        object : AbilityRunnable(abilityScope) {
+            var frames = 0
+            override fun run() {
+                drawTrail()
+                if (++frames >= 3) cancel()
+            }
+        }.runTaskTimer(ClassWarPlugin.instance, 2L, 2L)
+    }
+    private fun behind(target: EntityData): Location {
+        val delta = target.entity.location.toVector().subtract(player.location.toVector()).setY(0.0)
+        if (delta.lengthSquared() < 0.001) delta.setZ(1.0)
+        return target.entity.location.add(delta.normalize().multiply(1.2))
+    }
+    private fun recover(dagger: Dagger) {
+        if (!daggers.remove(dagger)) return
+        dagger.marker.close()
+        particles.spawn(dagger.location, Particle.REVERSE_PORTAL, count = 12, spread = 0.2)
+        CombatVisuals.ring(dagger.location.clone().add(0.0, 0.25, 0.0), Vector(0.0, 1.0, 0.0), 0.45, CombatVisuals.SILVER, 16)
+        if (game.combatTick >= nextPickupSound) {
+            nextPickupSound = game.combatTick + 4
+            sounds.playTo(player, Sound.ENTITY_ITEM_PICKUP, volume = 0.55f, pitch = 1.6f)
+        }
+        CooldownManager.resetCooldown(player, skills[1])
+        val target = Targeting.select(playerData, TargetType.Enemy).filter {
+            it.entity.location.distanceSquared(dagger.location) <= CONTRACTOR_RECOVERY_RADIUS * CONTRACTOR_RECOVERY_RADIUS && player.hasLineOfSight(it.entity)
+        }.sortedWith(compareByDescending<EntityData> { (marked[it.entity.uniqueId] ?: 0) > game.combatTick }
+            .thenBy { (it.entity as? LivingEntity)?.health ?: Double.MAX_VALUE }).firstOrNull() ?: return
+        particles.line(dagger.location, target.entity.location.add(0.0, 1.0, 0.0), Particle.CRIT, 0.2)
+        val impact = target.entity.boundingBox.center.toLocation(target.entity.world)
+        CombatVisuals.tracer(dagger.location, impact, CombatVisuals.VIOLET)
+        CombatVisuals.ring(impact, impact.toVector().subtract(dagger.location.toVector()), 0.5, CombatVisuals.VIOLET, 20)
+        particles.spawn(target.entity, Particle.SWEEP_ATTACK, count = if ((marked[target.entity.uniqueId] ?: 0) > game.combatTick) 3 else 1, spread = 0.25)
+        repeat(if ((marked[target.entity.uniqueId] ?: 0) > game.combatTick) 3 else 1) {
+            target.damage(1.0, DamageType.True, playerData)
+        }
+    }
+    override fun onConfirmedHit(context: DamageContext) {
+        if (context.target == playerData) return
+        val previousStacks = stacks
+        if (context.path == DamagePath.SKILL) {
+            stacks = (stacks + 1).coerceAtMost(5)
+            if (stabbing) {
+                stabHit = true; empowered = true
+                particles.spawn(context.target.entity, Particle.CRIT, count = 12, spread = 0.25, speed = 0.08)
+                sounds.play(context.target.entity, Sound.ENTITY_PLAYER_ATTACK_CRIT, volume = 0.55f, pitch = 1.4f)
+            }
+        } else if (context.path.isBasicAttack && !context.secondaryAttack && stacks >= 5) {
+            stacks = 0; spawnDagger(behind(context.target))
+        }
+        syncStacks()
+        if (stacks == 5 && previousStacks < 5) {
+            particles.spawn(player.eyeLocation, Particle.ENCHANT, count = 12, spread = 0.3)
+            sounds.playTo(player, Sound.BLOCK_NOTE_BLOCK_PLING, volume = 0.5f, pitch = 1.7f)
+        }
+    }
+    override fun onWeaponRightClick(event: PlayerInteractEvent) {
+        event.isCancelled = true
+        val skill = skills[1]
+        val item = player.inventory.contents.filterNotNull().firstOrNull { getSkillId(it, player.uniqueId)?.let(skill::matchesId) == true } ?: return
+        playerData.use(skill, item)
+    }
 
     private inner class RedSkill : Skill() {
         override val definitionId = "contractor/red-skill"
-        override val name = "<bold>청부"
+        override val name = "<bold>찌르기"
         override val description = listOf(
-            "<gray>사용 시 무작위 플레이어의 직업을 맞출 수 있는 인벤토리가 열린다.",
-            "<gray>성공적으로 직업을 맞추면 해당 적의 위치로 즉시 이동하고 5의 피해를 입힌다."
+            "<gray>바라보는 방향으로 잛게 칼을 찔러 적에게 3의 피해를 입힌다.",
+            "<gray>적중 시 재사용 대기 시간이 3초 감소하며, 다음 찌르기가 강화된다.",
+            "",
+            "<gray>강화된 찌르기 발동 시 사거리가 소폭 증가하고",
+            "<gray>적중 여부와 관계 없이 사거리 끝자락에 단검을 생성한다."
         )
         override val cooldown = CONTRACTOR_CONTRACT_COOLDOWN_SECONDS
 
-        private var pendingTarget: PlayerData? by requestValue { null }
 
-        override fun isUseSuccess(): Boolean {
-            pendingTarget = game.playerDatas.filterIsInstance<PlayerData>()
-                .filter { it != playerData && it.player.isOnline && !it.entityStatus.isDead && it.gameClasses.isNotEmpty() }
-                .randomOrNull(Random)
-            if (pendingTarget != null) return true
-            player.sendMiniMessage("<red><bold>[!] 청부 대상으로 지정할 생존 적이 없습니다.")
-            return false
-        }
+        override fun isUseSuccess(): Boolean { return true }
 
         override fun use(): Boolean {
-            val target = pendingTarget ?: return false
-            pendingTarget = null
-            openGuessInventory(target)
+            val range = if (empowered) 4.5 else 3.0
+            val enhanced = empowered; empowered = false; stabHit = false
+            val start = player.eyeLocation
+            val target = playerData.shotLaserGetEntityData(range, TargetType.Enemy, false)
+            val end = start.world.rayTraceBlocks(start, start.direction, range)?.hitPosition?.toLocation(start.world)
+                ?: start.clone().add(start.direction.multiply(range))
+            particles.line(start, end, Particle.CRIT, 0.15)
+            CombatVisuals.ring(start.clone().add(start.direction.multiply(0.65)), start.direction,
+                if (enhanced) 0.32 else 0.2, if (enhanced) CombatVisuals.VIOLET else CombatVisuals.SILVER, 16)
+            if (enhanced) particles.line(start, end, Particle.DUST, daggerColor, 0.18)
+            particles.spawn(start.clone().add(start.direction.multiply(0.7)), Particle.SWEEP_ATTACK)
+            sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_SWEEP, volume = 0.65f, pitch = if (enhanced) 0.8f else 1.5f)
+            stabbing = true
+            try { target?.damage(3.0, DamageType.Normal, playerData) } finally { stabbing = false }
+            if (stabHit) multiplyCurrentCooldown(5.0 / 8.0)
+            if (enhanced) spawnDagger(end.clone().subtract(0.0, 1.0, 0.0))
             return true
         }
     }
 
-    private fun openGuessInventory(target: PlayerData) {
-        clearSessions(listOf(player.uniqueId))
-        val choices = gameClassList
-        val inventorySize = ((choices.size + 8) / 9 * 9).coerceIn(9, 54)
-        val inventory = Bukkit.createInventory(
-            null,
-            inventorySize,
-            miniMessage.deserialize("<dark_gray>청부 대상: <white>${target.player.name}"),
+    private inner class OrangeSkill : Skill(), MovementSkill {
+        override val definitionId = "contractor/orange-skill"
+        override val name = "<bold>순보"
+        override val description = listOf(
+            "<gray>8칸 내의 바라보는 적의 뒤 또는 단검의 위치로 순간이동한다.",
+            "<gray>이동 경로에 있던 모든 적에게 2의 피해를 입힌다.",
+            "<gray>단검을 회수하면 이 스킬의 재사용 대기 시간이 초기화된다.",
+            "",
+            "<dark_gray>이 스킬 대신 검을 우클릭하여 사용할 수도 있다."
         )
-        choices.take(inventorySize).forEachIndexed { index, gameClass ->
-            inventory.setItem(index, ItemStack(gameClass.classItemMaterial).apply {
-                itemMeta = itemMeta.apply {
-                    displayName(miniMessage.deserialize(gameClass.name))
-                    lore(listOf(miniMessage.deserialize("<gray>이 직업으로 추측합니다.")))
-                }
-            })
-        }
+        override val cooldown = CONTRACTOR_ORANGE_COOLDOWN_SECONDS
 
-        activeGuesses[player.uniqueId] = GuessSession(
-            owner = this,
-            targetId = target.uniqueId,
-            choices = choices.take(inventorySize).map { it.javaClass },
-        )
-        PlayerTagManager.addTag(player, GUESS_INVENTORY_TAG)
-        player.openInventory(inventory)
-        player.sendMiniMessage(
-            "<gold><bold>[청부]</bold> <white>${target.player.name}<gray>님의 직업을 선택하세요."
-        )
-        sounds.play(player, Sound.BLOCK_CHEST_OPEN, volume = 0.75f, pitch = 0.75f)
+
+        override fun isUseSuccess(): Boolean { return true }
+
+        override fun use(): Boolean {
+            val start = player.location
+            val dagger = daggers.filter { it.location.world == player.world && it.location.distanceSquared(start) <= 64.0 }
+                .filter { val delta = it.location.toVector().subtract(player.eyeLocation.toVector());
+                    delta.lengthSquared() < 0.1 || delta.normalize().dot(player.eyeLocation.direction) >= 0.85 }
+                .minByOrNull { it.location.distanceSquared(start) }
+            val target = if (dagger == null) playerData.shotLaserGetEntityData(8.0, TargetType.Enemy, false) else null
+            val destination = dagger?.location?.clone() ?: target?.let(::behind) ?: return false
+            destination.yaw = start.yaw; destination.pitch = start.pitch
+            if (!destination.block.isPassable || !destination.clone().add(0.0, 1.0, 0.0).block.isPassable) return false
+            if (!player.teleport(destination)) return false
+            player.fallDistance = 0f
+            particles.spawn(start, Particle.SMOKE, count = 16, spread = 0.3, speed = 0.03)
+            showBlinkTrail(start, player.location)
+            particles.circle(destination.clone().add(0.0, 0.1, 0.0), Particle.REVERSE_PORTAL, 0.75, 24)
+            CombatVisuals.slash(abilityScope, destination.clone().add(0.0, 0.9, 0.0), destination.direction,
+                1.15, CombatVisuals.VIOLET, tilt = -0.65, reverse = true)
+            sounds.play(start, Sound.ENTITY_ENDERMAN_TELEPORT, volume = 0.6f, pitch = 1.7f)
+            sounds.play(destination, Sound.ENTITY_PLAYER_ATTACK_SWEEP, volume = 0.55f, pitch = 1.3f)
+            Targeting.select(playerData, TargetType.Enemy).filter {
+                HitboxUtil.intersectsSegment(it.entity.boundingBox, start.toVector(), destination.toVector(), CONTRACTOR_BLINK_HITBOX_EXPANSION)
+            }.forEach { it.damage(2.0, DamageType.Normal, playerData) }
+            if (dagger != null) { recover(dagger); multiplyCurrentCooldown(0.0) }
+            return true
+        }
     }
 
-    private fun resolveGuess(session: GuessSession, slot: Int) {
-        if (activeGuesses[player.uniqueId] !== session) return
-        val guessedClass = session.choices.getOrNull(slot) ?: return
-        val target = game.playerDatas.filterIsInstance<PlayerData>()
-            .find { it.uniqueId == session.targetId }
-
-        activeGuesses.remove(player.uniqueId)
-        PlayerTagManager.removeTag(player, GUESS_INVENTORY_TAG)
-        player.closeInventory()
-
-        if (target == null || !target.player.isOnline || target.entityStatus.isDead || target.gameClasses.isEmpty()) {
-            player.sendMiniMessage("<red><bold>[청부 실패]</bold> <gray>대상이 더 이상 유효하지 않습니다.")
-            particles.spawn(player, Particle.SMOKE, count = 18, spread = 0.45, speed = 0.04)
-            sounds.play(player, Sound.BLOCK_NOTE_BLOCK_BASS, volume = 0.9f, pitch = 0.55f)
-            return
-        }
-
-        if (target.gameClasses.none { it.javaClass == guessedClass }) {
-            player.sendMiniMessage("<red><bold>[청부 실패]</bold> <gray>직업을 잘못 추측했습니다.")
-            particles.spawn(player, Particle.SMOKE, count = 22, spread = 0.5, speed = 0.05)
-            sounds.play(player, Sound.ENTITY_VILLAGER_NO, volume = 0.8f, pitch = 0.7f)
-            return
-        }
-
-        val from = player.location.clone().add(0.0, 1.0, 0.0)
-        val destination = target.player.location.clone()
-        particles.spawn(from, Particle.REVERSE_PORTAL, count = 42, spread = 0.65, speed = 0.12)
-        sounds.play(from, Sound.ENTITY_ENDERMAN_TELEPORT, volume = 0.9f, pitch = 0.75f)
-        player.teleport(destination)
-        val targetCenter = target.entity.boundingBox.center.toLocation(target.entity.world)
-        particles.spawn(targetCenter, Particle.PORTAL, count = 52, spread = 0.7, speed = 0.16)
-        particles.spawn(targetCenter, Particle.CRIT, count = 18, spread = 0.42, speed = 0.1)
-        sounds.play(targetCenter, Sound.ENTITY_PLAYER_ATTACK_CRIT, volume = 1.0f, pitch = 0.72f)
-        target.damage(CONTRACTOR_SUCCESS_DAMAGE, DamageType.Normal, playerData, damagePath = DamagePath.SKILL)
-        player.sendMiniMessage(
-            "<green><bold>[청부 성공]</bold> <white>${target.player.name}<gray>님의 직업을 맞혔습니다."
+    private inner class YellowSkill : Skill(), MovementSkill {
+        override val definitionId = "contractor/yellow-skill"
+        override val name = "<bold>암살"
+        override val description = listOf(
+            "<gray>바라보는 방향으로 단검을 던지고 자신은 약간 뒤로 이동한다.",
+            "<gray>단검이 적에게 적중하면 2의 피해를 입히고, 적 뒤에 단검을 생성한다.",
+            "<gray>이 스킬에 적중한 적은 5초간 단검을 회수하여 입히는 피해가 추가로 2번 적중한다."
         )
+        override val cooldown = CONTRACTOR_YELLOW_COOLDOWN_SECONDS
+
+
+        override fun isUseSuccess(): Boolean { return true }
+
+        override fun use(): Boolean {
+            val origin = player.eyeLocation
+            particles.spawn(origin.clone().add(origin.direction.multiply(0.5)), Particle.CRIT, count = 8, spread = 0.15)
+            sounds.play(player, Sound.ITEM_TRIDENT_THROW, volume = 0.65f, pitch = 1.6f)
+            player.velocity = origin.direction.multiply(-0.5).setY(0.15)
+            object : Projectile() {
+                var trailTicks = 0
+                override var location = origin
+                override var targetType = TargetType.Enemy
+                override var speed = 1.2
+                override var isWallHit = true
+                override var isPlayerHit = true
+                override val isPlayerHitRemove = true
+                override var time: Int? = 2
+                override val itemDisplayItem = ItemStack(Material.IRON_SWORD)
+                override fun onItemDisplaySpawn(display: ItemDisplay, location: Location) {
+                    DisplayOrientationUtil.alignSwordBladeVertically(display, location.direction, 0.8f)
+                }
+                override fun onItemDisplayMove(display: ItemDisplay, location: Location, speed: Double, tick: Int) {
+                    DisplayOrientationUtil.alignSwordBladeVertically(display, location.direction, 0.8f)
+                }
+                override fun onProjectileEntityHit(hitEntityData: EntityData, location: Location) {
+                    hitEntityData.damage(2.0, DamageType.Normal, playerData)
+                    marked[hitEntityData.entity.uniqueId] = game.combatTick + 100
+                    spawnDagger(behind(hitEntityData))
+                    particles.circle(hitEntityData.entity.location.add(0.0, 1.0, 0.0), Particle.WITCH, 0.65, 18)
+                    particles.spawn(location, Particle.CRIT, count = 14, spread = 0.2, speed = 0.08)
+                    sounds.play(location, Sound.ITEM_TRIDENT_HIT, volume = 0.6f, pitch = 1.25f)
+                }
+                override fun onProjectileMove(location: Location) {
+                    particles.spawn(location, Particle.CRIT)
+                    particles.spawn(location, Particle.DUST, daggerColor)
+                    if (++trailTicks % 3 == 0) particles.spawn(location, Particle.SMOKE, count = 2, spread = 0.07)
+                }
+                override fun onProjectileBlockHit(hitBlock: org.bukkit.block.Block, location: Location) {
+                    particles.spawn(location, Particle.BLOCK, hitBlock.blockData,
+                        org.beobma.classWarPlugin.effect.ParticleOptions.spread(10, 0.15, 0.04))
+                    particles.spawn(location, Particle.CRIT, count = 8, spread = 0.15, speed = 0.06)
+                    sounds.play(location, Sound.ITEM_TRIDENT_HIT_GROUND, volume = 0.45f, pitch = 1.5f)
+                }
+            }.spawnProjectile(playerData)
+            return true
+        }
     }
 
-    companion object {
-        private const val GUESS_INVENTORY_TAG = "openContractGuessInventory"
-
-        private data class GuessSession(
-            val owner: Contractor,
-            val targetId: UUID,
-            val choices: List<Class<out GameClass>>,
+    //        †
+    //
+    //    †   나   †
+    //
+    //        †
+    // 위와 같은 형태
+    private inner class GreenSkill : Skill() {
+        override val definitionId = "contractor/green-skill"
+        override val name = "<bold>장부 정리"
+        override val description = listOf(
+            "<gray>자신 주변 십자 범위로 4개의 단검을 생성한다.",
+            "<gray>주변 모든 적에게 2의 피해를 입힌다.",
+            "<gray>십자 범위 내에 벽이 존재한다면 단검은 벽에서 멈춰서 생성된다."
         )
+        override val cooldown = CONTRACTOR_GREEN_COOLDOWN_SECONDS
 
-        private val activeGuesses: ConcurrentHashMap<UUID, GuessSession> = ConcurrentHashMap()
 
-        fun isGuessInventoryOpen(player: Player): Boolean =
-            PlayerTagManager.hasTag(player, GUESS_INVENTORY_TAG)
+        override fun isUseSuccess(): Boolean { return true }
 
-        fun handleInventoryClick(player: Player, rawSlot: Int) {
-            val session = activeGuesses[player.uniqueId] ?: return
-            AbilityExecution.with(session.owner.abilityScope) { session.owner.resolveGuess(session, rawSlot) }
-        }
-
-        fun handleInventoryClose(player: Player) {
-            if (!PlayerTagManager.hasTag(player, GUESS_INVENTORY_TAG)) return
-            activeGuesses.remove(player.uniqueId)
-            PlayerTagManager.removeTag(player, GUESS_INVENTORY_TAG)
-        }
-
-        fun clearSessions(playerIds: Collection<UUID>) {
-            playerIds.forEach { playerId ->
-                val hadSession = activeGuesses.remove(playerId) != null
-                Bukkit.getPlayer(playerId)?.let { player ->
-                    val hadInventoryTag = PlayerTagManager.hasTag(player, GUESS_INVENTORY_TAG)
-                    PlayerTagManager.removeTag(player, GUESS_INVENTORY_TAG)
-                    if (hadSession || hadInventoryTag) player.closeInventory()
-                }
+        override fun use(): Boolean {
+            val start = player.location.add(0.0, 0.3, 0.0)
+            CombatVisuals.pulse(abilityScope, start, Vector(0.0, 1.0, 0.0), 4.0, CombatVisuals.VIOLET)
+            particles.circle(start, Particle.WITCH, 1.0, 28)
+            particles.circle(start, Particle.CRIT, 4.0, 48)
+            sounds.play(player, Sound.ENTITY_EVOKER_CAST_SPELL, volume = 0.6f, pitch = 1.5f)
+            sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_SWEEP, volume = 0.8f, pitch = 0.65f)
+            repeat(4) { index ->
+                val direction = org.bukkit.util.Vector(1.0, 0.0, 0.0).rotateAroundY(index * Math.PI / 2)
+                val hit = start.world.rayTraceBlocks(start, direction, 4.0)?.hitPosition
+                val end = hit?.subtract(direction.clone().multiply(0.3))?.toLocation(start.world)
+                    ?: start.clone().add(direction.multiply(4.0))
+                spawnDagger(end)
+                particles.line(start, end, Particle.END_ROD, 0.2)
+                particles.line(start, end, Particle.DUST, daggerColor, 0.25)
             }
+            playerData.radius(player.location, TargetType.Enemy, 4.0, false).filter { player.hasLineOfSight(it.entity) }
+                .forEach { it.damage(2.0, DamageType.Normal, playerData) }
+            return true
         }
+    }
+
+    private class Passive : BasePassive() {
+        override val name = "<bold>회수"
+        override val description = listOf(
+            "<gray>패시브",
+            "",
+            "<gray>단검에 닿으면 단검 주위 8칸 이내의 적 하나에게 단검을 던져 1의 {keyword:TrueDamage}를 입힌다.",
+            "",
+            "<dark_gray>암살 스킬에 적중된 적을 우선적으로 공격하며, 체력이 낮은 적을 우선적으로 공격한다."
+        )
+    }
+
+    private class PassiveTwo : BasePassive() {
+        override val name = "<bold>깔끔한 처리"
+        override val description = listOf(
+            "<gray>패시브",
+            "",
+            "<gray>적에게 스킬로 피해를 입힐 때마다 처리 스택을 1 얻는다. (최대 5)",
+            "<gray>처리 중첩이 최대치일 때 소모하여 다음 기본 공격 적중 시 적중한 적 뒤에 단검을 생성한다."
+        )
     }
 }

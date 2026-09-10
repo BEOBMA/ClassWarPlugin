@@ -19,7 +19,6 @@ import org.beobma.classWarPlugin.status.list.Disarm
 import org.beobma.classWarPlugin.status.list.Invincibility
 import org.bukkit.entity.Entity
 import java.util.UUID
-import kotlin.math.roundToInt
 
 /**
  * 커스텀 피해의 유효성 검사, 클래스·상태 처리기 호출과 보호막 적용 순서를 관리한다.
@@ -79,6 +78,7 @@ object DamageManager {
 
     /** 실제 피해 적용에 성공한 뒤 전투 상태와 사망 귀속 정보를 기록한다. */
     fun recordSuccessfulDamage(context: DamageContext) {
+        notifyConfirmedHit(context)
         val target = context.target.entity
         CombatManager.recordSuccessfulDamage(context)
         lastDamageByTarget[target.uniqueId] = Attribution(
@@ -87,6 +87,17 @@ object DamageManager {
             context.path,
             target.world.fullTime,
         )
+    }
+
+    fun notifyConfirmedHit(context: DamageContext) {
+        if (context.isCancelled || context.damage <= 0.0) return
+        AbilityTree.handlers(context.attacker.gameClasses, org.beobma.classWarPlugin.gameClass.handler.ConfirmedHitHandler::class.java)
+            .forEach { bound -> bound.call { it.onConfirmedHit(context) } }
+        (context.target as? PlayerData)?.let { target ->
+            AbilityTree.handlers(target.gameClasses, org.beobma.classWarPlugin.gameClass.handler.ConfirmedHitHandler::class.java)
+                .forEach { bound -> bound.call { it.onConfirmedDamageTaken(context) } }
+        }
+        org.beobma.classWarPlugin.gameClass.list.WarCorrespondent.recordCombat(context)
     }
 
     /** [target]의 최근 피해 기록을 한 번 꺼낸다. 10초가 지난 기록은 반환하지 않는다. */
@@ -144,10 +155,8 @@ object DamageManager {
     private fun applyShield(context: DamageContext) {
         if (context.bypassShield) return
         val shield = context.target.getStatus<Shield>() ?: return
-        val damage = context.damage.roundToInt()
-        val remainingDamage = (damage - shield.power).coerceAtLeast(0)
-        val remainingShield = (shield.power - damage).coerceAtLeast(0)
-        context.applyShieldedDamage(remainingDamage.toDouble())
-        if (remainingShield == 0) shield.remove() else shield.updatePower(remainingShield)
+        val result = org.beobma.classWarPlugin.damage.ShieldDamage.calculate(context.damage, shield.power, context.shieldDamageMultiplier)
+        context.applyShieldedDamage(result.healthDamage)
+        if (result.remainingShield == 0) shield.remove() else shield.updatePower(result.remainingShield)
     }
 }

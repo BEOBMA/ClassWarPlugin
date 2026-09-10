@@ -33,7 +33,6 @@ import org.beobma.classWarPlugin.manager.PlayerTagValue
 import org.beobma.classWarPlugin.manager.PlayerManager.refreshClassItemDescriptions
 import org.beobma.classWarPlugin.manager.PlayerPreferenceManager
 import org.beobma.classWarPlugin.entity.player.PlayerData
-import org.beobma.classWarPlugin.gameClass.list.Contractor
 import org.beobma.classWarPlugin.gameClass.list.DeathNote
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.bukkit.Material
@@ -67,13 +66,6 @@ class OnInventoryClickEvent : Listener {
     fun onClickItem(event: InventoryClickEvent) {
         val player = event.whoClicked as? Player ?: return
         val inventory = event.view
-        if (Contractor.isGuessInventoryOpen(player)) {
-            event.isCancelled = true
-            if (event.rawSlot !in 0 until inventory.topInventory.size) return
-            Contractor.handleInventoryClick(player, event.rawSlot)
-            return
-        }
-
         if (DeathNote.isSelectionInventoryOpen(player)) {
             event.isCancelled = true
             if (event.rawSlot !in 0 until inventory.topInventory.size) return

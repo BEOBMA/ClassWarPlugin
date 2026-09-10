@@ -19,6 +19,14 @@ import org.bukkit.Sound
 
 class OnPlayerMoveEvent : Listener {
 
+    @EventHandler(priority = org.bukkit.event.EventPriority.MONITOR, ignoreCancelled = true)
+    fun onTeleportForecast(event: PlayerTeleportEvent) {
+        val data = org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer(event.player)
+            ?.playerDatas?.filterIsInstance<PlayerData>()?.firstOrNull { it.player == event.player } ?: return
+        if (!data.canDispatchClassHandlers()) return
+        org.beobma.classWarPlugin.ability.AbilityForecast.line(data, event.from, event.to, independent = true)
+    }
+
     @EventHandler
     fun onEntityMove(event: PlayerMoveEvent) {
         val player = event.player

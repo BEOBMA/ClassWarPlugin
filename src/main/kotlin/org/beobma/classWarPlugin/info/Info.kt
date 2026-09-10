@@ -1,7 +1,6 @@
 package org.beobma.classWarPlugin.info
 
 import org.beobma.classWarPlugin.game.Game
-import org.bukkit.Bukkit
 
 object Info {
     var game: Game? = null

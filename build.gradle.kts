@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "org.beobma"
-version = "1.0.4.1"
+version = "1.0.5"
 
 repositories {
     mavenCentral()
@@ -44,7 +44,7 @@ val verifyShadowJarContents = tasks.register("verifyShadowJarContents") {
     dependsOn("shadowJar")
 
     doLast {
-        val shadowArchive = tasks.named<org.gradle.api.tasks.bundling.Jar>("shadowJar")
+        val shadowArchive = tasks.named<Jar>("shadowJar")
             .get()
             .archiveFile
             .get()

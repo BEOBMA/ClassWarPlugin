@@ -211,7 +211,7 @@ object ClassBalanceManager {
             ?.takeIf { it.playerData === playerData }?.classId
 
     private fun keyForClassName(className: String): String? = descriptors.firstOrNull { descriptor ->
-        className == descriptor.configKey || className == descriptor.canonicalName || className.startsWith("${descriptor.canonicalName}\$")
+        className == descriptor.configKey || className == descriptor.canonicalName || className.startsWith("${descriptor.canonicalName}$")
     }?.configKey
 
     private fun readModifiers(

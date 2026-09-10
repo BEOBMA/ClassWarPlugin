@@ -10,6 +10,7 @@ object AbilityCatalog {
     private val factories: Map<String, () -> GameClass> = mapOf(
         "abyssal-veil" to ::AbyssalVeil,
         "anchor" to ::Anchor,
+        "agent" to ::Agent,
         "area-development" to ::AreaDevelopment,
         "assassin" to ::Assassin,
         "astronomer" to ::Astronomer,
@@ -102,6 +103,10 @@ object AbilityCatalog {
         "watchmaker" to ::Watchmaker,
         "weapon-master" to ::WeaponMaster,
         "wounds-wind" to ::WoundsWind,
+        "crossbow" to ::Crossbow,
+        "freikugel" to ::Freikugel,
+        "warcorrespondent" to ::WarCorrespondent,
+        "pioneer" to ::Pioneer,
     )
     private val enabledIds = listOf(
         "berserker", "sniper", "meteor", "time-maniqulator", "land-wizard",
@@ -122,7 +127,9 @@ object AbilityCatalog {
         "charger", "elementalist", "solar-system", "sol", "luna",
         "mercurius", "venus", "terra", "mars", "jupiter",
         "saturnus", "uranus", "neptune", "pluto",
+        "crossbow", "freikugel", "warcorrespondent", "pioneer", "agent",
     )
     fun create(id: String): GameClass = requireNotNull(factories[id]) { "Unknown class ID: $id" }.invoke()
+    internal fun enabledClassIds(): List<String> = enabledIds.toList()
     fun enabledClasses(): List<GameClass> = enabledIds.map(::create)
 }

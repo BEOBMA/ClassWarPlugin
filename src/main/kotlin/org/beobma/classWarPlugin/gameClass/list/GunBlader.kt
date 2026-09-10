@@ -184,7 +184,7 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
                 powerDelta = GUN_BLADER_VIBRATION_POWER,
             )
             if (++basicHits >= 3) {
-                basicHits = 0;
+                basicHits = 0
                 bulletStatus().increasePower(1)
                 sounds.playTo(player, Sound.BLOCK_IRON_TRAPDOOR_OPEN, pitch = 1.8f)
             }

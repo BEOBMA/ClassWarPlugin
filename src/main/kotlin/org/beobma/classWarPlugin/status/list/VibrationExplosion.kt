@@ -6,7 +6,7 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getStatus
 import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.beobma.classWarPlugin.util.DamageType
 
-class VibrationExplosion : StatusAbnormality() {
+class VibrationExplosion(private val repetitions: Int = 1) : StatusAbnormality() {
     override val name: String
         get() = Keyword.VibrationExplosion.string
     override val description: List<String>
@@ -28,8 +28,15 @@ class VibrationExplosion : StatusAbnormality() {
             this.remove()
             return
         }
-        entityData.damage(vibration.power * 0.5, DamageType.StatusAbnormality, casterData)
+        val power = vibration.power
+        repeat(repetitions.coerceIn(1, 2)) {
+            entityData.damage(power * 0.5, DamageType.StatusAbnormality, casterData)
+        }
         vibration.remove()
+        org.beobma.classWarPlugin.ability.AbilityTree.handlers(casterData.gameClasses,
+            org.beobma.classWarPlugin.gameClass.handler.VibrationExplosionHandler::class.java).forEach { bound ->
+            bound.call { it.onVibrationExplosion(entityData) }
+        }
         this.remove()
     }
 }
