@@ -48,7 +48,7 @@ object DamageCalculator {
         return Result(damage, absorbed)
     }
 
-    private fun applyArmorAndToughness(
+    internal fun applyArmorAndToughness(
         damage: Double,
         target: LivingEntity,
         armorIgnoreRatio: Double,

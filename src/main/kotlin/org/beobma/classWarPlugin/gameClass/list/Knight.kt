@@ -138,17 +138,13 @@ class Knight : GameClass(), WeaponInputHandler {
     private inner class Passive : BasePassive(), OnHitHandler, WhenHitHandler {
         override val name = "<bold>피로 벼려낸 검"
         override val description = listOf(
-            "<gray>기본 공격 적중 시 3초간 적에게 {keyword:Bleeding}을 1 부여하고 {keyword:Bleeding}을 발동시킨다.",
-            "<gray>이후 대상의 {keyword:Bleeding} 수치가 절반으로 감소한다."
+            "<gray>기본 공격 적중 시 3초간 적에게 {keyword:Bleeding}을 1 부여한다."
         )
 
         override fun onAttackHit(context: DamageContext) {
             val entityData = context.target
             val status = entityData.getOrCreateStatus(playerData) { Bleeding() }
             status.applyStatus(duration = 3, powerSet = 1)
-
-            entityData.damage(status.power.toDouble(), DamageType.StatusAbnormality, playerData)
-            status.updatePower(status.power / 2)
         }
 
         override fun whenAttackHit(context: DamageContext) {

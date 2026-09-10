@@ -7,6 +7,13 @@ import kotlin.test.assertSame
 
 class KeywordTest {
     @Test
+    fun `photography stack is bold and available in the keyword dictionary and brief description`() {
+        assertSame(Keyword.PhotographyStack, Keyword.find("촬영 스택"))
+        kotlin.test.assertTrue(Keyword.PhotographyStack.string.contains("<bold>촬영 스택</bold>"))
+        assertEquals(listOf(Keyword.PhotographyStack.requireDescription()),
+            Keyword.briefExplanationsFor(listOf("{keyword:PhotographyStack}을 1 얻는다.")))
+    }
+    @Test
     fun `status keywords always provide descriptions`() {
         val statusKeywords = listOf(
             Keyword.Abyss,

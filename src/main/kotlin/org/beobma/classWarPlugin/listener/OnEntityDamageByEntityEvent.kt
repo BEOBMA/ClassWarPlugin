@@ -124,6 +124,7 @@ class OnEntityDamageByEntityEvent : Listener {
         }
 
         event.damage = context.damage
+        org.beobma.classWarPlugin.damage.VanillaArmorIgnore.apply(event, targetEntity, context.armorIgnoreRatio)
         if (targetPlayer == null) {
             DamageIndicatorManager.show(targetEntity, event.finalDamage, attackerGame.settings.damageIndicatorsEnabled)
         }

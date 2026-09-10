@@ -37,6 +37,12 @@ import org.beobma.classWarPlugin.skill.Projectile
 import org.beobma.classWarPlugin.util.HitboxUtil
 import org.beobma.classWarPlugin.util.TargetType
 import org.bukkit.Location
+import org.bukkit.Color
+import org.beobma.classWarPlugin.effect.CombatVisuals
+import org.beobma.classWarPlugin.effect.EmbeddedWeaponDisplay
+import org.beobma.classWarPlugin.util.DisplayOrientationUtil
+import org.bukkit.entity.ItemDisplay
+import org.bukkit.util.Vector
 import org.bukkit.entity.LivingEntity
 import org.bukkit.event.player.PlayerInteractEvent
 import java.util.UUID
@@ -49,6 +55,8 @@ private const val CONTRACTOR_CONTRACT_COOLDOWN_SECONDS = 8
 private const val CONTRACTOR_ORANGE_COOLDOWN_SECONDS = 12
 private const val CONTRACTOR_YELLOW_COOLDOWN_SECONDS = 16
 private const val CONTRACTOR_GREEN_COOLDOWN_SECONDS = 90
+private const val CONTRACTOR_RECOVERY_RADIUS = 8.0
+private const val CONTRACTOR_BLINK_HITBOX_EXPANSION = 0.5
 
 class Contractor : GameClass(), GameStatusHandler, ConfirmedHitHandler, WeaponInputHandler {
     override val classId = "contractor"
@@ -58,13 +66,18 @@ class Contractor : GameClass(), GameStatusHandler, ConfirmedHitHandler, WeaponIn
     override var skills: List<Skill> = listOf(RedSkill(), OrangeSkill(), YellowSkill(), GreenSkill())
     override var passives: List<BasePassive> = listOf(Passive(), PassiveTwo())
 
-    private data class Dagger(val location: Location, val expires: Long)
+    private data class Dagger(val marker: EmbeddedWeaponDisplay, val expires: Long) {
+        val location: Location get() = marker.location
+    }
     private val daggers = mutableListOf<Dagger>()
     private val marked = mutableMapOf<UUID, Long>()
     private var stacks = 0
     private var empowered = false
     private var stabbing = false
     private var stabHit = false
+    private var nextDaggerSound = 0L
+    private var nextPickupSound = 0L
+    private val daggerColor = Particle.DustOptions(Color.fromRGB(165, 75, 210), 1.0f)
     private inner class Processing : StatusAbnormality() {
         override val name = "<gold>처리"
         override val description = listOf("<gray>5스택에서 다음 기본 공격으로 단검을 생성합니다.")
@@ -75,24 +88,76 @@ class Contractor : GameClass(), GameStatusHandler, ConfirmedHitHandler, WeaponIn
     }
     private fun syncStacks() { playerData.getOrCreateStatus(playerData) { Processing() }.updatePower(stacks) }
     override fun onBattleStart() {
+        daggers.forEach { it.marker.close() }
         daggers.clear(); marked.clear(); stacks = 0; empowered = false; syncStacks()
         object : AbilityRunnable(abilityScope) {
+            var frames = 0
             override fun run() {
-                daggers.removeAll { it.expires <= game.combatTick }
+                frames++
+                daggers.removeAll {
+                    (it.expires <= game.combatTick || !it.marker.isSupported).also { remove -> if (remove) it.marker.close() }
+                }
                 marked.entries.removeIf { it.value <= game.combatTick }
                 daggers.toList().filter { it.location.world == player.world }.forEach { dagger ->
                     particles.spawn(dagger.location, Particle.END_ROD)
+                    if (frames % 5 == 0) {
+                        drawRecoveryRange(dagger.location)
+                        particles.circle(dagger.location.clone().add(0.0, 0.05, 0.0), Particle.ENCHANT, 0.3, 8)
+                        particles.line(dagger.location, dagger.location.clone().add(0.0, 0.55, 0.0), Particle.DUST, daggerColor, 0.15)
+                    }
                     if (dagger.location.distanceSquared(player.location) <= 2.25) recover(dagger)
                 }
             }
-            override fun onCancel() { daggers.clear(); marked.clear() }
+            override fun onCancel() { daggers.forEach { it.marker.close() }; daggers.clear(); marked.clear() }
         }.runTaskTimer(ClassWarPlugin.instance, 1L, 2L)
     }
     override fun onGameTimePasses() {}
-    private fun spawnDagger(location: Location) {
-        if (daggers.size >= 16) daggers.removeAt(0)
-        daggers += Dagger(location.clone(), game.combatTick + 300)
+    private fun spawnDagger(requested: Location) {
+        val marker = EmbeddedWeaponDisplay.spawn(abilityScope, requested, Material.IRON_SWORD, 0.65f) ?: return
+        val location = marker.location
+        if (daggers.size >= 16) daggers.removeAt(0).marker.close()
+        daggers += Dagger(marker, game.combatTick + 300)
         particles.spawn(location, Particle.CRIT, count = 8, spread = 0.2)
+        particles.circle(location, Particle.WITCH, 0.35, 12)
+        CombatVisuals.pulse(abilityScope, location, Vector(0.0, 1.0, 0.0), 0.7, CombatVisuals.VIOLET)
+        drawRecoveryRange(location)
+        if (game.combatTick >= nextDaggerSound) {
+            nextDaggerSound = game.combatTick + 3
+            sounds.play(location, Sound.ITEM_TRIDENT_HIT_GROUND, volume = 0.45f, pitch = 1.8f)
+        }
+    }
+    private fun drawRecoveryRange(location: Location) {
+        repeat(64) { index ->
+            val angle = index * Math.PI * 2.0 / 64
+            particles.spawn(
+                location.clone().add(
+                    kotlin.math.cos(angle) * CONTRACTOR_RECOVERY_RADIUS,
+                    0.08,
+                    kotlin.math.sin(angle) * CONTRACTOR_RECOVERY_RADIUS
+                ),
+                Particle.DUST,
+                daggerColor
+            )
+        }
+    }
+    private fun showBlinkTrail(start: Location, end: Location) {
+        if (start.world != end.world) return
+        val from = start.clone().add(0.0, 0.7, 0.0)
+        val to = end.clone().add(0.0, 0.7, 0.0)
+        // Keep the entire path visible briefly, with bounded samples even if teleport is redirected.
+        val spacing = maxOf(0.2, from.distance(to) / 96.0)
+        fun drawTrail() {
+            particles.line(from, to, Particle.DUST, daggerColor, spacing)
+        }
+        drawTrail()
+        particles.line(from, to, Particle.END_ROD, spacing * 2.0)
+        object : AbilityRunnable(abilityScope) {
+            var frames = 0
+            override fun run() {
+                drawTrail()
+                if (++frames >= 3) cancel()
+            }
+        }.runTaskTimer(ClassWarPlugin.instance, 2L, 2L)
     }
     private fun behind(target: EntityData): Location {
         val delta = target.entity.location.toVector().subtract(player.location.toVector()).setY(0.0)
@@ -101,25 +166,45 @@ class Contractor : GameClass(), GameStatusHandler, ConfirmedHitHandler, WeaponIn
     }
     private fun recover(dagger: Dagger) {
         if (!daggers.remove(dagger)) return
+        dagger.marker.close()
+        particles.spawn(dagger.location, Particle.REVERSE_PORTAL, count = 12, spread = 0.2)
+        CombatVisuals.ring(dagger.location.clone().add(0.0, 0.25, 0.0), Vector(0.0, 1.0, 0.0), 0.45, CombatVisuals.SILVER, 16)
+        if (game.combatTick >= nextPickupSound) {
+            nextPickupSound = game.combatTick + 4
+            sounds.playTo(player, Sound.ENTITY_ITEM_PICKUP, volume = 0.55f, pitch = 1.6f)
+        }
         CooldownManager.resetCooldown(player, skills[1])
         val target = Targeting.select(playerData, TargetType.Enemy).filter {
-            it.entity.location.distanceSquared(dagger.location) <= 64 && player.hasLineOfSight(it.entity)
+            it.entity.location.distanceSquared(dagger.location) <= CONTRACTOR_RECOVERY_RADIUS * CONTRACTOR_RECOVERY_RADIUS && player.hasLineOfSight(it.entity)
         }.sortedWith(compareByDescending<EntityData> { (marked[it.entity.uniqueId] ?: 0) > game.combatTick }
             .thenBy { (it.entity as? LivingEntity)?.health ?: Double.MAX_VALUE }).firstOrNull() ?: return
         particles.line(dagger.location, target.entity.location.add(0.0, 1.0, 0.0), Particle.CRIT, 0.2)
+        val impact = target.entity.boundingBox.center.toLocation(target.entity.world)
+        CombatVisuals.tracer(dagger.location, impact, CombatVisuals.VIOLET)
+        CombatVisuals.ring(impact, impact.toVector().subtract(dagger.location.toVector()), 0.5, CombatVisuals.VIOLET, 20)
+        particles.spawn(target.entity, Particle.SWEEP_ATTACK, count = if ((marked[target.entity.uniqueId] ?: 0) > game.combatTick) 3 else 1, spread = 0.25)
         repeat(if ((marked[target.entity.uniqueId] ?: 0) > game.combatTick) 3 else 1) {
             target.damage(1.0, DamageType.True, playerData)
         }
     }
     override fun onConfirmedHit(context: DamageContext) {
         if (context.target == playerData) return
+        val previousStacks = stacks
         if (context.path == DamagePath.SKILL) {
             stacks = (stacks + 1).coerceAtMost(5)
-            if (stabbing) { stabHit = true; empowered = true }
+            if (stabbing) {
+                stabHit = true; empowered = true
+                particles.spawn(context.target.entity, Particle.CRIT, count = 12, spread = 0.25, speed = 0.08)
+                sounds.play(context.target.entity, Sound.ENTITY_PLAYER_ATTACK_CRIT, volume = 0.55f, pitch = 1.4f)
+            }
         } else if (context.path.isBasicAttack && !context.secondaryAttack && stacks >= 5) {
             stacks = 0; spawnDagger(behind(context.target))
         }
         syncStacks()
+        if (stacks == 5 && previousStacks < 5) {
+            particles.spawn(player.eyeLocation, Particle.ENCHANT, count = 12, spread = 0.3)
+            sounds.playTo(player, Sound.BLOCK_NOTE_BLOCK_PLING, volume = 0.5f, pitch = 1.7f)
+        }
     }
     override fun onWeaponRightClick(event: PlayerInteractEvent) {
         event.isCancelled = true
@@ -151,6 +236,11 @@ class Contractor : GameClass(), GameStatusHandler, ConfirmedHitHandler, WeaponIn
             val end = start.world.rayTraceBlocks(start, start.direction, range)?.hitPosition?.toLocation(start.world)
                 ?: start.clone().add(start.direction.multiply(range))
             particles.line(start, end, Particle.CRIT, 0.15)
+            CombatVisuals.ring(start.clone().add(start.direction.multiply(0.65)), start.direction,
+                if (enhanced) 0.32 else 0.2, if (enhanced) CombatVisuals.VIOLET else CombatVisuals.SILVER, 16)
+            if (enhanced) particles.line(start, end, Particle.DUST, daggerColor, 0.18)
+            particles.spawn(start.clone().add(start.direction.multiply(0.7)), Particle.SWEEP_ATTACK)
+            sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_SWEEP, volume = 0.65f, pitch = if (enhanced) 0.8f else 1.5f)
             stabbing = true
             try { target?.damage(3.0, DamageType.Normal, playerData) } finally { stabbing = false }
             if (stabHit) multiplyCurrentCooldown(5.0 / 8.0)
@@ -186,8 +276,15 @@ class Contractor : GameClass(), GameStatusHandler, ConfirmedHitHandler, WeaponIn
             if (!destination.block.isPassable || !destination.clone().add(0.0, 1.0, 0.0).block.isPassable) return false
             if (!player.teleport(destination)) return false
             player.fallDistance = 0f
+            particles.spawn(start, Particle.SMOKE, count = 16, spread = 0.3, speed = 0.03)
+            showBlinkTrail(start, player.location)
+            particles.circle(destination.clone().add(0.0, 0.1, 0.0), Particle.REVERSE_PORTAL, 0.75, 24)
+            CombatVisuals.slash(abilityScope, destination.clone().add(0.0, 0.9, 0.0), destination.direction,
+                1.15, CombatVisuals.VIOLET, tilt = -0.65, reverse = true)
+            sounds.play(start, Sound.ENTITY_ENDERMAN_TELEPORT, volume = 0.6f, pitch = 1.7f)
+            sounds.play(destination, Sound.ENTITY_PLAYER_ATTACK_SWEEP, volume = 0.55f, pitch = 1.3f)
             Targeting.select(playerData, TargetType.Enemy).filter {
-                HitboxUtil.intersectsSegment(it.entity.boundingBox, start.toVector(), destination.toVector(), 0.8)
+                HitboxUtil.intersectsSegment(it.entity.boundingBox, start.toVector(), destination.toVector(), CONTRACTOR_BLINK_HITBOX_EXPANSION)
             }.forEach { it.damage(2.0, DamageType.Normal, playerData) }
             if (dagger != null) { recover(dagger); multiplyCurrentCooldown(0.0) }
             return true
@@ -209,8 +306,11 @@ class Contractor : GameClass(), GameStatusHandler, ConfirmedHitHandler, WeaponIn
 
         override fun use(): Boolean {
             val origin = player.eyeLocation
+            particles.spawn(origin.clone().add(origin.direction.multiply(0.5)), Particle.CRIT, count = 8, spread = 0.15)
+            sounds.play(player, Sound.ITEM_TRIDENT_THROW, volume = 0.65f, pitch = 1.6f)
             player.velocity = origin.direction.multiply(-0.5).setY(0.15)
             object : Projectile() {
+                var trailTicks = 0
                 override var location = origin
                 override var targetType = TargetType.Enemy
                 override var speed = 1.2
@@ -219,12 +319,31 @@ class Contractor : GameClass(), GameStatusHandler, ConfirmedHitHandler, WeaponIn
                 override val isPlayerHitRemove = true
                 override var time: Int? = 2
                 override val itemDisplayItem = ItemStack(Material.IRON_SWORD)
+                override fun onItemDisplaySpawn(display: ItemDisplay, location: Location) {
+                    DisplayOrientationUtil.alignSwordBladeVertically(display, location.direction, 0.8f)
+                }
+                override fun onItemDisplayMove(display: ItemDisplay, location: Location, speed: Double, tick: Int) {
+                    DisplayOrientationUtil.alignSwordBladeVertically(display, location.direction, 0.8f)
+                }
                 override fun onProjectileEntityHit(hitEntityData: EntityData, location: Location) {
                     hitEntityData.damage(2.0, DamageType.Normal, playerData)
                     marked[hitEntityData.entity.uniqueId] = game.combatTick + 100
                     spawnDagger(behind(hitEntityData))
+                    particles.circle(hitEntityData.entity.location.add(0.0, 1.0, 0.0), Particle.WITCH, 0.65, 18)
+                    particles.spawn(location, Particle.CRIT, count = 14, spread = 0.2, speed = 0.08)
+                    sounds.play(location, Sound.ITEM_TRIDENT_HIT, volume = 0.6f, pitch = 1.25f)
                 }
-                override fun onProjectileMove(location: Location) { particles.spawn(location, Particle.CRIT) }
+                override fun onProjectileMove(location: Location) {
+                    particles.spawn(location, Particle.CRIT)
+                    particles.spawn(location, Particle.DUST, daggerColor)
+                    if (++trailTicks % 3 == 0) particles.spawn(location, Particle.SMOKE, count = 2, spread = 0.07)
+                }
+                override fun onProjectileBlockHit(hitBlock: org.bukkit.block.Block, location: Location) {
+                    particles.spawn(location, Particle.BLOCK, hitBlock.blockData,
+                        org.beobma.classWarPlugin.effect.ParticleOptions.spread(10, 0.15, 0.04))
+                    particles.spawn(location, Particle.CRIT, count = 8, spread = 0.15, speed = 0.06)
+                    sounds.play(location, Sound.ITEM_TRIDENT_HIT_GROUND, volume = 0.45f, pitch = 1.5f)
+                }
             }.spawnProjectile(playerData)
             return true
         }
@@ -251,12 +370,19 @@ class Contractor : GameClass(), GameStatusHandler, ConfirmedHitHandler, WeaponIn
 
         override fun use(): Boolean {
             val start = player.location.add(0.0, 0.3, 0.0)
+            CombatVisuals.pulse(abilityScope, start, Vector(0.0, 1.0, 0.0), 4.0, CombatVisuals.VIOLET)
+            particles.circle(start, Particle.WITCH, 1.0, 28)
+            particles.circle(start, Particle.CRIT, 4.0, 48)
+            sounds.play(player, Sound.ENTITY_EVOKER_CAST_SPELL, volume = 0.6f, pitch = 1.5f)
+            sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_SWEEP, volume = 0.8f, pitch = 0.65f)
             repeat(4) { index ->
                 val direction = org.bukkit.util.Vector(1.0, 0.0, 0.0).rotateAroundY(index * Math.PI / 2)
                 val hit = start.world.rayTraceBlocks(start, direction, 4.0)?.hitPosition
                 val end = hit?.subtract(direction.clone().multiply(0.3))?.toLocation(start.world)
                     ?: start.clone().add(direction.multiply(4.0))
                 spawnDagger(end)
+                particles.line(start, end, Particle.END_ROD, 0.2)
+                particles.line(start, end, Particle.DUST, daggerColor, 0.25)
             }
             playerData.radius(player.location, TargetType.Enemy, 4.0, false).filter { player.hasLineOfSight(it.entity) }
                 .forEach { it.damage(2.0, DamageType.Normal, playerData) }

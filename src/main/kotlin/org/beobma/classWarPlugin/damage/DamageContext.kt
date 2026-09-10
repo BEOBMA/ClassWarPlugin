@@ -24,7 +24,7 @@ class DamageContext(
     val damageType: DamageType,
     val baseDamage: Double,
     val bypassShield: Boolean = false,
-    val armorIgnoreRatio: Double = 0.0,
+    var armorIgnoreRatio: Double = 0.0,
     val weaponClassId: String? = null,
     val secondaryAttack: Boolean = false,
 ) {
@@ -33,6 +33,8 @@ class DamageContext(
     var damage: Double = originalDamage
         private set
     var isCancelled: Boolean = false
+    /** Only shield consumption is multiplied; overflow health damage is not amplified. */
+    var shieldDamageMultiplier: Double = 1.0
 
     private var flatDamageBonus: Double = 0.0
     private var damageDealtMultiplier: Double = 1.0

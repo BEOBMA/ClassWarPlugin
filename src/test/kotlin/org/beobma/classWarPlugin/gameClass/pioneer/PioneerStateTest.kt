@@ -4,6 +4,39 @@ import java.util.UUID
 import kotlin.test.*
 
 class PioneerStateTest {
+    @Test fun `foresight check is read only and successful use spends exactly five`() {
+        val state = PioneerState()
+        repeat(3) { assertTrue(state.canSpendForesight(5)) }
+        assertEquals(30, state.foresight)
+        assertTrue(state.spendForesight(5))
+        assertEquals(25, state.foresight)
+        repeat(5) { assertTrue(state.spendForesight(5)) }
+        assertEquals(0, state.foresight)
+        assertFalse(state.spendForesight(5))
+        assertEquals(0, state.foresight)
+    }
+    @Test fun `insufficient foresight is neither usable nor partially consumed`() {
+        val state = PioneerState()
+        for (amount in 0..4) {
+            state.foresight = amount
+            assertFalse(state.canSpendForesight(5))
+            assertFalse(state.spendForesight(5))
+            assertEquals(amount, state.foresight)
+        }
+        state.foresight = 5
+        assertTrue(state.spendForesight(5))
+        assertEquals(0, state.foresight)
+    }
+    @Test fun `resource changes between authorization and use are rechecked`() {
+        val state = PioneerState()
+        state.foresight = 5
+        assertTrue(state.canSpendForesight(5))
+        state.foresight -= 3
+        assertFalse(state.spendForesight(5))
+        assertEquals(2, state.foresight)
+        assertFailsWith<IllegalArgumentException> { state.spendForesight(-5) }
+        assertEquals(2, state.foresight)
+    }
     @Test fun `continuous hits maintain stacks across the six second gain interval`() {
         val state = PioneerState()
         val target = UUID.randomUUID()
