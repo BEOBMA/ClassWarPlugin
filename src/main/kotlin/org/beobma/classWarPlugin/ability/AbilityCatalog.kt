@@ -107,6 +107,7 @@ object AbilityCatalog {
         "freikugel" to ::Freikugel,
         "warcorrespondent" to ::WarCorrespondent,
         "pioneer" to ::Pioneer,
+        "writer" to ::Writer,
     )
     private val enabledIds = listOf(
         "berserker", "sniper", "meteor", "time-maniqulator", "land-wizard",
@@ -127,7 +128,7 @@ object AbilityCatalog {
         "charger", "elementalist", "solar-system", "sol", "luna",
         "mercurius", "venus", "terra", "mars", "jupiter",
         "saturnus", "uranus", "neptune", "pluto",
-        "crossbow", "freikugel", "warcorrespondent", "pioneer", "agent",
+        "crossbow", "freikugel", "warcorrespondent", "pioneer", "agent", "writer",
     )
     fun create(id: String): GameClass = requireNotNull(factories[id]) { "Unknown class ID: $id" }.invoke()
     internal fun enabledClassIds(): List<String> = enabledIds.toList()

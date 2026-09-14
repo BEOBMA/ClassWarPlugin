@@ -3,6 +3,7 @@ package org.beobma.classWarPlugin.status.list
 import org.beobma.classWarPlugin.status.handler.WhenDamageHandler
 
 class WhenDamageReduction : WhenDamageHandler() {
+    override val isHarmful: Boolean = false
     override val name: String
         get() = "<green><bold>받는 피해 감소<gray>"
     override val description: List<String>

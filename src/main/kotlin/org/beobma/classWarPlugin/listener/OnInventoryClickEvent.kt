@@ -18,6 +18,9 @@ import org.beobma.classWarPlugin.manager.InventoryManager.openClassWeaponInvento
 import org.beobma.classWarPlugin.manager.InventoryManager.getOpenConfigCategory
 import org.beobma.classWarPlugin.manager.InventoryManager.getClassFromItem
 import org.beobma.classWarPlugin.manager.InventoryManager.getMatchModeFromItem
+import org.beobma.classWarPlugin.manager.InventoryManager.getMatchModifierFromItem
+import org.beobma.classWarPlugin.manager.InventoryManager.toggleMatchModifier
+import org.beobma.classWarPlugin.manager.InventoryManager.clearMatchModeSelection
 import org.beobma.classWarPlugin.manager.InventoryManager.openTrainingClassListInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassBalanceListInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassBalanceDetailInventory
@@ -80,13 +83,24 @@ class OnInventoryClickEvent : Listener {
         if (PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_GAME_MODE_INVENTORY)) {
             event.isCancelled = true
             if (event.rawSlot !in 0 until inventory.topInventory.size) return
-            val matchMode = event.currentItem?.let(::getMatchModeFromItem) ?: return
+            val clicked = event.currentItem ?: return
+            val modifier = getMatchModifierFromItem(clicked)
+            if (modifier != null) {
+                if (!player.isOp) {
+                    player.sendMessage(miniMessage.deserialize("<red><bold>[!] 이 명령어는 관리자만 사용할 수 있습니다."))
+                    return
+                }
+                player.toggleMatchModifier(modifier)
+                return
+            }
+            val matchMode = getMatchModeFromItem(clicked) ?: return
             PlayerTagManager.removeFlag(player, PlayerFlag.OPEN_GAME_MODE_INVENTORY)
             player.closeInventory()
             if (!player.isOp) {
                 player.sendMessage(miniMessage.deserialize("<red><bold>[!] 이 명령어는 관리자만 사용할 수 있습니다."))
                 return
             }
+            clearMatchModeSelection(player)
             val error = startNewGame(matchMode)
             if (error != null) {
                 player.sendMessage(miniMessage.deserialize("<red><bold>[!] $error"))
@@ -150,6 +164,16 @@ class OnInventoryClickEvent : Listener {
                 return
             }
             if (!player.isOp) return
+            if (category == ConfigCategory.SCATTER && event.rawSlot == 23) {
+                GameSettings.setFixedSpawn(player.location)
+                player.openConfigCategoryInventory(category)
+                return
+            }
+            if (category == ConfigCategory.SCATTER && event.rawSlot == 25) {
+                GameSettings.setMapCenter(player.location)
+                player.openConfigCategoryInventory(category)
+                return
+            }
             if (category == ConfigCategory.GAME && event.rawSlot == 17) {
                 player.openStartingItemsInventory()
                 return
@@ -294,6 +318,7 @@ class OnInventoryClickEvent : Listener {
             10 -> GameSetting.SCATTER_MINIMUM_RADIUS
             13 -> GameSetting.SCATTER_MAXIMUM_RADIUS
             16 -> GameSetting.MINIMUM_PLAYER_DISTANCE
+            21 -> GameSetting.FIXED_SPAWN_ENABLED
             else -> null
         }
 
@@ -315,6 +340,7 @@ class OnInventoryClickEvent : Listener {
 
         ConfigCategory.COMBAT -> when (inventorySlot) {
             10 -> GameSetting.PLAYER_LIST_VISIBLE
+            11 -> GameSetting.LOCATOR_BAR_ENABLED
             12 -> GameSetting.DEATH_MESSAGES_ENABLED
             14 -> GameSetting.DEATH_MESSAGES_SHOW_KILLER
             16 -> GameSetting.DEATH_MESSAGES_SHOW_CAUSE

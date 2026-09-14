@@ -8,6 +8,7 @@ import org.bukkit.entity.LivingEntity
 import org.bukkit.potion.PotionEffectType
 
 class Stealth : StatusAbnormality() {
+    override val isHarmful: Boolean = false
     override val name: String
         get() = Keyword.Stealth.string
     override val description: List<String>

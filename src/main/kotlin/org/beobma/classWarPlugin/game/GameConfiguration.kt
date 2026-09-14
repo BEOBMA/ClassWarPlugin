@@ -4,6 +4,7 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.bukkit.configuration.file.FileConfiguration
+import org.bukkit.Location
 import org.bukkit.inventory.ItemStack
 import java.util.Locale
 
@@ -50,9 +51,11 @@ enum class GameSetting {
     COOLDOWN_FLOW_MULTIPLIER,
     SCATTER_MINIMUM_RADIUS,
     SCATTER_MAXIMUM_RADIUS,
+    FIXED_SPAWN_ENABLED,
     BORDER_ENABLED,
     DAMAGE_INDICATORS_ENABLED,
     PLAYER_LIST_VISIBLE,
+    LOCATOR_BAR_ENABLED,
     DEATH_MESSAGES_ENABLED,
     DEATH_MESSAGES_SHOW_KILLER,
     DEATH_MESSAGES_SHOW_CAUSE,
@@ -86,16 +89,28 @@ private object GameConfigPath {
     const val COOLDOWN_FLOW_MULTIPLIER = "skills.cooldown-flow-multiplier"
     const val DAMAGE_INDICATORS_ENABLED = "combat.damage-indicators.enabled"
     const val PLAYER_LIST_VISIBLE = "display.player-list-visible"
+    const val LOCATOR_BAR_ENABLED = "display.locator-bar-enabled"
     const val DEATH_MESSAGES_ENABLED = "combat.death-messages.enabled"
     const val DEATH_MESSAGES_SHOW_KILLER = "combat.death-messages.show-killer"
     const val DEATH_MESSAGES_SHOW_CAUSE = "combat.death-messages.show-cause"
     const val PLAYER_LIVES = "combat.player-lives"
     const val ELIMINATION_REWARDS_ENABLED = "combat.elimination-rewards.enabled"
+    const val TEAM_PLAYERS_PER_TEAM = "modes.team.players-per-team"
+    const val COOPERATIVE_PLAYERS_PER_GROUP = "modes.cooperative.players-per-group"
+    const val COOPERATIVE_RANDOM_ROLES = "modes.cooperative.random-role-assignment"
+    const val COOPERATIVE_FIXED_ROLES = "modes.cooperative.fixed-roles"
     const val CENTER_X = "map.center-x"
     const val CENTER_Z = "map.center-z"
     const val SCATTER_MINIMUM_RADIUS = "scatter.minimum-radius"
     const val SCATTER_MAXIMUM_RADIUS = "scatter.maximum-radius"
     const val MINIMUM_PLAYER_DISTANCE = "scatter.minimum-player-distance"
+    const val FIXED_SPAWN_ENABLED = "scatter.fixed-spawn.enabled"
+    const val FIXED_SPAWN_WORLD = "scatter.fixed-spawn.world"
+    const val FIXED_SPAWN_X = "scatter.fixed-spawn.x"
+    const val FIXED_SPAWN_Y = "scatter.fixed-spawn.y"
+    const val FIXED_SPAWN_Z = "scatter.fixed-spawn.z"
+    const val FIXED_SPAWN_YAW = "scatter.fixed-spawn.yaw"
+    const val FIXED_SPAWN_PITCH = "scatter.fixed-spawn.pitch"
     const val BORDER_ENABLED = "border.enabled"
     const val BORDER_INITIAL_SIZE = "border.initial-size"
     const val BORDER_CENTER_MINIMUM_DISTANCE = "border.random-center.minimum-distance"
@@ -162,11 +177,19 @@ data class GameConfiguration(
     val cooldownFlowMultiplier: Double = 1.0,
     val damageIndicatorsEnabled: Boolean = true,
     val playerListVisible: Boolean = false,
+    val locatorBarEnabled: Boolean = false,
     val deathMessagesEnabled: Boolean = true,
     val deathMessagesShowKiller: Boolean = true,
     val deathMessagesShowCause: Boolean = true,
     val playerLives: Int = 1,
     val eliminationRewardsEnabled: Boolean = false,
+    val teamPlayersPerTeam: Int = 2,
+    val cooperativePlayersPerGroup: Int = 2,
+    val cooperativeRandomRoles: Boolean = true,
+    val cooperativeFixedRoles: List<CooperativeRole> = listOf(
+        CooperativeRole.MOVEMENT_COMBAT,
+        CooperativeRole.HOTBAR_SKILLS,
+    ),
     val damageMultipliers: Map<DamageMultiplierType, Double> = defaultDamageMultipliers,
     val rankWeights: Map<Rank, Int> = defaultRankWeights,
     val centerX: Double = 704.5,
@@ -174,6 +197,13 @@ data class GameConfiguration(
     val scatterMinRadius: Double = 45.0,
     val scatterMaxRadius: Double = 140.0,
     val minimumPlayerDistance: Double = 24.0,
+    val fixedSpawnEnabled: Boolean = false,
+    val fixedSpawnWorld: String = "",
+    val fixedSpawnX: Double = 0.0,
+    val fixedSpawnY: Double = 64.0,
+    val fixedSpawnZ: Double = 0.0,
+    val fixedSpawnYaw: Float = 0.0f,
+    val fixedSpawnPitch: Float = 0.0f,
     val borderEnabled: Boolean = true,
     val borderInitialSize: Double = 320.0,
     val borderCenterMinimumDistance: Double = 0.0,
@@ -243,6 +273,7 @@ object GameSettings {
                 defaults.damageIndicatorsEnabled,
             ),
             playerListVisible = config.getBoolean(GameConfigPath.PLAYER_LIST_VISIBLE, defaults.playerListVisible),
+            locatorBarEnabled = config.getBoolean(GameConfigPath.LOCATOR_BAR_ENABLED, defaults.locatorBarEnabled),
             deathMessagesEnabled = config.getBoolean(
                 GameConfigPath.DEATH_MESSAGES_ENABLED,
                 defaults.deathMessagesEnabled,
@@ -260,6 +291,21 @@ object GameSettings {
                 GameConfigPath.ELIMINATION_REWARDS_ENABLED,
                 defaults.eliminationRewardsEnabled,
             ),
+            teamPlayersPerTeam = config.getInt(
+                GameConfigPath.TEAM_PLAYERS_PER_TEAM,
+                defaults.teamPlayersPerTeam,
+            ),
+            cooperativePlayersPerGroup = config.getInt(
+                GameConfigPath.COOPERATIVE_PLAYERS_PER_GROUP,
+                defaults.cooperativePlayersPerGroup,
+            ),
+            cooperativeRandomRoles = config.getBoolean(
+                GameConfigPath.COOPERATIVE_RANDOM_ROLES,
+                defaults.cooperativeRandomRoles,
+            ),
+            cooperativeFixedRoles = config.getStringList(GameConfigPath.COOPERATIVE_FIXED_ROLES)
+                .mapNotNull(CooperativeRole::fromConfig)
+                .ifEmpty { defaults.cooperativeFixedRoles },
             damageMultipliers = DamageMultiplierType.entries.associateWith { type ->
                 config.getDouble(
                     GameConfigPath.damageMultiplier(type),
@@ -277,6 +323,14 @@ object GameSettings {
                 GameConfigPath.MINIMUM_PLAYER_DISTANCE,
                 defaults.minimumPlayerDistance,
             ),
+            fixedSpawnEnabled = config.getBoolean(GameConfigPath.FIXED_SPAWN_ENABLED, defaults.fixedSpawnEnabled),
+            fixedSpawnWorld = config.getString(GameConfigPath.FIXED_SPAWN_WORLD, defaults.fixedSpawnWorld)
+                ?: defaults.fixedSpawnWorld,
+            fixedSpawnX = config.getDouble(GameConfigPath.FIXED_SPAWN_X, defaults.fixedSpawnX),
+            fixedSpawnY = config.getDouble(GameConfigPath.FIXED_SPAWN_Y, defaults.fixedSpawnY),
+            fixedSpawnZ = config.getDouble(GameConfigPath.FIXED_SPAWN_Z, defaults.fixedSpawnZ),
+            fixedSpawnYaw = config.getDouble(GameConfigPath.FIXED_SPAWN_YAW, defaults.fixedSpawnYaw.toDouble()).toFloat(),
+            fixedSpawnPitch = config.getDouble(GameConfigPath.FIXED_SPAWN_PITCH, defaults.fixedSpawnPitch.toDouble()).toFloat(),
             borderEnabled = config.getBoolean(GameConfigPath.BORDER_ENABLED, defaults.borderEnabled),
             borderInitialSize = config.getDouble(GameConfigPath.BORDER_INITIAL_SIZE, defaults.borderInitialSize),
             borderCenterMinimumDistance = config.getDouble(
@@ -337,6 +391,28 @@ object GameSettings {
         save()
     }
 
+    /** 관리자가 서 있는 정확한 위치와 시선 방향을 공용 고정 스폰으로 저장한다. */
+    fun setFixedSpawn(location: Location) {
+        current = current.copy(
+            fixedSpawnWorld = location.world.name,
+            fixedSpawnX = location.x,
+            fixedSpawnY = location.y,
+            fixedSpawnZ = location.z,
+            fixedSpawnYaw = location.yaw,
+            fixedSpawnPitch = location.pitch,
+        ).normalized()
+        save()
+    }
+
+    /** 관리자가 서 있는 위치의 X/Z를 이후 경기의 기본 맵 중앙으로 저장한다. */
+    fun setMapCenter(location: Location) {
+        current = current.copy(
+            centerX = location.x,
+            centerZ = location.z,
+        ).normalized()
+        save()
+    }
+
     /**
      * [setting]을 정의된 한 단계와 [multiplier]의 곱만큼 변경하고 저장한다.
      * 불리언 항목은 [increase]와 관계없이 한 번 전환된다.
@@ -366,6 +442,7 @@ object GameSettings {
                 damageIndicatorsEnabled = !current.damageIndicatorsEnabled,
             )
             GameSetting.PLAYER_LIST_VISIBLE -> current.copy(playerListVisible = !current.playerListVisible)
+            GameSetting.LOCATOR_BAR_ENABLED -> current.copy(locatorBarEnabled = !current.locatorBarEnabled)
             GameSetting.DEATH_MESSAGES_ENABLED -> current.copy(deathMessagesEnabled = !current.deathMessagesEnabled)
             GameSetting.DEATH_MESSAGES_SHOW_KILLER -> current.copy(
                 deathMessagesShowKiller = !current.deathMessagesShowKiller,
@@ -373,6 +450,7 @@ object GameSettings {
             GameSetting.DEATH_MESSAGES_SHOW_CAUSE -> current.copy(
                 deathMessagesShowCause = !current.deathMessagesShowCause,
             )
+            GameSetting.FIXED_SPAWN_ENABLED -> current.copy(fixedSpawnEnabled = !current.fixedSpawnEnabled)
             GameSetting.PLAYER_LIVES -> current.copy(
                 playerLives = current.playerLives + direction * GameConfigStep.PLAYER_LIVES,
             )
@@ -455,6 +533,9 @@ object GameSettings {
             refreshChances = refreshChances.coerceIn(GameConfigLimit.REFRESH_CHANCES),
             countdownSeconds = countdownSeconds.coerceIn(GameConfigLimit.COUNTDOWN_SECONDS),
             playerLives = playerLives.coerceAtLeast(0),
+            teamPlayersPerTeam = teamPlayersPerTeam.coerceAtLeast(2),
+            cooperativePlayersPerGroup = cooperativePlayersPerGroup.coerceAtLeast(2),
+            cooperativeFixedRoles = cooperativeFixedRoles.ifEmpty { defaults.cooperativeFixedRoles },
             cooldownFlowMultiplier = oneDecimal(
                 cooldownFlowMultiplier.finiteOr(defaults.cooldownFlowMultiplier).coerceIn(
                     GameConfigLimit.MINIMUM_COOLDOWN_FLOW_MULTIPLIER,
@@ -466,6 +547,11 @@ object GameSettings {
             scatterMinRadius = scatterMinRadius.finiteOr(defaults.scatterMinRadius).coerceAtLeast(0.0),
             scatterMaxRadius = scatterMaxRadius.finiteOr(defaults.scatterMaxRadius).coerceAtLeast(0.0),
             minimumPlayerDistance = minimumPlayerDistance.finiteOr(defaults.minimumPlayerDistance).coerceAtLeast(0.0),
+            fixedSpawnX = fixedSpawnX.finiteOr(defaults.fixedSpawnX),
+            fixedSpawnY = fixedSpawnY.finiteOr(defaults.fixedSpawnY),
+            fixedSpawnZ = fixedSpawnZ.finiteOr(defaults.fixedSpawnZ),
+            fixedSpawnYaw = fixedSpawnYaw.takeIf(Float::isFinite) ?: defaults.fixedSpawnYaw,
+            fixedSpawnPitch = fixedSpawnPitch.takeIf(Float::isFinite) ?: defaults.fixedSpawnPitch,
             borderInitialSize = borderInitialSize.finiteOr(defaults.borderInitialSize).coerceAtLeast(0.0),
             borderCenterMinimumDistance = borderCenterMinimumDistance
                 .finiteOr(defaults.borderCenterMinimumDistance)
@@ -527,11 +613,16 @@ object GameSettings {
         put(GameConfigPath.COOLDOWN_FLOW_MULTIPLIER, oneDecimal(cooldownFlowMultiplier))
         put(GameConfigPath.DAMAGE_INDICATORS_ENABLED, damageIndicatorsEnabled)
         put(GameConfigPath.PLAYER_LIST_VISIBLE, playerListVisible)
+        put(GameConfigPath.LOCATOR_BAR_ENABLED, locatorBarEnabled)
         put(GameConfigPath.DEATH_MESSAGES_ENABLED, deathMessagesEnabled)
         put(GameConfigPath.DEATH_MESSAGES_SHOW_KILLER, deathMessagesShowKiller)
         put(GameConfigPath.DEATH_MESSAGES_SHOW_CAUSE, deathMessagesShowCause)
         put(GameConfigPath.PLAYER_LIVES, playerLives)
         put(GameConfigPath.ELIMINATION_REWARDS_ENABLED, eliminationRewardsEnabled)
+        put(GameConfigPath.TEAM_PLAYERS_PER_TEAM, teamPlayersPerTeam)
+        put(GameConfigPath.COOPERATIVE_PLAYERS_PER_GROUP, cooperativePlayersPerGroup)
+        put(GameConfigPath.COOPERATIVE_RANDOM_ROLES, cooperativeRandomRoles)
+        put(GameConfigPath.COOPERATIVE_FIXED_ROLES, cooperativeFixedRoles.map { it.configName })
         DamageMultiplierType.entries.forEach { type ->
             put(GameConfigPath.damageMultiplier(type), oneDecimal(damageMultipliers.getValue(type)))
         }
@@ -543,6 +634,13 @@ object GameSettings {
         put(GameConfigPath.SCATTER_MINIMUM_RADIUS, scatterMinRadius)
         put(GameConfigPath.SCATTER_MAXIMUM_RADIUS, scatterMaxRadius)
         put(GameConfigPath.MINIMUM_PLAYER_DISTANCE, minimumPlayerDistance)
+        put(GameConfigPath.FIXED_SPAWN_ENABLED, fixedSpawnEnabled)
+        put(GameConfigPath.FIXED_SPAWN_WORLD, fixedSpawnWorld)
+        put(GameConfigPath.FIXED_SPAWN_X, fixedSpawnX)
+        put(GameConfigPath.FIXED_SPAWN_Y, fixedSpawnY)
+        put(GameConfigPath.FIXED_SPAWN_Z, fixedSpawnZ)
+        put(GameConfigPath.FIXED_SPAWN_YAW, fixedSpawnYaw)
+        put(GameConfigPath.FIXED_SPAWN_PITCH, fixedSpawnPitch)
         put(GameConfigPath.BORDER_ENABLED, borderEnabled)
         put(GameConfigPath.BORDER_INITIAL_SIZE, borderInitialSize)
         put(GameConfigPath.BORDER_CENTER_MINIMUM_DISTANCE, borderCenterMinimumDistance)

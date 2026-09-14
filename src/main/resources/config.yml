@@ -13,6 +13,20 @@ skills:
   # 2.0이면 모든 스킬의 재사용 대기시간이 2배 빠르게 흘러 실제 대기시간이 절반이 됩니다.
   cooldown-flow-multiplier: 1.0
 
+# 경기 시작 화면에서 아래 규칙들을 토글로 조합합니다.
+modes:
+  team:
+    # 팀 모드의 팀당 인원입니다. 전체 참가자가 이 수로 정확히 나뉘어야 시작됩니다.
+    players-per-team: 2
+  cooperative:
+    # 공동 모드의 조당 인원입니다. 팀+공동에서는 한 팀 안에서 조를 만듭니다.
+    players-per-group: 2
+    # true이면 매 경기 역할 순서를 섞고, false이면 fixed-roles 순서를 반복합니다.
+    random-role-assignment: true
+    fixed-roles:
+      - movement-combat
+      - hotbar-skills
+
 # 모든 값은 현재 클래스 수치를 기준으로 한 배율입니다. 개별 클래스 항목은 첫 실행 때 자동 생성됩니다.
 class-balance:
   defaults:
@@ -48,6 +62,8 @@ rank-chances:
 display:
   # false이면 관전 모드에서 플레이어 선택 및 관전에 문제가 생길 수 있습니다.
   player-list-visible: false
+  # 경기 중 화면의 로케이터 바에 플레이어 위치를 표시합니다.
+  locator-bar-enabled: false
 
 combat:
   # 참가자마다 주어지는 추가 목숨입니다. 0이면 첫 사망에 바로 탈락합니다.
@@ -93,6 +109,15 @@ scatter:
   minimum-radius: 45.0
   maximum-radius: 140.0
   minimum-player-distance: 24.0
+  # 활성화하면 산개 대신 모든 참가자를 아래 한 좌표에 스폰합니다.
+  fixed-spawn:
+    enabled: false
+    world: ""
+    x: 0.0
+    y: 64.0
+    z: 0.0
+    yaw: 0.0
+    pitch: 0.0
 
 border:
   enabled: true

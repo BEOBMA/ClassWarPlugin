@@ -3,6 +3,7 @@ package org.beobma.classWarPlugin.status.list
 import org.beobma.classWarPlugin.status.handler.AttackSpeedHandler
 
 open class AttackSpeedIncrease : AttackSpeedHandler() {
+    override val isHarmful: Boolean = false
     override val name: String
         get() = "<green><bold>공격 속도 증가<gray>"
     override val description: List<String>

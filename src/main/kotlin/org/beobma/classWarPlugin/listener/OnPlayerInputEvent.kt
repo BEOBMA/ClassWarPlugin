@@ -11,6 +11,7 @@ import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerInputEvent
+import org.beobma.classWarPlugin.game.CooperativeAction
 
 class OnPlayerInputEvent : Listener {
     @EventHandler
@@ -20,6 +21,7 @@ class OnPlayerInputEvent : Listener {
         val playerData = findGameForPlayer(player)?.playerDatas?.filterIsInstance<PlayerData>()
             ?.find { it.uniqueId == player.uniqueId } ?: return
         if (!playerData.canDispatchClassHandlers()) return
+        if (!playerData.initGame.canPerform(playerData.uniqueId, CooperativeAction.MOVE)) return
         AbilityTree.handlers(playerData.gameClasses, MovementInputHandler::class.java)
             .forEach { bound -> bound.call { it.onPlayerInput(event) } }
         playerData.statusAbnormalitys.toList()

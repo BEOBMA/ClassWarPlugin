@@ -19,6 +19,14 @@ import org.bukkit.entity.Entity
  * 인스턴스를 사용하기 전에 [inject]로 대상과 효과 출처를 연결해야 한다.
  */
 abstract class StatusAbnormality {
+    /** true인 효과는 팀전에서 아군에게 부여되지 않는다. */
+    open val isHarmful: Boolean get() = !isClassMechanic
+    internal var applicationBlocked: Boolean = false
+        private set
+
+    internal fun blockApplication() {
+        applicationBlocked = true
+    }
     protected lateinit var entityData: EntityData
     protected lateinit var casterData: PlayerData
     protected val entity: Entity get() = entityData.entity
@@ -76,6 +84,7 @@ abstract class StatusAbnormality {
 
     /** 현재 세기에 [amount]를 더하고 [maxPower]가 있으면 상한을 적용한다. */
     open fun increasePower(amount: Int) {
+        if (applicationBlocked) return
         val maxPower = maxPower
         power += amount
         if (maxPower != null && power > maxPower) {
@@ -86,6 +95,7 @@ abstract class StatusAbnormality {
 
     /** 현재 세기를 [amount]로 교체하고 [maxPower]가 있으면 상한을 적용한다. */
     open fun updatePower(amount: Int) {
+        if (applicationBlocked) return
         val maxPower = maxPower
         power = amount
         if (maxPower != null && power > maxPower) {
@@ -96,33 +106,39 @@ abstract class StatusAbnormality {
 
     /** 현재 세기에서 [amount]를 빼며 결과를 `0` 이상으로 제한한다. */
     open fun decreasePower(amount: Int) {
+        if (applicationBlocked) return
         power = (power - amount).coerceAtLeast(0)
         onPowerChanged()
     }
 
     open fun increaseMaxPower(amount: Int) {
+        if (applicationBlocked) return
         maxPower = (maxPower ?: 0) + amount
     }
 
     open fun decreaseMaxPower(amount: Int) {
+        if (applicationBlocked) return
         val current = (maxPower ?: 0) - amount
         maxPower = current.coerceAtLeast(0)
     }
 
     /** 지속시간에 [amount]초를 더한다. 무기한 상태는 `0`초를 기준으로 전환된다. */
     open fun increaseDuration(amount: Int) {
+        if (applicationBlocked) return
         duration = (duration ?: 0) + amount
         onDurationChanged()
     }
 
     /** 지속시간을 [amount]초로 교체한다. `null`은 시간 제한 없음을 뜻한다. */
     open fun updateDuration(amount: Int?) {
+        if (applicationBlocked) return
         duration = amount
         onDurationChanged()
     }
 
     /** 지속시간에서 [amount]초를 빼며 결과를 `0` 이상으로 제한한다. */
     open fun decreaseDuration(amount: Int) {
+        if (applicationBlocked) return
         val current = (duration ?: 0) - amount
         duration = current.coerceAtLeast(0)
         onDurationChanged()
@@ -130,6 +146,7 @@ abstract class StatusAbnormality {
 
     /** 상태를 명시적으로 해제하고 제거 콜백 및 액션바 갱신을 수행한다. */
     open fun remove() {
+        if (applicationBlocked) return
         stopDurationTicking()
         if (canRemove) {
             entityData.statusAbnormalitys.remove(this@StatusAbnormality)
@@ -143,6 +160,7 @@ abstract class StatusAbnormality {
 
     /** 시간 제한을 제거하고 [predicate]가 참인 동안 상태를 유지한다. */
     fun setContinueWhileIf(predicate: () -> Boolean) {
+        if (applicationBlocked) return
         this.continueWhile = predicate
         updateDuration(null)
     }

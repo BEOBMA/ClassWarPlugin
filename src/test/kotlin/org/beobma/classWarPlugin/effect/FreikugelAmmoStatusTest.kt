@@ -6,6 +6,19 @@ import org.beobma.classWarPlugin.status.list.RevolverBulletStatus
 import kotlin.test.*
 
 class FreikugelAmmoStatusTest {
+    @Test fun `six chambers show remaining bullets and staged reload`() {
+        val normal = RevolverBulletStatus()
+        normal.synchronize(2, 0)
+        assertTrue(normal.actionBarText().contains("●●"))
+        assertTrue(normal.actionBarText().contains("○○○○"))
+        normal.synchronize(0, 40)
+        assertTrue(normal.actionBarText().contains("탄피 배출"))
+        normal.synchronize(0, 20)
+        assertTrue(normal.actionBarText().contains("탄환 삽입"))
+        assertTrue(normal.actionBarText().contains("●●●"))
+        normal.synchronize(0, 6)
+        assertTrue(normal.actionBarText().contains("실린더 잠금"))
+    }
     @Test fun `normal and cursed ammunition use separate keyword states including empty state`() {
         val normal = RevolverBulletStatus()
         val cursed = FreikugelBulletStatus()

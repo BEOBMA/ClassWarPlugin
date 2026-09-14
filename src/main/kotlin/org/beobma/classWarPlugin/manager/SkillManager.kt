@@ -14,6 +14,7 @@ import org.beobma.classWarPlugin.status.list.Silence
 import org.beobma.classWarPlugin.status.list.Stun
 import org.beobma.classWarPlugin.status.list.Enchantment
 import org.beobma.classWarPlugin.status.list.Fix
+import org.beobma.classWarPlugin.game.CooperativeAction
 import org.beobma.classWarPlugin.skill.MovementSkill
 import org.beobma.classWarPlugin.util.TargetType
 import org.beobma.classWarPlugin.util.HitboxUtil
@@ -62,6 +63,10 @@ object SkillManager {
         val playerData = this as? PlayerData ?: return false
         if (skill.abilityScope.playerData !== playerData || skill.abilityScope.isClosed ||
             skill.abilityScope.suspended || entityStatus.isDead || game.isPaused) return false
+        if (!game.canPerform(playerData.uniqueId, CooperativeAction.USE_SKILL)) {
+            playerData.player.sendMiniMessage("<red><bold>[!] 공동 역할상 스킬을 사용할 수 없습니다.")
+            return false
+        }
         if (!entityStatus.canSkillUse) {
             playerData.player.sendMiniMessage("<red><bold>[!] 현재 스킬을 사용할 수 없는 상태입니다.")
             return false

@@ -12,6 +12,7 @@ import org.beobma.classWarPlugin.manager.PlayerTagManager
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerSwapHandItemsEvent
+import org.beobma.classWarPlugin.game.CooperativeAction
 
 class OnPlayerSwapHandItemsEvent : Listener {
     @EventHandler(ignoreCancelled = true)
@@ -21,6 +22,10 @@ class OnPlayerSwapHandItemsEvent : Listener {
         val playerData = findGameForPlayer(player)?.playerDatas?.filterIsInstance<PlayerData>()
             ?.find { it.uniqueId == player.uniqueId } ?: return
         if (!playerData.canDispatchClassHandlers()) return
+        if (!playerData.initGame.canPerform(playerData.uniqueId, CooperativeAction.BASIC_ATTACK)) {
+            event.isCancelled = true
+            return
+        }
         val heldItem = player.inventory.itemInMainHand
         val taggedClassId = getWeaponClassId(heldItem)
         AbilityTree.nodes(playerData.gameClasses, activeOnly = true)

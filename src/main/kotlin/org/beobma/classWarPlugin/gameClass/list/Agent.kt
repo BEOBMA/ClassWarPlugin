@@ -473,15 +473,15 @@ class Agent : GameClass(), GameStatusHandler, OnHitHandler, WhenHitHandler, Conf
             "<gray>적에게 기본 공격 3회 적중 시 혹은 10초마다 자신의 무기가 무작위로 변형된다.",
             "<gray>무기별 효과는 아래와 같다.",
             "",
-            "<gray>  - {keyword:AgentHatchet}: 적중 시 약하게 밀어낸다. 우클릭하면 도약하여 내려찍고 2의 피해를 입힌다.",
-            "<gray>  - {keyword:AgentStiletto}: 방어력 20%를 무시한다. 배후 공격 시 피해 1을 추가한다.",
-            "<gray>  - {keyword:AgentBastard}: 사거리가 10% 증가한다. 같은 적에게 연속 적중할 때마다 피해 0.5를 추가한다.",
-            "<gray>  - {keyword:AgentRapier}: 피해가 25% 감소하고 공격 속도가 크게 증가한다.",
-            "<gray>  - {keyword:AgentHammer}: 강하게 밀어내고 잠시 기절시킨다. {keyword:Shield}에 두 배의 피해를 입힌다.",
-            "<gray>  - {keyword:AgentGreatsword}: 공격 속도가 감소한다. 적중 시 전방을 휩쓸어 적에게 피해를 입힌다.",
-            "<gray>  - {keyword:AgentLance}: 이동 속도가 20% 증가한다. 달린 거리에 비례하여 추가 피해를 입힌다.",
-            "<gray>  - {keyword:AgentWhip}: 사거리가 300% 증가한다. 적중 시 적을 약하게 끌어당긴다.",
-            "<gray>  - {keyword:AgentScythe}: 사거리가 50% 감소한다. 적을 관통하여 이동하고 체력이 10% 미만이면 {keyword:Execution}한다."
+            "<gray>  - ${Keyword.AgentHatchet.string}: 적중 시 약하게 밀어낸다. 우클릭하면 도약하여 내려찍고 2의 피해를 입힌다.",
+            "<gray>  - ${Keyword.AgentStiletto.string}: 방어력 20%를 무시한다. 배후 공격 시 피해 1을 추가한다.",
+            "<gray>  - ${Keyword.AgentBastard.string}: 사거리가 10% 증가한다. 같은 적에게 연속 적중할 때마다 피해 0.5를 추가한다.",
+            "<gray>  - ${Keyword.AgentRapier.string}: 피해가 25% 감소하고 공격 속도가 크게 증가한다.",
+            "<gray>  - ${Keyword.AgentHammer.string}: 강하게 밀어내고 잠시 기절시킨다. {keyword:Shield}에 두 배의 피해를 입힌다.",
+            "<gray>  - ${Keyword.AgentGreatsword.string}: 공격 속도가 감소한다. 적중 시 전방을 휩쓸어 적에게 피해를 입힌다.",
+            "<gray>  - ${Keyword.AgentLance.string}: 이동 속도가 20% 증가한다. 달린 거리에 비례하여 추가 피해를 입힌다.",
+            "<gray>  - ${Keyword.AgentWhip.string}: 사거리가 300% 증가한다. 적중 시 적을 약하게 끌어당긴다.",
+            "<gray>  - ${Keyword.AgentScythe.string}: 사거리가 50% 감소한다. 적을 관통하여 이동하고 체력이 10% 미만이면 {keyword:Execution}한다."
         )
     }
 

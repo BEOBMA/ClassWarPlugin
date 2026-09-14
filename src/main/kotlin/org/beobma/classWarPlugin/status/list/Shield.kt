@@ -4,6 +4,7 @@ import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.status.StatusAbnormality
 
 class Shield : StatusAbnormality() {
+    override val isHarmful: Boolean = false
     override val name: String
         get() = Keyword.Shield.string
     override val description: List<String>

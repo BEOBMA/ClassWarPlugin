@@ -5,6 +5,7 @@ import org.beobma.classWarPlugin.ability.AbilityExecution
 
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
+import org.beobma.classWarPlugin.game.CooperativeAction
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.list.Parasite
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
@@ -25,7 +26,7 @@ import java.util.UUID
  * 실제 체력 차감과 방어력 계산은 이 객체 밖에서 수행된다.
  */
 object DamageManager {
-    private const val BASIC_ATTACK_DAMAGE_MULTIPLIER = 0.6
+    internal const val BASIC_ATTACK_DAMAGE_MULTIPLIER = 0.6
 
     /** 최근 피해를 사망 원인과 공격자에게 연결하기 위한 짧은 수명의 기록이다. */
     data class Attribution(
@@ -59,7 +60,8 @@ object DamageManager {
         val targetStatus = context.target.entityStatus
         val canDamage = when {
             context.path.isBasicAttack ->
-                attackerStatus.canAttack && !context.attacker.hasStatus<Disarm>() && targetStatus.isAttackable
+                context.attacker.game.canPerform(context.attacker.uniqueId, CooperativeAction.BASIC_ATTACK) &&
+                    attackerStatus.canAttack && !context.attacker.hasStatus<Disarm>() && targetStatus.isAttackable
             context.path == DamagePath.SKILL -> attackerStatus.canSkillUse && targetStatus.isSkillTargeting
             else -> targetStatus.isSkillTargeting
         }
