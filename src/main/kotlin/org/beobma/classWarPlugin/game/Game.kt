@@ -36,14 +36,24 @@ class Game(
     val disconnectTasks: MutableMap<UUID, BukkitTask> = mutableMapOf(),
     val battleInitializedPlayers: MutableSet<UUID> = mutableSetOf(),
     val tailTargets: MutableMap<UUID, UUID> = mutableMapOf(),
+    /** 모든 참가자의 승패·아군 판정 단위. 개인전도 각자 서로 다른 팀 번호를 가진다. */
+    val combatTeams: MutableMap<UUID, Int> = mutableMapOf(),
+    /** 공동 모드에서 조작을 공유하는 더 작은 조 단위다. */
+    val cooperativeGroups: MutableMap<UUID, Int> = mutableMapOf(),
+    val cooperativeRoles: MutableMap<UUID, CooperativeRole> = mutableMapOf(),
+    /** 꼬리잡기에서 각 전투 팀이 추적할 상대 팀이다. */
+    val tailTargetTeams: MutableMap<Int, Int> = mutableMapOf(),
     val playerSnapshots: MutableMap<UUID, PlayerSnapshot> = mutableMapOf(),
     var borderBossBar: BossBar? = null,
     var originalBorderCenter: Location? = null,
     var originalBorderSize: Double? = null,
     var originalWorldTime: Long? = null,
     var originalDaylightCycle: Boolean? = null,
+    var originalLocatorBar: Boolean? = null,
     val tickSource: () -> Long = { org.bukkit.Bukkit.getCurrentTick().toLong() },
     val finalBorderDisplays: MutableList<BlockDisplay> = mutableListOf(),
+    /** 테스트 경기에서는 참가 인원 제한과 자동 승리 종료를 적용하지 않는다. */
+    val testMode: Boolean = false,
 ) {
     private val combatClock = GameClock(tickSource)
     val combatTick: Long get() = combatClock.now()
@@ -63,10 +73,42 @@ class Game(
     fun threatOf(playerId: UUID): UUID? =
         tailTargets.entries.firstOrNull { (_, targetId) -> targetId == playerId }?.key
 
+    fun teamOf(playerId: UUID): Int? = combatTeams[playerId]
+
+    fun areAllies(firstId: UUID, secondId: UUID): Boolean {
+        if (firstId == secondId) return true
+        val firstTeam = combatTeams[firstId] ?: return false
+        return firstTeam == combatTeams[secondId]
+    }
+
+    fun cooperativeRoleOf(playerId: UUID): CooperativeRole? = cooperativeRoles[playerId]
+
+    fun canPerform(playerId: UUID, action: CooperativeAction): Boolean {
+        if (!mode.usesCooperativeRules || phase != GamePhase.RUNNING) return true
+        val role = cooperativeRoles[playerId] ?: return false
+        return when (action) {
+            CooperativeAction.MOVE -> role.canMove
+            CooperativeAction.BASIC_ATTACK -> role.canBasicAttack
+            CooperativeAction.CHANGE_HOTBAR -> role.canChangeHotbar
+            CooperativeAction.USE_SKILL -> role.canUseSkills
+        }
+    }
+
     /**
      * 현재 모드 규칙에 따라 두 참가자의 적대 관계를 판정한다.
      * 일반 모드에서는 자기 자신을 제외한 모두, 꼬리잡기에서는 현재 지정 표적만 적이다.
      */
-    fun areEnemies(attackerId: UUID, targetId: UUID): Boolean =
-        if (mode.usesTailTagRules) tailTargets[attackerId] == targetId else attackerId != targetId
+    fun areEnemies(attackerId: UUID, targetId: UUID): Boolean {
+        if (attackerId == targetId || areAllies(attackerId, targetId)) return false
+        if (!mode.usesTailTagRules) return true
+        val attackerTeam = teamOf(attackerId) ?: return false
+        return tailTargetTeams[attackerTeam] == teamOf(targetId)
+    }
+}
+
+enum class CooperativeAction {
+    MOVE,
+    BASIC_ATTACK,
+    CHANGE_HOTBAR,
+    USE_SKILL,
 }

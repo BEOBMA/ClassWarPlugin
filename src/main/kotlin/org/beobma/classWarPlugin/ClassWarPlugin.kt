@@ -24,6 +24,7 @@ import org.beobma.classWarPlugin.listener.OnAsyncChatEvent
 import org.beobma.classWarPlugin.listener.OnProjectileHitEvent
 import org.beobma.classWarPlugin.listener.OnEntityShootBowEvent
 import org.beobma.classWarPlugin.listener.OnBattleMapEvent
+import org.beobma.classWarPlugin.listener.OnPlayerItemHeldEvent
 import org.beobma.classWarPlugin.game.GameSettings
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager
 import org.beobma.classWarPlugin.manager.DamageIndicatorManager
@@ -154,6 +155,7 @@ class ClassWarPlugin : JavaPlugin() {
         server.pluginManager.registerEvents(OnProjectileHitEvent(), this)
         server.pluginManager.registerEvents(OnEntityShootBowEvent(), this)
         server.pluginManager.registerEvents(OnBattleMapEvent(), this)
+        server.pluginManager.registerEvents(OnPlayerItemHeldEvent(), this)
     }
 
     private fun startStatusActionBarTask() {

@@ -3,6 +3,8 @@ package org.beobma.classWarPlugin.command
 import net.kyori.adventure.text.minimessage.MiniMessage
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.game.GameSettings
+import org.beobma.classWarPlugin.game.MatchMode
+import org.beobma.classWarPlugin.game.MatchModifier
 import org.beobma.classWarPlugin.info.Info.game
 import org.beobma.classWarPlugin.info.Info.isGaming
 import org.beobma.classWarPlugin.keyword.Keyword
@@ -44,6 +46,7 @@ class Command : Listener, CommandExecutor, TabCompleter {
         when (args[0].lowercase(Locale.ROOT)) {
             "update" -> return handleUpdate(sender)
             "reload" -> return handleReload(sender)
+            "test" -> return handleTest(sender, args)
             "assign", "give", "능력배정" -> return handleAssign(sender, args)
             "remove", "take", "능력제거" -> return handleRemove(sender, args)
             "abilities", "ability", "능력" -> return handleAbilities(sender, args)
@@ -188,6 +191,54 @@ class Command : Listener, CommandExecutor, TabCompleter {
         return true
     }
 
+    private fun handleTest(sender: CommandSender, args: Array<String>): Boolean {
+        if (!testCommandsEnabled()) {
+            sender.sendWarningMessage("'test'는 알 수 없는 명령어입니다.")
+            return true
+        }
+        if (!requireOperator(sender)) return true
+        return when (args.getOrNull(1)?.lowercase(Locale.ROOT)) {
+            "start" -> {
+                val modifiers = mutableSetOf<MatchModifier>()
+                for (token in args.drop(2)) {
+                    val modifier = testModifier(token) ?: run {
+                        sender.sendWarningMessage("알 수 없는 모드 옵션 '$token'입니다. 사용 가능: dual, tail, team, cooperative")
+                        return true
+                    }
+                    modifiers += modifier
+                }
+                val error = GameManager.startNewGame(MatchMode(modifiers), testMode = true)
+                if (error == null) sender.sendInfoMessage("자동 승리 종료와 인원 제한을 해제한 테스트 게임을 시작했습니다.")
+                else sender.sendWarningMessage(error)
+                true
+            }
+            "stop" -> {
+                val currentGame = game
+                if (currentGame == null) sender.sendWarningMessage("진행중인 게임이 없습니다.")
+                else {
+                    currentGame.stop()
+                    sender.sendInfoMessage("게임을 강제 종료했습니다.")
+                }
+                true
+            }
+            else -> {
+                sender.sendWarningMessage("사용법: /cw test <start [dual] [tail] [team] [cooperative]|stop>")
+                true
+            }
+        }
+    }
+
+    private fun testCommandsEnabled(): Boolean =
+        ClassWarPlugin.instance.config.getBoolean("internal.testing.commands-enabled", false)
+
+    private fun testModifier(value: String): MatchModifier? = when (value.lowercase(Locale.ROOT)) {
+        "dual" -> MatchModifier.DUAL
+        "tail", "tail-tag" -> MatchModifier.TAIL_TAG
+        "team" -> MatchModifier.TEAM
+        "cooperative", "coop" -> MatchModifier.COOPERATIVE
+        else -> null
+    }
+
     private fun handleUpdate(sender: CommandSender): Boolean {
         if (!requireOperator(sender)) return true
         sender.sendInfoMessage("GitHub에서 최신 릴리스를 확인하고 있습니다...")
@@ -230,7 +281,10 @@ class Command : Listener, CommandExecutor, TabCompleter {
             "<yellow>/cw config <gray>- 게임 설정 창을 엽니다.",
             "<yellow>/cw reload <gray>- 설정 파일을 다시 불러옵니다.",
             "<yellow>/cw update <gray>- GitHub 최신 배포를 즉시 확인합니다.",
-        )
+        ) + if (sender.isOp && testCommandsEnabled()) listOf(
+            "<dark_gray>/cw test start [모드 옵션...] <gray>- 제한 없이 테스트 게임을 시작합니다.",
+            "<dark_gray>/cw test stop <gray>- 게임을 즉시 강제 종료합니다.",
+        ) else emptyList()
         lines.forEach { sender.sendMessage(miniMessage.deserialize(it)) }
     }
 
@@ -242,7 +296,8 @@ class Command : Listener, CommandExecutor, TabCompleter {
     ): List<String> {
         if (!command.name.equals("classwar", ignoreCase = true)) return emptyList()
         val playerCommands = listOf("help", "classlist", "training", "exit", "abilities", "keyword", "target")
-        val adminCommands = listOf("start", "stop", "config", "assign", "remove", "reload", "update")
+        val adminCommands = listOf("start", "stop", "config", "assign", "remove", "reload", "update") +
+            if (testCommandsEnabled()) listOf("test") else emptyList()
         return when (args.size) {
             1 -> (playerCommands + if (sender.isOp) adminCommands else emptyList())
                 .filter { it.startsWith(args[0], ignoreCase = true) }
@@ -251,6 +306,7 @@ class Command : Listener, CommandExecutor, TabCompleter {
                 "assign", "give", "remove", "take" -> Bukkit.getOnlinePlayers().map(Player::getName)
                 "abilities", "ability" -> if (sender.isOp) Bukkit.getOnlinePlayers().map(Player::getName) else emptyList()
                 "keyword", "keywords", "키워드" -> Keyword.describedEntries.map(Keyword::displayName)
+                "test" -> if (sender.isOp && testCommandsEnabled()) listOf("start", "stop") else emptyList()
                 else -> emptyList()
             }.filter { it.startsWith(args[1], ignoreCase = true) }
             3 -> when (args[0].lowercase(Locale.ROOT)) {
@@ -259,10 +315,28 @@ class Command : Listener, CommandExecutor, TabCompleter {
                     val target = Bukkit.getPlayerExact(args[1])
                     listOf("all", "1", "2") + (target?.let(::assignedAbilityNames) ?: emptyList())
                 }
+                "test" -> if (args[1].equals("start", ignoreCase = true) && sender.isOp && testCommandsEnabled()) {
+                    listOf("dual", "tail", "team", "cooperative")
+                } else emptyList()
                 else -> emptyList()
             }.filter { it.startsWith(args[2], ignoreCase = true) }
             4 -> if (args[0].equals("assign", ignoreCase = true) || args[0].equals("give", ignoreCase = true)) {
                 listOf("1", "2").filter { it.startsWith(args[3]) }
+            } else if (args[0].equals("test", ignoreCase = true) &&
+                args[1].equals("start", ignoreCase = true) && sender.isOp && testCommandsEnabled()
+            ) {
+                val used = args.slice(2 until args.lastIndex).map(String::lowercase)
+                listOf("dual", "tail", "team", "cooperative")
+                    .filterNot { it in used }
+                    .filter { it.startsWith(args.last(), ignoreCase = true) }
+            } else emptyList()
+            in 5..6 -> if (args[0].equals("test", ignoreCase = true) &&
+                args[1].equals("start", ignoreCase = true) && sender.isOp && testCommandsEnabled()
+            ) {
+                val used = args.slice(2 until args.lastIndex).map(String::lowercase)
+                listOf("dual", "tail", "team", "cooperative")
+                    .filterNot { it in used }
+                    .filter { it.startsWith(args.last(), ignoreCase = true) }
             } else emptyList()
             else -> emptyList()
         }

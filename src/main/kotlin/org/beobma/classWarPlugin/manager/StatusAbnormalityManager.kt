@@ -43,6 +43,7 @@ object StatusAbnormalityManager {
      * @param powerSet 현재 세기를 교체할 값. [powerDelta]보다 먼저 적용된다.
      */
     fun StatusAbnormality.applyStatus(duration: Int? = null, powerDelta: Int? = null, powerSet: Int? = null) {
+        if (applicationBlocked) return
         val caster = balanceCasterData()
         val shouldBalance = !isClassMechanic
         val balancedPowerSet = powerSet?.let {
@@ -83,6 +84,10 @@ object StatusAbnormalityManager {
     /** [status]에 대상과 효과 출처를 주입한 뒤 목록에 추가한다. 중복은 허용한다. */
     fun EntityData.addStatus(status: StatusAbnormality, victimData: PlayerData): StatusAbnormality {
         status.inject(this, victimData)
+        if (this is PlayerData && this !== victimData && game.areAllies(uniqueId, victimData.uniqueId) && status.isHarmful) {
+            status.blockApplication()
+            return status
+        }
         statusAbnormalitys.add(status)
         if (this === victimData) status.effectSource?.let(status::retain)
         return status
@@ -90,6 +95,10 @@ object StatusAbnormalityManager {
 
     /** 기존 [T]를 재사용하거나 [creator]로 생성해 주입·등록한다. */
     inline fun <reified T : StatusAbnormality> EntityData.getOrCreateStatus(victimData: PlayerData, creator: () -> T): T {
+        if (this is PlayerData && this !== victimData && game.areAllies(uniqueId, victimData.uniqueId)) {
+            val candidate = creator()
+            if (candidate.isHarmful) return addStatus(candidate, victimData) as T
+        }
         val existing = statusAbnormalitys.firstOrNull { it is T } as? T
         if (existing != null) {
             if (this === victimData) AbilityExecution.current?.let(existing::retain)

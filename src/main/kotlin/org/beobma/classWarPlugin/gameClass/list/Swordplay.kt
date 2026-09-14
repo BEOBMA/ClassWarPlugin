@@ -48,7 +48,8 @@ private const val SWORDPLAY_INFINITE_COOLDOWN_SECONDS = 60
 private const val SWORDPLAY_SWORD_DAMAGE = 1.0
 private const val SWORDPLAY_BLOSSOM_DAMAGE = 4.0
 
-class Swordplay : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.gameClass.handler.GameEndHandler {
+class Swordplay : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.gameClass.handler.GameEndHandler,
+    org.beobma.classWarPlugin.gameClass.handler.ConfirmedHitHandler {
     override fun onGameEnd() = resetSwordState()
     override val classId = "swordplay"
     override val name = "<gray>이기어검"
@@ -62,6 +63,13 @@ class Swordplay : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.game
 
     private val baseSwords = mutableListOf<FlyingSword>()
     private val passiveHitCounts = mutableMapOf<UUID, Int>()
+    private val recentBasicAttack = org.beobma.classWarPlugin.gameClass.mechanics.RecentBasicAttack()
+
+    override fun onConfirmedHit(context: org.beobma.classWarPlugin.damage.DamageContext) {
+        if (context.path == DamagePath.BASIC_ATTACK && !context.secondaryAttack && context.target !== playerData) {
+            recentBasicAttack.record(game.combatTick)
+        }
+    }
     private var passiveTask: BukkitTask? = null
     private var passiveTick = 0
     private var blossomActive = false
@@ -114,7 +122,7 @@ class Swordplay : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.game
                 }
 
                 if (!blossomActive) {
-                    val enemies = nearbyEnemies(PASSIVE_TARGET_RADIUS)
+                    val enemies = if (recentBasicAttack.isActive(game.combatTick)) nearbyEnemies(PASSIVE_TARGET_RADIUS) else emptyList()
                     baseSwords.toList().forEachIndexed { index, sword ->
                         if (!sword.display.isValid) return@forEachIndexed
                         tickBaseSword(sword, index, enemies)
@@ -127,6 +135,9 @@ class Swordplay : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.game
 
     private fun tickBaseSword(sword: FlyingSword, index: Int, enemies: List<EntityData>) {
         if (sword.attackCooldownTicks > 0) sword.attackCooldownTicks--
+        if (!recentBasicAttack.isActive(game.combatTick) && sword.target != null) {
+            releaseSwordFromTarget(sword, BASE_REACQUIRE_DELAY_TICKS)
+        }
         if (sword.target != null && !isValidTarget(sword.target, PASSIVE_TARGET_LEASH)) {
             releaseSwordFromTarget(sword, BASE_REACQUIRE_DELAY_TICKS)
         }
@@ -772,6 +783,7 @@ class Swordplay : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.game
     }
 
     private fun resetSwordState() {
+        recentBasicAttack.reset()
         passiveTask?.cancel()
         passiveTask = null
         baseSwords.forEach { it.display.remove() }
@@ -791,6 +803,7 @@ class Swordplay : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.game
             "<gray>검은 사선의 구형 궤도로 공전하며, 자신 주위 6칸 내에 적이 접근하면 가속하여 공격한다.",
             "<gray>적은 어검술로 소환된 검에 3번 피격될 때마다 1의 피해를 입는다.",
             "<gray>타격한 검은 대상을 꿰뚫고 돌아오는 ∞ 궤도로 가속하며 계속 타격한다.",
+            "<gray>적에게 기본 공격으로 피해를 입힌지 3초가 지나면 검은 적이 근접해도 타격하지 않는다.",
         )
     }
 

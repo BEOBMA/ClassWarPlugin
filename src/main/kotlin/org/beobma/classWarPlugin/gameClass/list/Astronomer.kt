@@ -69,6 +69,7 @@ class Astronomer : GameClass(), GameStatusHandler {
         mana.increasePower(5)
     }
 
+    // 끌어당겨질 때, 중앙에 고정되는 수준이 아니라 달리기와 같이 이동 속도가 좀 더 높으면 느리더라도 빠져나올 수 있는 수준으로 수정
     private class RedSkill : Skill() {
         override val definitionId = "astronomer/red-skill"
         override val name = "<bold>별의 죽음"
@@ -149,6 +150,7 @@ class Astronomer : GameClass(), GameStatusHandler {
     }
 
     private class BlackHole : Flooring() {
+        private val nextDamageTick = mutableMapOf<java.util.UUID, Long>()
         override lateinit var location: Location
         override var radius: Double = 5.0
         override var targetType: TargetType = TargetType.Enemy
@@ -189,8 +191,13 @@ class Astronomer : GameClass(), GameStatusHandler {
 
         override fun onFlooringEntityHit(hitEntityData: EntityData, location: Location) {
             val hitEntity = hitEntityData.entity
-            val dir = location.clone().subtract(hitEntity.location).toVector().normalize().multiply(0.1)
-            hitEntity.velocity = dir
+            hitEntity.velocity = org.beobma.classWarPlugin.gameClass.mechanics.BlackHolePull.apply(
+                hitEntity.velocity, location.toVector().subtract(hitEntity.boundingBox.center),
+            )
+            // Pull continuously, but damage/drain once per second for each target, including new entrants.
+            val now = playerData.initGame.combatTick
+            if (now < (nextDamageTick[hitEntity.uniqueId] ?: Long.MIN_VALUE)) return
+            nextDamageTick[hitEntity.uniqueId] = now + 20L
             hitEntityData.damage(ASTRONOMER_STAR_DAMAGE, DamageType.Normal, playerData, false)
             val victimMana = (hitEntityData as? PlayerData)?.getOrCreateStatus(playerData) { Mana() }
             if (victimMana != null && victimMana.power > 0) {

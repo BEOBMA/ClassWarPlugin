@@ -158,6 +158,13 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
         }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))
         sounds.play(player, Sound.ENTITY_FIREWORK_ROCKET_BLAST, volume = 1.4f, pitch = 0.65f)
         target?.damage(SNIPER_RIFLE_DAMAGE, DamageType.Normal, playerData, damagePath = DamagePath.RANGED_ATTACK)
+        // Trace from the original aim first: recoil affects the following shot, not this one.
+        val aim = player.location
+        player.setRotation(aim.yaw + Random.nextDouble(-2.5, 2.5).toFloat(), (aim.pitch - 23f).coerceAtLeast(-90f))
+        val muzzle = start.clone().add(shotDirection.clone().multiply(0.8))
+        particles.spawn(muzzle, Particle.FLAME, count = 7, spread = 0.1, speed = 0.04)
+        particles.spawn(muzzle, Particle.CLOUD, count = 9, spread = 0.18, speed = 0.08)
+        sounds.playTo(player, Sound.ENTITY_IRON_GOLEM_ATTACK, volume = 0.55f, pitch = 0.65f)
     }
 
     private fun reload() {
@@ -194,6 +201,7 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
         }.runTaskTimer(ClassWarPlugin.instance, 1L, 1L))
     }
 
+    // 저격총 반동(매우 강함) 추가
     private class Weapon : BaseWeapon() {
         override val name = "<gray>저격총"
         override val description = listOf(

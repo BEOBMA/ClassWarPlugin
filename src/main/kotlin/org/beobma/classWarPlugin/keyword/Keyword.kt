@@ -6,6 +6,8 @@ enum class Keyword(
     /** 간략 설명에서도 조작법·발동 조건 등 플레이에 필수적인 해설을 표시한다. */
     val showDescriptionInBrief: Boolean = false,
 ) {
+    Writing("<gold><bold>작문</bold><gray>",
+        "{keyword:Writing}: 제시된 한 줄을 채팅으로 그대로 작성한다. 정답마다 기본 공격 피해 +0.1, 받는 피해 -1%. 오답마다 기본 공격 피해 -0.2, 받는 피해 +2%를 누적한다.", true),
     Caduceus("<gold><bold>카두세우스</bold><gray>",
         "{keyword:Caduceus}: 기본 공격 3회 적중 또는 10초마다 9종 중 다른 무기로 변형한다. 손도끼의 우클릭으로 도약 강타를 사용한다.", true),
     Directive("<yellow><bold>지령</bold><gray>",

@@ -4,6 +4,7 @@ import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.status.StatusAbnormality
 
 class Invincibility : StatusAbnormality() {
+    override val isHarmful: Boolean = false
     override val name = Keyword.Invincibility.string
     override val description = listOf(Keyword.Invincibility.description ?: "")
     override val canRemove = true

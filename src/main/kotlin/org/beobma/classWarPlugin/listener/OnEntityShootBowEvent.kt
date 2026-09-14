@@ -5,14 +5,19 @@ import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityShootBowEvent
+import org.beobma.classWarPlugin.game.CooperativeAction
 
 class OnEntityShootBowEvent : Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     fun onShoot(event: EntityShootBowEvent) {
-        Uranus.handleBowShot(event)
         val shooter = event.entity as? org.bukkit.entity.Player
         val data = shooter?.let { org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer(it) }
             ?.playerDatas?.filterIsInstance<org.beobma.classWarPlugin.entity.player.PlayerData>()?.firstOrNull { it.player == shooter }
+        if (data != null && !data.initGame.canPerform(data.uniqueId, CooperativeAction.BASIC_ATTACK)) {
+            event.isCancelled = true
+            return
+        }
+        Uranus.handleBowShot(event)
         if (data != null) {
             val start = event.projectile.location
             val velocity = event.projectile.velocity

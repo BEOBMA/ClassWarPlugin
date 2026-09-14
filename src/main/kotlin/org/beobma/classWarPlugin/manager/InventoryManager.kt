@@ -10,6 +10,7 @@ import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.game.DamageMultiplierType
 import org.beobma.classWarPlugin.game.GameSettings
 import org.beobma.classWarPlugin.game.MatchMode
+import org.beobma.classWarPlugin.game.MatchModifier
 import org.beobma.classWarPlugin.game.damageMultiplier
 import org.beobma.classWarPlugin.manager.GameClassManager.toItemStack
 import org.beobma.classWarPlugin.manager.GameManager.gameClassList
@@ -89,6 +90,9 @@ object InventoryManager {
         get() = NamespacedKey(ClassWarPlugin.instance, "class-id")
     private val matchModeKey: NamespacedKey
         get() = NamespacedKey(ClassWarPlugin.instance, "match-mode")
+    private val matchModifierKey: NamespacedKey
+        get() = NamespacedKey(ClassWarPlugin.instance, "match-modifier")
+    private val selectedModes = mutableMapOf<java.util.UUID, MatchMode>()
     private val nextPage = ItemStack(Material.ARROW, 1).apply {
         itemMeta = itemMeta.apply {
             displayName(miniMessage.deserialize("<gray>다음 페이지"))
@@ -358,6 +362,30 @@ object InventoryManager {
                 inventory.setItem(10, createSettingItem(Material.COMPASS, "최소 산개 반경", settings.scatterMinRadius, "블록"))
                 inventory.setItem(13, createSettingItem(Material.RECOVERY_COMPASS, "최대 산개 반경", settings.scatterMaxRadius, "블록"))
                 inventory.setItem(16, createSettingItem(Material.PLAYER_HEAD, "플레이어 최소 간격", settings.minimumPlayerDistance, "블록"))
+                inventory.setItem(21, createToggleItem(
+                    "고정 좌표에 전원 스폰",
+                    settings.fixedSpawnEnabled,
+                    listOf("<gray>활성화하면 산개하지 않고 모든 플레이어가", "<gray>저장된 한 좌표에서 함께 시작합니다."),
+                ))
+                val locationText = if (settings.fixedSpawnWorld.isBlank()) {
+                    "<red>아직 저장된 좌표가 없습니다."
+                } else {
+                    "<gray>${settings.fixedSpawnWorld}: <white>${"%.1f".format(settings.fixedSpawnX)}, ${"%.1f".format(settings.fixedSpawnY)}, ${"%.1f".format(settings.fixedSpawnZ)}"
+                }
+                inventory.setItem(23, createDescriptionItem(
+                    Material.LODESTONE,
+                    "<yellow><bold>현재 위치를 고정 스폰으로 저장",
+                    listOf(locationText, "", "<green>클릭하면 현재 위치와 바라보는 방향을 저장합니다."),
+                ))
+                inventory.setItem(25, createDescriptionItem(
+                    Material.MAP,
+                    "<yellow><bold>현재 위치를 맵 중앙으로 저장",
+                    listOf(
+                        "<gray>현재 중앙: <white>${"%.1f".format(settings.centerX)}, ${"%.1f".format(settings.centerZ)}",
+                        "",
+                        "<green>클릭하면 현재 위치의 X/Z를 맵 중앙으로 저장합니다.",
+                    ),
+                ))
             }
 
             ConfigCategory.BORDER -> {
@@ -390,6 +418,11 @@ object InventoryManager {
                     "처치 보상",
                     settings.eliminationRewardsEnabled,
                     listOf("<gray>BREAK: 최대 체력의 35% 회복", "<gray>TERMINATE: 최대 체력의 50% 회복"),
+                ))
+                inventory.setItem(11, createToggleItem(
+                    "로케이터 바 표시",
+                    settings.locatorBarEnabled,
+                    listOf("<gray>경기 중 화면의 로케이터 바에 플레이어 위치를 표시합니다."),
                 ))
             }
 
@@ -457,7 +490,7 @@ object InventoryManager {
         val startIndex = safePage * CLASS_BALANCE_PAGE_SIZE
         val endIndex = minOf(startIndex + CLASS_BALANCE_PAGE_SIZE, classes.size)
         for (index in startIndex until endIndex) {
-            inventory.setItem(index - startIndex, createClassItem(classes[index], this))
+            inventory.setItem(index - startIndex, createClassBalanceListItem(classes[index], this))
         }
         inventory.setItem(45, createDescriptionItem(Material.ARROW, "<yellow><bold>카테고리로 돌아가기", emptyList()))
         if (safePage > 0) {
@@ -466,7 +499,14 @@ object InventoryManager {
         if (safePage < totalPages - 1) {
             inventory.setItem(50, createDescriptionItem(Material.ARROW, "<yellow><bold>다음 페이지", emptyList()))
         }
+        val disabledCount = classes.count { !ClassBalanceManager.isEnabled(it) }
+        inventory.setItem(53, createDescriptionItem(
+            if (disabledCount == 0) Material.LIME_DYE else Material.REDSTONE_TORCH,
+            "<red><bold>등장하지 않는 클래스 목록",
+            listOf("<gray>현재 비활성화: <red><bold>${disabledCount}개", "", "<yellow>클릭하여 한 번에 확인합니다."),
+        ))
 
+        PlayerTagManager.removeFlag(this, PlayerFlag.OPEN_DISABLED_CLASS_LIST)
         PlayerTagManager.removeValue(this, PlayerTagValue.CLASS_BALANCE_PAGE)
         PlayerTagManager.removeValue(this, PlayerTagValue.CLASS_BALANCE_CLASS)
         PlayerTagManager.setValue(this, PlayerTagValue.CLASS_BALANCE_PAGE, safePage)
@@ -494,6 +534,11 @@ object InventoryManager {
             inventory.setItem(slot, createClassBalanceSettingItem(material, field, modifiers))
         }
         inventory.setItem(18, createDescriptionItem(Material.ARROW, "<yellow><bold>클래스 목록으로 돌아가기", emptyList()))
+        inventory.setItem(20, createToggleItem(
+            "게임 무작위 등장",
+            ClassBalanceManager.isEnabled(gameClass),
+            listOf("<gray>비활성화하면 일반 및 테스트 경기의", "<gray>무작위 클래스 배정에서 제외됩니다."),
+        ))
         inventory.setItem(22, createDescriptionItem(
             Material.BARRIER,
             "<red><bold>이 클래스 설정 초기화",
@@ -505,8 +550,48 @@ object InventoryManager {
             PlayerTagValue.CLASS_BALANCE_CLASS,
             ClassBalanceManager.configKey(gameClass),
         )
+        PlayerTagManager.removeFlag(this, PlayerFlag.OPEN_DISABLED_CLASS_LIST)
         openConfigView(inventory, ConfigCategory.CLASS_BALANCE)
     }
+
+    /** 무작위 경기 배정에서 제외된 클래스를 모아 표시한다. */
+    fun Player.openDisabledClassListInventory(page: Int = 0) {
+        val disabled = gameClassList.filterNot(ClassBalanceManager::isEnabled)
+        val totalPages = maxOf(1, (disabled.size + CLASS_BALANCE_PAGE_SIZE - 1) / CLASS_BALANCE_PAGE_SIZE)
+        val safePage = page.coerceIn(0, totalPages - 1)
+        val inventory = Bukkit.createInventory(
+            null,
+            54,
+            miniMessage.deserialize("<dark_gray>등장하지 않는 클래스 (${safePage + 1}/$totalPages)"),
+        )
+        fillWith(inventory, Material.BLACK_STAINED_GLASS_PANE, " ")
+        val startIndex = safePage * CLASS_BALANCE_PAGE_SIZE
+        val endIndex = minOf(startIndex + CLASS_BALANCE_PAGE_SIZE, disabled.size)
+        for (index in startIndex until endIndex) {
+            inventory.setItem(index - startIndex, createClassBalanceListItem(disabled[index], this))
+        }
+        if (disabled.isEmpty()) {
+            inventory.setItem(22, createDescriptionItem(
+                Material.LIME_DYE,
+                "<green><bold>모든 클래스가 등장합니다",
+                listOf("<gray>비활성화된 클래스가 없습니다."),
+            ))
+        }
+        inventory.setItem(45, createDescriptionItem(Material.ARROW, "<yellow><bold>클래스 목록으로 돌아가기", emptyList()))
+        if (safePage > 0) {
+            inventory.setItem(48, createDescriptionItem(Material.ARROW, "<yellow><bold>이전 페이지", emptyList()))
+        }
+        if (safePage < totalPages - 1) {
+            inventory.setItem(50, createDescriptionItem(Material.ARROW, "<yellow><bold>다음 페이지", emptyList()))
+        }
+        PlayerTagManager.removeValue(this, PlayerTagValue.CLASS_BALANCE_CLASS)
+        PlayerTagManager.setValue(this, PlayerTagValue.DISABLED_CLASS_PAGE, safePage)
+        PlayerTagManager.addFlag(this, PlayerFlag.OPEN_DISABLED_CLASS_LIST)
+        openConfigView(inventory, ConfigCategory.CLASS_BALANCE)
+    }
+
+    fun getOpenDisabledClassPage(player: Player): Int =
+        PlayerTagManager.getValue(player, PlayerTagValue.DISABLED_CLASS_PAGE)?.toIntOrNull() ?: 0
 
     fun getOpenClassBalancePage(player: Player): Int =
         PlayerTagManager.getValue(player, PlayerTagValue.CLASS_BALANCE_PAGE)
@@ -530,12 +615,14 @@ object InventoryManager {
     }
 
     fun Player.openGameModeInventory() {
+        val selected = selectedModes[uniqueId] ?: MatchMode.CLASSIC
         val inventory = Bukkit.createInventory(null, 27, miniMessage.deserialize("<dark_gray>게임 모드 선택"))
         fillWith(inventory, Material.BLACK_STAINED_GLASS_PANE, " ")
-        inventory.setItem(10, createMatchModeItem(Material.IRON_SWORD, MatchMode.CLASSIC))
-        inventory.setItem(12, createMatchModeItem(Material.AMETHYST_SHARD, MatchMode.DUAL))
-        inventory.setItem(14, createMatchModeItem(Material.RECOVERY_COMPASS, MatchMode.TAIL_TAG))
-        inventory.setItem(16, createMatchModeItem(Material.ENDER_EYE, MatchMode.TAIL_TAG_DUAL))
+        inventory.setItem(10, createModeToggleItem(Material.AMETHYST_SHARD, MatchModifier.DUAL, selected))
+        inventory.setItem(12, createModeToggleItem(Material.RECOVERY_COMPASS, MatchModifier.TAIL_TAG, selected))
+        inventory.setItem(14, createModeToggleItem(Material.SHIELD, MatchModifier.TEAM, selected))
+        inventory.setItem(16, createModeToggleItem(Material.CHAINMAIL_CHESTPLATE, MatchModifier.COOPERATIVE, selected))
+        inventory.setItem(22, createMatchModeItem(Material.LIME_CONCRETE, selected))
         listOf(
             PlayerFlag.OPEN_GAME_MODE_INVENTORY,
             PlayerFlag.OPEN_CONFIG_INVENTORY,
@@ -554,9 +641,24 @@ object InventoryManager {
     }
 
     fun getMatchModeFromItem(item: ItemStack): MatchMode? {
-        val modeName = item.itemMeta.persistentDataContainer
+        val serialized = item.itemMeta.persistentDataContainer
             .get(matchModeKey, PersistentDataType.STRING) ?: return null
-        return MatchMode.entries.find { it.name == modeName }
+        return MatchMode.deserialize(serialized)
+    }
+
+    fun getMatchModifierFromItem(item: ItemStack): MatchModifier? {
+        val name = item.itemMeta.persistentDataContainer
+            .get(matchModifierKey, PersistentDataType.STRING) ?: return null
+        return MatchModifier.entries.firstOrNull { it.name == name }
+    }
+
+    fun Player.toggleMatchModifier(modifier: MatchModifier) {
+        selectedModes[uniqueId] = (selectedModes[uniqueId] ?: MatchMode.CLASSIC).toggled(modifier)
+        openGameModeInventory()
+    }
+
+    fun clearMatchModeSelection(player: Player) {
+        selectedModes.remove(player.uniqueId)
     }
 
     fun getOpenConfigCategory(player: Player): ConfigCategory? =
@@ -642,13 +744,35 @@ object InventoryManager {
     private fun createMatchModeItem(material: Material, mode: MatchMode): ItemStack =
         createDescriptionItem(
             material,
-            mode.displayName,
-            listOf(mode.description, "", "<green>클릭하여 이 모드로 게임을 시작합니다."),
+            "<green><bold>이 조합으로 시작",
+            listOf(
+                mode.description,
+                "",
+                "<gray>선택: ${mode.displayName}",
+                "<green>클릭하여 게임을 시작합니다.",
+            ),
         ).apply {
             itemMeta = itemMeta.apply {
-                persistentDataContainer.set(matchModeKey, PersistentDataType.STRING, mode.name)
+                persistentDataContainer.set(matchModeKey, PersistentDataType.STRING, mode.serialize())
             }
         }
+
+    private fun createModeToggleItem(material: Material, modifier: MatchModifier, mode: MatchMode): ItemStack {
+        val enabled = modifier in mode.modifiers
+        return createDescriptionItem(
+            material,
+            if (enabled) "<green><bold>[켜짐] ${modifier.displayName}" else "<red><bold>[꺼짐] ${modifier.displayName}",
+            listOf(
+                "<gray>${modifier.description}",
+                "",
+                if (enabled) "<yellow>클릭하여 끕니다." else "<yellow>클릭하여 켭니다.",
+            ),
+        ).apply {
+            itemMeta = itemMeta.apply {
+                persistentDataContainer.set(matchModifierKey, PersistentDataType.STRING, modifier.name)
+            }
+        }
+    }
 
     fun skillDyeMaterial(index: Int): Material = when (index) {
         0 -> Material.RED_DYE
@@ -747,6 +871,21 @@ object InventoryManager {
         }
         return createMultiplierSettingItem(material, name, modifiers.value(field), extraLines)
     }
+
+    private fun createClassBalanceListItem(gameClass: GameClass, viewer: Player): ItemStack =
+        createClassItem(gameClass, viewer).apply {
+            itemMeta = itemMeta.apply {
+                val status = if (ClassBalanceManager.isEnabled(gameClass)) {
+                    "<green><bold>게임 등장 활성화"
+                } else {
+                    "<red><bold>게임 등장 비활성화"
+                }
+                lore((lore() ?: emptyList()) + listOf(
+                    ItemDescriptionManager.renderLoreLine(""),
+                    ItemDescriptionManager.renderLoreLine(status),
+                ))
+            }
+        }
 
     private fun createToggleItem(name: String, enabled: Boolean, extraLines: List<String> = emptyList()): ItemStack =
         ItemStack(if (enabled) Material.LIME_DYE else Material.GRAY_DYE).apply {

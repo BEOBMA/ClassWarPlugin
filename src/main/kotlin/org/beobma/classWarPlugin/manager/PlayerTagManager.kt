@@ -18,6 +18,7 @@ enum class PlayerFlag(internal val serializedName: String) {
     OPEN_TRAINING_CLASS_LIST_INVENTORY("openTrainingClassListInventory"),
     OPEN_CLASS_STATUS_INVENTORY("openClassStatusInventory"),
     OPENING_CLASS_STATUS_INVENTORY("openingClassStatusInventory"),
+    OPEN_DISABLED_CLASS_LIST("openDisabledClassList"),
 }
 
 /** 접두사 뒤에 하나의 값을 저장하는 플레이어 태그 키다. */
@@ -27,6 +28,7 @@ enum class PlayerTagValue(internal val prefix: String) {
     CLASS_STATUS_RETURN("classStatusReturn:"),
     CLASS_BALANCE_PAGE("classBalancePage:"),
     CLASS_BALANCE_CLASS("classBalanceClass:"),
+    DISABLED_CLASS_PAGE("disabledClassPage:"),
 }
 
 /**

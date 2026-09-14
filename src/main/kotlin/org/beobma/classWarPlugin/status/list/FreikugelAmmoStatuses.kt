@@ -25,14 +25,20 @@ abstract class FreikugelAmmoStatus(keyword: Keyword, maximum: Int) : StatusAbnor
 
     override fun actionBarText(): String {
         if (reloadTicks > 0) {
+            val frame = org.beobma.classWarPlugin.gameClass.mechanics.RevolverReloadFrame.at(reloadTicks)
             val filled = (40 - reloadTicks) / 4
             val tenths = (reloadTicks + 1) / 2
-            return "$name: <yellow>재장전</yellow> <gold>${"▰".repeat(filled)}</gold>" +
+            val cylinder = if (maxPower == 6) chamberText(frame.loadedChambers) + " <gray>${frame.label}</gray> " else ""
+            return "$name: $cylinder<yellow>재장전</yellow> <gold>${"▰".repeat(filled)}</gold>" +
                 "<dark_gray>${"▱".repeat(10 - filled)}</dark_gray> <yellow>${tenths / 10}.${tenths % 10}초</yellow>"
         }
         val color = if (power > 0) "gold" else "dark_gray"
-        return "$name: <$color>$power</$color><dark_gray>/</dark_gray><gray>$maxPower</gray>"
+        val cylinder = if (maxPower == 6) chamberText(power) + " " else ""
+        return "$name: $cylinder<$color>$power</$color><dark_gray>/</dark_gray><gray>$maxPower</gray>"
     }
+
+    private fun chamberText(loaded: Int): String = "<gray>⟦</gray><gold>${"●".repeat(loaded.coerceIn(0, 6))}</gold>" +
+        "<dark_gray>${"○".repeat(6 - loaded.coerceIn(0, 6))}</dark_gray><gray>⟧</gray>"
 }
 
 class RevolverBulletStatus : FreikugelAmmoStatus(Keyword.Bullet, 6)

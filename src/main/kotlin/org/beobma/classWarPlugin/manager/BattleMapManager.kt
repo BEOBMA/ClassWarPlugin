@@ -180,10 +180,14 @@ object BattleMapManager {
                     Component.text("내 위치"),
                 )
             )
+            val viewerData = game.playerDatas.filterIsInstance<PlayerData>()
+                .firstOrNull { it.uniqueId == player.uniqueId }
             game.playerDatas.asSequence().filterIsInstance<PlayerData>()
                 .filter { target ->
                     target.uniqueId != player.uniqueId && target.player.isOnline && !target.entityStatus.isDead &&
-                        target.player.world == mapView.world && target.gameClasses.any { it is TrainCarriage }
+                        target.player.world == mapView.world &&
+                        (viewerData?.let { game.areAllies(it.uniqueId, target.uniqueId) } == true ||
+                            target.gameClasses.any { it is TrainCarriage })
                 }
                 .forEach { target ->
                     val targetX = ((target.player.location.x - mapView.centerX) * 2.0 / blocksPerPixel).roundToInt()
@@ -196,11 +200,17 @@ object BattleMapManager {
                         targetDirection,
                         if (targetOutside) MapCursor.Type.PLAYER_OFF_MAP else MapCursor.Type.PLAYER,
                         true,
-                        Component.text("기차화통: ${target.player.name}"),
+                        Component.text(
+                            if (viewerData?.let { game.areAllies(it.uniqueId, target.uniqueId) } == true) {
+                                "아군: ${target.player.name}"
+                            } else {
+                                "기차화통: ${target.player.name}"
+                            }
+                        ),
                     ))
                 }
             canvas.cursors = cursors
-            val reporter = game.playerDatas.filterIsInstance<PlayerData>().firstOrNull { it.uniqueId == player.uniqueId }
+            val reporter = viewerData
                 ?.let { org.beobma.classWarPlugin.ability.AbilityTree.nodes(it.gameClasses, activeOnly = true) }
                 ?.filterIsInstance<org.beobma.classWarPlugin.gameClass.list.WarCorrespondent>().orEmpty()
             reporter.flatMap { it.mapReports() }.filter { it.location.world == mapView.world }.forEach { report ->

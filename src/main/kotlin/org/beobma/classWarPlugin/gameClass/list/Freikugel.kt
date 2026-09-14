@@ -22,6 +22,7 @@ import org.bukkit.Particle
 import org.bukkit.Sound
 import org.bukkit.Color
 import org.beobma.classWarPlugin.effect.CombatVisuals
+import org.beobma.classWarPlugin.gameClass.mechanics.RevolverReloadFrame
 import org.bukkit.event.player.PlayerInteractEvent
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
@@ -62,36 +63,77 @@ class Freikugel : GameClass(), GameStatusHandler, WeaponInputHandler {
 
     private fun reloadIfEmpty() {
         syncAmmo()
+        renderCylinder()
         if (bullets > 0 || magic || reloading) return
         reloading = true
         reloadUntil = game.combatTick + 40
         syncAmmo()
         particles.spawn(player.eyeLocation, Particle.SMOKE, count = 5, spread = 0.15, speed = 0.02)
         sounds.playTo(player, Sound.ITEM_CROSSBOW_LOADING_START, volume = 0.75f, pitch = 0.8f)
-        object : AbilityRunnable(abilityScope) {
-            var frame = 0
-            override fun run() {
-                if (!reloading) { cancel(); return }
-                val muzzle = player.eyeLocation.add(player.eyeLocation.direction.multiply(0.6))
-                CombatVisuals.ring(muzzle, muzzle.direction, 0.24, if (frame == 2) CombatVisuals.VIOLET else CombatVisuals.GOLD, 12)
-                sounds.playTo(player, Sound.BLOCK_IRON_TRAPDOOR_CLOSE, volume = 0.23f, pitch = 1.3f + frame * 0.15f)
-                if (++frame >= 3) cancel()
-            }
-        }.runTaskTimer(ClassWarPlugin.instance, 8L, 10L)
+        sounds.playTo(player, Sound.BLOCK_IRON_TRAPDOOR_OPEN, volume = 0.35f, pitch = 1.7f)
         val lease = ControlLease(abilityScope, playerStatus)
         lease.allow(Control.ATTACK, false)
         lease.allow(Control.SKILL, false)
         object : AbilityRunnable(abilityScope) {
+            var previousLoaded = 0
+            var lockPlayed = false
             override fun run() {
-                if (game.combatTick < reloadUntil) { syncAmmo(); return }
+                if (game.combatTick < reloadUntil) {
+                    val frame = RevolverReloadFrame.at((reloadUntil - game.combatTick).toInt())
+                    renderCylinder(frame)
+                    if (frame.loadedChambers > previousLoaded) {
+                        sounds.playTo(player, Sound.BLOCK_TRIPWIRE_CLICK_ON, volume = 0.45f, pitch = 1.2f + frame.loadedChambers * 0.08f)
+                        previousLoaded = frame.loadedChambers
+                    }
+                    if (frame.elapsed >= 34 && !lockPlayed) {
+                        lockPlayed = true
+                        sounds.playTo(player, Sound.BLOCK_IRON_TRAPDOOR_CLOSE, volume = 0.5f, pitch = 1.4f)
+                    }
+                    syncAmmo()
+                    return
+                }
                 bullets = 6; magic = true; reloading = false; syncAmmo()
+                renderCylinder()
                 particles.spawn(player.eyeLocation, Particle.ELECTRIC_SPARK, count = 8, spread = 0.18)
                 sounds.playTo(player, Sound.ITEM_CROSSBOW_LOADING_END, volume = 0.8f, pitch = 1.2f)
                 sounds.playTo(player, Sound.BLOCK_AMETHYST_BLOCK_CHIME, volume = 0.35f, pitch = 1.7f)
                 cancel()
             }
-            override fun onCancel() { lease.close() }
+            override fun onCancel() { lease.close(); reloading = false }
         }.runTaskTimer(ClassWarPlugin.instance, 2L, 2L)
+    }
+
+    /** Six radial chambers and one violet center; the open cylinder ejects cases, then inserts each round. */
+    private fun renderCylinder(frame: RevolverReloadFrame? = null) {
+        val eye = player.eyeLocation
+        val forward = eye.direction
+        val (right, up) = CombatVisuals.plane(forward)
+        val open = frame?.let { kotlin.math.sin(Math.PI * it.elapsed / 40.0) * 0.22 } ?: 0.0
+        val center = eye.clone().add(forward.clone().multiply(0.85))
+            .add(right.clone().multiply(0.30 + open)).add(up.clone().multiply(-0.35))
+        val rotation = (frame?.elapsed?.toDouble() ?: (6 - bullets) * 5.0) * Math.PI / 30.0
+        val loaded = frame?.loadedChambers ?: bullets
+        CombatVisuals.ring(center, forward, 0.24, CombatVisuals.SILVER, 16)
+        repeat(6) { index ->
+            val angle = rotation + index * Math.PI / 3.0
+            val radial = right.clone().multiply(kotlin.math.cos(angle)).add(up.clone().multiply(kotlin.math.sin(angle)))
+            val chamber = center.clone().add(radial.clone().multiply(0.155))
+            val color = if (index < loaded) CombatVisuals.GOLD else Color.fromRGB(62, 65, 74)
+            particles.spawn(chamber, Particle.DUST, Particle.DustOptions(color, 0.65f))
+            if (frame != null && frame.elapsed < 8) {
+                val progress = frame.elapsed / 8.0
+                val casing = chamber.clone().add(radial.multiply(progress * 0.25))
+                    .subtract(forward.clone().multiply(progress * 0.2)).add(0.0, -progress * progress * 0.5, 0.0)
+                particles.spawn(casing, Particle.DUST, Particle.DustOptions(CombatVisuals.GOLD, 0.45f))
+            } else if (frame != null && frame.elapsed in 8..31 && index == loaded) {
+                val insertion = (frame.elapsed - 8) % 4 / 4.0
+                particles.spawn(chamber.clone().subtract(forward.clone().multiply((1.0 - insertion) * 0.32)),
+                    Particle.DUST, Particle.DustOptions(CombatVisuals.GOLD, 0.6f))
+            }
+        }
+        val magicReady = if (frame != null) frame.elapsed >= 34 else magic
+        particles.spawn(center, Particle.DUST,
+            Particle.DustOptions(if (magicReady) CombatVisuals.VIOLET else Color.fromRGB(45, 30, 55), 0.8f))
     }
 
     private fun shoot(amount: Double, basic: Boolean, knockback: Boolean = false, cursed: Boolean = false) {
@@ -136,7 +178,7 @@ class Freikugel : GameClass(), GameStatusHandler, WeaponInputHandler {
         nextShot = game.combatTick + 40
         val cursed = bullets == 0
         if (cursed) magic = false else bullets--
-        shoot(3.0, true, cursed = cursed)
+        if (!cursed) shoot(3.0, true)
         if (cursed) {
             particles.spawn(player, Particle.SOUL, count = 8, spread = 0.35)
             sounds.playTo(player, Sound.ENTITY_ENDERMAN_HURT, volume = 0.35f, pitch = 1.6f)
@@ -145,12 +187,13 @@ class Freikugel : GameClass(), GameStatusHandler, WeaponInputHandler {
         reloadIfEmpty()
     }
 
+    // 마탄을 소모한 공격 시, 탄환이 날아가 피해를 입히는 효과는 없고 자신만 피해를 입고 끝나야 함.
     private class Weapon : BaseWeapon() {
         override val name = "<gray>리볼버"
         override val description = listOf(
             "<gray>우클릭 시 {keyword:Bullet} 혹은 {keyword:FreikugelBullet}을 1발 소모하고 사격한다.",
-            "<gray>사격은 적중한 적에게 3의 피해를 입힌다.",
-            "<gray>{keyword:FreikugelBullet}을 소모하였다면 자신이 2의 피해를 입는다.",
+            "<gray>{keyword:Bullet} 사격은 적중한 적에게 3의 피해를 입힌다.",
+            "<gray>{keyword:FreikugelBullet}을 소모하면 탄환을 발사하지 않고 자신만 2의 피해를 입는다.",
             "<gray>이 공격은 기본 공격으로 간주한다.",
             "",
             "<dark_gray>이 효과의 재사용 대기 시간은 2초이다."
@@ -205,6 +248,7 @@ class Freikugel : GameClass(), GameStatusHandler, WeaponInputHandler {
         }
     }
 
+    // 탄약이 표시될 때, 진짜 리볼버처럼 표시되도록 연출 강화. 재장전 또한 리볼버 장전처럼 보이도록 연출 강화
     private class Passive : BasePassive() {
         override val name = "<bold>마탄환"
         override val description = listOf(

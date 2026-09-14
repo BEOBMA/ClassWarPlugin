@@ -16,6 +16,7 @@ import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.game.DamageMultiplierType
 import org.beobma.classWarPlugin.game.GamePhase
 import org.beobma.classWarPlugin.game.MatchMode
+import org.beobma.classWarPlugin.game.CooperativeRole
 import org.beobma.classWarPlugin.game.PlayerSnapshot
 import org.beobma.classWarPlugin.game.damageMultiplier
 import org.beobma.classWarPlugin.gameClass.GameClass
@@ -33,6 +34,7 @@ import org.beobma.classWarPlugin.util.PlayerNavigation
 import org.bukkit.Bukkit
 import org.bukkit.GameRules
 import org.bukkit.GameMode
+import org.bukkit.HeightMap
 import org.bukkit.Location
 import org.bukkit.Material
 import org.bukkit.Particle
@@ -85,7 +87,8 @@ object GameManager {
     private const val SPAWN_BORDER_MARGIN = 0.35
     private const val SPAWN_BORDER_FALLBACK_MAX_RADIUS = 1_024.0
     private const val SPAWN_RELAXED_MINIMUM_DISTANCE_SQUARED = 2.25
-    private const val SPAWN_COLUMN_SEARCH_DEPTH = 48
+    private const val SPAWN_SURROUNDING_SAMPLE_RADIUS = 5
+    private const val SPAWN_MAXIMUM_SURROUNDING_DROP = 8
     private const val ROUND_CENTER_SEARCH_ATTEMPTS = 128
     private const val ROUND_SPAWN_LAYOUT_ATTEMPTS = 3
     private const val ROUND_CENTER_LAND_CHECK_RADIUS = 12
@@ -136,16 +139,16 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
      *
      * @return 시작에 성공하면 `null`, 실패하면 사용자에게 표시할 사유
      */
-    fun startNewGame(mode: MatchMode): String? {
+    fun startNewGame(mode: MatchMode, testMode: Boolean = false): String? {
         if (game != null) return "이미 진행중인 게임이 있습니다."
 
-        val newGame = Game(mutableListOf(), mode = mode)
+        val newGame = Game(mutableListOf(), mode = mode, testMode = testMode)
         val participants = Bukkit.getOnlinePlayers()
             .filterNot(PlayerTagManager::isTraining)
             .map { PlayerData(it, newGame) }
-        if (participants.size <= 1) return "참가자가 2명 이상이여야 게임을 시작할 수 있습니다."
+        if (!testMode) mode.validate(newGame.settings, participants.size)?.let { return it }
         val requiredClassCount = participants.size * mode.assignedClassCount
-        if (requiredClassCount > availableClassesFor(mode).size) {
+        if (!testMode && requiredClassCount > availableClassesFor(mode).size) {
             return "사용 가능한 클래스 수보다 참가자가 많아 게임을 시작할 수 없습니다."
         }
 
@@ -157,7 +160,11 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
     /** 참가자 상태를 보관하고 클래스 선택 단계로 경기를 시작한다. */
     fun Game.start() {
         val participants = activePlayers()
-        if (participants.size * mode.assignedClassCount > availableClassesFor(mode).size) {
+        if (!testMode) mode.validate(settings, participants.size)?.let {
+            sendNotification(it)
+            return
+        }
+        if (!testMode && participants.size * mode.assignedClassCount > availableClassesFor(mode).size) {
             sendNotification("사용 가능한 클래스 수보다 참가자가 많아 게임을 시작할 수 없습니다.")
             return
         }
@@ -166,6 +173,8 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         phase = GamePhase.CLASS_SELECTION
         originalWorldTime = gameWorld.time
         originalDaylightCycle = gameWorld.getGameRuleValue(GameRules.ADVANCE_TIME)
+        originalLocatorBar = gameWorld.getGameRuleValue(GameRules.LOCATOR_BAR)
+        gameWorld.setGameRule(GameRules.LOCATOR_BAR, settings.locatorBarEnabled)
         if (settings.playerListVisible) PlayerListManager.restoreAll() else PlayerListManager.hideAll()
         NameTagManager.hideAll(participants.map { it.player.name })
         availableClasses.clear()
@@ -174,6 +183,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         refreshesRemaining.clear()
         playerKillCounts.clear()
         tailTargets.clear()
+        initializeMatchGroups(participants)
 
         participants.forEach { playerData ->
             val player = playerData.player
@@ -195,6 +205,19 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
                 drawRandomClass()?.let(assignedClasses::add)
             }
             playerData.assignGameClasses(assignedClasses)
+            val teamNumber = (teamOf(player.uniqueId) ?: 0) + 1
+            val role = cooperativeRoleOf(player.uniqueId)
+            val assignment = buildString {
+                if (mode.usesTeamRules) append("<aqua>팀 $teamNumber")
+                if (role != null) {
+                    val groupNumber = (cooperativeGroups[player.uniqueId] ?: 0) + 1
+                    append(" <dark_gray>|</dark_gray> <aqua>공동 조 $groupNumber")
+                    append(" <dark_gray>|</dark_gray> <yellow>${role.displayName}")
+                }
+            }
+            if (assignment.isNotBlank()) {
+                player.sendMessage(miniMessage.deserialize("<gray>[편성] $assignment"))
+            }
         }
 
         if (participants.any { it.gameClasses.size != mode.assignedClassCount }) {
@@ -258,7 +281,11 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
     }
 
     private fun Game.drawRandomClass(excludedTypes: Set<Class<out GameClass>> = emptySet()): GameClass? {
-        val candidates = availableClasses.filter { it.javaClass !in excludedTypes }
+        var candidates = availableClasses.filter { it.javaClass !in excludedTypes }
+        if (candidates.isEmpty() && testMode) {
+            availableClasses.addAll(availableClassesFor(mode))
+            candidates = availableClasses.filter { it.javaClass !in excludedTypes }
+        }
         if (candidates.isEmpty()) return null
 
         val weightedRanks = candidates.map { it.rank }.distinct().mapNotNull { rank ->
@@ -278,7 +305,45 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
     }
 
     private fun availableClassesFor(mode: MatchMode): List<GameClass> = AbilityCatalog.enabledClasses()
+        .filter(ClassBalanceManager::isEnabled)
         .filterNot { !mode.allowsParasite && it is Parasite }
+
+    /** 셔플된 참가자를 팀과 공동 조에 배치하고 공동 역할을 확정한다. */
+    private fun Game.initializeMatchGroups(participants: List<PlayerData>) {
+        combatTeams.clear()
+        cooperativeGroups.clear()
+        cooperativeRoles.clear()
+        val shuffled = participants.shuffled()
+        val teamSize = when {
+            mode.usesTeamRules -> settings.teamPlayersPerTeam
+            mode.usesCooperativeRules -> settings.cooperativePlayersPerGroup
+            else -> 1
+        }
+        shuffled.chunked(teamSize).forEachIndexed { teamId, members ->
+            members.forEach { combatTeams[it.uniqueId] = teamId }
+        }
+        if (!mode.usesCooperativeRules) return
+
+        var groupId = 0
+        shuffled.chunked(teamSize).forEach { teamMembers ->
+            teamMembers.chunked(settings.cooperativePlayersPerGroup).forEach { groupMembers ->
+                val configured = if (settings.cooperativeRandomRoles) {
+                    listOf(CooperativeRole.MOVEMENT_COMBAT, CooperativeRole.HOTBAR_SKILLS)
+                } else {
+                    settings.cooperativeFixedRoles.ifEmpty {
+                        listOf(CooperativeRole.MOVEMENT_COMBAT, CooperativeRole.HOTBAR_SKILLS)
+                    }
+                }
+                val roles = List(groupMembers.size) { configured[it % configured.size] }
+                    .let { if (settings.cooperativeRandomRoles) it.shuffled() else it }
+                groupMembers.zip(roles).forEach { (member, role) ->
+                    cooperativeGroups[member.uniqueId] = groupId
+                    cooperativeRoles[member.uniqueId] = role
+                }
+                groupId++
+            }
+        }
+    }
 
     private fun Game.beginCountdown() {
         phase = GamePhase.COUNTDOWN
@@ -290,29 +355,42 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
             it.entityStatus.canMove = false
         }
 
-        var foundCenter = false
-        var spawnPoints: List<Location> = emptyList()
-        for (layoutAttempt in 0 until ROUND_SPAWN_LAYOUT_ATTEMPTS) {
-            if (!selectRandomRoundCenter()) continue
-            foundCenter = true
-            val candidates = findSpawnLocations(gameWorld, participants.size)
-            if (candidates.size == participants.size) {
-                spawnPoints = candidates
-                break
+        if (settings.fixedSpawnEnabled) {
+            val fixedSpawn = resolveFixedSpawn()
+            if (fixedSpawn == null) {
+                sendNotification("고정 스폰 좌표가 없거나 경기 월드와 일치하지 않아 게임을 종료합니다.")
+                stop()
+                return
             }
+            roundCenterX = fixedSpawn.x
+            roundCenterZ = fixedSpawn.z
+            spawnLocations.clear()
+            spawnLocations.addAll(List(participants.size) { fixedSpawn.clone() })
+        } else {
+            var foundCenter = false
+            var spawnPoints: List<Location> = emptyList()
+            for (layoutAttempt in 0 until ROUND_SPAWN_LAYOUT_ATTEMPTS) {
+                if (!selectRandomRoundCenter()) continue
+                foundCenter = true
+                val candidates = findSpawnLocations(gameWorld, participants.size)
+                if (candidates.size == participants.size) {
+                    spawnPoints = candidates
+                    break
+                }
+            }
+            if (!foundCenter) {
+                sendNotification("바다가 아닌 안전한 자기장 중심을 찾지 못해 게임을 종료합니다.")
+                stop()
+                return
+            }
+            if (spawnPoints.size != participants.size) {
+                sendNotification("자기장 내부에서 서로 겹치지 않는 안전한 스폰 지점을 충분히 찾지 못해 게임을 종료합니다.")
+                stop()
+                return
+            }
+            spawnLocations.clear()
+            spawnLocations.addAll(spawnPoints)
         }
-        if (!foundCenter) {
-            sendNotification("바다가 아닌 안전한 자기장 중심을 찾지 못해 게임을 종료합니다.")
-            stop()
-            return
-        }
-        if (spawnPoints.size != participants.size) {
-            sendNotification("자기장 내부에서 서로 겹치지 않는 안전한 스폰 지점을 충분히 찾지 못해 게임을 종료합니다.")
-            stop()
-            return
-        }
-        spawnLocations.clear()
-        spawnLocations.addAll(spawnPoints)
 
         var remaining = settings.countdownSeconds
         val task = object : BukkitRunnable() {
@@ -330,7 +408,10 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
                     playerData.player.showTitle(
                         Title.title(
                             miniMessage.deserialize("<yellow><bold>$remaining"),
-                            miniMessage.deserialize("<gray>잠시 후 무작위 위치로 산개합니다.")
+                            miniMessage.deserialize(
+                                if (settings.fixedSpawnEnabled) "<gray>잠시 후 고정 좌표에서 시작합니다."
+                                else "<gray>잠시 후 무작위 위치로 산개합니다.",
+                            )
                         )
                     )
                     playerData.player.playSound(
@@ -350,25 +431,37 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
     private fun Game.scatterAndBegin() {
         phase = GamePhase.SCATTERING
         val participants = contenders()
-        val boundary = absoluteSpawnBoundary(gameWorld)
-        if (boundary == null || !areSpawnLocationsValid(gameWorld, spawnLocations, participants.size, boundary)) {
-            val replacementLocations = findSpawnLocations(gameWorld, participants.size)
+        if (settings.fixedSpawnEnabled) {
+            val fixedSpawn = resolveFixedSpawn()
+            if (fixedSpawn == null) {
+                sendNotification("저장된 고정 스폰 좌표를 불러오지 못해 게임을 종료합니다.")
+                stop()
+                return
+            }
             spawnLocations.clear()
-            spawnLocations.addAll(replacementLocations)
-        }
+            spawnLocations.addAll(List(participants.size) { fixedSpawn.clone() })
+        } else {
+            val boundary = absoluteSpawnBoundary(gameWorld)
+            if (boundary == null || !areSpawnLocationsValid(gameWorld, spawnLocations, participants.size, boundary)) {
+                val replacementLocations = findSpawnLocations(gameWorld, participants.size)
+                spawnLocations.clear()
+                spawnLocations.addAll(replacementLocations)
+            }
 
-        val resolvedBoundary = absoluteSpawnBoundary(gameWorld)
-        if (resolvedBoundary == null ||
-            !areSpawnLocationsValid(gameWorld, spawnLocations, participants.size, resolvedBoundary)
-        ) {
-            sendNotification("자기장 내부의 안전한 개별 스폰 지점을 확정하지 못해 게임을 종료합니다.")
-            stop()
-            return
+            val resolvedBoundary = absoluteSpawnBoundary(gameWorld)
+            if (resolvedBoundary == null ||
+                !areSpawnLocationsValid(gameWorld, spawnLocations, participants.size, resolvedBoundary)
+            ) {
+                sendNotification("자기장 내부의 안전한 개별 스폰 지점을 확정하지 못해 게임을 종료합니다.")
+                stop()
+                return
+            }
         }
 
         assignedSpawnLocations.clear()
         val pendingTeleports = mutableListOf<Triple<PlayerData, Player, CompletableFuture<Boolean>>>()
-        participants.zip(spawnLocations.shuffled()).forEach { (playerData, location) ->
+        val destinations = if (settings.fixedSpawnEnabled) spawnLocations else spawnLocations.shuffled()
+        participants.zip(destinations).forEach { (playerData, location) ->
             val playerId = playerData.player.uniqueId
             val destination = location
             assignedSpawnLocations[playerId] = destination.clone()
@@ -378,7 +471,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
             player.fallDistance = 0.0F
             val teleportFuture = player.teleportAsync(destination).exceptionally { error ->
                 ClassWarPlugin.instance.logger.warning(
-                    "[ClassWar] ${player.name} 산개 텔레포트 실패: ${error.message ?: error.javaClass.simpleName}",
+                    "[ClassWar] ${player.name} 경기 시작 텔레포트 실패: ${error.message ?: error.javaClass.simpleName}",
                 )
                 false
             }
@@ -400,7 +493,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
                     teleportedPlayer.isOnline && future.getNow(false) != true
                 }
                 if (failed) {
-                    sendNotification("월드보더 내부 산개에 실패하여 게임을 종료합니다.")
+                    sendNotification("경기 시작 위치로 이동하지 못해 게임을 종료합니다.")
                     stop()
                     return@Runnable
                 }
@@ -437,9 +530,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
                     miniMessage.deserialize("<red><bold>Fight!"),
                     miniMessage.deserialize(
                         if (mode.usesTailTagRules) {
-                            val targetName = targetOf(playerData.uniqueId)?.let { findParticipant(it) }?.player?.name
-                                ?: "표적 없음"
-                            "<gold>당신의 표적: <white><bold>$targetName"
+                            "<gold>당신의 표적: <white><bold>${tailTargetLabel(playerData.uniqueId)}"
                         } else {
                             "<gray>마지막 생존자가 되세요."
                         }
@@ -456,22 +547,55 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
 
     private fun Game.initializeTailTargets(participants: List<PlayerData>) {
         tailTargets.clear()
-        if (!mode.usesTailTagRules || participants.size <= 1) return
-        val shuffledIds = participants.map { it.uniqueId }.shuffled()
-        shuffledIds.forEachIndexed { index, playerId ->
-            tailTargets[playerId] = shuffledIds[(index + 1) % shuffledIds.size]
+        tailTargetTeams.clear()
+        if (!mode.usesTailTagRules) return
+        val teams = participants.groupBy { teamOf(it.uniqueId) ?: return@groupBy -1 }
+            .filterKeys { it >= 0 }
+        if (teams.size <= 1) return
+        val shuffledTeams = teams.keys.shuffled()
+        shuffledTeams.forEachIndexed { index, teamId ->
+            tailTargetTeams[teamId] = shuffledTeams[(index + 1) % shuffledTeams.size]
+        }
+        teams.forEach { (teamId, members) ->
+            val targets = teams[tailTargetTeams[teamId]].orEmpty().shuffled()
+            if (targets.isEmpty()) return@forEach
+            members.forEachIndexed { index, member ->
+                tailTargets[member.uniqueId] = targets[index % targets.size].uniqueId
+            }
         }
     }
 
+    private fun Game.resolveFixedSpawn(): Location? {
+        if (settings.fixedSpawnWorld.isBlank()) return null
+        val world = Bukkit.getWorld(settings.fixedSpawnWorld) ?: return null
+        if (world != gameWorld) return null
+        return Location(
+            world,
+            settings.fixedSpawnX,
+            settings.fixedSpawnY,
+            settings.fixedSpawnZ,
+            settings.fixedSpawnYaw,
+            settings.fixedSpawnPitch,
+        )
+    }
+
     private fun Game.sendTailTargetNotice(playerData: PlayerData) {
-        val target = targetOf(playerData.uniqueId)?.let { findParticipant(it) } ?: return
+        if (targetOf(playerData.uniqueId) == null) return
         if (!playerData.player.isOnline) return
         playerData.player.sendMessage(
             miniMessage.deserialize(
-                "<gold><bold>[꼬리잡기]</bold> <gray>당신의 표적은 <white><bold>${target.player.name}</bold><gray>님입니다. " +
-                    "<red>표적에게만 피해를 줄 수 있습니다."
+                "<gold><bold>[꼬리잡기]</bold> <gray>당신의 표적은 <white><bold>" +
+                    "${tailTargetLabel(playerData.uniqueId)}</bold><gray>입니다. <red>해당 표적에게만 피해를 줄 수 있습니다."
             )
         )
+    }
+
+    private fun Game.tailTargetLabel(playerId: UUID): String {
+        if (mode.hasAllies) {
+            val targetTeam = teamOf(playerId)?.let(tailTargetTeams::get)
+            if (targetTeam != null) return "팀 ${targetTeam + 1}"
+        }
+        return targetOf(playerId)?.let { findParticipant(it) }?.player?.name ?: "표적 없음"
     }
 
     private fun Game.startTailHeartbeatTask() {
@@ -1127,7 +1251,6 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         val minimumZ = floor(roundCenterZ - radius).toInt()
         val maximumZ = floor(roundCenterZ + radius).toInt()
         val exposed = mutableListOf<Pair<Double, PlayerNavigation.Node>>()
-        val covered = mutableListOf<Pair<Double, PlayerNavigation.Node>>()
 
         for (x in minimumX..maximumX) {
             for (z in minimumZ..maximumZ) {
@@ -1137,26 +1260,13 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
                 val dz = blockCenterZ - roundCenterZ
                 val distanceSquared = dx * dx + dz * dz
                 if (distanceSquared > radiusSquared || !boundary.contains(blockCenterX, blockCenterZ)) continue
-                val nodes = PlayerNavigation.spawnableLandNodesInColumn(
-                    world,
-                    x,
-                    z,
-                    SPAWN_COLUMN_SEARCH_DEPTH,
-                )
-                val naturalSurface = nodes.firstOrNull()?.let { isNaturalTerrainNode(world, it) } == true
-                nodes.forEachIndexed { index, node ->
-                    val location = PlayerNavigation.playerLocation(world, node)
-                    if (!world.worldBorder.isInside(location) || !boundary.contains(location)) return@forEachIndexed
-                    if (index == 0) {
-                        exposed += distanceSquared to node
-                    } else if (!naturalSurface) {
-                        covered += distanceSquared to node
-                    }
-                }
+                val location = safeSpawnLocation(world, x, z) ?: continue
+                if (!world.worldBorder.isInside(location) || !boundary.contains(location)) continue
+                val node = PlayerNavigation.nearestNode(world, location, verticalSearch = 0) ?: continue
+                exposed += distanceSquared to node
             }
         }
-        val preferred = covered + exposed
-        return preferred.distinctBy { it.second }
+        return exposed.distinctBy { it.second }
             .sortedWith(compareBy<Pair<Double, PlayerNavigation.Node>> { it.first }.thenByDescending { it.second.y })
             .map { it.second }
     }
@@ -1176,12 +1286,6 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
             if (!isSuitableRoundCenter(world, x + 0.5, z + 0.5)) continue
             val natural = safeSpawnLocation(world, x, z)
             if (natural != null && world.worldBorder.isInside(natural) && boundary.contains(natural)) return natural
-            if (System.nanoTime() >= deadlineNanos) break
-            val node = PlayerNavigation.surfaceNode(world, x, z) ?: continue
-            val navigable = PlayerNavigation.playerLocation(world, node)
-            if (PlayerNavigation.isSpawnableLandNode(world, node) &&
-                world.worldBorder.isInside(navigable) && boundary.contains(navigable)
-            ) return navigable
         }
         return null
     }
@@ -1296,13 +1400,27 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
 
     private fun safeSpawnLocation(world: World, x: Int, z: Int): Location? {
         world.getChunkAt(x shr 4, z shr 4).load()
-        val nodes = PlayerNavigation.spawnableLandNodesInColumn(world, x, z, SPAWN_COLUMN_SEARCH_DEPTH)
-        val node = nodes.firstOrNull() ?: return null
-        if (isNaturalTerrainNode(world, node)) return PlayerNavigation.playerLocation(world, node)
+        val node = PlayerNavigation.exposedSpawnableLandNode(world, x, z) ?: return null
+        if (!isNaturalTerrainNode(world, node)) return null
+        val surroundingHeights = surroundingSurfaceHeights(world, x, z)
+        if (SpawnSurfacePolicy.isDeepDepression(
+                node.y - 1,
+                surroundingHeights,
+                SPAWN_MAXIMUM_SURROUNDING_DROP,
+            )
+        ) return null
+        return PlayerNavigation.playerLocation(world, node)
+    }
 
-        // A constructed roof is not a valid scatter surface. If the same column
-        // contains a protected floor, use that floor instead of the rooftop.
-        return nodes.drop(1).firstOrNull()?.let { PlayerNavigation.playerLocation(world, it) }
+    private fun surroundingSurfaceHeights(world: World, x: Int, z: Int): List<Int> {
+        val radius = SPAWN_SURROUNDING_SAMPLE_RADIUS
+        return listOf(
+            -radius to -radius, 0 to -radius, radius to -radius,
+            -radius to 0, radius to 0,
+            -radius to radius, 0 to radius, radius to radius,
+        ).map { (offsetX, offsetZ) ->
+            world.getHighestBlockYAt(x + offsetX, z + offsetZ, HeightMap.MOTION_BLOCKING_NO_LEAVES)
+        }
     }
 
     private fun isNaturalTerrainNode(world: World, node: PlayerNavigation.Node): Boolean {
@@ -1359,8 +1477,8 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
     fun handleDeath(playerData: PlayerData) {
         val currentGame = playerData.initGame
         if (currentGame.phase != GamePhase.RUNNING || playerData.entityStatus.isDead) return
-        currentGame.removeTailParticipant(playerData.uniqueId)
         playerData.entityStatus.isDead = true
+        currentGame.removeTailParticipant(playerData.uniqueId)
         playerData.entityStatus.canAttack = false
         playerData.entityStatus.canSkillUse = false
         playerData.entityStatus.isAttackable = false
@@ -1376,7 +1494,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         playerData.player.gameMode = GameMode.SPECTATOR
 
         val survivors = currentGame.contenders()
-        if (survivors.size <= 1) {
+        if (!currentGame.testMode && currentGame.survivingTeamIds().size <= 1) {
             val pendingExplosionTicks = Terrorist.pendingExplosionTicks(currentGame)
             if (pendingExplosionTicks > 0L && Terrorist.markFinishScheduled(currentGame)) {
                 val task = object : BukkitRunnable() {
@@ -1639,8 +1757,8 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
 
     private fun Game.permanentlyEliminateDisconnectedPlayer(playerData: PlayerData) {
         AbilityTree.end(playerData.gameClasses.filter { it.isInjectedFor(playerData) }, EndReason.REMOVED)
-        removeTailParticipant(playerData.uniqueId)
         playerData.entityStatus.isDead = true
+        removeTailParticipant(playerData.uniqueId)
         StealthVisibilityManager.reveal(playerData)
         expiredReconnectPlayers.add(playerData.uniqueId)
         disablePlayerInteraction(playerData)
@@ -1655,7 +1773,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         sendNotification("${playerData.player.name}님이 5분 동안 돌아오지 않아 탈락했습니다.")
 
         val survivors = contenders()
-        if (survivors.size <= 1) {
+        if (!testMode && survivingTeamIds().size <= 1) {
             finish(survivors.firstOrNull())
             return
         }
@@ -1665,39 +1783,22 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
     }
 
     private fun Game.removeTailParticipant(victimId: UUID) {
-        if (!mode.usesTailTagRules || tailTargets.isEmpty()) return
-        val successorId = tailTargets.remove(victimId)
-        val hunterId = tailTargets.entries.firstOrNull { (_, targetId) -> targetId == victimId }?.key
-        if (hunterId != null) tailTargets.remove(hunterId)
-
-        val remaining = contenders().count { it.uniqueId != victimId }
-        if (remaining <= 1) {
-            tailTargets.clear()
-            StealthVisibilityManager.refreshAll()
-            return
-        }
-
-        if (hunterId != null && successorId != null && hunterId != successorId) {
-            tailTargets[hunterId] = successorId
-            findParticipant(hunterId)?.let { hunter ->
-                sendTailTargetNotice(hunter)
-                if (hunter.player.isOnline) {
-                    hunter.player.playSound(
-                        hunter.player.location,
-                        Sound.BLOCK_NOTE_BLOCK_BELL,
-                        SoundCategory.MASTER,
-                        1.0F,
-                        1.4F,
-                    )
-                }
-            }
-        }
+        if (!mode.usesTailTagRules) return
+        initializeTailTargets(contenders())
+        contenders().forEach { sendTailTargetNotice(it) }
         StealthVisibilityManager.refreshAll()
     }
+
+    private fun Game.survivingTeamIds(): Set<Int> = contenders().mapNotNull { teamOf(it.uniqueId) }.toSet()
 
     private fun Game.finish(winner: PlayerData?) {
         if (phase == GamePhase.FINISHED) return
         phase = GamePhase.FINISHED
+        val winnerLabel = when {
+            winner == null -> "생존자 없음"
+            mode.hasAllies -> "팀 ${(teamOf(winner.uniqueId) ?: 0) + 1} 승리"
+            else -> winner.player.name
+        }
         disconnectTasks.values.forEach { it.cancel() }
         disconnectTasks.clear()
         activePlayers().filter { it.player.isOnline }.forEach { playerData ->
@@ -1708,7 +1809,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
             playerData.player.clearGameGlowing()
             playerData.player.showTitle(
                 Title.title(
-                    miniMessage.deserialize("<gold><bold>${winner?.player?.name ?: "생존자 없음"}"),
+                    miniMessage.deserialize("<gold><bold>$winnerLabel"),
                     miniMessage.deserialize("<gray>게임 종료")
                 )
             )
@@ -1734,6 +1835,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         }
         originalWorldTime?.let { gameWorld.time = it }
         originalDaylightCycle?.let { gameWorld.setGameRule(GameRules.ADVANCE_TIME, it) }
+        originalLocatorBar?.let { gameWorld.setGameRule(GameRules.LOCATOR_BAR, it) }
         GraveRobber.clearDeathRecords(this)
         DeathNote.clearSessions(participantIds)
         Hacker.clearSessions(participantIds)
@@ -1787,6 +1889,10 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         assignedSpawnLocations.clear()
         battleInitializedPlayers.clear()
         tailTargets.clear()
+        tailTargetTeams.clear()
+        combatTeams.clear()
+        cooperativeGroups.clear()
+        cooperativeRoles.clear()
         availableClasses.clear()
         refreshesRemaining.clear()
         confirmedPlayers.clear()

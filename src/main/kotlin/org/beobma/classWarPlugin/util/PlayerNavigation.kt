@@ -1,6 +1,7 @@
 package org.beobma.classWarPlugin.util
 
 import org.bukkit.Location
+import org.bukkit.HeightMap
 import org.bukkit.Material
 import org.bukkit.World
 import org.bukkit.block.Block
@@ -60,6 +61,15 @@ object PlayerNavigation {
             if (isNavigable(world, node)) return node
         }
         return null
+    }
+
+    /** 높이맵에 노출된 최상단 지표에서만 안전한 육상 스폰 지점을 찾는다. */
+    fun exposedSpawnableLandNode(world: World, x: Int, z: Int): Node? {
+        val highestY = world.getHighestBlockYAt(x, z, HeightMap.MOTION_BLOCKING_NO_LEAVES)
+        return intArrayOf(highestY + 1, highestY)
+            .asSequence()
+            .map { Node(x, it, z) }
+            .firstOrNull { isSpawnableStanding(world, it) }
     }
 
     /**

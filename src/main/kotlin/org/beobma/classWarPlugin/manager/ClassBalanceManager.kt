@@ -88,6 +88,9 @@ object ClassBalanceManager {
     private var modifiersByKey: Map<String, ClassBalanceModifiers> = emptyMap()
 
     @Volatile
+    private var enabledByKey: Map<String, Boolean> = emptyMap()
+
+    @Volatile
     private var descriptors: List<ClassDescriptor> = emptyList()
 
     /** 등록 클래스의 배율을 불러오고 누락된 설정 항목을 기본값으로 생성한다. */
@@ -97,6 +100,7 @@ object ClassBalanceManager {
 
         defaultModifiers = readModifiers(config, "$ROOT_PATH.defaults", ClassBalanceModifiers())
         val loaded = linkedMapOf<String, ClassBalanceModifiers>()
+        val loadedEnabled = linkedMapOf<String, Boolean>()
         var changed = false
         ClassBalanceField.entries.forEach { field ->
             val fieldPath = "$ROOT_PATH.defaults.${field.configName}"
@@ -114,6 +118,12 @@ object ClassBalanceManager {
             }
             val modifiers = readModifiers(config, path, defaultModifiers)
             loaded[key] = modifiers
+            val enabledPath = "$path.enabled"
+            loadedEnabled[key] = config.getBoolean(enabledPath, true)
+            if (!config.contains(enabledPath, true)) {
+                config.set(enabledPath, true)
+                changed = true
+            }
             ClassBalanceField.entries.forEach { field ->
                 val fieldPath = "$path.${field.configName}"
                 if (!config.contains(fieldPath, true)) {
@@ -123,6 +133,7 @@ object ClassBalanceManager {
             }
         }
         modifiersByKey = loaded.toMap()
+        enabledByKey = loadedEnabled.toMap()
         if (changed) ClassWarPlugin.instance.saveConfig()
     }
 
@@ -132,6 +143,19 @@ object ClassBalanceManager {
     /** [gameClass]의 현재 배율을 반환하며 미등록 클래스에는 기본 배율을 사용한다. */
     fun modifiers(gameClass: GameClass): ClassBalanceModifiers =
         modifiersByKey[configKey(gameClass)] ?: defaultModifiers
+
+    /** 해당 클래스가 무작위 경기 배정 풀에 포함되는지 반환한다. */
+    fun isEnabled(gameClass: GameClass): Boolean = enabledByKey[configKey(gameClass)] ?: true
+
+    /** 무작위 경기 등장 여부를 전환하고 즉시 설정 파일에 저장한다. */
+    fun toggleEnabled(gameClass: GameClass) {
+        val key = configKey(gameClass)
+        val enabled = !isEnabled(gameClass)
+        enabledByKey = enabledByKey.toMutableMap().apply { put(key, enabled) }
+        val plugin = ClassWarPlugin.instance
+        plugin.config.set("$ROOT_PATH.classes.$key.enabled", enabled)
+        plugin.saveConfig()
+    }
 
     /** [field]를 `0.1 * stepMultiplier`만큼 변경하고 즉시 설정 파일에 저장한다. */
     fun adjust(gameClass: GameClass, field: ClassBalanceField, increase: Boolean, stepMultiplier: Int) {
