@@ -24,6 +24,8 @@ import org.beobma.classWarPlugin.manager.InventoryManager.clearMatchModeSelectio
 import org.beobma.classWarPlugin.manager.InventoryManager.openTrainingClassListInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassBalanceListInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassBalanceDetailInventory
+import org.beobma.classWarPlugin.manager.InventoryManager.openDisabledClassListInventory
+import org.beobma.classWarPlugin.manager.InventoryManager.getOpenDisabledClassPage
 import org.beobma.classWarPlugin.manager.InventoryManager.getOpenClassBalancePage
 import org.beobma.classWarPlugin.manager.InventoryManager.getSelectedClassBalance
 import org.beobma.classWarPlugin.manager.InventoryManager.getDamageMultiplierTypeFromSlot
@@ -358,10 +360,22 @@ class OnInventoryClickEvent : Listener {
         val selectedClass = getSelectedClassBalance(player)
         val page = getOpenClassBalancePage(player)
         if (selectedClass == null) {
+            if (PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_DISABLED_CLASS_LIST)) {
+                when (event.rawSlot) {
+                    45 -> player.openClassBalanceListInventory(page)
+                    48 -> player.openDisabledClassListInventory(getOpenDisabledClassPage(player) - 1)
+                    50 -> player.openDisabledClassListInventory(getOpenDisabledClassPage(player) + 1)
+                    else -> event.currentItem?.let(::getClassFromItem)?.let { gameClass ->
+                        player.openClassBalanceDetailInventory(gameClass)
+                    }
+                }
+                return
+            }
             when (event.rawSlot) {
                 45 -> player.openConfigInventory()
                 48 -> player.openClassBalanceListInventory(page - 1)
                 50 -> player.openClassBalanceListInventory(page + 1)
+                53 -> player.openDisabledClassListInventory()
                 else -> event.currentItem?.let(::getClassFromItem)?.let { gameClass ->
                     player.openClassBalanceDetailInventory(gameClass)
                 }
@@ -371,6 +385,10 @@ class OnInventoryClickEvent : Listener {
 
         when (event.rawSlot) {
             18 -> player.openClassBalanceListInventory(page)
+            20 -> {
+                ClassBalanceManager.toggleEnabled(selectedClass)
+                player.openClassBalanceDetailInventory(selectedClass)
+            }
             22 -> {
                 ClassBalanceManager.reset(selectedClass)
                 player.openClassBalanceDetailInventory(selectedClass)

@@ -135,3 +135,8 @@ border:
   # 상공에서 내려오는 최종 자기장에 닿았을 때 받는 고정 피해와 피해 주기입니다.
   final-damage: 2.0
   final-damage-interval-seconds: 1.0
+
+# 내부 개발용 기능입니다. 실서버에서는 활성화하지 마세요.
+internal:
+  testing:
+    commands-enabled: false

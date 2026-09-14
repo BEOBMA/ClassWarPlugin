@@ -490,7 +490,7 @@ object InventoryManager {
         val startIndex = safePage * CLASS_BALANCE_PAGE_SIZE
         val endIndex = minOf(startIndex + CLASS_BALANCE_PAGE_SIZE, classes.size)
         for (index in startIndex until endIndex) {
-            inventory.setItem(index - startIndex, createClassItem(classes[index], this))
+            inventory.setItem(index - startIndex, createClassBalanceListItem(classes[index], this))
         }
         inventory.setItem(45, createDescriptionItem(Material.ARROW, "<yellow><bold>카테고리로 돌아가기", emptyList()))
         if (safePage > 0) {
@@ -499,7 +499,14 @@ object InventoryManager {
         if (safePage < totalPages - 1) {
             inventory.setItem(50, createDescriptionItem(Material.ARROW, "<yellow><bold>다음 페이지", emptyList()))
         }
+        val disabledCount = classes.count { !ClassBalanceManager.isEnabled(it) }
+        inventory.setItem(53, createDescriptionItem(
+            if (disabledCount == 0) Material.LIME_DYE else Material.REDSTONE_TORCH,
+            "<red><bold>등장하지 않는 클래스 목록",
+            listOf("<gray>현재 비활성화: <red><bold>${disabledCount}개", "", "<yellow>클릭하여 한 번에 확인합니다."),
+        ))
 
+        PlayerTagManager.removeFlag(this, PlayerFlag.OPEN_DISABLED_CLASS_LIST)
         PlayerTagManager.removeValue(this, PlayerTagValue.CLASS_BALANCE_PAGE)
         PlayerTagManager.removeValue(this, PlayerTagValue.CLASS_BALANCE_CLASS)
         PlayerTagManager.setValue(this, PlayerTagValue.CLASS_BALANCE_PAGE, safePage)
@@ -527,6 +534,11 @@ object InventoryManager {
             inventory.setItem(slot, createClassBalanceSettingItem(material, field, modifiers))
         }
         inventory.setItem(18, createDescriptionItem(Material.ARROW, "<yellow><bold>클래스 목록으로 돌아가기", emptyList()))
+        inventory.setItem(20, createToggleItem(
+            "게임 무작위 등장",
+            ClassBalanceManager.isEnabled(gameClass),
+            listOf("<gray>비활성화하면 일반 및 테스트 경기의", "<gray>무작위 클래스 배정에서 제외됩니다."),
+        ))
         inventory.setItem(22, createDescriptionItem(
             Material.BARRIER,
             "<red><bold>이 클래스 설정 초기화",
@@ -538,8 +550,48 @@ object InventoryManager {
             PlayerTagValue.CLASS_BALANCE_CLASS,
             ClassBalanceManager.configKey(gameClass),
         )
+        PlayerTagManager.removeFlag(this, PlayerFlag.OPEN_DISABLED_CLASS_LIST)
         openConfigView(inventory, ConfigCategory.CLASS_BALANCE)
     }
+
+    /** 무작위 경기 배정에서 제외된 클래스를 모아 표시한다. */
+    fun Player.openDisabledClassListInventory(page: Int = 0) {
+        val disabled = gameClassList.filterNot(ClassBalanceManager::isEnabled)
+        val totalPages = maxOf(1, (disabled.size + CLASS_BALANCE_PAGE_SIZE - 1) / CLASS_BALANCE_PAGE_SIZE)
+        val safePage = page.coerceIn(0, totalPages - 1)
+        val inventory = Bukkit.createInventory(
+            null,
+            54,
+            miniMessage.deserialize("<dark_gray>등장하지 않는 클래스 (${safePage + 1}/$totalPages)"),
+        )
+        fillWith(inventory, Material.BLACK_STAINED_GLASS_PANE, " ")
+        val startIndex = safePage * CLASS_BALANCE_PAGE_SIZE
+        val endIndex = minOf(startIndex + CLASS_BALANCE_PAGE_SIZE, disabled.size)
+        for (index in startIndex until endIndex) {
+            inventory.setItem(index - startIndex, createClassBalanceListItem(disabled[index], this))
+        }
+        if (disabled.isEmpty()) {
+            inventory.setItem(22, createDescriptionItem(
+                Material.LIME_DYE,
+                "<green><bold>모든 클래스가 등장합니다",
+                listOf("<gray>비활성화된 클래스가 없습니다."),
+            ))
+        }
+        inventory.setItem(45, createDescriptionItem(Material.ARROW, "<yellow><bold>클래스 목록으로 돌아가기", emptyList()))
+        if (safePage > 0) {
+            inventory.setItem(48, createDescriptionItem(Material.ARROW, "<yellow><bold>이전 페이지", emptyList()))
+        }
+        if (safePage < totalPages - 1) {
+            inventory.setItem(50, createDescriptionItem(Material.ARROW, "<yellow><bold>다음 페이지", emptyList()))
+        }
+        PlayerTagManager.removeValue(this, PlayerTagValue.CLASS_BALANCE_CLASS)
+        PlayerTagManager.setValue(this, PlayerTagValue.DISABLED_CLASS_PAGE, safePage)
+        PlayerTagManager.addFlag(this, PlayerFlag.OPEN_DISABLED_CLASS_LIST)
+        openConfigView(inventory, ConfigCategory.CLASS_BALANCE)
+    }
+
+    fun getOpenDisabledClassPage(player: Player): Int =
+        PlayerTagManager.getValue(player, PlayerTagValue.DISABLED_CLASS_PAGE)?.toIntOrNull() ?: 0
 
     fun getOpenClassBalancePage(player: Player): Int =
         PlayerTagManager.getValue(player, PlayerTagValue.CLASS_BALANCE_PAGE)
@@ -819,6 +871,21 @@ object InventoryManager {
         }
         return createMultiplierSettingItem(material, name, modifiers.value(field), extraLines)
     }
+
+    private fun createClassBalanceListItem(gameClass: GameClass, viewer: Player): ItemStack =
+        createClassItem(gameClass, viewer).apply {
+            itemMeta = itemMeta.apply {
+                val status = if (ClassBalanceManager.isEnabled(gameClass)) {
+                    "<green><bold>게임 등장 활성화"
+                } else {
+                    "<red><bold>게임 등장 비활성화"
+                }
+                lore((lore() ?: emptyList()) + listOf(
+                    ItemDescriptionManager.renderLoreLine(""),
+                    ItemDescriptionManager.renderLoreLine(status),
+                ))
+            }
+        }
 
     private fun createToggleItem(name: String, enabled: Boolean, extraLines: List<String> = emptyList()): ItemStack =
         ItemStack(if (enabled) Material.LIME_DYE else Material.GRAY_DYE).apply {

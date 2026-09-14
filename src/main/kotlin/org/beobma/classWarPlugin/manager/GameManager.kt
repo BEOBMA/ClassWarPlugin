@@ -139,16 +139,16 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
      *
      * @return 시작에 성공하면 `null`, 실패하면 사용자에게 표시할 사유
      */
-    fun startNewGame(mode: MatchMode): String? {
+    fun startNewGame(mode: MatchMode, testMode: Boolean = false): String? {
         if (game != null) return "이미 진행중인 게임이 있습니다."
 
-        val newGame = Game(mutableListOf(), mode = mode)
+        val newGame = Game(mutableListOf(), mode = mode, testMode = testMode)
         val participants = Bukkit.getOnlinePlayers()
             .filterNot(PlayerTagManager::isTraining)
             .map { PlayerData(it, newGame) }
-        mode.validate(newGame.settings, participants.size)?.let { return it }
+        if (!testMode) mode.validate(newGame.settings, participants.size)?.let { return it }
         val requiredClassCount = participants.size * mode.assignedClassCount
-        if (requiredClassCount > availableClassesFor(mode).size) {
+        if (!testMode && requiredClassCount > availableClassesFor(mode).size) {
             return "사용 가능한 클래스 수보다 참가자가 많아 게임을 시작할 수 없습니다."
         }
 
@@ -160,11 +160,11 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
     /** 참가자 상태를 보관하고 클래스 선택 단계로 경기를 시작한다. */
     fun Game.start() {
         val participants = activePlayers()
-        mode.validate(settings, participants.size)?.let {
+        if (!testMode) mode.validate(settings, participants.size)?.let {
             sendNotification(it)
             return
         }
-        if (participants.size * mode.assignedClassCount > availableClassesFor(mode).size) {
+        if (!testMode && participants.size * mode.assignedClassCount > availableClassesFor(mode).size) {
             sendNotification("사용 가능한 클래스 수보다 참가자가 많아 게임을 시작할 수 없습니다.")
             return
         }
@@ -281,7 +281,11 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
     }
 
     private fun Game.drawRandomClass(excludedTypes: Set<Class<out GameClass>> = emptySet()): GameClass? {
-        val candidates = availableClasses.filter { it.javaClass !in excludedTypes }
+        var candidates = availableClasses.filter { it.javaClass !in excludedTypes }
+        if (candidates.isEmpty() && testMode) {
+            availableClasses.addAll(availableClassesFor(mode))
+            candidates = availableClasses.filter { it.javaClass !in excludedTypes }
+        }
         if (candidates.isEmpty()) return null
 
         val weightedRanks = candidates.map { it.rank }.distinct().mapNotNull { rank ->
@@ -301,6 +305,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
     }
 
     private fun availableClassesFor(mode: MatchMode): List<GameClass> = AbilityCatalog.enabledClasses()
+        .filter(ClassBalanceManager::isEnabled)
         .filterNot { !mode.allowsParasite && it is Parasite }
 
     /** 셔플된 참가자를 팀과 공동 조에 배치하고 공동 역할을 확정한다. */
@@ -1489,7 +1494,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         playerData.player.gameMode = GameMode.SPECTATOR
 
         val survivors = currentGame.contenders()
-        if (currentGame.survivingTeamIds().size <= 1) {
+        if (!currentGame.testMode && currentGame.survivingTeamIds().size <= 1) {
             val pendingExplosionTicks = Terrorist.pendingExplosionTicks(currentGame)
             if (pendingExplosionTicks > 0L && Terrorist.markFinishScheduled(currentGame)) {
                 val task = object : BukkitRunnable() {
@@ -1768,7 +1773,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         sendNotification("${playerData.player.name}님이 5분 동안 돌아오지 않아 탈락했습니다.")
 
         val survivors = contenders()
-        if (survivingTeamIds().size <= 1) {
+        if (!testMode && survivingTeamIds().size <= 1) {
             finish(survivors.firstOrNull())
             return
         }
