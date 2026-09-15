@@ -67,6 +67,14 @@ object DamageManager {
         }
         if (!canDamage) return false
 
+        for (bound in AbilityTree.handlers(context.attacker.gameClasses, org.beobma.classWarPlugin.gameClass.list.Metronome::class.java)) {
+            if (!bound.call { it.allowDamage(context) }) {
+                context.capDamage(0.0)
+                context.isCancelled = true
+                return false
+            }
+        }
+
         dispatchHandlers(context)
         if (context.isCancelled) return false
 

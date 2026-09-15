@@ -38,7 +38,8 @@ object GrowthDescription {
             game.settings.cooldownFlowMultiplier * factor(ClassBalanceField.COOLDOWN_FLOW) *
                 if (state.has(GrowthEffect.FOCUS)) 1.1 else 1.0,
             mapOf("damage" to factor(ClassBalanceField.DAMAGE) * game.settings.damageMultiplier(DamagePath.SKILL),
-                "status-damage" to factor(ClassBalanceField.DAMAGE) * game.settings.damageMultiplier(DamagePath.STATUS_EFFECT),
+                "status-damage" to factor(ClassBalanceField.DAMAGE) * game.settings.damageMultiplier(DamagePath.STATUS_EFFECT) *
+                    GrowthCombatEquipment.statusDamage(state::has),
                 "ranged" to factor(ClassBalanceField.DAMAGE) * game.settings.damageMultiplier(DamagePath.RANGED_ATTACK) * DamageManager.BASIC_ATTACK_DAMAGE_MULTIPLIER,
                 "attack-bonus" to DamageManager.BASIC_ATTACK_DAMAGE_MULTIPLIER,
                 "healing" to factor(ClassBalanceField.HEALING), "range" to factor(ClassBalanceField.RANGE),

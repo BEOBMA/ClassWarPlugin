@@ -4,7 +4,7 @@ import kotlin.test.*
 
 class NewClassCatalogTest {
     @Test fun `new class factories preserve IDs and create independent skill instances`() {
-        for (id in listOf("crossbow", "freikugel", "warcorrespondent", "pioneer", "contractor", "agent", "writer")) {
+        for (id in listOf("crossbow", "freikugel", "warcorrespondent", "pioneer", "contractor", "agent", "writer", "metronome")) {
             val first = AbilityCatalog.create(id)
             val second = AbilityCatalog.create(id)
             assertEquals(id, first.classId)

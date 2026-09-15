@@ -50,7 +50,7 @@ data class GrowthProfile(val primary: GrowthStat, val secondary: GrowthStat,
             "referee", "rainbow-bridge", "saturnus", "sol", "solar-system", "terra", "time-maniqulator", "tour",
             "uranus", "warlock", "writer", "watchmaker", "venus")
         private val agile = setOf("agent", "assassin", "chameleon", "crossbow", "charger", "duelist", "feather",
-            "freikugel", "ghost", "gun-blader", "hide-and-seek", "high-jumper", "mercurius", "phantom", "pioneer",
+            "freikugel", "ghost", "gun-blader", "hide-and-seek", "high-jumper", "mercurius", "metronome", "phantom", "pioneer",
             "refugees", "sagittarius", "sniper", "shy-person", "spider-man", "stalker", "swordplay", "trapper",
             "thunderclap-flash", "vampire", "warcorrespondent", "wounds-wind")
         private val lucky = setOf("blacksmith", "con-artist", "damocles", "error", "exodia", "fear", "gambler",

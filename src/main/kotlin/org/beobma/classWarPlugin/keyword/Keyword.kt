@@ -6,6 +6,8 @@ enum class Keyword(
     /** 간략 설명에서도 조작법·발동 조건 등 플레이에 필수적인 해설을 표시한다. */
     val showDescriptionInBrief: Boolean = false,
 ) {
+    VariableRhythm("<aqua><bold>가변 박자</bold><gray>",
+        "{keyword:VariableRhythm}: 들리는 음악의 BPM과 같은 박자 또는 2·4분할(72 BPM 이하에서는 8분할)에 맞춰 기본 공격한다. 연속 정박과 공격 속도에 따라 24곡이 전개되고 피해가 최대 150% 증가한다. 엇박은 피해가 0이며 연속 기록이 초기화된다.", true),
     Writing("<gold><bold>작문</bold><gray>",
         "{keyword:Writing}: 제시된 한 줄을 채팅으로 그대로 작성한다. 정답마다 기본 공격 피해 +{g:writer-reward:0.1}, 받는 피해 -1%. 오답마다 기본 공격 피해 -{g:basic:0.2}, 받는 피해 +2%를 누적한다.", true),
     Caduceus("<gold><bold>카두세우스</bold><gray>",

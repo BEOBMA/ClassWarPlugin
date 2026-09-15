@@ -4,6 +4,7 @@ import org.beobma.classWarPlugin.ability.AbilityExecution
 import org.beobma.classWarPlugin.growth.GrowthScaling
 import org.beobma.classWarPlugin.growth.GrowthAxis
 import org.beobma.classWarPlugin.growth.GrowthEffect
+import org.beobma.classWarPlugin.growth.GrowthCombatEquipment
 
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamagePath
@@ -206,8 +207,11 @@ object ClassBalanceManager {
         } else {
             resolveCallerKey(attacker)
         }
+        val equipment = if (attacker.game.mode.isGrowth && path == DamagePath.STATUS_EFFECT)
+            attacker.game.growth?.players?.get(attacker.uniqueId)?.let { GrowthCombatEquipment.statusDamage(it::has) } ?: 1.0
+        else 1.0
         return amount * effective(key, ClassBalanceField.DAMAGE) * GrowthScaling.multiplier(attacker,
-            if (path.isBasicAttack) GrowthAxis.BASIC_DAMAGE else GrowthAxis.SKILL_DAMAGE, key)
+            if (path.isBasicAttack) GrowthAxis.BASIC_DAMAGE else GrowthAxis.SKILL_DAMAGE, key) * equipment
     }
 
     /** 호출 클래스의 회복 배율을 [amount]에 적용한다. */

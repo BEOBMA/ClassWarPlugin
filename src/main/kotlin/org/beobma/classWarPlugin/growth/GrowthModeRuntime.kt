@@ -198,6 +198,7 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
             } else if (players.getValue(data.uniqueId).has(GrowthEffect.REGEN) && seconds % 5 == 0) heal(data, maxHealth(data) * 0.02)
             if (closed) return
         }
+        val mobTargets = online().map { it.player }.filter { it.world == world && isSafeLocation(it.location) }
         mobs.values.toList().forEach { record ->
             val entity = record.data.entity
             if (!entity.isValid || entity.isDead || record.expires?.let { seconds >= it } == true ||
@@ -209,9 +210,8 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
                 layout!!.at(entity.location.x, entity.location.z)?.id != record.regionId) {
                 entity.teleport(record.home); (entity as? Mob)?.target = null
             }
-            if (entity is Mob && entity is Monster) entity.target = online()
-                .filter { it.player.world == world && isSafeLocation(it.player.location) }
-                .minByOrNull { it.player.location.distanceSquared(entity.location) }?.player
+            if (entity is Mob && entity is Monster) entity.target = mobTargets
+                .minByOrNull { it.location.distanceSquared(entity.location) }
                 ?.takeIf { it.location.distanceSquared(entity.location) < 144 }
         }
         drops.values.toList().filter { seconds >= it.expires ||
@@ -245,17 +245,21 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
 
     private fun buildCamps() {
         camps.clear()
-        for (region in layout!!.regions) {
+        if (settings.maximumMobs == 0 || settings.mobsPerRegion == 0) return
+        val regionalCamps = layout!!.regions.map { region ->
             val selected = mutableListOf<Location>()
+            val regionCamps = mutableListOf<Camp>()
             for (cell in List(512) { region.walkable.random(random) }) {
-                if (selected.size >= settings.mobsPerRegion || camps.size >= settings.maximumMobs) break
+                if (selected.size >= settings.mobsPerRegion) break
                 val loc = location(cell)
                 if (selected.any { it.distanceSquared(loc) < 36 } || !walkableNow(loc)) continue
                 selected += loc
-                val type = when (selected.size % 4) { 1 -> EntityType.COW; 2 -> EntityType.PIG; 3 -> EntityType.ZOMBIE; else -> EntityType.SKELETON }
-                camps += Camp(region.id, loc, type)
+                val type = when (selected.size % 4) { 1 -> EntityType.COW; 2 -> EntityType.ZOMBIE; 3 -> EntityType.PIG; else -> EntityType.SKELETON }
+                regionCamps += Camp(region.id, loc, type)
             }
+            regionCamps
         }
+        camps += GrowthPopulation.distribute(regionalCamps, settings.maximumMobs)
     }
     fun respawnMobs() {
         if (!started || game.isPaused || closed) return
@@ -316,7 +320,7 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
             award(killer, ((settings.mobExperience + record.level * 3) * if (state.has(GrowthEffect.HUNTER)) 1.2 else 1.0).roundToInt())
             val chance = settings.dropChance + state.stat(GrowthStat.LUCK) * 0.001 + if (state.has(GrowthEffect.FORTUNE)) 0.10 else 0.0
             if (record.event != null) grant(killer, record.event.reward)
-            else if (random.nextDouble() < chance.coerceAtMost(0.75)) grant(killer, GrowthItems.all.filter { !it.eventOnly }.random().id)
+            else if (random.nextDouble() < chance.coerceIn(0.0, 1.0)) grant(killer, GrowthItems.ordinary.random(random).id)
         }
         removeMob(id)
     }
@@ -362,6 +366,8 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
         data.attributeEffects.refresh()
     }
     private fun maxHealth(data: PlayerData) = data.player.getAttribute(Attribute.MAX_HEALTH)?.value ?: 20.0
+    private fun healthFraction(entity: LivingEntity) =
+        entity.health / (entity.getAttribute(Attribute.MAX_HEALTH)?.value ?: 20.0).coerceAtLeast(0.001)
     private fun heal(data: PlayerData, amount: Double) {
         if (data.player.isOnline && !data.player.isDead && !data.entityStatus.isDead)
             data.player.health = (data.player.health + amount).coerceAtMost(maxHealth(data))
@@ -370,6 +376,8 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
     fun beforeDamage(context: DamageContext) {
         val a = players[context.attacker.uniqueId] ?: return
         val target = context.target.entity as? LivingEntity ?: return
+        GrowthCombatEquipment.apply(context, a, (context.target as? PlayerData)?.let { players[it.uniqueId] },
+            healthFraction(context.attacker.player), healthFraction(target))
         if (a.has(GrowthEffect.EXECUTE) && target.health < (target.getAttribute(Attribute.MAX_HEALTH)?.value ?: 20.0) * 0.3)
             context.addDamageDealtMultiplier(1.15)
         if (context.path.isBasicAttack && !context.secondaryAttack && a.has(GrowthEffect.SPELLBLADE) &&
@@ -398,6 +406,7 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
     }
     fun reduceMobDamage(player: Player, event: org.bukkit.event.entity.EntityDamageByEntityEvent) {
         val state = players[player.uniqueId] ?: return
+        event.damage *= GrowthCombatEquipment.incoming(state::has, healthFraction(player))
         if (state.has(GrowthEffect.WARD)) event.damage *= 0.9
         if (state.has(GrowthEffect.BARRIER) && state.trigger("barrier", game.combatTick, 20)) event.damage *= 0.7
         if (state.has(GrowthEffect.SECOND_WIND)) participants().firstOrNull { it.uniqueId == player.uniqueId }?.let(::afterHitRecovery)

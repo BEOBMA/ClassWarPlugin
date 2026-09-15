@@ -29,6 +29,7 @@ modes:
 
 # 성장 모드: 맵에 따라 지역 생성 및 시작이 실패할 수 있습니다. 모든 설정은 경기 시작 시 고정됩니다.
 growth:
+  population-revision: 1
   regions:
     maximum: 16
     minimum: 4
@@ -48,11 +49,12 @@ growth:
   mobs:
     # 성장 몬스터/동물의 이름 위에 현재 체력과 최대 체력을 표시합니다.
     show-health: true
-    per-region: 4
-    maximum: 96
+    # 몬스터와 동물 합계입니다. 기본 12마리 중 동물 6마리, 몬스터 6마리입니다.
+    per-region: 12
+    maximum: 192
     experience: 30
   items:
-    drop-chance: 0.18
+    drop-chance: 0.45
   events-enabled: true
   # 예정 위치/시간을 지도에 미리 표시하고, 등장하면 금색 이름과 빨간 X로 강조합니다.
   # 획득/처치/만료/금지 시 마커도 제거됩니다. 예정 위치가 막히면 이동하지 않고 해당 등장을 생략합니다.

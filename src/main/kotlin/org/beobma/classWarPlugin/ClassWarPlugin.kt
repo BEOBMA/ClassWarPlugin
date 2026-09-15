@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin
 
+import org.beobma.classWarPlugin.listener.OnMetronomeAttackEvent
+
 import org.beobma.classWarPlugin.command.Command
 import org.beobma.classWarPlugin.info.Info
 import org.beobma.classWarPlugin.manager.GameManager
@@ -57,6 +59,7 @@ class ClassWarPlugin : JavaPlugin() {
     override fun onEnable() {
         instance = this
         saveDefaultConfig()
+        if (org.beobma.classWarPlugin.growth.GrowthSettings.upgradePopulationDefaults(config)) saveConfig()
         GameSettings.load(config)
         ClassBalanceManager.load(config, GameManager.gameClassList)
         DamageIndicatorManager.start()
@@ -140,6 +143,7 @@ class ClassWarPlugin : JavaPlugin() {
         server.pluginManager.registerEvents(OnInventoryCloseEvent(), this)
         server.pluginManager.registerEvents(OnPlayerDeathEvent(), this)
         server.pluginManager.registerEvents(OnEntityDamageByEntityEvent(), this)
+        server.pluginManager.registerEvents(OnMetronomeAttackEvent(), this)
         server.pluginManager.registerEvents(OnEntityDamageEvent(), this)
         server.pluginManager.registerEvents(OnEntityRegainHealthEvent(), this)
         server.pluginManager.registerEvents(OnEntityDeathEvent(), this)

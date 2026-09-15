@@ -17,17 +17,35 @@ data class GrowthSettings(
     val healthPerLevel: Double = 2.0,
     val experienceBase: Int = 60,
     val experienceStep: Int = 25,
-    val mobsPerRegion: Int = 4,
-    val maximumMobs: Int = 96,
+    val mobsPerRegion: Int = DEFAULT_MOBS_PER_REGION,
+    val maximumMobs: Int = DEFAULT_MAXIMUM_MOBS,
     val mobExperience: Int = 30,
     val playerExperience: Int = 100,
-    val dropChance: Double = 0.18,
+    val dropChance: Double = DEFAULT_DROP_CHANCE,
     val eventsEnabled: Boolean = true,
     val profiles: Map<String, GrowthProfile> = emptyMap(),
     val events: List<GrowthEventDefinition> = GrowthEventDefinition.defaults,
     val mobHealthVisible: Boolean = true,
 ) {
     companion object {
+        const val DEFAULT_MOBS_PER_REGION = 12
+        const val DEFAULT_MAXIMUM_MOBS = 192
+        const val DEFAULT_DROP_CHANCE = 0.45
+
+        /** Upgrade only the previous defaults once; preserve customized and disabled populations. */
+        fun upgradePopulationDefaults(config: ConfigurationSection): Boolean {
+            val marker = "growth.population-revision"
+            if (config.getInt(marker, 0) >= 1) return false
+            if (config.getInt("growth.mobs.per-region", 4) == 4)
+                config.set("growth.mobs.per-region", DEFAULT_MOBS_PER_REGION)
+            if (config.getInt("growth.mobs.maximum", 96) == 96)
+                config.set("growth.mobs.maximum", DEFAULT_MAXIMUM_MOBS)
+            if (config.getDouble("growth.items.drop-chance", 0.18) == 0.18)
+                config.set("growth.items.drop-chance", DEFAULT_DROP_CHANCE)
+            config.set(marker, 1)
+            return true
+        }
+
         const val WARNING = "맵 지형에 따라 지역 생성과 게임 시작이 어려울 수 있으며, 이동 경로에 문제가 발생할 수 있습니다."
         fun read(config: ConfigurationSection): GrowthSettings {
             val root = "growth"
@@ -57,9 +75,9 @@ data class GrowthSettings(
                 number("forbidden-damage", 2.0, 0.1, 100.0), int("final-shrink-seconds", 120, 10..3600),
                 int("level.maximum", 30, 2..100), int("level.points", 3, 1..10),
                 number("level.health", 2.0, 0.0, 20.0), int("level.experience-base", 60, 1..10000),
-                int("level.experience-step", 25, 0..10000), int("mobs.per-region", 4, 0..12),
-                int("mobs.maximum", 96, 0..256), int("mobs.experience", 30, 1..10000),
-                int("level.player-experience", 100, 0..10000), number("items.drop-chance", 0.18, 0.0, 1.0),
+                int("level.experience-step", 25, 0..10000), int("mobs.per-region", DEFAULT_MOBS_PER_REGION, 0..32),
+                int("mobs.maximum", DEFAULT_MAXIMUM_MOBS, 0..512), int("mobs.experience", 30, 1..10000),
+                int("level.player-experience", 100, 0..10000), number("items.drop-chance", DEFAULT_DROP_CHANCE, 0.0, 1.0),
                 config.getBoolean("growth.events-enabled", true), profiles, events,
                 config.getBoolean("growth.mobs.show-health", true))
         }

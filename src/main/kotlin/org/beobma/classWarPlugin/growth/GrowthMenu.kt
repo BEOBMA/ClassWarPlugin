@@ -19,7 +19,7 @@ import org.bukkit.inventory.ItemStack
 import java.util.UUID
 
 /** A real holder prevents forged item names or stale menus from mutating a new match. */
-class GrowthMenu(val owner: UUID, val kind: String, val runtime: GrowthModeRuntime?) : InventoryHolder {
+class GrowthMenu(val owner: UUID, val kind: String, val runtime: GrowthModeRuntime?, val page: Int = 0) : InventoryHolder {
     lateinit var contents: Inventory
     val equipmentIds = mutableMapOf<Int, String>()
     override fun getInventory(): Inventory = contents
@@ -29,8 +29,8 @@ class GrowthMenu(val owner: UUID, val kind: String, val runtime: GrowthModeRunti
             Triple("regions.maximum", "최대 지역 수", 16), Triple("regions.minimum", "최소 지역 수", 4),
             Triple("period-seconds", "낮/밤 길이(초)", 120), Triple("warnings-per-period", "주기당 경고 지역", 1),
             Triple("final-shrink-seconds", "최종 축소(초)", 120), Triple("level.maximum", "최대 레벨", 30),
-            Triple("level.points", "레벨당 스탯 포인트", 3), Triple("mobs.per-region", "지역당 몬스터", 4),
-            Triple("mobs.maximum", "최대 몬스터", 96), Triple("regions.attempts", "지역 수별 재시도", 12),
+            Triple("level.points", "레벨당 스탯 포인트", 3), Triple("mobs.per-region", "지역당 몬스터·동물", GrowthSettings.DEFAULT_MOBS_PER_REGION),
+            Triple("mobs.maximum", "최대 몬스터·동물", GrowthSettings.DEFAULT_MAXIMUM_MOBS), Triple("regions.attempts", "지역 수별 재시도", 12),
             Triple("level.experience-base", "기본 필요 경험치", 60), Triple("level.experience-step", "레벨별 필요 경험치 증가", 25),
             Triple("mobs.experience", "몬스터 기본 경험치", 30), Triple("level.player-experience", "플레이어 처치 경험치", 100),
         )
@@ -41,25 +41,26 @@ class GrowthMenu(val owner: UUID, val kind: String, val runtime: GrowthModeRunti
             "warnings-per-period" -> 1..8
             "level.maximum" -> 2..100
             "level.points" -> 1..10
-            "mobs.per-region" -> 0..12
-            "mobs.maximum" -> 0..256
+            "mobs.per-region" -> 0..32
+            "mobs.maximum" -> 0..512
             "level.experience-base", "mobs.experience" -> 1..10000
             else -> 0..10000
         }
         private val decimalSettings = listOf(
             Triple("forbidden-damage", "초당 금지구역 피해", 2.0),
             Triple("level.health", "레벨당 기본 최대 체력", 2.0),
-            Triple("items.drop-chance", "장비 드롭 확률(0~1)", 0.18),
+            Triple("items.drop-chance", "장비 드롭 확률(0~1)", GrowthSettings.DEFAULT_DROP_CHANCE),
         )
         fun item(material: Material, name: String, lines: List<String>): ItemStack = ItemStack(material).apply {
             itemMeta = itemMeta.apply { displayName(mini.deserialize(name)); lore(lines.map(mini::deserialize)) }
         }
-        fun open(player: Player, kind: String) {
+        fun open(player: Player, kind: String, page: Int = 0) {
             val runtime = GameManager.findGameForPlayer(player)?.growth
             if (kind == "config" && !player.isOp) return
             val state = runtime?.players?.get(player.uniqueId)
             if (kind != "config" && state == null) { player.sendMessage("성장 모드 참가자만 사용할 수 있습니다."); return }
-            val menu = GrowthMenu(player.uniqueId, kind, runtime)
+            val itemPage = if (kind == "items") page.coerceIn(0, GrowthItems.pageCount(state!!.inventory) - 1) else 0
+            val menu = GrowthMenu(player.uniqueId, kind, runtime, itemPage)
             val inv = Bukkit.createInventory(menu, 54, mini.deserialize("<dark_green>성장 · $kind"))
             menu.contents = inv
             when (kind) {
@@ -79,7 +80,7 @@ class GrowthMenu(val owner: UUID, val kind: String, val runtime: GrowthModeRunti
                     inv.setItem(49, item(Material.CHEST, "<gold>장비 보관함", listOf("<gray>클릭하여 장착")))
                 }
                 "items" -> {
-                    GrowthItems.owned(state!!.inventory).forEachIndexed { index, def ->
+                    GrowthItems.page(state!!.inventory, itemPage).forEachIndexed { index, def ->
                         menu.equipmentIds[index] = def.id
                         val equipped = state.equipment[def.slot] == def.id
                         inv.setItem(index, item(def.material,
@@ -90,6 +91,11 @@ class GrowthMenu(val owner: UUID, val kind: String, val runtime: GrowthModeRunti
                     if (menu.equipmentIds.isEmpty()) inv.setItem(22, item(Material.GLASS_PANE,
                         "<gray>보유한 장비가 없습니다", listOf("<gray>지역 몬스터와 한정 이벤트에서 획득하세요.")))
                     inv.setItem(49, item(Material.NETHER_STAR, "<gold>스탯 확인", listOf("<gray>클릭하여 성장 정보 확인")))
+                    val pages = GrowthItems.pageCount(state.inventory)
+                    inv.setItem(48, item(Material.BOOK, "<yellow>${itemPage + 1} / $pages 페이지",
+                        listOf("<gray>보유 장비 ${state.inventory.size}종", "<gray>같은 고유 효과는 중첩되지 않습니다.")))
+                    if (itemPage > 0) inv.setItem(45, item(Material.ARROW, "<yellow>이전 페이지", emptyList()))
+                    if (itemPage + 1 < pages) inv.setItem(53, item(Material.ARROW, "<yellow>다음 페이지", emptyList()))
                 }
                 "config" -> {
                     settings.forEachIndexed { index, (key, label, default) ->
@@ -152,10 +158,14 @@ class GrowthMenu(val owner: UUID, val kind: String, val runtime: GrowthModeRunti
                 }
                 "items" -> {
                     if (slot == 49) { open(player, "stats"); return }
+                    if (slot == 45 && menu.page > 0) { open(player, "items", menu.page - 1); return }
+                    if (slot == 53 && menu.page + 1 < GrowthItems.pageCount(state.inventory)) {
+                        open(player, "items", menu.page + 1); return
+                    }
                     menu.equipmentIds[slot]?.let { state.equip(it) }
                 }
             }
-            runtime.refresh(data); refreshClassItemDescriptions(data); open(player, menu.kind)
+            runtime.refresh(data); refreshClassItemDescriptions(data); open(player, menu.kind, menu.page)
         }
     }
 }

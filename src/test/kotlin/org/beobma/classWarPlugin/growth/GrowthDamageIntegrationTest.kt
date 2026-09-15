@@ -44,11 +44,14 @@ class GrowthDamageIntegrationTest {
         override var passives = emptyList<Passive>()
     }
 
-    private fun participant(growth: Boolean = true): Pair<PlayerData, List<Probe>> {
+    private fun participant(growth: Boolean = true, health: Double = 20.0): Pair<PlayerData, List<Probe>> {
         val game = Game(mutableListOf(), GameConfiguration(startingItems = emptyList()),
             mode = if (growth) MatchMode.GROWTH else MatchMode.CLASSIC, tickSource = { 0L })
         val id = UUID.randomUUID()
-        val player: Player = proxy { when (it) { "getUniqueId" -> id; "getName" -> "probe"; else -> error(it) } }
+        val player: Player = proxy { when (it) {
+            "getUniqueId" -> id; "getName" -> "probe"; "getHealth" -> health; "getAttribute" -> null
+            else -> error(it)
+        } }
         val data = PlayerData(player, game)
         val classes = listOf(Probe("berserker"), Probe("ice-wizard"))
         data.gameClasses.addAll(classes); game.playerDatas += data
@@ -134,6 +137,45 @@ class GrowthDamageIntegrationTest {
             assertEquals(12.0, hit.damage)
             assertEquals(3, GrowthScaling.count(data, "swordplay", "passive-swords", 3))
             assertEquals(40, GrowthScaling.cooldown(data, 40, "freikugel"))
+        }
+    }
+
+    @Test fun `new gear modifiers reach real player and creature damage contexts`() {
+        val (data, _) = participant(health = 8.0)
+        val runtime = data.game.growth!!
+        val state = runtime.players.getValue(data.uniqueId)
+        val gear = listOf("duel-blade-onslaught", "slayer-badge-onslaught", "desperate-crystal-onslaught", "unyielding-plate-onslaught")
+        state.inventory.addAll(gear); gear.forEach { state.equip(it) }
+        val playerHit = DamageContext(data, data, DamagePath.BASIC_ATTACK, DamageType.Normal, 10.0, weaponClassId = "berserker")
+        GrowthCombatEquipment.apply(playerHit, state, state, 0.4, 0.4)
+        assertEquals(playerHit.originalDamage * 1.12 * 1.15 * 0.85, playerHit.damage, 1e-8)
+        val mob: org.bukkit.entity.Mob = proxy { when (it) {
+            "getUniqueId" -> UUID(1, 2); "getHealth" -> 20.0; "getAttribute" -> null; else -> error(it)
+        } }
+        val target = org.beobma.classWarPlugin.entity.mob.MobEntityData(mob, data.game)
+        val mobHit = DamageContext(data, target, DamagePath.BASIC_ATTACK, DamageType.Normal, 10.0, weaponClassId = "berserker")
+        GrowthCombatEquipment.apply(mobHit, state, null, 0.4, 1.0)
+        assertEquals(mobHit.originalDamage * 1.12 * 1.2 * 1.15, mobHit.damage, 1e-8)
+        val fixed = DamageContext(data, target, DamagePath.SKILL, DamageType.True, 10.0)
+        GrowthCombatEquipment.apply(fixed, state, null, 0.4, 1.0)
+        assertEquals(fixed.originalDamage, fixed.damage)
+    }
+
+    @Test fun `curse relic scales fixed status damage once and updates preview`() {
+        val (data, classes) = participant()
+        AbilityExecution.with(classes[1].abilityScope) {
+            val state = data.game.growth!!.players.getValue(data.uniqueId)
+            val id = "curse-relic-onslaught"
+            state.inventory.add(id); state.equip(id)
+            val hit = DamageContext(data, data, DamagePath.STATUS_EFFECT, DamageType.StatusAbnormality, 10.0)
+            val growthOnly = 10.0 * GrowthProfile.forClass("ice-wizard").multiplier(GrowthAxis.SKILL_DAMAGE, state::stat)
+            assertEquals(growthOnly * 1.18, hit.originalDamage, 1e-8)
+            GrowthCombatEquipment.apply(hit, state, state, 1.0, 1.0)
+            assertEquals(hit.originalDamage, hit.damage)
+            val preview = GrowthDescription.forData(data, "ice-wizard")!!
+            assertEquals(hit.damage, GrowthDescription.evaluate("status-damage", 10.0, preview).first, 1e-8)
+            val ordinarySkill = DamageContext(data, data, DamagePath.SKILL, DamageType.True, 10.0)
+            assertEquals(growthOnly, ordinarySkill.damage, 1e-8)
         }
     }
 }
