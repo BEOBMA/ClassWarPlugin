@@ -135,6 +135,7 @@ class ClassWarPlugin : JavaPlugin() {
         }
 
         server.pluginManager.registerEvents(command, this)
+        server.pluginManager.registerEvents(org.beobma.classWarPlugin.growth.GrowthListener(), this)
         server.pluginManager.registerEvents(OnInventoryClickEvent(), this)
         server.pluginManager.registerEvents(OnInventoryCloseEvent(), this)
         server.pluginManager.registerEvents(OnPlayerDeathEvent(), this)

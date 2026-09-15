@@ -179,7 +179,7 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
         sounds.play(player, Sound.BLOCK_IRON_TRAPDOOR_CLOSE, pitch = 1.5f)
         playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun onCancel() { reloading = false; setSpeed(1.0) }
-            var ticksRemaining = 40
+            var ticksRemaining = org.beobma.classWarPlugin.growth.GrowthScaling.cooldown(playerData, 40, classId)
             override fun run() {
                 if (!player.isOnline || player.isDead) {
                     reloading = false
@@ -211,7 +211,7 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
             "<gray>조준하지 않고 발사할 수도 있지만 탄도가 무작위로 어긋난다.",
             "",
             "<gray>사용 시 장전된 탄환을 소모하여 바라보는 방향으로 사격한다.",
-            "<gray>적중한 적은 7의 피해를 입는다.",
+            "<gray>적중한 적은 {g:ranged:7}의 피해를 입는다.",
             "",
             "<dark_gray>이 스킬은 기본 공격으로 간주한다."
         )
@@ -222,8 +222,8 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
         override val definitionId = "sniper/red-skill"
         override val name = "<gray><bold>재장전"
         override val description = listOf(
-            "<gray>사용 시 저격총을 재장전한다.",
-            "<gray>재장전하는 동안 <gold><bold>이동 속도가 40% 감소</bold><gold>한다."
+            "<gray>사용 시 {g:reload:2}초 동안 저격총을 재장전한다.",
+            "<gray>재장전하는 동안 <gold><bold>이동 속도가 {g:speed:40}% 감소</bold><gold>한다."
         )
         override val cooldown = SNIPER_RELOAD_COOLDOWN_SECONDS
 
@@ -240,8 +240,8 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>기본 공격 적중 시 1초간 대상의 <gold><bold>이동 속도가 5% 감소</bold><gray>한다.",
-            "<gray>대상과 자신의 거리 차이가 5칸 이내라면 <gold><bold>대신 20% 감소</bold><gray>한다."
+            "<gray>기본 공격 적중 시 {g:duration:1}초간 대상의 <gold><bold>이동 속도가 {g:speed:5}% 감소</bold><gray>한다.",
+            "<gray>대상과 자신의 거리 차이가 5칸 이내라면 <gold><bold>대신 {g:speed:20}% 감소</bold><gray>한다."
         )
 
         override fun onAttackHit(context: DamageContext) {

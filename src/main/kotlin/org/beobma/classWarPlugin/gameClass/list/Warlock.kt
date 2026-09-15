@@ -51,23 +51,24 @@ class Warlock : GameClass() {
         override val description = listOf(
             "<dark_red><bold>체력을 5 소모</bold><gray>하고 사용할 수 있다.",
             "",
-            "<gray>8칸 내의 바라보는 적에게 8초간 역병의 낙인을 새긴다.",
+            "<gray>{g:range:8}칸 내의 바라보는 적에게 {g:duration-floor:8}초간 역병의 낙인을 새긴다.",
             "",
             "<gray>역병의 낙인이 새겨진 적은 워락에게 받는 피해가 10% 증가하고",
-            "<gray>자신과 주변 3칸 이내의 적은 매초 1의 피해를 입는다.",
+            "<gray>자신과 주변 {g:range:3}칸 이내의 적은 매초 {g:status-damage:1}의 피해를 입는다.",
         )
         override val cooldown = WARLOCK_MARK_COOLDOWN_SECONDS
 
         override fun use(): Boolean {
             val target = playerData.shotLaserGetEntityData(WARLOCK_MARK_RANGE, TargetType.Enemy, false) ?: return false
             player.health = (player.health - WARLOCK_HEALTH_COST).coerceAtLeast(1.0)
-            markedUntil[target.entity.uniqueId] = game.combatTick + WARLOCK_MARK_DURATION_TICKS
+            val duration = growthDuration(WARLOCK_MARK_DURATION_SECONDS)
+            markedUntil[target.entity.uniqueId] = game.combatTick + duration * 20L
             particles.line(player.eyeLocation, target.entity.location.add(0.0, target.entity.height / 2.0, 0.0), Particle.WITCH, 0.3)
             sounds.play(target.entity, Sound.ENTITY_WITHER_SPAWN, volume = 0.42f, pitch = 1.5f)
             var seconds = 0
             playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 override fun run() {
-                    if (seconds++ >= WARLOCK_MARK_DURATION_SECONDS ||
+                    if (seconds++ >= duration ||
                         markedUntil[target.entity.uniqueId]?.let { it <= game.combatTick } != false
                     ) {
                         markedUntil.remove(target.entity.uniqueId)
@@ -99,7 +100,7 @@ class Warlock : GameClass() {
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>역병의 낙인이 새겨진 적에게 피해를 입히면 입힌 피해의 50% 만큼 체력을 회복한다."
+            "<gray>역병의 낙인이 새겨진 적에게 피해를 입히면 입힌 피해의 {g:healing:50}% 만큼 체력을 회복한다."
         )
 
         override fun onHit(context: DamageContext) {

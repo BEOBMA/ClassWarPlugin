@@ -52,7 +52,7 @@ class Mercurius : PlanetClass(), GameStatusHandler {
         override val name = "<bold>수성"
         override val description = listOf(
             "<gray>패시브", "",
-            "<gray>이동 속도가 10% 증가한다.",
+            "<gray>이동 속도가 {g:speed:10}% 증가한다.",
             "<gray>이동 속도 감소 효과를 받지 않는다."
         )
     }

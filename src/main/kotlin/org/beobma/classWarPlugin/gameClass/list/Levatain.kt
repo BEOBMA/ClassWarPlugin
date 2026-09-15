@@ -363,7 +363,7 @@ class Levatain : GameClass(), GameStatusHandler {
     private class LevatainWeapon : BaseWeapon() {
         override val name = "<red><bold>레바테인"
         override val description = listOf(
-            "<gray>공격 적중 시 3초간 {keyword:Burn} 상태로 만들며 {keyword:Bleeding}을 1 부여한다."
+            "<gray>공격 적중 시 {g:duration:3}초간 {keyword:Burn} 상태로 만들며 {keyword:Bleeding}을 {g:physical-power:1} 부여한다."
         )
         override val material = Material.NETHERITE_SWORD
     }

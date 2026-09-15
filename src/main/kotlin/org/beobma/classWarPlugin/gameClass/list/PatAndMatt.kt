@@ -28,7 +28,7 @@ class PatAndMatt : GameClass() {
     private inner class RedSkill : Skill() {
         override val definitionId = "pat-and-matt/red-skill"
         override val name = "<bold>패트와 매트"
-        override val description = listOf("<gray>6칸 내의 바라보는 적이 4초간 자신의 행동을 따라하게 만든다.")
+        override val description = listOf("<gray>{g:range:6}칸 내의 바라보는 적이 {g:time:4}초간 자신의 행동을 따라하게 만든다.")
         override val cooldown = PAT_AND_MATT_COOLDOWN_SECONDS
         private var selectedTarget: PlayerData? by requestValue { null }
 
@@ -45,13 +45,14 @@ class PatAndMatt : GameClass() {
             val lock = status.controlLocks.acquire(Control.MOVE, Control.ATTACK, Control.SKILL)
             val release = abilityScope.resources.own { lock.close() }
             var previousCasterLocation = player.location.clone()
+            val duration = growthDuration(80)
             sounds.play(player, Sound.ENTITY_ALLAY_AMBIENT_WITH_ITEM, volume = 0.8f, pitch = 1.15f)
             sounds.play(target.player, Sound.ENTITY_ALLAY_AMBIENT_WITH_ITEM, volume = 0.8f, pitch = 0.8f)
             playerData.trackTask(object : BukkitRunnable(abilityScope, cancelOnDisconnect = true) {
                 var tick = 0
                 override fun onCancel() { release.close() }
                 override fun run() {
-                    if (tick >= 80 || !player.isOnline || !target.player.isOnline || playerStatus.isDead || status.isDead) {
+                    if (tick >= duration || !player.isOnline || !target.player.isOnline || playerStatus.isDead || status.isDead) {
                         particles.spawn(target.player, Particle.POOF, count = 16, spread = 0.5, speed = 0.07)
                         cancel()
                         return

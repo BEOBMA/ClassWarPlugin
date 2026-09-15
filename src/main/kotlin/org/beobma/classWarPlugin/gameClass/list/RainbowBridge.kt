@@ -53,7 +53,7 @@ class RainbowBridge : GameClass(), GameEndHandler, PlayerDeathHandler {
         override val definitionId = "rainbow-bridge/red-skill"
         override val name = "<bold>무지개"
         override val description = listOf(
-            "<gray>바라보는 방향으로 눈덩이를 던져 경로를 따라 10초간 무지개 다리를 설치한다.",
+            "<gray>바라보는 방향으로 눈덩이를 던져 경로를 따라 {g:time:10}초간 무지개 다리를 설치한다.",
             "<gray>무지개 다리 위에서 자신은 지속적으로 체력을 조금씩 회복한다."
         )
         override val cooldown = RAINBOW_BRIDGE_COOLDOWN_SECONDS
@@ -74,6 +74,7 @@ class RainbowBridge : GameClass(), GameEndHandler, PlayerDeathHandler {
             val castId = UUID.randomUUID()
             val castBlocks = linkedSetOf<Block>()
             activeCasts[castId] = castBlocks
+            val bridgeDuration = growthDuration(RAINBOW_BRIDGE_DURATION_TICKS)
 
             fun addBridgeCenter(projectilePoint: Location) {
                 val center = projectilePoint.clone().subtract(0.0, 1.55, 0.0)
@@ -123,7 +124,7 @@ class RainbowBridge : GameClass(), GameEndHandler, PlayerDeathHandler {
                         cancel()
                         return
                     }
-                    if (!player.isOnline || playerStatus.isDead || (!projectileFlying && bridgeAge >= RAINBOW_BRIDGE_DURATION_TICKS)) {
+                    if (!player.isOnline || playerStatus.isDead || (!projectileFlying && bridgeAge >= bridgeDuration)) {
                         if (snowball.isValid) snowball.remove()
                         activeProjectiles.remove(snowball)
                         releaseCast(castId)

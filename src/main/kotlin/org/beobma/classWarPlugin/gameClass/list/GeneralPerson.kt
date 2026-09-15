@@ -31,7 +31,7 @@ class GeneralPerson : GameClass() {
             "<gray>패시브",
             "",
             "<gray>전투와 관련 없는 일반인이므로, 능력이 없다.",
-            "<gray>다른 플레이어가 10칸 이내에 있다면 <gold><bold>이동 속도가 20% 증가</bold><gray>한다."
+            "<gray>다른 플레이어가 10칸 이내에 있다면 <gold><bold>이동 속도가 {g:speed:20}% 증가</bold><gray>한다."
         )
 
         private var nearbySpeed: MoveSpeedIncrease? = null

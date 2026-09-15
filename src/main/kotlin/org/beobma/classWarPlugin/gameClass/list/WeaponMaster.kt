@@ -106,7 +106,12 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         needleBat.reset()
     }
 
-    override fun onGameTimePasses() = Unit
+    override fun onGameTimePasses() {
+        playerData.getStatus<WeaponMasteryStatus>()?.apply {
+            maxPower = growthCount("mastery", WEAPON_MASTER_MAX_MASTERY_STACKS)
+            if (power > maxPower!!) updatePower(maxPower!!)
+        }
+    }
 
     private fun returnToWeapon() {
         player.inventory.heldItemSlot = if (playerData.gameClasses.indexOf(this) == 1) 8 else 0
@@ -131,7 +136,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         override val definitionId = "weapon-master/scimitar-skill"
         override val name = "<bold>시미터"
         override val description = listOf(
-            "<gray>바라보는 방향으로 돌진하여 모든 적을 베어 2의 피해를 입힌다.", "",
+            "<gray>바라보는 방향으로 돌진하여 모든 적을 베어 {g:damage:2}의 피해를 입힌다.", "",
             "<dark_gray>사용 후 핫바키가 1번으로 자동 교체된다."
         )
         override val cooldown = WEAPON_MASTER_SCIMITAR_COOLDOWN_SECONDS
@@ -172,7 +177,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         override val definitionId = "weapon-master/shotgun-skill"
         override val name = "<bold>샷건"
         override val description = listOf(
-            "<gray>바라보는 방향으로 샷건을 발사하여 3의 피해를 입힌 뒤 자신은 후방으로 밀려난다.", "",
+            "<gray>바라보는 방향으로 샷건을 발사하여 {g:damage:3}의 피해를 입힌 뒤 자신은 후방으로 밀려난다.", "",
             "<dark_gray>사용 후 핫바키가 1번으로 자동 교체된다."
         )
         override val cooldown = WEAPON_MASTER_SHOTGUN_COOLDOWN_SECONDS
@@ -213,7 +218,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         override val name = "<bold>클로"
         override val description = listOf(
             "<gray>공중에서만 사용할 수 있다.", "",
-            "<gray>전방 사선 방향으로 하강하며 적중한 적에게 2의 피해를 입힌다.", "",
+            "<gray>전방 사선 방향으로 하강하며 적중한 적에게 {g:damage:2}의 피해를 입힌다.", "",
             "<dark_gray>사용 후 핫바키가 1번으로 자동 교체된다."
         )
         override val cooldown = WEAPON_MASTER_CLAW_COOLDOWN_SECONDS
@@ -259,7 +264,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         override val definitionId = "weapon-master/brick-skill"
         override val name = "<bold>브릭"
         override val description = listOf(
-            "<gray>전방을 향해 짧게 점프하며 벽돌을 내려 찍어 모든 적에게 4의 피해를 입힌다.", "",
+            "<gray>전방을 향해 짧게 점프하며 벽돌을 내려 찍어 모든 적에게 {g:damage:4}의 피해를 입힌다.", "",
             "<dark_gray>사용 후 핫바키가 1번으로 자동 교체된다."
         )
         override val cooldown = WEAPON_MASTER_BRICK_COOLDOWN_SECONDS
@@ -303,7 +308,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         override val name = "<bold>봄"
         override val description = listOf(
             "<gray>폭탄을 던진 뒤 후방으로 도주한다.",
-            "<gray>이후 폭탄이 폭발하여 모든 적에게 4의 피해를 입힌다.", "",
+            "<gray>이후 폭탄이 폭발하여 모든 적에게 {g:damage:4}의 피해를 입힌다.", "",
             "<dark_gray>사용 후 핫바키가 1번으로 자동 교체된다."
         )
         override val cooldown = WEAPON_MASTER_BOMB_COOLDOWN_SECONDS
@@ -370,7 +375,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         override val definitionId = "weapon-master/knife-skill"
         override val name = "<bold>나이프"
         override val description = listOf(
-            "<gray>전후방을 베어내어 모든 적에게 5의 피해를 입힌다.", "",
+            "<gray>전후방을 베어내어 모든 적에게 {g:damage:5}의 피해를 입힌다.", "",
             "<dark_gray>사용 후 핫바키가 1번으로 자동 교체된다."
         )
         override val cooldown = WEAPON_MASTER_KNIFE_COOLDOWN_SECONDS
@@ -406,7 +411,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         override val name = "<bold>윙대거"
         override val description = listOf(
             "<gray>일정 시간 후 폭발하는 수리검을 던진다. 재사용하면 폭발시킬 수 있다.",
-            "<gray>닿은 적에게는 2의 피해를, 폭발에 닿으면 3의 피해를 입는다.", "",
+            "<gray>닿은 적에게는 {g:damage:2}의 피해를, 폭발에 닿으면 {g:damage:3}의 피해를 입는다.", "",
             "<dark_gray>사용 후 핫바키가 1번으로 자동 교체된다."
         )
         override val cooldown = WEAPON_MASTER_WING_DAGGER_COOLDOWN_SECONDS
@@ -520,7 +525,7 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         override val name = "<bold>니들배트"
         override val description = listOf(
             "<gray>전방을 향해 방망이를 내려찍는다.",
-            "<gray>최대 3번까지 연속으로 사용 가능하며, 각각 2, 3, 4의 피해를 입힌다.", "",
+            "<gray>최대 3번까지 연속으로 사용 가능하며, 각각 {g:damage:2}, {g:damage:3}, {g:damage:4}의 피해를 입힌다.", "",
             "<dark_gray>사용 후 핫바키가 1번으로 자동 교체된다."
         )
         override val cooldown = WEAPON_MASTER_NEEDLE_BAT_COOLDOWN_SECONDS
@@ -585,10 +590,10 @@ class WeaponMaster : GameClass(), GameStatusHandler {
         override val description = listOf(
             "<gray>패시브", "",
             "<gray>기본 공격 적중 후 1초 이내에 스킬을 사용하면 6초간 달인 스택을 1 얻는다.",
-            "<gray>달인 스택 1당 스킬의 최종 피해량이 10% 증가한다. (최대 80%)",
-            "<gray>달인 스택을 얻을 때, 4초 동안 <aqua><bold>2의 피해를 막는 {keyword:Shield}을 얻는다.", "",
+            "<gray>달인 스택 1당 스킬의 최종 피해량이 10% 증가한다. (최대 {g:mastery-damage:80}%, {g:feature/mastery:8}스택)",
+            "<gray>달인 스택을 얻을 때, {g:duration:4}초 동안 <aqua><bold>{g:shield:2}의 피해를 막는 {keyword:Shield}을 얻는다.", "",
             "<gray>달인 스택이 최대치일 때 달인 스택을 얻으면",
-            "<gray>주변에 사슬을 던진 후 회수하여 적중한 모든 적에게 4의 피해를 입힌다.", "",
+            "<gray>주변에 사슬을 던진 후 회수하여 적중한 모든 적에게 {g:damage:4}의 피해를 입힌다.", "",
             "<dark_gray>달인 스택을 얻을 때마다 지속 시간이 갱신된다."
         )
 
@@ -613,10 +618,12 @@ class WeaponMaster : GameClass(), GameStatusHandler {
 
     private fun gainMasteryStack() {
         val status = playerData.getOrCreateStatus(playerData) { WeaponMasteryStatus() }
-        val wasMaximum = status.power >= 8
+        val maximum = growthCount("mastery", WEAPON_MASTER_MAX_MASTERY_STACKS)
+        status.maxPower = maximum
+        val wasMaximum = status.power >= maximum
         status.applyStatus(
             duration = WEAPON_MASTER_MASTERY_DURATION_SECONDS,
-            powerSet = (status.power + 1).coerceAtMost(WEAPON_MASTER_MAX_MASTERY_STACKS),
+            powerSet = (status.power + 1).coerceAtMost(maximum),
         )
         playerData.addStatus(Shield(), playerData).applyStatus(
             duration = WEAPON_MASTER_CHAIN_SHIELD_DURATION_SECONDS,

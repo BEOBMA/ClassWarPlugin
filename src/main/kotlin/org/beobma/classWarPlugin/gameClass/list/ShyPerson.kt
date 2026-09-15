@@ -63,7 +63,8 @@ class ShyPerson : GameClass(), GameStatusHandler {
     private fun seesMe(observer: PlayerData): Boolean {
         if (observer.player.world != player.world || !observer.player.hasLineOfSight(player)) return false
         val eye = observer.player.eyeLocation
-        if (HitboxUtil.distanceSquared(player.boundingBox, eye.toVector()) > SHY_VIEW_RANGE * SHY_VIEW_RANGE) return false
+        val range = growthValue("detection", SHY_VIEW_RANGE)
+        if (HitboxUtil.distanceSquared(player.boundingBox, eye.toVector()) > range * range) return false
         val point = HitboxUtil.closestPoint(player.boundingBox, eye.toVector())
         val vector = point.subtract(eye.toVector())
         if (vector.lengthSquared() < 1.0E-8) return true
@@ -85,7 +86,7 @@ class ShyPerson : GameClass(), GameStatusHandler {
         override val name = "<bold>부끄러움"
         override val description = listOf(
             "<gray>패시브", "", "<gray>다른 플레이어의 시야 범위에 있을 때",
-            "<gray>자신은 부끄러움을 느끼며 대상의 위치를 알 수 있다."
+            "<gray>자신은 부끄러움을 느끼며 대상의 위치를 알 수 있다. (감지 거리 {g:feature/detection:48}칸)"
         )
     }
 }

@@ -39,7 +39,7 @@ object DescriptionText {
         return selectedIndices.sorted().map(content::get)
     }
 
-    fun plain(line: String): String = line.replace(miniMessageTag, "").trim()
+    fun plain(line: String): String = GrowthDescription.baseText(line).replace(miniMessageTag, "").trim()
 
     fun isTypeLabel(line: String): Boolean = plain(line) in typeLabels
 

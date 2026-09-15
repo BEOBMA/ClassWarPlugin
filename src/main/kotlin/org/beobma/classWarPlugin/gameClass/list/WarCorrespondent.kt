@@ -269,11 +269,11 @@ class WarCorrespondent : GameClass(), WeaponInputHandler, OnSkillUseHandler, Gam
         override val name = "<gray>카메라"
         override val description = listOf(
             "<gray>8칸 내의 적을 우클릭하면 촬영 상태에 들어간다.",
-            "<gray>촬영 상태에서 적에게 매 틱마다 무적 시간을 무시하는 0.05의 {keyword:TrueDamage}를 입힌다.",
+            "<gray>촬영 상태에서 적에게 매 틱마다 무적 시간을 무시하는 {g:damage:0.05}의 {keyword:TrueDamage}를 입힌다.",
             "<gray>자신이 움직이거나, 스킬을 사용하거나, 점프하거나, 적이 사거리에서 벗어나면 촬영 상태는 종료된다.",
             "<gray>촬영 상태는 최대 3초간 지속되며, 지속된 시간에 비례하여 재사용 대기 시간이 적용된다. (최소 1, 최대 3)",
             "",
-            "<gray>자신이 방송 상태라면 대신 적에게 매 틱마다 무적 시간을 무시하는 0.1의 {keyword:TrueDamage}를 입힌다."
+            "<gray>자신이 방송 상태라면 대신 적에게 매 틱마다 무적 시간을 무시하는 {g:damage:0.1}의 {keyword:TrueDamage}를 입힌다."
         )
         override val material = Material.OBSERVER
     }
@@ -289,8 +289,8 @@ class WarCorrespondent : GameClass(), WeaponInputHandler, OnSkillUseHandler, Gam
             "<gray>  - 적 플레이어가 사망한 위치를 2초 이상 촬영",
             "",
             "<gray>{keyword:PhotographyStack}이 3스택이 되면 자신은 방송 상태에 돌입한다.",
-            "<gray>방송 상태에서는 이 스킬이 강화되어 매 틱마다 범위 내 적에게 무적 시간을 무시하는 0.1의 {keyword:TrueDamage}를 입힌다.",
-            "<gray>스킬이 종료될 때 범위 내에 있던 모든 적은 3초간 {keyword:Stun}한다.",
+            "<gray>방송 상태에서는 이 스킬이 강화되어 매 틱마다 범위 내 적에게 무적 시간을 무시하는 {g:damage:0.1}의 {keyword:TrueDamage}를 입힌다.",
+            "<gray>스킬이 종료될 때 범위 내에 있던 모든 적은 {g:duration:3}초간 {keyword:Stun}한다.",
             "",
             "<gray>이 스킬 사용 중 기본 공격, 스킬을 사용할 수 없다.",
             "<gray>이 스킬은 Y축의 영향을 받지 않고 촬영할 수 있다."

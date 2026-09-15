@@ -27,6 +27,56 @@ modes:
       - movement-combat
       - hotbar-skills
 
+# 성장 모드: 맵에 따라 지역 생성 및 시작이 실패할 수 있습니다. 모든 설정은 경기 시작 시 고정됩니다.
+growth:
+  regions:
+    maximum: 16
+    minimum: 4
+    attempts: 12
+  # 낮과 밤 각각의 길이입니다. 경고 지역은 다음 낮/밤 전환에 금지됩니다.
+  period-seconds: 120
+  warnings-per-period: 1
+  forbidden-damage: 2.0
+  final-shrink-seconds: 120
+  level:
+    maximum: 30
+    points: 3
+    health: 2.0
+    experience-base: 60
+    experience-step: 25
+    player-experience: 100
+  mobs:
+    # 성장 몬스터/동물의 이름 위에 현재 체력과 최대 체력을 표시합니다.
+    show-health: true
+    per-region: 4
+    maximum: 96
+    experience: 30
+  items:
+    drop-chance: 0.18
+  events-enabled: true
+  # 예정 위치/시간을 지도에 미리 표시하고, 등장하면 금색 이름과 빨간 X로 강조합니다.
+  # 획득/처치/만료/금지 시 마커도 제거됩니다. 예정 위치가 막히면 이동하지 않고 해당 등장을 생략합니다.
+  # 이벤트에 mob-type: SKELETON을 추가하면 아이템 대신 한정 몬스터가 등장하고 처치자에게 reward를 지급합니다.
+  # 지원: ZOMBIE, SKELETON, SPIDER, HUSK, STRAY, DROWNED, WITHER_SKELETON. 미지정 시 기존 아이템 이벤트입니다.
+  events:
+    ancient-grove:
+      day: 2
+      night: false
+      terrain-tags: [forest, plains]
+      reward: world-tree
+      lifetime-seconds: 90
+    midnight-relic:
+      day: 3
+      night: true
+      terrain-tags: []
+      reward: moon-heart
+      lifetime-seconds: 90
+  # 클래스 ID별 선택 설정. 미설정 클래스도 직업 유형에 따른 기본 계수가 적용됩니다.
+  # 주*1.5% + 부*0.6%에 공격 성향별 basic-damage-weight / skill-damage-weight를 곱합니다. 피해 상한은 없습니다.
+  # 쿨다운은 기본 지능에만 반응합니다. effects.cooldown: {stat: INTELLIGENCE, percent: 0.5}로 별도 지정할 수 있습니다.
+  # example: {primary: STRENGTH, secondary: AGILITY, primary-percent: 1.5, secondary-percent: 0.6, basic-damage-weight: 1.4, skill-damage-weight: 0.65}
+  classes: {}
+
 # 모든 값은 현재 클래스 수치를 기준으로 한 배율입니다. 개별 클래스 항목은 첫 실행 때 자동 생성됩니다.
 class-balance:
   defaults:

@@ -74,8 +74,8 @@ class Astronomer : GameClass(), GameStatusHandler {
         override val definitionId = "astronomer/red-skill"
         override val name = "<bold>별의 죽음"
         override val description = listOf(
-            "<gray>8칸 내의 바라보는 블럭에 6초간 블랙홀을 만든다.",
-            "<gray>블랙홀에 근접한 적은 끌어당겨지고 초당 2의 피해를 입는다.",
+            "<gray>{g:range:8}칸 내의 바라보는 블럭에 {g:time:6}초간 블랙홀을 만든다.",
+            "<gray>블랙홀에 근접한 적은 끌어당겨지고 초당 {g:damage:2}의 피해를 입는다.",
             "<gray>블랙홀의 영향을 받는 적에게서 초당 {keyword:Mana}를 2 강탈한다.",
             "",
             "<dark_gray>웅크린 상태에서 사용하면 자신의 위치에 블랙홀을 만들 수도 있다."
@@ -119,14 +119,14 @@ class Astronomer : GameClass(), GameStatusHandler {
             "",
             "<gray>{keyword:Mana} 회복 속도가 감소한다.",
             "<gray>스킬 적중 시 {keyword:Mana}를 전부 소모하고 적중한 적 주변에 별을 떨어트린다.",
-            "<gray>떨어트리는 별의 수는 소모한 {keyword:Mana} 양에 비례하여 증가한다. (20당 1개, 최대 5개)",
-            "<gray>별은 적중한 적에게 1의 {keyword:TrueDamage}를 입힌다."
+            "<gray>떨어트리는 별의 수는 소모한 {keyword:Mana} 양에 비례하여 증가한다. (20당 1개, 최대 {g:feature/meteors:5}개)",
+            "<gray>별은 적중한 적에게 {g:damage:1}의 {keyword:TrueDamage}를 입힌다."
         )
 
         override fun onSkillAttackHit(context: DamageContext) {
             if (context.damageType == DamageType.True) return
             val mana = playerData.getOrCreateStatus(playerData) { Mana() }
-            val count = (mana.power / ASTRONOMER_MANA_PER_METEOR).coerceIn(1, ASTRONOMER_MAX_METEOR_COUNT)
+            val count = (mana.power / ASTRONOMER_MANA_PER_METEOR).coerceIn(1, growthCount("meteors", ASTRONOMER_MAX_METEOR_COUNT))
             val targetLoc = context.target.entity.location.clone()
             val classData = (ownerClass as? Astronomer)
             val soundAndDisplayEndTick = minOf(
@@ -161,12 +161,12 @@ class Astronomer : GameClass(), GameStatusHandler {
         override fun onFlooringContinue(location: Location) {
             val tick = visualTick++
             if (tick % 2 == 0) {
-                particles.circle(location.clone().add(0.0, 0.25, 0.0), Particle.PORTAL, radius, 28)
-                particles.circle(location.clone().add(0.0, 0.65, 0.0), Particle.REVERSE_PORTAL, radius * 0.62, 20)
+                particles.circle(location.clone().add(0.0, 0.25, 0.0), Particle.PORTAL, effectRadius, 28)
+                particles.circle(location.clone().add(0.0, 0.65, 0.0), Particle.REVERSE_PORTAL, effectRadius * 0.62, 20)
             }
             repeat(5) { index ->
                 val angle = tick * 0.18 + index * Math.PI * 0.4
-                val spiralRadius = radius * (1.0 - (tick % 30) / 35.0)
+                val spiralRadius = effectRadius * (1.0 - (tick % 30) / 35.0)
                 particles.spawn(
                     location.clone().add(cos(angle) * spiralRadius, 0.25 + index * 0.18, sin(angle) * spiralRadius),
                     Particle.END_ROD,

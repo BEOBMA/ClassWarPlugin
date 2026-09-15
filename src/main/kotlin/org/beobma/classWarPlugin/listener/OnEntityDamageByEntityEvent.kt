@@ -48,7 +48,8 @@ class OnEntityDamageByEntityEvent : Listener {
         val isMannequin = targetEntity.isMannequin()
         val targetPlayer = targetEntity as? Player
         val attackerIsTraining = PlayerTagManager.isTraining(attacker)
-        if (targetPlayer == null && !isMannequin && !attackerIsTraining) return
+        val isGrowthMob = findGameForPlayer(attacker)?.growth?.mobs?.containsKey(targetEntity.uniqueId) == true
+        if (targetPlayer == null && !isMannequin && !attackerIsTraining && !isGrowthMob) return
         if (!isGaming() &&
             !attackerIsTraining &&
             !(targetPlayer != null && PlayerTagManager.isTraining(targetPlayer))

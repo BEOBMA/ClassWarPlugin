@@ -197,7 +197,7 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
                 FearStage.DREAD -> 0.52
                 else -> 0.72
             }
-            if (Random.nextDouble() < chance) {
+            if (Random.nextDouble() < org.beobma.classWarPlugin.growth.GrowthScaling.chance(playerData, chance)) {
                 startApproachingFootsteps(target)
                 whisperCooldown[target.uniqueId] = when (stage) {
                     FearStage.UNEASY -> Random.nextInt(7, 12)
@@ -237,7 +237,7 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
         if (stage >= FearStage.TERROR) {
             applyFearPotion(target, PotionEffect(PotionEffectType.SLOWNESS, 25, 0, false, false, false))
             applyFearPotion(target, PotionEffect(PotionEffectType.WEAKNESS, 25, 0, false, false, false))
-            if ((realityCooldown[target.uniqueId] ?: 0) <= 0 && Random.nextDouble() < 0.38) {
+            if ((realityCooldown[target.uniqueId] ?: 0) <= 0 && Random.nextDouble() < org.beobma.classWarPlugin.growth.GrowthScaling.chance(playerData, 0.38)) {
                 fractureReality(target)
                 realityCooldown[target.uniqueId] = Random.nextInt(8, 13)
             }
@@ -247,7 +247,7 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
             if (elapsedSeconds % 6 == 0) {
                 applyFearPotion(target, PotionEffect(PotionEffectType.BLINDNESS, 22, 0, false, false, false))
             }
-            if (Random.nextDouble() < 0.32) {
+            if (Random.nextDouble() < org.beobma.classWarPlugin.growth.GrowthScaling.chance(playerData, 0.32)) {
                 target.damage(1.5, DamageType.StatusAbnormality, playerData, false, damagePath = DamagePath.STATUS_EFFECT)
                 sounds.playTo(victim, Sound.ENTITY_WARDEN_ATTACK_IMPACT, 0.52f, 1.55f, SoundCategory.MASTER)
             }
@@ -442,7 +442,7 @@ class Fear : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler 
                 applyFearPotion(target, PotionEffect(PotionEffectType.NAUSEA, 70, 0, false, false, false))
                 val knockback = victim.location.toVector().subtract(display.location.toVector())
                 if (knockback.lengthSquared() > 0.0001) {
-                    victim.velocity = knockback.normalize().multiply(0.48).setY(0.24)
+                    victim.velocity = org.beobma.classWarPlugin.growth.GrowthScaling.knockback(playerData, knockback.normalize().multiply(0.48).setY(0.24))
                 }
                 target.damage(
                     if (currentSanity <= 10.0) 2.0 else 1.0,

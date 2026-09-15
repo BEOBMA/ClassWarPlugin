@@ -43,7 +43,7 @@ object Targeting {
         return when (candidate) {
             is PlayerData -> player.isEnemyOf(candidate)
             is PlayerOwnedEntityData -> player.isEnemyOf(candidate.ownerData)
-            else -> PlayerTagManager.isTraining(player.player)
+            else -> PlayerTagManager.isTraining(player.player) || player.game.growth?.mobs?.containsKey(candidate.entity.uniqueId) == true
         }
     }
 

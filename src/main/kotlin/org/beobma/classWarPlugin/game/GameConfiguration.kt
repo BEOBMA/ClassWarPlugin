@@ -170,6 +170,7 @@ private object GameConfigStep {
  * `1.0`이 원본 값이며, [damageMultipliers]의 세부 배율은 전체 배율과 곱해진다.
  */
 data class GameConfiguration(
+    val growth: org.beobma.classWarPlugin.growth.GrowthSettings = org.beobma.classWarPlugin.growth.GrowthSettings(),
     val refreshChances: Int = 3,
     val countdownSeconds: Int = 5,
     val startingItems: List<ItemStack> = defaultStartingItems(),
@@ -263,6 +264,7 @@ object GameSettings {
             } else {
                 defaults.startingItems.map(ItemStack::clone)
             },
+            growth = org.beobma.classWarPlugin.growth.GrowthSettings.read(config),
             classWeapon = deserializeItemStack(config.get(GameConfigPath.CLASS_WEAPON)),
             cooldownFlowMultiplier = config.getDouble(
                 GameConfigPath.COOLDOWN_FLOW_MULTIPLIER,

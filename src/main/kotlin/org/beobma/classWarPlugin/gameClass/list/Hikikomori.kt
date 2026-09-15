@@ -37,7 +37,7 @@ class Hikikomori : GameClass(), GameStatusHandler {
         override val name = "<bold>은둔"
         override val description = listOf(
             "<gray>패시브", "", "<gray>자신 주위 10칸 이내에 적이 접근하면",
-            "<gray>해당 적은 <gold><bold>이동 속도가 50% 감소</bold><gray>한다.",
+            "<gray>해당 적은 <gold><bold>이동 속도가 {g:speed:50}% 감소</bold><gray>한다.",
             "<gray>자신은 가하는 피해가 20% 감소한다."
         )
         override fun onHit(context: DamageContext) = context.addDamageDealtMultiplier(0.8)

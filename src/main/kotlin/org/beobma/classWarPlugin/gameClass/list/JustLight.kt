@@ -56,8 +56,9 @@ class JustLight : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHan
 
     private fun refreshLight() {
         val center = player.eyeLocation.block
+        val scale = growthValue("light-radius", 1.0)
         val desired = lightOffsets.mapNotNullTo(linkedSetOf()) { (x, y, z) ->
-            findLightDestination(center.getRelative(x, y, z))
+            findLightDestination(center.getRelative((x * scale).toInt(), (y * scale).toInt(), (z * scale).toInt()))
         }
         lightBlocks.keys.filter { it !in desired }.toList().forEach(::restoreLight)
         desired.filter { it !in lightBlocks }.forEach { destination ->
@@ -86,6 +87,6 @@ class JustLight : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHan
 
     private class Passive : BasePassive() {
         override val name = "<bold>발광"
-        override val description = listOf("<gray>패시브", "", "<gray>자신 주위에 강한 빛을 생성한다.")
+        override val description = listOf("<gray>패시브", "", "<gray>자신 주위에 강한 빛을 생성한다. 광원 배치 간격은 기본의 {g:feature/light-radius:100}%다.")
     }
 }

@@ -126,7 +126,7 @@ object BattleMapManager {
             }
 
             if (game.settings.borderEnabled) {
-                val pixels = drawMagneticField(mapView, canvas)
+                val pixels = drawGrowthRegions(mapView, canvas) + drawMagneticField(mapView, canvas)
                 previousPixelsByPlayer[player.uniqueId] = pixels
             }
             drawPlayerCursor(mapView, canvas, player)
@@ -153,6 +153,31 @@ object BattleMapManager {
                 drawHorizontal(canvas, pixels, left, right, bottom - offset, color)
                 drawVertical(canvas, pixels, top, bottom, left + offset, color)
                 drawVertical(canvas, pixels, top, bottom, right - offset, color)
+            }
+            return pixels
+        }
+
+        private fun drawGrowthRegions(mapView: MapView, canvas: MapCanvas): Set<Int> {
+            val layout = game.growth?.layout ?: return emptySet()
+            val scale = blocksPerPixel(mapView.scale).toDouble()
+            val pixels = mutableSetOf<Int>()
+            val labels = IntArray(MAP_SIZE * MAP_SIZE) { -1 }
+            for (y in 0 until MAP_SIZE) for (x in 0 until MAP_SIZE) {
+                val wx = mapView.centerX + (x - MAP_SIZE / 2.0) * scale
+                val wz = mapView.centerZ + (y - MAP_SIZE / 2.0) * scale
+                val region = layout.at(wx, wz) ?: continue
+                labels[y * MAP_SIZE + x] = region.id
+                val color = when {
+                    region.state == org.beobma.classWarPlugin.growth.RegionState.FORBIDDEN -> Color(190, 45, 45)
+                    region.state == org.beobma.classWarPlugin.growth.RegionState.WARNING -> Color(230, 200, 35)
+                    else -> null
+                }
+                if (color != null) setPixel(canvas, pixels, x, y, color)
+            }
+            val borders = org.beobma.classWarPlugin.growth.RegionMapBorders.mask(labels, MAP_SIZE, MAP_SIZE)
+            borders.forEachIndexed { index, stroke ->
+                if (stroke != 0) setPixel(canvas, pixels, index % MAP_SIZE, index / MAP_SIZE,
+                    if (stroke == 2) Color(255, 255, 255) else Color(20, 20, 20))
             }
             return pixels
         }
@@ -209,6 +234,28 @@ object BattleMapManager {
                         ),
                     ))
                 }
+            game.growth?.layout?.let { layout ->
+                layout.regions.forEach { region ->
+                    val cell = region.walkable[region.walkable.size / 2]
+                    val wx = layout.surface.originX + cell % layout.surface.size + 0.5
+                    val wz = layout.surface.originZ + cell / layout.surface.size + 0.5
+                    val x = ((wx - mapView.centerX) * 2 / blocksPerPixel).roundToInt()
+                    val z = ((wz - mapView.centerZ) * 2 / blocksPerPixel).roundToInt()
+                    if (x in -128..127 && z in -128..127) cursors.addCursor(MapCursor(x.toByte(), z.toByte(), 0,
+                        MapCursor.Type.TARGET_POINT, true, Component.text("${region.name} · ${region.state.label}")))
+                }
+                game.growth?.eventMarkers()?.forEach { marker ->
+                    val loc = marker.location
+                    val x = ((loc.x - mapView.centerX) * 2 / blocksPerPixel).roundToInt()
+                    val z = ((loc.z - mapView.centerZ) * 2 / blocksPerPixel).roundToInt()
+                    if (x in -128..127 && z in -128..127) cursors.addCursor(MapCursor(x.toByte(), z.toByte(), 0,
+                        if (marker.active) MapCursor.Type.RED_X else MapCursor.Type.TARGET_POINT, true,
+                        Component.text(marker.name)
+                            .color(if (marker.active) net.kyori.adventure.text.format.NamedTextColor.GOLD
+                                else net.kyori.adventure.text.format.NamedTextColor.GRAY)
+                            .decoration(net.kyori.adventure.text.format.TextDecoration.BOLD, marker.active)))
+                }
+            }
             canvas.cursors = cursors
             val reporter = viewerData
                 ?.let { org.beobma.classWarPlugin.ability.AbilityTree.nodes(it.gameClasses, activeOnly = true) }

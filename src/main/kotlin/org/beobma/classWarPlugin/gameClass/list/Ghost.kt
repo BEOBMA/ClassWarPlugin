@@ -36,7 +36,7 @@ class Ghost : GameClass(), GameStatusHandler {
         override val name = "<bold>유령화"
         override val description = listOf(
             "<gray>패시브", "", "<gray>최대 체력이 1로 고정된다.",
-            "<gray>기본 공격 적중 시 적 최대 체력의 50%에 해당하는 {keyword:TrueDamage}를 입힌다."
+            "<gray>기본 공격 적중 시 적 최대 체력의 {g:damage:50}%에 해당하는 {keyword:TrueDamage}를 입힌다."
         )
 
         override fun onAttackHit(context: DamageContext) {

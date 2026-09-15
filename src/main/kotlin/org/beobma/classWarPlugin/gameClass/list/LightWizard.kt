@@ -67,7 +67,7 @@ class LightWizard : GameClass(), org.beobma.classWarPlugin.gameClass.handler.Gam
         val surfaceNormal = hitFace.direction.normalize()
         val scale = 0.72
         val location = hitPosition.toLocation(player.world).add(surfaceNormal.clone().multiply(scale / 2.0 + 0.04))
-        if (prisms.size >= LIGHT_WIZARD_MAX_PRISMS) prisms.removeFirst().display.remove()
+        while (prisms.size >= growthCount("prisms", LIGHT_WIZARD_MAX_PRISMS)) prisms.removeFirst().display.remove()
         val displayLocation = location.clone().add(-scale / 2.0, -scale / 2.0, -scale / 2.0)
         val display = location.world.spawn(displayLocation, BlockDisplay::class.java)
         display.block = Material.AMETHYST_BLOCK.createBlockData()
@@ -107,7 +107,7 @@ class LightWizard : GameClass(), org.beobma.classWarPlugin.gameClass.handler.Gam
         queue += Beam(player.eyeLocation.clone(), player.eyeLocation.direction.normalize(), 0)
         val activated = mutableSetOf<Prism>()
         var processed = 0
-        while (queue.isNotEmpty() && processed++ < 1 + LIGHT_WIZARD_MAX_PRISMS * 4) {
+        while (queue.isNotEmpty() && processed++ < 1 + prisms.size * 4) {
             val beam = queue.removeFirst()
             val maxDistance = ClassBalanceManager.scaleRange(playerData, 24.0)
             val blockHit = beam.start.world.rayTraceBlocks(beam.start, beam.direction, maxDistance)?.hitPosition
@@ -213,7 +213,7 @@ class LightWizard : GameClass(), org.beobma.classWarPlugin.gameClass.handler.Gam
         override val definitionId = "light-wizard/red-skill"
         override val name = "<bold>프리즘"
         override val description = listOf(
-            "<gray>10칸 내의 바라보는 블럭에 프리즘을 설치한다. (최대 5개)",
+            "<gray>{g:range:10}칸 내의 바라보는 블럭에 프리즘을 설치한다. (최대 {g:feature/prisms:5}개)",
             "<gray>최대 개수를 초과하여 설치할 경우 가장 오래된 프리즘을 제거하고 설치한다."
         )
         override val cooldown = LIGHT_WIZARD_PRISM_COOLDOWN_SECONDS
@@ -234,18 +234,18 @@ class LightWizard : GameClass(), org.beobma.classWarPlugin.gameClass.handler.Gam
         override val name = "<bold>분광"
         override val description = listOf(
             "<gray>바라보는 방향으로 빛의 광선을 발사한다.",
-            "<gray>광선에 직접 적중한 적은 8의 피해를 입는다.",
+            "<gray>광선에 직접 적중한 적은 {g:damage:8}의 피해를 입는다.",
             "",
             "<gray>광선이 프리즘에 적중하면 해당 프리즘이 활성화된다.",
             "<gray>활성화 시 지름 4칸의 빛을 방출해 범위 안의 적에게 광선과 동일한 피해를 입힌다.",
             "<gray>빛의 범위 안에 있는 다른 프리즘도 연쇄 활성화된다.",
             "<gray>활성화된 프리즘은 십자 방향으로 빛의 광선을 방출한다.",
-            "<gray>프리즘에서 방출된 빛의 광선에 적중한 적은 4의 피해를 입는다.",
+            "<gray>프리즘에서 방출된 빛의 광선에 적중한 적은 {g:damage:4}의 피해를 입는다.",
             "",
             "<dark_gray>흩뿌려진 광선 또한 또다시 프리즘으로 반사될 수 있다.",
             "<dark_gray>단, 빛의 광선은 같은 프리즘에 1번만 반사될 수 있다.",
             "<dark_gray>적은 처음 발사한 광선을 포함하여 여러 광선에 적중될 수 있다.",
-            "<dark_gray>적중한 모든 적은 4의 피해를 입으나, 반사된 횟수에 따라 피해량이 절반으로 감소한다. (최소 1)"
+            "<dark_gray>적중한 모든 적은 {g:damage:4}의 피해를 입으나, 반사된 횟수에 따라 피해량이 절반으로 감소한다. (최소 {g:damage:1})"
         )
         override val cooldown = LIGHT_WIZARD_SPECTRUM_COOLDOWN_SECONDS
 
@@ -260,7 +260,7 @@ class LightWizard : GameClass(), org.beobma.classWarPlugin.gameClass.handler.Gam
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>프리즘에서 방출된 빛의 광선에 적중한 적에게 {keyword:Brightness}를 1 부여한다."
+            "<gray>프리즘에서 방출된 빛의 광선에 적중한 적에게 {keyword:Brightness}를 {g:power:1} 부여한다."
         )
     }
 

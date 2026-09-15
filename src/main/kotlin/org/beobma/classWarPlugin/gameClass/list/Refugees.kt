@@ -36,7 +36,7 @@ class Refugees : GameClass(), GameStatusHandler {
     private class Passive : BasePassive() {
         override val name = "<bold>피난"
         override val description = listOf(
-            "<gray>패시브", "", "<gray>월드보더와 자신과의 거리 차이가 10블럭 이내라면 <gold><bold>이동 속도가 30% 증가</bold><gray>한다."
+            "<gray>패시브", "", "<gray>월드보더와 자신과의 거리 차이가 10블럭 이내라면 <gold><bold>이동 속도가 {g:speed:30}% 증가</bold><gray>한다."
         )
     }
 }

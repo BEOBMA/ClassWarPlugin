@@ -50,9 +50,9 @@ class Pacifist : GameClass() {
                 direction.copy(player.location.direction).setY(0.0)
             }
             if (direction.lengthSquared() < 1.0E-8) direction.copy(Vector(1.0, 0.0, 0.0))
-            target.velocity = direction.normalize()
+            target.velocity = org.beobma.classWarPlugin.growth.GrowthScaling.knockback(playerData, direction.normalize()
                 .multiply(PACIFIST_HORIZONTAL_KNOCKBACK)
-                .setY(PACIFIST_VERTICAL_KNOCKBACK)
+                .setY(PACIFIST_VERTICAL_KNOCKBACK))
 
             particles.line(
                 player.eyeLocation,

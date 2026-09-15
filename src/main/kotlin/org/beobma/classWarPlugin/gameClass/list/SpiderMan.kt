@@ -75,7 +75,7 @@ class SpiderMan : GameClass(), GameStatusHandler, GameEndHandler, MovementInputH
         override val definitionId = "spider-man/red-skill"
         override val name = "<bold>거미줄"
         override val description = listOf(
-            "<gray>최대 5회 충전되는 충전형 스킬.",
+            "<gray>최대 {g:feature/charges:5}회 충전되는 충전형 스킬.",
             "",
             "<gray>바라보는 방향으로 거미줄을 발사한다.",
             "<gray>거미줄이 블럭에 닿으면 해당 블럭을 중심으로 원호를 그리며 공중을 이동한다.",
@@ -107,6 +107,8 @@ class SpiderMan : GameClass(), GameStatusHandler, GameEndHandler, MovementInputH
         private var webTargetRegistration: AttackableObjectManager.Registration? = null
         private var activeAnchorDisplay: BlockDisplay? = null
         private var swingOriginalGravity: Boolean? = null
+        private val maximumCharges get() = growthCount("charges", SPIDER_MAN_MAX_WEB_CHARGES)
+        private val rechargeTicks get() = org.beobma.classWarPlugin.growth.GrowthScaling.cooldown(playerData, SPIDER_MAN_RECHARGE_TICKS, "spider-man")
 
         fun isWebConnected(): Boolean = swinging
 
@@ -122,7 +124,8 @@ class SpiderMan : GameClass(), GameStatusHandler, GameEndHandler, MovementInputH
             if (!initialized) {
                 initialized = true
                 val status = playerData.getOrCreateStatus(playerData) { SpiderWebChargeStatus() }
-                status.updateState(SPIDER_MAN_MAX_WEB_CHARGES, 0)
+                status.maxPower = maximumCharges
+                status.updateState(maximumCharges, 0)
             }
             ensureRechargeTask()
         }
@@ -154,26 +157,27 @@ class SpiderMan : GameClass(), GameStatusHandler, GameEndHandler, MovementInputH
                         return
                     }
                     val status = playerData.getOrCreateStatus(playerData) { SpiderWebChargeStatus() }
+                    status.maxPower = maximumCharges
                     if (webInFlight || swinging) {
-                        status.updateState(status.power, (SPIDER_MAN_RECHARGE_TICKS - rechargeProgressTicks).coerceAtLeast(0))
+                        status.updateState(status.power, (rechargeTicks - rechargeProgressTicks).coerceAtLeast(0))
                         return
                     }
-                    if (status.power >= SPIDER_MAN_MAX_WEB_CHARGES) {
+                    if (status.power >= maximumCharges) {
                         rechargeProgressTicks = 0
-                        status.updateState(SPIDER_MAN_MAX_WEB_CHARGES, 0)
+                        status.updateState(maximumCharges, 0)
                         return
                     }
                     rechargeProgressTicks++
-                    if (rechargeProgressTicks >= SPIDER_MAN_RECHARGE_TICKS) {
+                    if (rechargeProgressTicks >= rechargeTicks) {
                         rechargeProgressTicks = 0
                         status.updateState(
                             status.power + 1,
-                            if (status.power + 1 < SPIDER_MAN_MAX_WEB_CHARGES) SPIDER_MAN_RECHARGE_TICKS else 0,
+                            if (status.power + 1 < maximumCharges) rechargeTicks else 0,
                         )
                         particles.spawn(player, Particle.WHITE_ASH, count = 9, spread = 0.35, speed = 0.02)
                         sounds.playTo(player, Sound.BLOCK_COBWEB_PLACE, volume = 0.45f, pitch = 1.55f)
                     } else if (rechargeProgressTicks % 5 == 0) {
-                        status.updateState(status.power, SPIDER_MAN_RECHARGE_TICKS - rechargeProgressTicks)
+                        status.updateState(status.power, rechargeTicks - rechargeProgressTicks)
                     }
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 1L, 1L))
@@ -195,7 +199,7 @@ class SpiderMan : GameClass(), GameStatusHandler, GameEndHandler, MovementInputH
         override fun use(): Boolean {
             multiplyCurrentCooldown(0.0)
             val status = playerData.getOrCreateStatus(playerData) { SpiderWebChargeStatus() }
-            status.updateState(status.power - 1, SPIDER_MAN_RECHARGE_TICKS - rechargeProgressTicks)
+            status.updateState(status.power - 1, rechargeTicks - rechargeProgressTicks)
             status.setRopeState("발사 중")
             breakRequested = false
             webInFlight = true

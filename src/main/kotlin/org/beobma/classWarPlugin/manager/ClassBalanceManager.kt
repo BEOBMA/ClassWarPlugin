@@ -1,6 +1,9 @@
 package org.beobma.classWarPlugin.manager
 
 import org.beobma.classWarPlugin.ability.AbilityExecution
+import org.beobma.classWarPlugin.growth.GrowthScaling
+import org.beobma.classWarPlugin.growth.GrowthAxis
+import org.beobma.classWarPlugin.growth.GrowthEffect
 
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.damage.DamagePath
@@ -191,23 +194,25 @@ object ClassBalanceManager {
             ?: return globalMultiplier
         val key = resolveSkillKey(skill)
         val classMultiplier = modifiersByKey[key]?.cooldownFlowMultiplier ?: 1.0
-        return (globalMultiplier * classMultiplier).coerceAtLeast(MINIMUM_MULTIPLIER)
+        val equipment = if (game.growth?.players?.get(player.uniqueId)?.has(GrowthEffect.FOCUS) == true) 1.1 else 1.0
+        return (globalMultiplier * classMultiplier * GrowthScaling.multiplier(playerData, GrowthAxis.COOLDOWN, key) * equipment).coerceAtLeast(MINIMUM_MULTIPLIER)
     }
 
     /** 피해 경로와 호출 클래스에 맞는 피해 배율을 [amount]에 적용한다. */
-    fun scaleDamage(attacker: PlayerData, path: DamagePath, amount: Double): Double {
+    fun scaleDamage(attacker: PlayerData, path: DamagePath, amount: Double, weaponClassId: String? = null): Double {
         val key = if (path.isBasicAttack) {
-            getWeaponClassId(attacker.player.inventory.itemInMainHand)?.let(::keyForClassName)
+            (weaponClassId ?: getWeaponClassId(attacker.player.inventory.itemInMainHand))?.let(::keyForClassName)
                 ?: resolveCallerKey(attacker)
         } else {
             resolveCallerKey(attacker)
         }
-        return amount * effective(key, ClassBalanceField.DAMAGE)
+        return amount * effective(key, ClassBalanceField.DAMAGE) * GrowthScaling.multiplier(attacker,
+            if (path.isBasicAttack) GrowthAxis.BASIC_DAMAGE else GrowthAxis.SKILL_DAMAGE, key)
     }
 
     /** 호출 클래스의 회복 배율을 [amount]에 적용한다. */
     fun scaleHealing(healer: PlayerData, amount: Double): Double =
-        amount * effective(resolveCallerKey(healer), ClassBalanceField.HEALING)
+        amount * effective(resolveCallerKey(healer), ClassBalanceField.HEALING) * GrowthScaling.multiplier(healer, GrowthAxis.HEALING)
 
     /** 호출 클래스의 사거리 배율을 [amount]에 적용하고 음수 결과를 방지한다. */
     fun scaleRange(source: EntityData, amount: Double): Double {
@@ -217,16 +222,16 @@ object ClassBalanceManager {
     /** [source]의 호출 클래스에 해당하는 사거리 배율을 반환한다. */
     fun rangeMultiplier(source: EntityData): Double {
         val playerData = source as? PlayerData ?: return 1.0
-        return effective(resolveCallerKey(playerData), ClassBalanceField.RANGE)
+        return effective(resolveCallerKey(playerData), ClassBalanceField.RANGE) * GrowthScaling.multiplier(playerData, GrowthAxis.RANGE)
     }
 
     /** 상태 지속시간에 호출 클래스 배율을 적용하되 0이 아닌 값의 부호를 보존한다. */
     fun scaleStatusDuration(caster: PlayerData?, duration: Int): Int =
-        scalePositiveInt(duration, effective(caster?.let(::resolveCallerKey), ClassBalanceField.STATUS_DURATION))
+        scalePositiveInt(duration, effective(caster?.let(::resolveCallerKey), ClassBalanceField.STATUS_DURATION) * GrowthScaling.multiplier(caster, GrowthAxis.DURATION))
 
     /** 상태 세기에 호출 클래스 배율을 적용하되 0이 아닌 값의 부호를 보존한다. */
-    fun scaleStatusPower(caster: PlayerData?, power: Int): Int =
-        scalePositiveInt(power, effective(caster?.let(::resolveCallerKey), ClassBalanceField.STATUS_POWER))
+    fun scaleStatusPower(caster: PlayerData?, power: Int, axis: GrowthAxis = GrowthAxis.POWER): Int =
+        scalePositiveInt(power, effective(caster?.let(::resolveCallerKey), ClassBalanceField.STATUS_POWER) * GrowthScaling.multiplier(caster, axis))
 
     private fun resolveSkillKey(skill: Skill): String = skill.definitionId.substringBefore('/')
 
@@ -265,6 +270,11 @@ object ClassBalanceManager {
         val value = config.getDouble("$path.${field.configName}", fallback)
         return normalize(if (value.isFinite()) value else fallback)
     }
+
+    /** Read-only numeric preview using the same explicit class key as the execution pipeline. */
+    fun descriptionMultiplier(classId: String, field: ClassBalanceField): Double =
+        if (field == ClassBalanceField.COOLDOWN_FLOW) modifiersByKey[classId]?.cooldownFlowMultiplier ?: 1.0
+        else effective(classId, field)
 
     private fun effective(key: String?, field: ClassBalanceField, fallback: Double = 1.0): Double =
         (key?.let { modifiersByKey[it] } ?: defaultModifiers).effective(field).takeIf { it.isFinite() } ?: fallback

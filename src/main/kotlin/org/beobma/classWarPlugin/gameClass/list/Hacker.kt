@@ -72,9 +72,9 @@ class Hacker : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.gameCla
         override val name = "<bold>해킹"
         override val description = listOf(
             "<gray>채팅창에 출력된 한 줄의 코드를 제한시간 안에 똑같이 입력한다.",
-            "<gray>성공할 때마다 다음 코드는 4자씩 길어지고 제한시간은 1초씩 짧아진다.",
+            "<gray>성공할 때마다 다음 코드는 4자씩 길어진다. 단계별 제한시간은 {g:feature/code-time:35}/{g:feature/code-time:34}/{g:feature/code-time:33}초다.",
             "",
-            "<gray>모든 단계: 자신을 제외한 생존자를 10초간 {keyword:Radiation}시키고 {keyword:Snare}한다.",
+            "<gray>모든 단계: 자신을 제외한 생존자를 {g:duration:10}초간 {keyword:Radiation}시키고 {keyword:Snare}한다.",
             "<gray>2단계: 생존자에게 영구적인 시스템 손상 디버프를 적용한다.",
             "<gray>  - 가하는 피해 20% 감소, 받는 피해 20% 증가",
             "<gray>3단계: 자신에게 영구적인 루트 권한 버프를 적용한다.",
@@ -106,7 +106,7 @@ class Hacker : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.gameCla
 
         override fun use(): Boolean {
             val stage = completedHacks + 1
-            val timeLimit = hackTimeLimits[stage - 1]
+            val timeLimit = growthValue("code-time", hackTimeLimits[stage - 1].toDouble()).toInt()
             sounds.play(player, Sound.BLOCK_BEACON_ACTIVATE, volume = 0.75f, pitch = 1.55f + stage * 0.12f)
             particles.spawn(player, Particle.ENCHANT, count = 28 + stage * 10, spread = 0.65, speed = 0.1)
             player.sendMiniMessage(

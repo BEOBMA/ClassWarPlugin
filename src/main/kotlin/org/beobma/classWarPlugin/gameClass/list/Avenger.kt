@@ -53,10 +53,12 @@ class Avenger : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
         respiteActive = true
         revengeTarget = killerId
         val maximum = player.getAttribute(Attribute.MAX_HEALTH)?.value ?: 20.0
-        player.health = 10.0.coerceAtMost(maximum).coerceAtLeast(1.0)
+        player.health = (10.0 * org.beobma.classWarPlugin.growth.GrowthScaling.multiplier(playerData,
+            org.beobma.classWarPlugin.growth.GrowthAxis.SHIELD, classId)).coerceAtMost(maximum).coerceAtLeast(1.0)
         playerData.addStatus(MoveSpeedIncrease(), playerData).applyStatus(duration = 8, powerSet = 50)
         playerData.addStatus(AttackSpeedIncrease(), playerData).applyStatus(duration = 8, powerSet = 50)
-        player.sendMiniMessage("<dark_red><bold>[복수]</bold> <gray>8초 안에 자신을 쓰러뜨린 적에게 복수하십시오.")
+        val duration = growthDuration(8)
+        player.sendMiniMessage("<dark_red><bold>[복수]</bold> <gray>${duration}초 안에 자신을 쓰러뜨린 적에게 복수하십시오.")
         particles.spawn(player, Particle.TOTEM_OF_UNDYING, count = 75, spread = 0.85, speed = 0.18)
         sounds.play(player, Sound.ITEM_TOTEM_USE, volume = 0.9f, pitch = 0.72f)
         playerData.trackTask(object : BukkitRunnable(abilityScope) {
@@ -65,15 +67,15 @@ class Avenger : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
                 respiteActive = false
                 player.health = 0.0
             }
-        }.runTaskLater(ClassWarPlugin.instance, 160L))
+        }.runTaskLater(ClassWarPlugin.instance, duration * 20L))
         return true
     }
 
     private inner class Passive : BasePassive(), OnHitHandler, WhenHitHandler {
         override val name = "<bold>복수"
         override val description = listOf(
-            "<gray>패시브", "", "<gray>사망 시 사망을 {keyword:Invalidity}로 하고, 8초간 10의 {keyword:RespiteHealth}을 얻는다.",
-            "<gray>이 효과가 발동하는 동안 자신의 <gold><bold>이동 속도와 공격 속도가 50% 증가</bold><gray>한다.",
+            "<gray>패시브", "", "<gray>사망 시 사망을 {keyword:Invalidity}로 하고, {g:duration-floor:8}초간 {g:health:10}의 {keyword:RespiteHealth}을 얻는다.",
+            "<gray>이 효과가 발동하는 동안 자신의 <gold><bold>이동 속도와 공격 속도가 {g:speed:50}% 증가</bold><gray>한다.",
             "<gray>단, 자신을 죽인 플레이어에게만 피해를 입힐 수 있다.", "<gray>이 효과는 1번만 발동할 수 있다."
         )
         override fun onHit(context: DamageContext) {

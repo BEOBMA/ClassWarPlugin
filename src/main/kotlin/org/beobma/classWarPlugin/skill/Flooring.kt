@@ -33,6 +33,9 @@ abstract class Flooring : EffectApiAccess {
 
     abstract var location: Location
     abstract var radius: Double
+    /** 시전 시 확정한 성장 반경. 충돌 판정과 경계 표시가 함께 사용한다. */
+    protected var effectRadius: Double = 0.0
+        private set
     abstract var targetType: TargetType
 
     open var time: Int? = null
@@ -70,11 +73,13 @@ abstract class Flooring : EffectApiAccess {
     fun spawnFlooring(playerData: PlayerData) {
         inject(playerData)
 
-        org.beobma.classWarPlugin.ability.AbilityForecast.circle(playerData, location, radius)
-
         val game = game
         val currentLocation = location.clone()
-        val time = time
+        val durationTicks = time?.let { (it * 20 * org.beobma.classWarPlugin.growth.GrowthScaling.multiplier(
+            playerData, org.beobma.classWarPlugin.growth.GrowthAxis.DURATION, abilityScope.classId)).toInt() }
+        effectRadius = radius * org.beobma.classWarPlugin.growth.GrowthScaling.multiplier(
+            playerData, org.beobma.classWarPlugin.growth.GrowthAxis.RANGE, abilityScope.classId)
+        org.beobma.classWarPlugin.ability.AbilityForecast.circle(playerData, location, effectRadius)
         var ticks = 0
 
         var previousTargets: MutableSet<EntityData> = HashSet()
@@ -89,13 +94,13 @@ abstract class Flooring : EffectApiAccess {
             }
 
             override fun run() {
-                if (time == null) {
+                if (durationTicks == null) {
                     if (continueWhile?.invoke() == false) {
                         cancel()
                         return
                     }
                 } else {
-                    if (ticks++ >= time * 20) {
+                    if (ticks++ >= durationTicks) {
                         cancel()
                         return
                     }
@@ -104,7 +109,7 @@ abstract class Flooring : EffectApiAccess {
                 currentTargets.clear()
                 Targeting.select(playerData, targetType, currentLocation.world, includeSelf = true)
                     .filterTo(currentTargets) {
-                        HitboxUtil.intersectsSphere(it.entity.boundingBox, currentLocation.toVector(), radius)
+                        HitboxUtil.intersectsSphere(it.entity.boundingBox, currentLocation.toVector(), effectRadius)
                     }
 
                 for (exited in previousTargets) {

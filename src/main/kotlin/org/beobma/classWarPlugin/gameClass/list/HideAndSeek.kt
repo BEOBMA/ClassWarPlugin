@@ -81,7 +81,7 @@ class HideAndSeek : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathH
         override val definitionId = "hide-and-seek/red-skill"
         override val name = "<bold>하이드 앤 시크"
         override val description = listOf(
-            "<gray>10칸 내의 바라보는 플레이어와 숨바꼭질을 시작한다.",
+            "<gray>{g:range:10}칸 내의 바라보는 플레이어와 숨바꼭질을 시작한다.",
             "<gray>자신과 지정한 상대만 숨바꼭질 맵으로 이동한다.",
             "<gray>다른 플레이어는 원래 위치에 남으며 술래의 시점으로 강제 관전하지 않는다.", "",
             "<gray>자신은 술래가 되고, 상대가 숨을 때까지 행동할 수 없다.",

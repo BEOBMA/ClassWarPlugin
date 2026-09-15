@@ -43,6 +43,11 @@ abstract class Skill : EffectApiAccess {
     open val isOnOffSKill: Boolean = false
     open val canUseWhileSilenced: Boolean = false
 
+    protected fun growthCount(key: String, base: Int) = org.beobma.classWarPlugin.growth.GrowthScaling.count(playerData, definitionId.substringBefore('/'), key, base)
+    protected fun growthValue(key: String, base: Double) = org.beobma.classWarPlugin.growth.GrowthScaling.feature(playerData, definitionId.substringBefore('/'), key, base)
+    protected fun growthDuration(ticks: Int) = (ticks * org.beobma.classWarPlugin.growth.GrowthScaling.multiplier(
+        playerData, org.beobma.classWarPlugin.growth.GrowthAxis.DURATION, definitionId.substringBefore('/'))).toInt()
+
     private var activeContext: SkillContext? = null
 
     /** 스킬의 실제 효과를 실행한다. */

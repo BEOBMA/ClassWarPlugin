@@ -17,7 +17,7 @@ object GameClassManager {
         get() = NamespacedKey(ClassWarPlugin.instance, "weapon-class")
 
     /** 무기를 표시용 아이템으로 만든다. [viewer]가 있으면 개인 설명 표시 설정을 반영한다. */
-    fun Weapon.toItemStack(viewer: Player? = null): ItemStack {
+    fun Weapon.toItemStack(viewer: Player? = null, growthClassId: String? = null): ItemStack {
         if (material == Material.AIR) return ItemStack(Material.AIR)
         val itemStack = ItemStack(material, 1).apply {
             itemMeta = itemMeta.apply {
@@ -27,13 +27,13 @@ object GameClassManager {
         return if (viewer == null) {
             ItemDescriptionManager.apply(itemStack, description)
         } else {
-            ItemDescriptionManager.applyForPlayer(itemStack, viewer, description, briefDescription)
+            ItemDescriptionManager.applyForPlayer(itemStack, viewer, description, briefDescription, growthClassId = growthClassId)
         }
     }
 
     /** 클래스 무기 아이템을 만들고 원래 클래스의 정규 이름을 영속 데이터에 기록한다. */
     fun GameClass.toWeaponItemStack(viewer: Player? = null, template: ItemStack? = null): ItemStack =
-        (template?.clone() ?: weapon.toItemStack(viewer)).apply {
+        (template?.clone() ?: weapon.toItemStack(viewer, classId)).apply {
         if (!type.isAir) {
             itemMeta = itemMeta.apply {
                 persistentDataContainer.set(
@@ -42,6 +42,8 @@ object GameClassManager {
                     this@toWeaponItemStack.classId,
                 )
             }
+            if (viewer != null) ItemDescriptionManager.applyForPlayer(this, viewer, weapon.description, weapon.briefDescription,
+                growthClassId = this@toWeaponItemStack.classId)
         }
     }
 

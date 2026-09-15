@@ -68,7 +68,7 @@ class HighJumper : GameClass(), GameStatusHandler, MovementInputHandler, Environ
             val horizontal = player.eyeLocation.direction.setY(0.0).let {
                 if (it.lengthSquared() > 1.0E-6) it.normalize().multiply(0.28 + normalizedCharge * 0.18) else Vector()
             }
-            player.velocity = horizontal.setY(1.05 + normalizedCharge * 0.95)
+            player.velocity = horizontal.setY(growthValue("jump", 1.05 + normalizedCharge * 0.95))
             player.fallDistance = 0f
             fallImmunity = true
             becameAirborne = false
@@ -93,7 +93,7 @@ class HighJumper : GameClass(), GameStatusHandler, MovementInputHandler, Environ
         override val name = "<bold>도약"
         override val description = listOf(
             "<gray>패시브", "", "<gray>웅크린 상태를 3초 이상 지속하면 힘을 모은다.",
-            "<gray>힘을 모은 뒤 웅크린 상태에서 점프하면 모은 힘에 비례하여 높이 점프한다.",
+            "<gray>힘을 모은 뒤 웅크린 상태에서 점프하면 모은 힘에 비례하여 높이 점프한다. (상승 속도 {g:feature/jump:1.05}~{g:feature/jump:2}칸/틱)",
             "<gray>점프한 후 처음 착지할 때의 낙하 피해는 0이 된다."
         )
     }

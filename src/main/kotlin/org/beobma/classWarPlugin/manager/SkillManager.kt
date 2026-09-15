@@ -105,6 +105,7 @@ object SkillManager {
             CooldownManager.setCooldown(playerData.player, skill, clickedItem, context.cooldownTicks)
         }
         context.commit()
+        playerData.game.growth?.onSkill(playerData)
 
         return true
     }

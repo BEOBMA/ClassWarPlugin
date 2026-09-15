@@ -127,9 +127,9 @@ class Peanuts : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
         override val description = listOf(
             "<gray>패시브", "",
             "<gray>다른 플레이어의 시야 범위에 있지 않을 때",
-            "<gray>자신의 <gold><bold>이동 속도가 173% 증가</bold><gray>한다.", "",
+            "<gray>자신의 <gold><bold>이동 속도가 {g:speed:173}% 증가</bold><gray>한다.", "",
             "<gray>다른 플레이어의 시야 범위에 있을 때",
-            "<gray>자신의 <gold><bold>이동 속도가 90% 감소</bold><gray>한다."
+            "<gray>자신의 <gold><bold>이동 속도가 {g:speed:90}% 감소</bold><gray>한다."
         )
     }
 

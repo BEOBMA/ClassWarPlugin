@@ -14,6 +14,7 @@ class Mana : StatusAbnormality() {
     )
     override val canRemove: Boolean = false
     override val isClassMechanic: Boolean = true
+    override val growsWithStats = true
     override var maxPower: Int? = 100
     override var duration: Int? = null
 }

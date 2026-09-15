@@ -99,7 +99,7 @@ class WoundsWind : GameClass(), OnHitHandler, WeaponInputHandler {
         override val name = "<bold>검기"
         override val description = listOf(
             "<gray>패시브", "", "<gray>기본 공격으로 피해를 입힐 수 없다.",
-            "<gray>검을 우클릭하면 검기가 날아가 적중한 모든 적에게 2의 피해를 입힌다."
+            "<gray>검을 우클릭하면 검기가 날아가 적중한 모든 적에게 {g:damage:2}의 피해를 입힌다."
         )
     }
 }

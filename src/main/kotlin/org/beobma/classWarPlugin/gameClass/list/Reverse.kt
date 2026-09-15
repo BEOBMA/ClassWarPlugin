@@ -62,7 +62,7 @@ class Reverse : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
         override val definitionId = "reverse/red-skill"
         override val name = "<bold>반전 영역"
         override val description = listOf(
-            "<gray>10초간 자신의 위치에 반전 영역을 설치한다.", "",
+            "<gray>{g:time:10}초간 자신의 위치에 반전 영역을 설치한다.", "",
             "<gray>자신의 패시브 효과의 대상은 영역 안의 모든 적에게도 적용되게 된다.",
             "<gray>또한, 영역 안에서 받는 치유는 피해로 전환된다."
         )
@@ -70,7 +70,7 @@ class Reverse : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
 
         override fun use(): Boolean {
             val center = player.location.clone()
-            val zone = Zone(playerData, center, game.combatTick + REVERSE_ZONE_DURATION_TICKS)
+            val zone = Zone(playerData, center, game.combatTick + growthDuration(REVERSE_ZONE_DURATION_TICKS.toInt()))
             activeZones += zone
             sounds.play(center, Sound.BLOCK_RESPAWN_ANCHOR_SET_SPAWN, volume = 0.9f, pitch = 0.65f)
             playerData.trackTask(object : BukkitRunnable(abilityScope) {

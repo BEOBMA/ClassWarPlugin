@@ -65,6 +65,7 @@ class Game(
     var battleMapView: MapView? = null
     var battleMapRenderer: MapRenderer? = null
     var finalBorderCompleted: Boolean = false
+    var growth: org.beobma.classWarPlugin.growth.GrowthModeRuntime? = null
 
     /** 꼬리잡기 모드에서 [playerId]가 공격해야 하는 표적을 반환한다. */
     fun targetOf(playerId: UUID): UUID? = tailTargets[playerId]

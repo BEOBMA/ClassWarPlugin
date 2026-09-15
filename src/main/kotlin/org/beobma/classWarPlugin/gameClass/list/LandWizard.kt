@@ -66,7 +66,7 @@ class LandWizard : GameClass(), GameStatusHandler {
         override val description = listOf(
             "{keyword:Mana}를 20 소모하고 사용할 수 있다.",
             "",
-            "<gray>사용 시 주위 모든 적에게 2의 피해를 입히고 10초간 {keyword:Vibration}을 2 부여한다."
+            "<gray>사용 시 주위 모든 적에게 {g:damage:2}의 피해를 입히고 {g:duration:10}초간 {keyword:Vibration}을 {g:physical-power:2} 부여한다."
         )
         override val cooldown = LAND_WIZARD_EARTHQUAKE_COOLDOWN_SECONDS
 
@@ -112,7 +112,7 @@ class LandWizard : GameClass(), GameStatusHandler {
         override val description = listOf(
             "{keyword:Mana}를 60 소모하고 사용할 수 있다.",
             "",
-            "<gray>사용 시 5초간 <aqua><bold>8의 피해를 막는 {keyword:Shield}을 얻고 주위 모든 적에게 {keyword:VibrationExplosion}을 적용한다."
+            "<gray>사용 시 {g:duration:5}초간 <aqua><bold>{g:shield:8}의 피해를 막는 {keyword:Shield}을 얻고 주위 모든 적에게 {keyword:VibrationExplosion}을 적용한다."
         )
         override val cooldown = LAND_WIZARD_RESONANCE_COOLDOWN_SECONDS
 

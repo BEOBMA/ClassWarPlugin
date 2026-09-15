@@ -28,7 +28,7 @@ class DamageContext(
     val weaponClassId: String? = null,
     val secondaryAttack: Boolean = false,
 ) {
-    val originalDamage: Double = ClassBalanceManager.scaleDamage(attacker, path, baseDamage) *
+    val originalDamage: Double = ClassBalanceManager.scaleDamage(attacker, path, baseDamage, weaponClassId) *
         attacker.initGame.settings.damageMultiplier(path)
     var damage: Double = originalDamage
         private set
@@ -44,7 +44,10 @@ class DamageContext(
     /** 배율 계산 전에 더할 고정 피해 보너스를 누적한다. */
     fun addBaseDamage(amount: Double) {
         if (damageType.isFixed) return
-        flatDamageBonus += amount
+        val growthAxis = if (path.isBasicAttack) org.beobma.classWarPlugin.growth.GrowthAxis.BASIC_DAMAGE
+            else org.beobma.classWarPlugin.growth.GrowthAxis.SKILL_DAMAGE
+        val source = org.beobma.classWarPlugin.ability.AbilityExecution.current?.takeIf { it.playerData === attacker }?.classId ?: weaponClassId
+        flatDamageBonus += amount * org.beobma.classWarPlugin.growth.GrowthScaling.multiplier(attacker, growthAxis, source)
         recalculateDamage()
     }
 

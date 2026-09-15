@@ -25,14 +25,16 @@ class Feather : GameClass() {
     override var passives: List<BasePassive> = listOf(Passive())
 
     private class Passive : BasePassive(), GameStatusHandler {
+        private var jumpEffect: org.beobma.classWarPlugin.ability.AttributeEffects.Lease? = null
         override val name = "<bold>가벼움"
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>더 높게 점프하고, 느리게 낙하한다."
+            "<gray>점프 속성에 {g:feature/jump:100}% 배율을 적용하고 점프 강화 효과를 얻으며, 느리게 낙하한다."
         )
 
         override fun onBattleStart() {
+            jumpEffect = playerData.attributeEffects.multiply(abilityScope, org.bukkit.attribute.Attribute.JUMP_STRENGTH, growthValue("jump", 1.0))
             refreshEffects()
             sounds.play(player, Sound.ENTITY_PARROT_FLY, volume = 0.75f, pitch = 1.6f)
             particles.spawn(player, Particle.CLOUD, count = 14, spread = 0.45, speed = 0.04)
@@ -46,6 +48,7 @@ class Feather : GameClass() {
         }
 
         private fun refreshEffects() {
+            jumpEffect?.setMultiplier(growthValue("jump", 1.0))
             player.addPotionEffect(PotionEffect(
                 PotionEffectType.JUMP_BOOST,
                 FEATHER_EFFECT_DURATION_TICKS,

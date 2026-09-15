@@ -60,6 +60,7 @@ object PlayerManager {
         val assignedClasses = gameClasses.toList()
         if (assignedClasses.isEmpty()) return
         AbilityTree.bind(assignedClasses, this)
+        game.growth?.refresh(this)
 
         initGame.settings.startingItems.forEach { item -> giveStartingItem(player, item) }
         val weaponTemplate = initGame.settings.classWeapon
@@ -91,6 +92,7 @@ object PlayerManager {
                     skill.description,
                     skill.briefDescription,
                     ItemDescriptionManager.cooldownLines(skill.cooldown),
+                    growthClassId = skill.definitionId.substringBefore('/'),
                 ),
                 skill,
                 player.uniqueId,
@@ -106,7 +108,8 @@ object PlayerManager {
                 itemMeta = itemMeta.apply {
                     displayName(miniMessage.deserialize(name))
                 }
-            }, player, passive.description, passive.briefDescription), passive, player.uniqueId)
+            }, player, passive.description, passive.briefDescription,
+                growthClassId = passive.ownerClass.classId), passive, player.uniqueId)
             player.inventory.setItem(inventorySlots.next(), item)
         }
 
@@ -177,6 +180,7 @@ object PlayerManager {
                 val gameClass = allClasses().firstOrNull { it.classId == weaponClassId || it.javaClass.name == weaponClassId } ?: return@forEach
                 ItemDescriptionManager.applyForPlayer(
                     item, player, gameClass.weapon.description, gameClass.weapon.briefDescription,
+                    growthClassId = gameClass.classId,
                 )
                 return@forEach
             }
@@ -188,6 +192,7 @@ object PlayerManager {
                 ItemDescriptionManager.applyForPlayer(
                     item, player, skill.description, skill.briefDescription,
                     ItemDescriptionManager.cooldownLines(skill.cooldown),
+                    growthClassId = skill.definitionId.substringBefore('/'),
                 )
                 return@forEach
             }
@@ -197,6 +202,7 @@ object PlayerManager {
                 .firstOrNull { it.javaClass.name == passiveId } ?: return@forEach
             ItemDescriptionManager.applyForPlayer(
                 item, player, passive.description, passive.briefDescription,
+                growthClassId = allClasses().firstOrNull { passive in it.passives }?.classId,
             )
         }
         player.updateInventory()

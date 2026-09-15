@@ -57,7 +57,10 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
     private var idleSeconds = 0
 
     private fun bulletStatus(): BulletStatus =
-        playerData.getOrCreateStatus(playerData) { BulletStatus() }
+        playerData.getOrCreateStatus(playerData) { BulletStatus() }.apply {
+            maxPower = growthCount("bullets", 4)
+            if (power > maxPower!!) updatePower(maxPower!!)
+        }
 
     private class BulletStatus : StatusAbnormality() {
         override val name = Keyword.Bullet.string
@@ -68,9 +71,11 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
         override var duration: Int? = null
     }
 
-    override fun onBattleStart() { bulletStatus().updatePower(4); idleSeconds = 0 }
+    override fun onBattleStart() { bulletStatus().updatePower(growthCount("bullets", 4)); idleSeconds = 0 }
     override fun onGameTimePasses() {
-        if (++idleSeconds >= 20) bulletStatus().updatePower(4)
+        bulletStatus() // Reconcile a reduced equipment-derived capacity even while fighting.
+        if (++idleSeconds >= org.beobma.classWarPlugin.growth.GrowthScaling.cooldown(playerData, 20, classId))
+            bulletStatus().updatePower(growthCount("bullets", 4))
     }
     override fun onSkillUse(event: PlayerSkillUseEvent) { idleSeconds = 0 }
 
@@ -93,10 +98,10 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
     private class Weapon : BaseWeapon() {
         override val name = "<gray>총검"
         override val description = listOf(
-            "<gray>기본 공격 적중 시 10초간 {keyword:Vibration}을 1 부여한다.",
+            "<gray>기본 공격 적중 시 {g:duration:10}초간 {keyword:Vibration}을 {g:physical-power:1} 부여한다.",
             "",
             "<gray>우클릭하면 {keyword:Bullet}을 1발 소모하여 바라보는 방향으로 사격한다.",
-            "<gray>사격은 적중한 적에게 2의 피해를 입히고 {keyword:VibrationExplosion}을 적용한다."
+            "<gray>사격은 적중한 적에게 {g:damage:2}의 피해를 입히고 {keyword:VibrationExplosion}을 적용한다."
         )
         override val material = Material.IRON_SWORD
     }
@@ -108,7 +113,7 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
             "<gray>바라보는 방향으로 3칸 돌진한다.",
             "{keyword:Bullet}이 있다면 소모하여 대신 6칸 돌진한다.",
             "",
-            "<gray>처음 충돌한 적을 베어 4의 피해를 입히고 10초간 {keyword:Vibration}을 3 부여한다."
+            "<gray>처음 충돌한 적을 베어 {g:damage:4}의 피해를 입히고 {g:duration:10}초간 {keyword:Vibration}을 {g:physical-power:3} 부여한다."
         )
         override val cooldown = GUN_BLADER_BREAKTHROUGH_COOLDOWN_SECONDS
 
@@ -136,8 +141,8 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
         override val definitionId = "gun-blader/orange-skill"
         override val name = "<bold>전탄 격발"
         override val description = listOf(
-            "<gray>16칸 내의 바라보는 적을 조준하고 장전된 {keyword:Bullet}을 모두 소모하여 사격한다.",
-            "<gray>{keyword:Bullet}마다 2의 피해를 입히고, 10초간 {keyword:Vibration}을 1 부여한다.",
+            "<gray>{g:range:16}칸 내의 바라보는 적을 조준하고 장전된 {keyword:Bullet}을 모두 소모하여 사격한다.",
+            "<gray>{keyword:Bullet}마다 {g:damage:2}의 피해를 입히고, {g:duration:10}초간 {keyword:Vibration}을 {g:physical-power:1} 부여한다.",
             "<gray>마지막 {keyword:Bullet}이 적중하면 {keyword:VibrationExplosion}을 적용한다."
         )
         override val cooldown = GUN_BLADER_FULL_BURST_COOLDOWN_SECONDS
@@ -173,8 +178,8 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>기본 공격 3회 적중 시 {keyword:Bullet}을 1 얻는다. ({keyword:Bullet}은 최대 4발 얻을 수 있다.)",
-            "<gray>20초간 기본 공격, 스킬을 사용하지 않으면 최대 4발까지 장전한다."
+            "<gray>기본 공격 3회 적중 시 {keyword:Bullet}을 1 얻는다. ({keyword:Bullet}은 최대 {g:feature/bullets:4}발 얻을 수 있다.)",
+            "<gray>{g:reload-seconds:20}초간 기본 공격, 스킬을 사용하지 않으면 최대 {g:feature/bullets:4}발까지 장전한다."
         )
 
         override fun onAttackHit(context: DamageContext) {

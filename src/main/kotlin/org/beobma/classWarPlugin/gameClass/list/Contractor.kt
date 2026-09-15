@@ -217,7 +217,7 @@ class Contractor : GameClass(), GameStatusHandler, ConfirmedHitHandler, WeaponIn
         override val definitionId = "contractor/red-skill"
         override val name = "<bold>찌르기"
         override val description = listOf(
-            "<gray>바라보는 방향으로 잛게 칼을 찔러 적에게 3의 피해를 입힌다.",
+            "<gray>바라보는 방향으로 잛게 칼을 찔러 적에게 {g:damage:3}의 피해를 입힌다.",
             "<gray>적중 시 재사용 대기 시간이 3초 감소하며, 다음 찌르기가 강화된다.",
             "",
             "<gray>강화된 찌르기 발동 시 사거리가 소폭 증가하고",
@@ -253,8 +253,8 @@ class Contractor : GameClass(), GameStatusHandler, ConfirmedHitHandler, WeaponIn
         override val definitionId = "contractor/orange-skill"
         override val name = "<bold>순보"
         override val description = listOf(
-            "<gray>8칸 내의 바라보는 적의 뒤 또는 단검의 위치로 순간이동한다.",
-            "<gray>이동 경로에 있던 모든 적에게 2의 피해를 입힌다.",
+            "<gray>{g:range:8}칸 내의 바라보는 적의 뒤 또는 단검의 위치로 순간이동한다.",
+            "<gray>이동 경로에 있던 모든 적에게 {g:damage:2}의 피해를 입힌다.",
             "<gray>단검을 회수하면 이 스킬의 재사용 대기 시간이 초기화된다.",
             "",
             "<dark_gray>이 스킬 대신 검을 우클릭하여 사용할 수도 있다."
@@ -296,7 +296,7 @@ class Contractor : GameClass(), GameStatusHandler, ConfirmedHitHandler, WeaponIn
         override val name = "<bold>암살"
         override val description = listOf(
             "<gray>바라보는 방향으로 단검을 던지고 자신은 약간 뒤로 이동한다.",
-            "<gray>단검이 적에게 적중하면 2의 피해를 입히고, 적 뒤에 단검을 생성한다.",
+            "<gray>단검이 적에게 적중하면 {g:damage:2}의 피해를 입히고, 적 뒤에 단검을 생성한다.",
             "<gray>이 스킬에 적중한 적은 5초간 단검을 회수하여 입히는 피해가 추가로 2번 적중한다."
         )
         override val cooldown = CONTRACTOR_YELLOW_COOLDOWN_SECONDS
@@ -359,8 +359,8 @@ class Contractor : GameClass(), GameStatusHandler, ConfirmedHitHandler, WeaponIn
         override val definitionId = "contractor/green-skill"
         override val name = "<bold>장부 정리"
         override val description = listOf(
-            "<gray>자신 주변 십자 범위로 4개의 단검을 생성한다.",
-            "<gray>주변 모든 적에게 2의 피해를 입힌다.",
+            "<gray>자신 주변 십자 범위로 {g:feature/daggers:4}개의 단검을 생성한다.",
+            "<gray>주변 모든 적에게 {g:damage:2}의 피해를 입힌다.",
             "<gray>십자 범위 내에 벽이 존재한다면 단검은 벽에서 멈춰서 생성된다."
         )
         override val cooldown = CONTRACTOR_GREEN_COOLDOWN_SECONDS
@@ -375,8 +375,9 @@ class Contractor : GameClass(), GameStatusHandler, ConfirmedHitHandler, WeaponIn
             particles.circle(start, Particle.CRIT, 4.0, 48)
             sounds.play(player, Sound.ENTITY_EVOKER_CAST_SPELL, volume = 0.6f, pitch = 1.5f)
             sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_SWEEP, volume = 0.8f, pitch = 0.65f)
-            repeat(4) { index ->
-                val direction = org.bukkit.util.Vector(1.0, 0.0, 0.0).rotateAroundY(index * Math.PI / 2)
+            val daggerCount = growthCount("daggers", 4)
+            repeat(daggerCount) { index ->
+                val direction = org.bukkit.util.Vector(1.0, 0.0, 0.0).rotateAroundY(index * Math.PI * 2 / daggerCount)
                 val hit = start.world.rayTraceBlocks(start, direction, 4.0)?.hitPosition
                 val end = hit?.subtract(direction.clone().multiply(0.3))?.toLocation(start.world)
                     ?: start.clone().add(direction.multiply(4.0))
@@ -395,7 +396,7 @@ class Contractor : GameClass(), GameStatusHandler, ConfirmedHitHandler, WeaponIn
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>단검에 닿으면 단검 주위 8칸 이내의 적 하나에게 단검을 던져 1의 {keyword:TrueDamage}를 입힌다.",
+            "<gray>단검에 닿으면 단검 주위 8칸 이내의 적 하나에게 단검을 던져 {g:damage:1}의 {keyword:TrueDamage}를 입힌다.",
             "",
             "<dark_gray>암살 스킬에 적중된 적을 우선적으로 공격하며, 체력이 낮은 적을 우선적으로 공격한다."
         )

@@ -43,7 +43,7 @@ class Pluto : PlanetClass(), OnHitHandler, GameEndHandler {
         override fun matchesId(candidate: String): Boolean = super.matchesId(candidate) || (solarCopy && candidate == "${javaClass.name}:solar")
         override val name = "<bold>명왕성"
         override val description = listOf(
-            "<gray>15초간 자신의 크기가 95% 감소한다.",
+            "<gray>{g:time:15}초간 자신의 크기가 95% 감소한다.",
             "<gray>지속 시간동안 가하는 피해가 50% 감소한다."
         )
         override val cooldown = PLUTO_SKILL_COOLDOWN_SECONDS
@@ -64,6 +64,7 @@ class Pluto : PlanetClass(), OnHitHandler, GameEndHandler {
             if (player.getAttribute(Attribute.SCALE) == null) return false
             scaleEffect = playerData.attributeEffects.multiply(abilityScope, Attribute.SCALE, 0.05)
             miniature = true
+            val duration = growthDuration(PLUTO_DURATION_TICKS.toInt())
             particles.spawn(player, Particle.POOF, count = 42, spread = 0.8, speed = 0.12)
             particles.spawn(player, Particle.REVERSE_PORTAL, count = 30, spread = 0.65, speed = 0.08)
             sounds.play(player, Sound.ENTITY_ENDERMAN_TELEPORT, volume = 0.7f, pitch = 1.8f)
@@ -78,7 +79,7 @@ class Pluto : PlanetClass(), OnHitHandler, GameEndHandler {
                     }
                     if (game.isPaused) return
                     elapsedTicks += 2L
-                    if (elapsedTicks >= PLUTO_DURATION_TICKS) {
+                    if (elapsedTicks >= duration) {
                         restoreScale()
                         cancel()
                         return

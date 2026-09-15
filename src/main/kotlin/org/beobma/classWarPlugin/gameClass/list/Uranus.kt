@@ -53,7 +53,7 @@ class Uranus : PlanetClass() {
         override val description = listOf(
             "<gray>패시브", "",
             "<gray>화살 발사 시, 화살 대신 고드름을 발사한다.",
-            "<gray>고드름 적중 시 화살 피해의 66%에 해당하는 피해를 입히고 {keyword:Frostbite}을 4 부여한다.",
+            "<gray>고드름 적중 시 화살 피해의 66%에 해당하는 피해를 입히고 {keyword:Frostbite}을 {g:power:4} 부여한다.",
             "<gray>고드름으로 {keyword:Freezing} 상태인 적에게 피해를 입힐 때, 고드름의 피해는 기본 공격으로 간주된다."
         )
     }

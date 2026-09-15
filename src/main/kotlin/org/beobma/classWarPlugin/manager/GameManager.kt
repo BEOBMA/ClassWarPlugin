@@ -143,6 +143,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         if (game != null) return "이미 진행중인 게임이 있습니다."
 
         val newGame = Game(mutableListOf(), mode = mode, testMode = testMode)
+        mode.validateRules(newGame.settings)?.let { return it }
         val participants = Bukkit.getOnlinePlayers()
             .filterNot(PlayerTagManager::isTraining)
             .map { PlayerData(it, newGame) }
@@ -170,6 +171,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         }
 
         game = this
+        if (mode.isGrowth) growth = org.beobma.classWarPlugin.growth.GrowthModeRuntime(this, gameWorld)
         phase = GamePhase.CLASS_SELECTION
         originalWorldTime = gameWorld.time
         originalDaylightCycle = gameWorld.getGameRuleValue(GameRules.ADVANCE_TIME)
@@ -355,6 +357,14 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
             it.entityStatus.canMove = false
         }
 
+        if (mode.isGrowth) {
+            growth!!.prepare(participants.size) { error ->
+                if (game !== this || phase != GamePhase.COUNTDOWN) return@prepare
+                if (error != null) { sendNotification(error); stop() }
+                else startCountdownTimer(participants)
+            }
+            return
+        }
         if (settings.fixedSpawnEnabled) {
             val fixedSpawn = resolveFixedSpawn()
             if (fixedSpawn == null) {
@@ -392,6 +402,10 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
             spawnLocations.addAll(spawnPoints)
         }
 
+        startCountdownTimer(participants)
+    }
+
+    private fun Game.startCountdownTimer(participants: List<PlayerData>) {
         var remaining = settings.countdownSeconds
         val task = object : BukkitRunnable() {
             override fun run() {
@@ -431,7 +445,13 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
     private fun Game.scatterAndBegin() {
         phase = GamePhase.SCATTERING
         val participants = contenders()
-        if (settings.fixedSpawnEnabled) {
+        if (mode.isGrowth) {
+            val destinations = growth?.spawnLocations(participants.size).orEmpty()
+            if (destinations.size != participants.size) {
+                sendNotification("성장 지역의 안전한 스폰을 확보하지 못했습니다."); stop(); return
+            }
+            spawnLocations.clear(); spawnLocations.addAll(destinations)
+        } else if (settings.fixedSpawnEnabled) {
             val fixedSpawn = resolveFixedSpawn()
             if (fixedSpawn == null) {
                 sendNotification("저장된 고정 스폰 좌표를 불러오지 못해 게임을 종료합니다.")
@@ -542,7 +562,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         sendNotification("${mode.displayName} <gray>게임이 시작되었습니다.")
         startClassTickTask()
         startTailHeartbeatTask()
-        startWorldBorder()
+        if (mode.isGrowth) growth?.start() else startWorldBorder()
     }
 
     private fun Game.initializeTailTargets(participants: List<PlayerData>) {
@@ -1593,6 +1613,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
     }
 
     private fun Game.findRespawnLocation(playerData: PlayerData): Location? {
+        if (mode.isGrowth) return growth?.spawnLocations(1)?.firstOrNull()
         val occupied = contenders()
             .filter { it.uniqueId != playerData.uniqueId && it.player.isOnline && it.player.world == gameWorld }
             .map { it.player.location }
@@ -1848,6 +1869,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         CombatManager.clear(participantIds)
         clearDamageInvincibility(participantIds)
         CooldownManager.clear(participantIds)
+        growth?.close()
         DamageIndicatorManager.clearForPlayers(participantIds)
         BattleMapManager.cleanup(this)
         disconnectTasks.values.forEach { it.cancel() }
@@ -1858,6 +1880,8 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         borderBossBar?.let { bar -> activePlayers().filter { it.player.isOnline }.forEach { it.player.hideBossBar(bar) } }
         borderBossBar = null
         gameWorld.worldBorder.reset()
+        growth?.restoreBorder()
+        growth = null
 
         activePlayers().forEach { playerData ->
             StealthVisibilityManager.reveal(playerData)

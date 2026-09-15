@@ -22,6 +22,7 @@ class Charge(maximum: Int? = DEFAULT_MAXIMUM) : StatusAbnormality() {
     )
     override val canRemove = false
     override val isClassMechanic = true
+    override val growsWithStats = true
     override var power = 0
     override var maxPower: Int? = validatedMaximum(maximum)
     override val showMaxPower = true
@@ -32,7 +33,7 @@ class Charge(maximum: Int? = DEFAULT_MAXIMUM) : StatusAbnormality() {
 
     fun configureMaximum(maximum: Int?) {
         maxPower = validatedMaximum(maximum)
-        val cappedPower = maxPower?.let { power.coerceAtMost(it) } ?: power
+        val cappedPower = effectiveMaxPower()?.let { power.coerceAtMost(it) } ?: power
         updatePower(cappedPower)
     }
 

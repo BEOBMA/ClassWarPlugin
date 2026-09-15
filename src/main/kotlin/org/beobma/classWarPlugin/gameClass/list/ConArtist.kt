@@ -56,7 +56,7 @@ class ConArtist : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
     private inner class Passive : BasePassive(), WhenHitHandler {
         override val name = "<bold>가짜 죽음"
         override val description = listOf(
-            "<gray>패시브", "", "<gray>게임당 1회, 사망 시 사망을 {keyword:Invalidity}로 하고, 사망한 것처럼 위장하며 20초간 {keyword:Stealth} 상태가 된다."
+            "<gray>패시브", "", "<gray>게임당 1회, 사망 시 사망을 {keyword:Invalidity}로 하고, 사망한 것처럼 위장하며 {g:duration:20}초간 {keyword:Stealth} 상태가 된다."
         )
         override fun whenHit(context: DamageContext) {
             if (player.health - context.damage <= 0.0 && fakeDeath()) context.isCancelled = true

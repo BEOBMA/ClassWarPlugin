@@ -117,11 +117,11 @@ class Chubby : GameClass(), GameStatusHandler, EnvironmentalDamageHandler, Statu
             target.damage(damage, DamageType.Normal, playerData, damagePath = DamagePath.SKILL)
             var direction = target.entity.boundingBox.center.clone().subtract(player.boundingBox.center).setY(0.0)
             if (direction.lengthSquared() < 1.0E-8) direction = Vector(1.0, 0.0, 0.0)
-            target.entity.velocity = direction.normalize()
+            target.entity.velocity = org.beobma.classWarPlugin.growth.GrowthScaling.knockback(playerData, direction.normalize()
                 .multiply((CHUBBY_BASE_HORIZONTAL_KNOCKBACK + fallHeight * CHUBBY_HORIZONTAL_KNOCKBACK_PER_BLOCK)
                     .coerceAtMost(CHUBBY_MAX_HORIZONTAL_KNOCKBACK))
                 .setY((CHUBBY_BASE_VERTICAL_KNOCKBACK + fallHeight * CHUBBY_VERTICAL_KNOCKBACK_PER_BLOCK)
-                    .coerceAtMost(CHUBBY_MAX_VERTICAL_KNOCKBACK))
+                    .coerceAtMost(CHUBBY_MAX_VERTICAL_KNOCKBACK)))
         }
         particles.circle(impact.clone().add(0.0, 0.12, 0.0), Particle.EXPLOSION, radius, ringPoints)
         particles.spawn(impact, Particle.DUST_PLUME, count = dustCount, spread = radius * (0.5 + impactPower * 0.18), speed = particleSpeed)
@@ -143,7 +143,7 @@ class Chubby : GameClass(), GameStatusHandler, EnvironmentalDamageHandler, Statu
         override val name = "<bold>돼애애애지"
         override val description = listOf(
             "<gray>패시브", "",
-            "<gray>최대 체력이 100% 증가한다.",
+            "<gray>최대 체력이 {g:health-bonus:100}% 증가한다.",
             "<gray>이동 속도가 20% 감소한다.",
             "<gray>플레이어의 크기가 증가한다.",
             "<gray>2칸 이상 높이에서 낙하 시 주변 적을 공중에 띄우고 밀쳐내며 낙하 높이에 비례한 피해를 입힌다."

@@ -74,8 +74,8 @@ class IceWizard : GameClass(), GameStatusHandler {
             "<gray>사용 시 활성화되고 다시 사용 시 비활성화되는 스킬.",
             "<gray>활성화 시 초당 {keyword:Mana}를 10 소모힌다.",
             "",
-            "<gray>자신 주위 모든 적에게 초당 2의 피해를 입히고 {keyword:Frostbite}을 2 부여한다.",
-            "{keyword:Mana}가 0이 되면 스킬이 강제로 비활성화되며, 자신은 2초간 {keyword:Freezing} 상태가 된다."
+            "<gray>자신 주위 모든 적에게 초당 {g:damage:2}의 피해를 입히고 {keyword:Frostbite}을 {g:power:2} 부여한다.",
+            "{keyword:Mana}가 0이 되면 스킬이 강제로 비활성화되며, 자신은 {g:duration:2}초간 {keyword:Freezing} 상태가 된다."
         )
         override val cooldown = ICE_WIZARD_SKILL_COOLDOWN_SECONDS
 
@@ -154,8 +154,8 @@ class IceWizard : GameClass(), GameStatusHandler {
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>스킬 적중 시 5초간 적중한 적 주위에 접근 시 <gold><bold>이동 속도가 25% 감소</bold><gray>하는 영역을 생성한다.",
-            "<gray>영역의 영향을 받은 적에게 {keyword:Frostbite}을 2 부여한다.",
+            "<gray>스킬 적중 시 {g:time:5}초간 적중한 적 주위에 접근 시 <gold><bold>이동 속도가 25% 감소</bold><gray>하는 영역을 생성한다.",
+            "<gray>영역의 영향을 받은 적에게 {keyword:Frostbite}을 {g:power:2} 부여한다.",
             "<gray>이 효과는 영역 당 같은 대상에게 1번만 발동할 수 있다."
         )
 
@@ -172,7 +172,7 @@ class IceWizard : GameClass(), GameStatusHandler {
         private val affectedEntities: MutableSet<EntityData> = mutableSetOf()
 
         override fun onFlooringContinue(location: Location) {
-            particles.circle(location, Particle.SNOWFLAKE, radius, 28)
+            particles.circle(location, Particle.SNOWFLAKE, effectRadius, 28)
         }
 
         override fun onFlooringEntityHit(hitEntityData: EntityData, location: Location) {

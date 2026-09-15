@@ -94,7 +94,7 @@ class Jupiter : PlanetClass(), GameStatusHandler {
         override val description = listOf(
             "<gray>패시브", "",
             "<gray>이동 시 자신의 위치에 2.5초간 지속되는 수소를 내뿜는다.",
-            "<gray>수소에 닿은 적에게 초당 2의 피해를 입힌다."
+            "<gray>수소에 닿은 적에게 초당 {g:damage:2}의 피해를 입힌다."
         )
     }
 }

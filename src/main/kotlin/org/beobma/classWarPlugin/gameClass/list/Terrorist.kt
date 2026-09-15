@@ -52,8 +52,9 @@ class Terrorist : GameClass(), PlayerDeathHandler, GameEndHandler {
 
     override fun onPlayerDeath() {
         val origin = player.location.clone().add(0.0, 0.35, 0.0)
-        val bombs = MutableList(30) { index ->
-            val angle = index * (2.0 * PI / 30.0) + Random.nextDouble(-0.12, 0.12)
+        val bombCount = growthCount("bombs", 30)
+        val bombs = MutableList(bombCount) { index ->
+            val angle = index * (2.0 * PI / bombCount) + Random.nextDouble(-0.12, 0.12)
             val display = player.world.spawn(origin, BlockDisplay::class.java).apply {
                 block = Material.TNT.createBlockData()
                 billboard = Display.Billboard.FIXED
@@ -135,8 +136,8 @@ class Terrorist : GameClass(), PlayerDeathHandler, GameEndHandler {
     private class Passive : BasePassive() {
         override val name = "<bold>테러"
         override val description = listOf(
-            "<gray>패시브", "", "<gray>사망 시 자신 주변에 폭탄을 30개 소환한다.",
-            "<gray>폭탄은 3초 후 폭발하며 주변에 있는 적에게 5의 피해를 입힌다."
+            "<gray>패시브", "", "<gray>사망 시 자신 주변에 폭탄을 {g:feature/bombs:30}개 소환한다.",
+            "<gray>폭탄은 3초 후 폭발하며 주변에 있는 적에게 {g:damage:5}의 피해를 입힌다."
         )
     }
 

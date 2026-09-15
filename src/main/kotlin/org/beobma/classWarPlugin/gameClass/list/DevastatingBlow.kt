@@ -69,7 +69,7 @@ class DevastatingBlow : GameClass(), EnvironmentalDamageHandler, GameEndHandler,
             "<gray>10초간 하늘 높은 곳으로 올라가 자유롭게 이동하며 {keyword:Stealth} 상태가 된다.",
             "<gray>자신을 따라다니는 지름 10칸 범위의 입자가 아래의 땅에 생성된다.",
             "<gray>이 스킬을 재사용하거나 10초가 지나면 그 위치에 고정되고, 2.5초 후 땅으로 떨어진다.",
-            "<gray>떨어질 때 그 위치에 있던 모든 적은 6의 피해를 입고 1초간 {keyword:Stun}한다."
+            "<gray>떨어질 때 그 위치에 있던 모든 적은 {g:damage:6}의 피해를 입고 {g:duration:1}초간 {keyword:Stun}한다."
         )
         override val cooldown = 80
         override val isOnOffSKill = true

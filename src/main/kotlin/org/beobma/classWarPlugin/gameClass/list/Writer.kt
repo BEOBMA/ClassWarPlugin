@@ -124,7 +124,8 @@ class Writer : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandle
 
     override fun onAttackHit(context: DamageContext) {
         // Bonus is after the common 0.6 basic normalization, before armor/other modifiers.
-        context.addBaseDamage(progress.basicDamageBonus / DamageManager.BASIC_ATTACK_DAMAGE_MULTIPLIER)
+        val bonus = progress.basicDamageBonus.let { if (it > 0) growthValue("reward", it) else it }
+        context.addBaseDamage(bonus / DamageManager.BASIC_ATTACK_DAMAGE_MULTIPLIER)
     }
 
     override fun whenHit(context: DamageContext) {
@@ -156,8 +157,8 @@ class Writer : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandle
             "",
             "<gray>게임 시작 시 글이 제시된다.",
             "<gray>글과 동일하게 채팅을 쳐 한 줄을 완성할 때마다",
-            "<gray>자신의 기본 공격 피해가 0.1 증가하고 받는 피해가 1% 감소한다.",
-            "<gray>원래 글과 다르게 작성한 경우 대신 기본 공격 피해가 0.2 감소하고 받는 피해가 2% 증가한다.",
+            "<gray>자신의 기본 공격 피해가 {g:writer-reward:0.1} 증가하고 받는 피해가 1% 감소한다.",
+            "<gray>원래 글과 다르게 작성한 경우 대신 기본 공격 피해가 {g:basic:0.2} 감소하고 받는 피해가 2% 증가한다.",
             "<gray>공백과 문장 부호도 일치해야 하며 오답 부분은 빨간색으로 표시한 뒤 다음 줄로 넘어간다."
         )
     }

@@ -150,7 +150,7 @@ class Gambler : GameClass(), GameStatusHandler {
         override val description = listOf(
             "<gray>패를 덱으로 되돌리고 덱을 섞는다.",
             "<gray>5초간 덱으로 되돌린 {keyword:Card}의 숫자 합계 1당 가하는 피해가 1% 증가한다.",
-            "{keyword:Card}의 숫자 합계 5당 체력을 1 회복한다.",
+            "{keyword:Card}의 숫자 합계 5당 체력을 {g:healing:1} 회복한다.",
         )
         override val cooldown = GAMBLER_STAND_COOLDOWN_SECONDS
 
@@ -189,13 +189,13 @@ class Gambler : GameClass(), GameStatusHandler {
             "<gray>패가 확정된 후 효과를 발동한 뒤 패를 덱으로 되돌리고 덱을 섞는다.",
             "",
             "<gray>잭팟:",
-            "<gray>  체력 4 회복",
-            "<gray>  8초간 <aqua><bold>4의 피해를 막는 {keyword:Shield} 얻음",
+            "<gray>  체력 {g:healing:4} 회복",
+            "<gray>  {g:duration:8}초간 <aqua><bold>{g:shield:4}의 피해를 막는 {keyword:Shield} 얻음",
             "<gray>  8초간 가하는 피해 20% 증가",
-            "<gray>  8초간 이동 속도 15% 증가",
+            "<gray>  {g:duration:8}초간 이동 속도 {g:speed:15}% 증가",
             "<gray>버스트:",
             "<gray>  8초간 가하는 피해 15% 감소",
-            "<gray>  8초간 이동 속도 10% 감소",
+            "<gray>  {g:duration:8}초간 이동 속도 {g:speed:10}% 감소",
         )
 
         override fun onHit(context: DamageContext) {

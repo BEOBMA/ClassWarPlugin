@@ -81,7 +81,7 @@ class Knight : GameClass(), WeaponInputHandler {
         override val name = "<bold>가로베기"
         override val description = listOf(
             "<gray>바라보는 방향으로 검을 휘두른다.",
-            "<gray>적중한 모든 적에게 4의 피해를 입히고 4초간 {keyword:Bleeding}을 4 부여한다."
+            "<gray>적중한 모든 적에게 {g:damage:4}의 피해를 입히고 {g:duration:4}초간 {keyword:Bleeding}을 {g:physical-power:4} 부여한다."
         )
         override val cooldown = KNIGHT_HORIZONTAL_SLASH_COOLDOWN_SECONDS
 
@@ -138,7 +138,7 @@ class Knight : GameClass(), WeaponInputHandler {
     private inner class Passive : BasePassive(), OnHitHandler, WhenHitHandler {
         override val name = "<bold>피로 벼려낸 검"
         override val description = listOf(
-            "<gray>기본 공격 적중 시 3초간 적에게 {keyword:Bleeding}을 1 부여한다."
+            "<gray>기본 공격 적중 시 {g:duration:3}초간 적에게 {keyword:Bleeding}을 {g:physical-power:1} 부여한다."
         )
 
         override fun onAttackHit(context: DamageContext) {

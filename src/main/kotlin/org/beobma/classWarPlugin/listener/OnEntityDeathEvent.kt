@@ -15,7 +15,14 @@ class OnEntityDeathEvent : Listener {
         if (entity is Player) return
 
         val attribution = DamageManager.consumeAttribution(entity)
-        val killerId = attribution?.attackerId ?: entity.killer?.uniqueId ?: return
+        val creditedKiller = attribution?.attackerId ?: entity.killer?.uniqueId
+        org.beobma.classWarPlugin.info.Info.game?.growth?.let { runtime ->
+            if (entity.uniqueId in runtime.mobs) {
+                event.drops.clear(); event.droppedExp = 0
+                runtime.mobDeath(entity.uniqueId, creditedKiller)
+            }
+        }
+        val killerId = creditedKiller ?: return
         val deathCenter = entity.boundingBox.center.toLocation(entity.world)
         AreaDevelopment.handleEntityDeath(entity.uniqueId, deathCenter, killerId)
         Levatain.handleKill(killerId)
