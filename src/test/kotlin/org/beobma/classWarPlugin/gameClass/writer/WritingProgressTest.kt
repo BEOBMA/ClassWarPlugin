@@ -34,14 +34,19 @@ class WritingProgressTest {
     }
 
     @Test fun `library contains many keyboard-ready works and lines`() {
-        assertTrue(WritingLibrary.works.size >= 20)
-        assertTrue(WritingLibrary.works.sumOf { it.lines.size } >= 90)
+        assertTrue(WritingLibrary.works.size >= 60)
+        assertTrue(WritingLibrary.works.sumOf { it.lines.size } >= 240)
         assertTrue(WritingLibrary.works.any { it.title == "애국가" })
+        assertTrue(WritingLibrary.works.any { it.title == "이상 · 날개 중에서" })
+        assertTrue(WritingLibrary.works.any { it.title == "이상 · 거울 중에서" })
+        assertTrue(WritingLibrary.works.count { it.title.startsWith("이상 · 오감도") } >= 6)
         assertEquals(WritingLibrary.works.size, WritingLibrary.works.map { it.title }.distinct().size)
+        assertTrue(WritingLibrary.works.all { it.lines.isNotEmpty() })
         WritingLibrary.works.flatMap { it.lines }.forEach { line ->
             assertTrue(line.isNotBlank())
             assertEquals(line.trim(), line)
-            assertFalse(line.contains('\n'))
+            assertTrue(line.length <= 256, "Chat input is too long: $line")
+            assertFalse(line.any { it.isISOControl() || it == '\u200B' || it == '\uFEFF' })
         }
     }
 

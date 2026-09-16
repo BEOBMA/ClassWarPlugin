@@ -5,7 +5,10 @@ import kotlin.test.*
 
 class WritingDeckTest {
     @Test fun `first work is not fixed to the anthem`() {
-        val firstTitles = (0..100).map { WritingDeck(random = Random(it)).next().title }.toSet()
+        // Keep this shuffle check independent of the growing catalog's sampling probability.
+        val works = listOf(WritingLibrary.works.first { it.title == "애국가" },
+            WritingLibrary.works.first { it.title == "이상 · 날개 중에서" })
+        val firstTitles = (0..100).map { WritingDeck(works, Random(it)).next().title }.toSet()
         assertTrue(firstTitles.size > 1)
         assertTrue(firstTitles.any { it != "애국가" })
         assertTrue("애국가" in firstTitles)
