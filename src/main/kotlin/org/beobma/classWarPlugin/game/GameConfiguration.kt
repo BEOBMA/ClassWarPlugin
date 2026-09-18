@@ -83,6 +83,7 @@ enum class GameSetting {
 
 private object GameConfigPath {
     const val REFRESH_CHANCES = "selection.refresh-chances"
+    const val EXCLUDE_PREVIOUS_CLASSES = "selection.exclude-previous-classes"
     const val COUNTDOWN_SECONDS = "selection.countdown-seconds"
     const val STARTING_ITEMS = "selection.starting-items"
     const val CLASS_WEAPON = "selection.class-weapon"
@@ -172,6 +173,7 @@ private object GameConfigStep {
 data class GameConfiguration(
     val growth: org.beobma.classWarPlugin.growth.GrowthSettings = org.beobma.classWarPlugin.growth.GrowthSettings(),
     val refreshChances: Int = 3,
+    val excludePreviousClasses: Boolean = true,
     val countdownSeconds: Int = 5,
     val startingItems: List<ItemStack> = defaultStartingItems(),
     val classWeapon: ItemStack? = null,
@@ -256,6 +258,7 @@ object GameSettings {
         val defaults = GameConfiguration()
         current = GameConfiguration(
             refreshChances = config.getInt(GameConfigPath.REFRESH_CHANCES, defaults.refreshChances),
+            excludePreviousClasses = config.getBoolean(GameConfigPath.EXCLUDE_PREVIOUS_CLASSES, defaults.excludePreviousClasses),
             countdownSeconds = config.getInt(GameConfigPath.COUNTDOWN_SECONDS, defaults.countdownSeconds),
             startingItems = if (config.contains(GameConfigPath.STARTING_ITEMS, true)) {
                 config.getList(GameConfigPath.STARTING_ITEMS)
@@ -610,6 +613,7 @@ object GameSettings {
 
     private fun GameConfiguration.configEntries(): Map<String, Any> = buildMap {
         put(GameConfigPath.REFRESH_CHANCES, refreshChances)
+        put(GameConfigPath.EXCLUDE_PREVIOUS_CLASSES, excludePreviousClasses)
         put(GameConfigPath.COUNTDOWN_SECONDS, countdownSeconds)
         put(GameConfigPath.STARTING_ITEMS, startingItems.map(ItemStack::clone))
         put(GameConfigPath.COOLDOWN_FLOW_MULTIPLIER, oneDecimal(cooldownFlowMultiplier))

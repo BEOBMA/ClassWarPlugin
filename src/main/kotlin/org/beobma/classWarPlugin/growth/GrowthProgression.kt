@@ -57,13 +57,16 @@ data class GrowthProfile(val primary: GrowthStat, val secondary: GrowthStat,
             "lucky-one", "roulette", "tonic")
         fun forClass(id: String): GrowthProfile {
           val base = when (id) {
+            "pacifist" -> GrowthProfile(GrowthStat.STRENGTH, GrowthStat.AGILITY,
+                effects = defaultEffects + (GrowthAxis.KNOCKBACK to GrowthEffectRule(GrowthStat.STRENGTH, 0.8, 0.5)))
             in intellect -> GrowthProfile(GrowthStat.INTELLIGENCE, GrowthStat.AGILITY)
             in agile -> GrowthProfile(GrowthStat.AGILITY, GrowthStat.STRENGTH)
             in lucky -> GrowthProfile(GrowthStat.LUCK, GrowthStat.INTELLIGENCE)
             else -> GrowthProfile(GrowthStat.STRENGTH, GrowthStat.AGILITY)
           }
           val style = GrowthClassCatalog.style(id)
-          return base.copy(basicDamageWeight = style.basicWeight, skillDamageWeight = style.skillWeight)
+          return base.copy(basicDamageWeight = GrowthClassCatalog.weaponOnlyWeights[id] ?: style.basicWeight,
+              skillDamageWeight = style.skillWeight)
         }
         fun read(config: ConfigurationSection, fallback: GrowthProfile): GrowthProfile {
             fun stat(key: String, default: GrowthStat) = GrowthStat.entries.firstOrNull {

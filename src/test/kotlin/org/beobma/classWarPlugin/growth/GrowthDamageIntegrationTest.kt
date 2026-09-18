@@ -26,6 +26,40 @@ import java.util.UUID
 import kotlin.test.*
 
 class GrowthDamageIntegrationTest {
+    @Test fun `unique attack and defense effects reach damage contexts but never fixed damage`() {
+        val world: World = proxy { if (it == "getTime") 14000L else error(it) }
+        val id = UUID.randomUUID()
+        val player: Player = proxy { when (it) {
+            "getUniqueId" -> id; "getName" -> "unique-probe"; "getHealth" -> 12.0
+            "getAttribute" -> null; "getWorld" -> world; "getLocation" -> Location(world, 0.0, 64.0, 0.0)
+            "isOnGround" -> true; "isSprinting", "isSneaking" -> false
+            else -> error(it)
+        } }
+        val game = Game(mutableListOf(), GameConfiguration(startingItems = emptyList()), mode = MatchMode.GROWTH, tickSource = { 0L })
+        val data = PlayerData(player, game)
+        val owner = Probe("general-person")
+        data.gameClasses += owner
+        AbilityTree.bind(listOf(owner), data)
+        fun equipped(effect: GrowthEffect) = GrowthPlayerState().also { state ->
+            val item = GrowthItems.ordinary.first { it.effect == effect }
+            state.inventory.add(item.id); assertTrue(state.equip(item.id))
+        }
+        val attacker = equipped(GrowthEffect.MELEE_FURY)
+        val defender = equipped(GrowthEffect.MELEE_GUARD)
+        AbilityExecution.with(owner.abilityScope) {
+            for (type in listOf(DamageType.Normal, DamageType.True)) {
+                val hit = DamageContext(data, data, DamagePath.BASIC_ATTACK, type, 10.0, weaponClassId = "general-person")
+                val original = hit.damage
+                GrowthUniqueEquipment.apply(hit, attacker, defender, GrowthCombatFacts(path = hit.path))
+                assertEquals(original * if (type == DamageType.Normal) 1.14 * 0.88 else 1.0, hit.damage, 1e-9)
+            }
+            val skill = DamageContext(data, data, DamagePath.SKILL, DamageType.Normal, 10.0)
+            val original = skill.damage
+            GrowthUniqueEquipment.apply(skill, attacker, defender, GrowthCombatFacts(path = skill.path))
+            assertEquals(original, skill.damage)
+        }
+    }
+
     private inline fun <reified T> proxy(crossinline answer: (String) -> Any?): T =
         Proxy.newProxyInstance(T::class.java.classLoader, arrayOf(T::class.java)) { self, method, args ->
             when (method.name) {
@@ -125,6 +159,31 @@ class GrowthDamageIntegrationTest {
                 GrowthDescription.evaluate("duration", 8.0, preview).first)
             assertEquals(ClassBalanceManager.scaleStatusPower(data, 5, GrowthAxis.SPEED).toDouble(),
                 GrowthDescription.evaluate("speed", 5.0, preview).first)
+        }
+    }
+
+    @Test fun `weapon compensation reaches melee ranged and previews but not classic`() {
+        for (growth in listOf(true, false)) {
+            val (data, _) = participant(growth)
+            for (id in GrowthClassCatalog.weaponOnlyWeights.keys) {
+                val owner = Probe(id)
+                AbilityTree.bind(listOf(owner), data)
+                AbilityExecution.with(owner.abilityScope) {
+                for ((operation, path) in listOf("attack-bonus" to DamagePath.BASIC_ATTACK, "ranged" to DamagePath.RANGED_ATTACK)) {
+                    val actual = ClassBalanceManager.scaleDamage(data, path, 10.0, id)
+                    if (!growth) {
+                        assertEquals(10.0, actual, id)
+                    } else {
+                        val state = data.game.growth!!.players.getValue(data.uniqueId)
+                        val p = GrowthProfile.forClass(id)
+                        assertEquals(10.0 * p.multiplier(GrowthAxis.BASIC_DAMAGE, state::stat), actual, 1e-9, id)
+                        val preview = assertNotNull(GrowthDescription.forData(data, id))
+                        assertEquals(actual * DamageManager.BASIC_ATTACK_DAMAGE_MULTIPLIER,
+                            GrowthDescription.evaluate(operation, 10.0, preview).first, 1e-9, id)
+                    }
+                }
+                }
+            }
         }
     }
 

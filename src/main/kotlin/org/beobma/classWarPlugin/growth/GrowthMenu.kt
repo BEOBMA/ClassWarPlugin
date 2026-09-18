@@ -84,9 +84,14 @@ class GrowthMenu(val owner: UUID, val kind: String, val runtime: GrowthModeRunti
                         menu.equipmentIds[index] = def.id
                         val equipped = state.equipment[def.slot] == def.id
                         inv.setItem(index, item(def.material,
-                            "${if (equipped) "<green>[장착]" else "<gold>[보유]"} ${def.name}",
+                            "${if (equipped) "<green>[장착]" else "<gray>[보유]"} ${def.displayName}",
                             listOf("<yellow>${def.slot.label}") + def.stats.map { "<gray>${it.key.label} +${it.value}" } +
-                                listOf("<aqua>${def.description}", "<gray>클릭: 장착/해제 · 같은 슬롯은 교체", if (def.eventOnly) "<gold>시간 한정 이벤트 보상" else "<gray>지역 몬스터에게서 획득")))
+                                listOf("<aqua>${def.description}", "<gray>클릭: 장착/해제 · 같은 슬롯은 교체",
+                                    when (def.rarity) {
+                                        GrowthRarity.HEROIC -> "<light_purple>일반 몬스터 드롭"
+                                        GrowthRarity.LEGENDARY -> "<yellow>한정 몬스터 90% · 일부 한정 아이템 이벤트"
+                                        GrowthRarity.TRANSCENDENT -> "<red>한정 몬스터 10%"
+                                    })))
                     }
                     if (menu.equipmentIds.isEmpty()) inv.setItem(22, item(Material.GLASS_PANE,
                         "<gray>보유한 장비가 없습니다", listOf("<gray>지역 몬스터와 한정 이벤트에서 획득하세요.")))
@@ -185,6 +190,10 @@ object GrowthCommands {
             runtime.eventMarkers().forEach { marker ->
                 sender.sendMessage("${marker.name}: ${marker.location.blockX}, ${marker.location.blockZ}")
             }
+            if (!runtime.settings.eventsEnabled) sender.sendMessage("한정 이벤트가 설정에서 비활성화되어 있습니다.")
+            else if (runtime.settings.events.isEmpty()) sender.sendMessage("유효한 한정 이벤트 설정이 없습니다.")
+            else if (runtime.settings.events.none { it.mobType != null }) sender.sendMessage("한정 몬스터 설정이 없습니다. growth.events의 이벤트에 mob-type을 지정하세요.")
+            runtime.eventFailures.forEach { (id, reason) -> sender.sendMessage("[이벤트 생략] $id: $reason") }
             return true
         }
         if (!sender.isOp) { sender.sendMessage("관리자 전용 명령입니다."); return true }

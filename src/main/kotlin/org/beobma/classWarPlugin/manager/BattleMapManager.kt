@@ -251,8 +251,7 @@ object BattleMapManager {
                     if (x in -128..127 && z in -128..127) cursors.addCursor(MapCursor(x.toByte(), z.toByte(), 0,
                         if (marker.active) MapCursor.Type.RED_X else MapCursor.Type.TARGET_POINT, true,
                         Component.text(marker.name)
-                            .color(if (marker.active) net.kyori.adventure.text.format.NamedTextColor.GOLD
-                                else net.kyori.adventure.text.format.NamedTextColor.GRAY)
+                            .color(net.kyori.adventure.text.format.NamedTextColor.NAMES.value(marker.rarity.color))
                             .decoration(net.kyori.adventure.text.format.TextDecoration.BOLD, marker.active)))
                 }
             }

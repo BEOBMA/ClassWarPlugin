@@ -1,5 +1,8 @@
 selection:
   refresh-chances: 3
+  # 모든 모드에서 같은 경기 중 자신에게 등장했던 클래스는 새로고침 시 다시 나오지 않습니다.
+  # false이면 직전 배정만 제외합니다. 후보가 부족하면 배정과 남은 횟수를 유지합니다.
+  exclude-previous-classes: true
   countdown-seconds: 5
   # 첫 실행 후에는 설정 UI에서 아이템을 직접 넣고 빼서 변경할 수 있습니다.
   # starting-items: []
@@ -58,9 +61,24 @@ growth:
   events-enabled: true
   # 예정 위치/시간을 지도에 미리 표시하고, 등장하면 금색 이름과 빨간 X로 강조합니다.
   # 획득/처치/만료/금지 시 마커도 제거됩니다. 예정 위치가 막히면 이동하지 않고 해당 등장을 생략합니다.
-  # 이벤트에 mob-type: SKELETON을 추가하면 아이템 대신 한정 몬스터가 등장하고 처치자에게 reward를 지급합니다.
-  # 지원: ZOMBIE, SKELETON, SPIDER, HUSK, STRAY, DROWNED, WITHER_SKELETON. 미지정 시 기존 아이템 이벤트입니다.
+  # mob-type 지정 시 한정 몬스터가 등장합니다. 처치 보상은 전설 90% / 초월 10%로 장비 1개 확정입니다.
+  # 몬스터의 reward는 이름 테마입니다. mob-type 미지정 시 reward 아이템을 그대로 생성합니다.
+  # 지원: ZOMBIE, SKELETON, SPIDER, HUSK, STRAY, DROWNED, WITHER_SKELETON.
   events:
+    grove-guardian:
+      day: 1
+      night: true
+      terrain-tags: [forest, plains]
+      reward: world-tree
+      lifetime-seconds: 90
+      mob-type: ZOMBIE
+    moon-guardian:
+      day: 2
+      night: true
+      terrain-tags: []
+      reward: moon-heart
+      lifetime-seconds: 90
+      mob-type: SKELETON
     ancient-grove:
       day: 2
       night: false

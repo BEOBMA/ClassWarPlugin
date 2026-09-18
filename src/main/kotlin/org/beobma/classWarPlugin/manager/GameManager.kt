@@ -183,6 +183,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         availableClasses.addAll(availableClassesFor(mode))
         confirmedPlayers.clear()
         refreshesRemaining.clear()
+        classSelectionHistory.clear()
         playerKillCounts.clear()
         tailTargets.clear()
         initializeMatchGroups(participants)
@@ -207,6 +208,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
                 drawRandomClass()?.let(assignedClasses::add)
             }
             playerData.assignGameClasses(assignedClasses)
+            classSelectionHistory.record(player.uniqueId, assignedClasses.map { it.classId })
             val teamNumber = (teamOf(player.uniqueId) ?: 0) + 1
             val role = cooperativeRoleOf(player.uniqueId)
             val assignment = buildString {
@@ -246,20 +248,23 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
 
         val previousClasses = gameClasses.toList()
         if (previousClasses.isEmpty()) return
+        val previousPool = currentGame.availableClasses.toList()
         currentGame.availableClasses.addAll(previousClasses)
-        val excludedTypes = previousClasses.map { it.javaClass }.toSet()
+        val excludedIds = currentGame.classSelectionHistory.exclusions(player.uniqueId,
+            previousClasses.map { it.classId }, currentGame.settings.excludePreviousClasses)
         val replacements = mutableListOf<GameClass>()
         repeat(currentGame.mode.assignedClassCount) {
-            currentGame.drawRandomClass(excludedTypes)?.let(replacements::add)
+            currentGame.drawRandomClass(excludedIds + replacements.map { it.classId })?.let(replacements::add)
         }
         if (replacements.size != currentGame.mode.assignedClassCount) {
-            currentGame.availableClasses.addAll(replacements)
-            previousClasses.forEach(currentGame.availableClasses::remove)
+            currentGame.availableClasses.clear()
+            currentGame.availableClasses.addAll(previousPool)
             player.sendMessage(miniMessage.deserialize("<red><bold>[!] 새로 배정할 수 있는 클래스 조합이 없습니다."))
             return
         }
 
         assignGameClasses(replacements)
+        currentGame.classSelectionHistory.record(player.uniqueId, previousClasses.map { it.classId } + replacements.map { it.classId })
         currentGame.refreshesRemaining[player.uniqueId] = remaining - 1
         player.playSound(player.location, Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0F, 1.2F)
         openAssignedClassInventory()
@@ -282,11 +287,11 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         }
     }
 
-    private fun Game.drawRandomClass(excludedTypes: Set<Class<out GameClass>> = emptySet()): GameClass? {
-        var candidates = availableClasses.filter { it.javaClass !in excludedTypes }
+    private fun Game.drawRandomClass(excludedIds: Set<String> = emptySet()): GameClass? {
+        var candidates = availableClasses.filter { it.classId !in excludedIds }
         if (candidates.isEmpty() && testMode) {
             availableClasses.addAll(availableClassesFor(mode))
-            candidates = availableClasses.filter { it.javaClass !in excludedTypes }
+            candidates = availableClasses.filter { it.classId !in excludedIds }
         }
         if (candidates.isEmpty()) return null
 
@@ -560,6 +565,9 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
             if (mode.usesTailTagRules) sendTailTargetNotice(playerData)
         }
         sendNotification("${mode.displayName} <gray>게임이 시작되었습니다.")
+        if (mode.isGrowth) {
+            sendNotification("<red><bold>주의: 성장 모드는 베타 버전입니다.</bold> 플레이 중 버그 및 여러 문제가 발생할 수 있습니다.")
+        }
         startClassTickTask()
         startTailHeartbeatTask()
         if (mode.isGrowth) growth?.start() else startWorldBorder()
@@ -1919,6 +1927,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         cooperativeRoles.clear()
         availableClasses.clear()
         refreshesRemaining.clear()
+        classSelectionHistory.clear()
         confirmedPlayers.clear()
         playerKillCounts.clear()
         spawnLocations.clear()

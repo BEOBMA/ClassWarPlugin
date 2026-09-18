@@ -8,6 +8,31 @@ import kotlin.test.*
 class GrowthClassScalingTest {
     private fun only(stat: GrowthStat, points: Int): (GrowthStat) -> Int = { if (it == stat) points else 0 }
 
+    @Test fun `weapon only compensation buffs damage without nerfing secondary effects`() {
+        GrowthClassCatalog.weaponOnlyWeights.forEach { (id, weight) ->
+            assertTrue(id in GrowthClassCatalog.styles, id)
+            val style = GrowthClassCatalog.style(id)
+            val profile = GrowthProfile.forClass(id)
+            assertTrue(weight > style.basicWeight, id)
+            assertEquals(style.skillWeight, profile.skillDamageWeight, id)
+            assertEquals(1.0, profile.multiplier(GrowthAxis.BASIC_DAMAGE) { 0 }, id)
+            assertEquals(1.0 + 1.05 * weight, profile.multiplier(GrowthAxis.BASIC_DAMAGE) { 50 }, 1e-9, id)
+            assertEquals(profile, GrowthProfile.read(YamlConfiguration(), profile))
+        }
+        for (id in listOf("ghost", "grass", "peanuts", "swordplay", "terrorist", "ice-wizard")) {
+            assertFalse(id in GrowthClassCatalog.weaponOnlyWeights, id)
+            assertEquals(GrowthClassCatalog.style(id).basicWeight, GrowthProfile.forClass(id).basicDamageWeight)
+        }
+    }
+
+    @Test fun `pacifist grows its actual combat tool with strength and retains knockback cap`() {
+        val profile = GrowthProfile.forClass("pacifist")
+        assertEquals(GrowthStat.STRENGTH, profile.primary)
+        assertEquals(1.4, profile.multiplier(GrowthAxis.KNOCKBACK, only(GrowthStat.STRENGTH, 50)), 1e-9)
+        assertEquals(1.0, profile.multiplier(GrowthAxis.KNOCKBACK, only(GrowthStat.INTELLIGENCE, 50)))
+        assertEquals(1.5, profile.multiplier(GrowthAxis.KNOCKBACK) { Int.MAX_VALUE })
+    }
+
     @Test fun `agility primary and strength secondary cannot shorten cooldowns`() {
         val p = GrowthProfile(GrowthStat.AGILITY, GrowthStat.STRENGTH)
         assertEquals(1.0, p.multiplier(GrowthAxis.COOLDOWN, only(GrowthStat.AGILITY, 100)))

@@ -56,13 +56,15 @@ class GrowthExpansionTest {
         assertTrue(GrowthPopulation.distribute(emptyList<List<Int>>(), 192).isEmpty())
     }
 
-    @Test fun `expanded catalog has thirty six choices per slot and preserves event exclusivity`() {
-        assertEquals(144, GrowthItems.all.size)
-        assertEquals(144, GrowthItems.all.map { it.id }.toSet().size)
-        assertEquals(144, GrowthItems.all.map { it.name }.toSet().size)
-        GrowthSlot.entries.forEach { slot -> assertEquals(36, GrowthItems.all.count { it.slot == slot }) }
-        assertEquals(142, GrowthItems.ordinary.size)
-        assertEquals(setOf("world-tree", "moon-heart"), GrowthItems.all.filter { it.eventOnly }.map { it.id }.toSet())
+    @Test fun `tiered catalog expands every slot and keeps high rarity out of ordinary drops`() {
+        assertEquals(3454, GrowthItems.all.size)
+        assertEquals(3454, GrowthItems.all.map { it.id }.toSet().size)
+        assertEquals(3454, GrowthItems.all.map { it.name }.toSet().size)
+        GrowthSlot.entries.forEach { slot -> assertEquals(if (slot == GrowthSlot.RELIC) 862 else 864, GrowthItems.all.count { it.slot == slot }) }
+        assertEquals(1150, GrowthItems.ordinary.size)
+        assertEquals(1152, GrowthItems.legendary.size)
+        assertEquals(1152, GrowthItems.transcendent.size)
+        assertTrue(GrowthItems.all.filter { it.eventOnly }.all { it.rarity != GrowthRarity.HEROIC })
         assertTrue(GrowthItems.ordinary.all { it.stats.values.sum() in 12..14 && it.description.isNotBlank() })
         assertTrue(GrowthItems.all.filter { it.slot == GrowthSlot.ARMOR }.all { it.material.name.endsWith("_CHESTPLATE") })
     }
@@ -82,11 +84,11 @@ class GrowthExpansionTest {
 
     @Test fun `all equipment is reachable across pages without occupying navigation slots`() {
         val ids = GrowthItems.all.map { it.id }.toSet() + "invalid-id"
-        assertEquals(4, GrowthItems.pageCount(ids))
+        assertEquals(77, GrowthItems.pageCount(ids))
         val first = GrowthItems.page(ids, 0)
         val pages = (0 until GrowthItems.pageCount(ids)).map { GrowthItems.page(ids, it) }
         assertEquals(45, first.size)
-        assertEquals(listOf(45, 45, 45, 9), pages.map { it.size })
+        assertEquals(List(76) { 45 } + 34, pages.map { it.size })
         assertEquals(GrowthItems.all, pages.flatten())
         assertEquals(first, GrowthItems.page(ids, -1))
         assertEquals(pages.last(), GrowthItems.page(ids, Int.MAX_VALUE))

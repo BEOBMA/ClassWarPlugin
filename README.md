@@ -112,7 +112,7 @@ Spigot/Bukkit 및 다른 Paper 포크에서의 동작은 보장하지 않습니�
 
 | 설정 경로 | 용도 |
 | --- | --- |
-| `selection` | 클래스 재추첨 횟수와 시작 카운트다운 시간 |
+| `selection` | 클래스 재추첨 횟수, 이전 등장 클래스 제외 여부, 시작 카운트다운 시간 |
 | `modes.team.players-per-team` | 팀 모드의 팀당 인원 |
 | `modes.cooperative.players-per-group` | 공동 모드의 조당 인원 |
 | `modes.cooperative.random-role-assignment` | 매 경기 공동 역할을 무작위로 섞을지 여부 |

@@ -28,6 +28,18 @@ object GrowthClassCatalog {
     }
     fun style(id: String) = styles[id] ?: GrowthCombatStyle.HYBRID
 
+    /** Reviewed weapon-only damage sources. Keep skill weights for copied/secondary effects intact.
+     * Do not infer this from an empty skills list: Ghost, Grass and summons deal passive damage.
+     */
+    val weaponOnlyWeights: Map<String, Double> = buildMap {
+        // Low combat impact utility passives need the largest growth compensation.
+        "general-person feather high-jumper just-light shy-person refugees".split(' ').forEach { put(it, 2.0) }
+        // Defensive, mobility and setup abilities still rely on weapon hits to finish a fight.
+        "avenger barrier blacksmith chameleon con-artist darkness dwarf hacker hero hikikomori mathematician portal-gun spider-man terra time-maniqulator tour train train-carriage writer".split(' ').forEach { put(it, 1.7) }
+        // Rifle shots use RANGED_ATTACK; reload is not a separate damaging skill.
+        put("sniper", 1.4)
+    }
+
     private fun count(label: String, stat: GrowthStat, points: Int, extra: Int, step: Int = 1) =
         GrowthFeatureRule(label, stat, points, step, extra)
     private fun value(label: String, stat: GrowthStat, percent: Double = 0.5, cap: Double = 0.5) =

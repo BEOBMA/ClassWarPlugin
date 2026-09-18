@@ -1,14 +1,24 @@
 package org.beobma.classWarPlugin.growth
 
 import org.bukkit.Material
+import kotlin.math.roundToInt
+import kotlin.random.Random
+
+enum class GrowthRarity(val label: String, val color: String) {
+    HEROIC("영웅", "light_purple"), LEGENDARY("전설", "yellow"), TRANSCENDENT("초월", "red")
+}
 
 enum class GrowthSlot(val label: String) { WEAPON("무기 보조"), ARMOR("방어구"), ACCESSORY("장신구"), RELIC("유물") }
 enum class GrowthEffect {
     EXECUTE, LIFESTEAL, SPELLBLADE, WARD, SECOND_WIND, HASTE, FORTUNE, HUNTER, REGEN, BARRIER, FOCUS, TITAN,
     BASIC_MASTERY, ARCANE_MASTERY, LAST_STAND, VANGUARD, AMBUSH, MONSTER_SLAYER, DESPERATION, AFFLICTION,
+    MELEE_FURY, DEADEYE, CLOSE_CASTER, FAR_CASTER, HEALTHY_HUNTER, DUEL_PREDATOR, MELEE_GUARD, MISSILE_GUARD, SPELL_GUARD, BEAST_GUARD, CLOSE_GUARD, DISTANT_GUARD, GIANT_HUNTER, UNDERDOG, FINISHER_SKILL, STEADY_AIM, SPRINT_STRIKE, AIR_ASSAULT, NIGHT_GUARD, DAY_GUARD, CROUCH_GUARD, AIR_GUARD, EVEN_GUARD, GIANT_GUARD,
 }
 data class GrowthItem(val id: String, val name: String, val material: Material, val slot: GrowthSlot,
-    val stats: Map<GrowthStat, Int>, val effect: GrowthEffect, val description: String, val eventOnly: Boolean = false)
+    val stats: Map<GrowthStat, Int>, val effect: GrowthEffect, val description: String, val eventOnly: Boolean = false,
+    val rarity: GrowthRarity = GrowthRarity.HEROIC) {
+    val displayName get() = "<${rarity.color}>[${rarity.label}] $name</${rarity.color}>"
+}
 
 /** Inventory stores IDs, not physical tokens: skills, deaths and item cleanup cannot duplicate equipment. */
 object GrowthItems {
@@ -45,7 +55,7 @@ object GrowthItems {
         primary: GrowthStat, secondary: GrowthStat): GrowthItem = originals.first { it.id == base }.copy(
         id = id, name = name, material = material, stats = stats(primary, 10, secondary, 4), eventOnly = false)
 
-    val all = originals + listOf(
+    private val bases = originals + listOf(
         variant("dawn-edge", "comet-edge", "혜성의 칼날", Material.DIAMOND_SWORD,
             GrowthStat.AGILITY, GrowthStat.LUCK),
         variant("dawn-edge", "oracle-edge", "예언의 칼날", Material.QUARTZ,
@@ -122,8 +132,26 @@ object GrowthItems {
         variant("moon-heart", "moon-fragment", "달빛 파편", Material.END_STONE,
             GrowthStat.INTELLIGENCE, GrowthStat.LUCK),
     ) + GrowthCombatEquipment.items
+    // Stable original IDs remain valid. Event originals start at legendary, never in the hero pool.
+    val all: List<GrowthItem> = (bases + GrowthArsenal.create(bases) + GrowthUniqueEquipment.items).flatMap { base ->
+        val original = if (base.eventOnly) base.copy(rarity = GrowthRarity.LEGENDARY) else base
+        listOf(original) + GrowthRarity.entries.filter { it.ordinal > original.rarity.ordinal }.map { rarity ->
+            val multiplier = if (base.eventOnly) 1.5 else if (rarity == GrowthRarity.LEGENDARY) 1.5 else 2.0
+            base.copy(id = "${base.id}-${rarity.name.lowercase()}", name = "${rarity.label} ${base.name}",
+                stats = base.stats.mapValues { (_, value) -> (value * multiplier).roundToInt() },
+                rarity = rarity, eventOnly = true)
+        }
+    }
     private val index = all.associateBy { it.id }
-    val ordinary = all.filter { !it.eventOnly }
+    val ordinary = all.filter { it.rarity == GrowthRarity.HEROIC }
+    val legendary = all.filter { it.rarity == GrowthRarity.LEGENDARY }
+    val transcendent = all.filter { it.rarity == GrowthRarity.TRANSCENDENT }
+    const val TRANSCENDENT_CHANCE = 0.10
+    fun monsterReward(limited: Boolean, random: Random): GrowthItem = when {
+        !limited -> ordinary
+        random.nextDouble() < TRANSCENDENT_CHANCE -> transcendent
+        else -> legendary
+    }.random(random)
     const val PAGE_SIZE = 45
     fun pageCount(ids: Set<String>) = ((owned(ids).size + PAGE_SIZE - 1) / PAGE_SIZE).coerceAtLeast(1)
     fun page(ids: Set<String>, page: Int) = owned(ids)

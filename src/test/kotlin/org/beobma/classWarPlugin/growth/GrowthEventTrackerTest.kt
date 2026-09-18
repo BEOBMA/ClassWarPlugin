@@ -7,6 +7,24 @@ import java.util.UUID
 import kotlin.test.*
 
 class GrowthEventTrackerTest {
+    @Test fun `matching warning terrain remains eligible but forbidden and wrong terrain do not`() {
+        val event = definition().copy(terrainTags = setOf("forest"))
+        val region = GrowthRegion(0, emptyList(), "숲", "forest", intArrayOf(0), emptySet(), null)
+        assertTrue(event.canSpawnIn(region))
+        region.state = RegionState.WARNING
+        assertTrue(event.canSpawnIn(region))
+        assertFalse(event.copy(terrainTags = setOf("desert")).canSpawnIn(region))
+        region.state = RegionState.FORBIDDEN
+        assertFalse(event.canSpawnIn(region))
+        assertFalse(event.copy(terrainTags = emptySet()).canSpawnIn(region))
+    }
+
+    @Test fun `terrain tags accept whitespace and upper case in configuration`() {
+        val config = YamlConfiguration()
+        config.set("growth.events.item.reward", "world-tree")
+        config.set("growth.events.item.terrain-tags", listOf(" FOREST ", "Plains", ""))
+        assertEquals(setOf("forest", "plains"), GrowthSettings.read(config).events.single().terrainTags)
+    }
     private fun definition(id: String = "relic", mob: EntityType? = null) =
         GrowthEventDefinition(id, 2, false, emptySet(), "world-tree", 90, mob)
 
@@ -79,6 +97,34 @@ class GrowthEventTrackerTest {
         assertNull(events.getValue("item").mobType)
         assertEquals(EntityType.SKELETON, events.getValue("monster").mobType)
         assertEquals(5, events.getValue("monster").phaseIndex)
-        assertTrue(GrowthEventDefinition.defaults.all { it.mobType == null })
+        assertEquals(2, GrowthEventDefinition.defaults.count { it.mobType == null })
+        assertEquals(setOf(EntityType.ZOMBIE, EntityType.SKELETON), GrowthEventDefinition.defaults.mapNotNull { it.mobType }.toSet())
+    }
+
+    @Test fun `default guardians migrate once preserving customization and disabled events`() {
+        val config = YamlConfiguration()
+        config.set("growth.events.ancient-grove.reward", "world-tree")
+        config.set("growth.events.ancient-grove.day", 5)
+        config.set("growth.events.grove-guardian.reward", "moon-heart")
+        config.set("growth.events-enabled", false)
+        assertTrue(GrowthSettings.upgradeEventDefaults(config))
+        val settings = GrowthSettings.read(config)
+        assertFalse(settings.eventsEnabled)
+        assertEquals(5, settings.events.single { it.id == "ancient-grove" }.day)
+        assertEquals("moon-heart", settings.events.single { it.id == "grove-guardian" }.reward)
+        assertEquals(EntityType.SKELETON, settings.events.single { it.id == "moon-guardian" }.mobType)
+        config.set("growth.events.moon-guardian", null)
+        assertFalse(GrowthSettings.upgradeEventDefaults(config))
+        assertFalse(config.contains("growth.events.moon-guardian"))
+    }
+
+    @Test fun `missing event config gains all defaults but explicit empty stays empty`() {
+        val config = YamlConfiguration()
+        GrowthSettings.upgradeEventDefaults(config)
+        assertEquals(GrowthEventDefinition.defaults.toSet(), GrowthSettings.read(config).events.toSet())
+        val empty = YamlConfiguration()
+        empty.createSection("growth.events")
+        GrowthSettings.upgradeEventDefaults(empty)
+        assertTrue(GrowthSettings.read(empty).events.isEmpty())
     }
 }

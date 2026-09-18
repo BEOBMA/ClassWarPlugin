@@ -55,6 +55,7 @@ class Game(
     /** 테스트 경기에서는 참가 인원 제한과 자동 승리 종료를 적용하지 않는다. */
     val testMode: Boolean = false,
 ) {
+    val classSelectionHistory = ClassSelectionHistory()
     private val combatClock = GameClock(tickSource)
     val combatTick: Long get() = combatClock.now()
     var isPaused: Boolean

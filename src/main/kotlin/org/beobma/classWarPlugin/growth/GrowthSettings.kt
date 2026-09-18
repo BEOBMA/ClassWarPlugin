@@ -32,6 +32,27 @@ data class GrowthSettings(
         const val DEFAULT_MAXIMUM_MOBS = 192
         const val DEFAULT_DROP_CHANCE = 0.45
 
+        /** Add new default guardians once, preserving existing events and explicit empty event lists. */
+        fun upgradeEventDefaults(config: ConfigurationSection): Boolean {
+            val marker = "growth.events-revision"
+            if (config.getInt(marker, 0) >= 1) return false
+            val hasEvents = config.contains("growth.events", true)
+            val explicitlyEmpty = hasEvents && config.getConfigurationSection("growth.events")?.getKeys(false)?.isEmpty() == true
+            if (!explicitlyEmpty) GrowthEventDefinition.defaults.filter { !hasEvents || it.mobType != null }.forEach { event ->
+                val path = "growth.events.${event.id}"
+                if (!config.contains(path, true)) {
+                    config.set("$path.day", event.day)
+                    config.set("$path.night", event.night)
+                    config.set("$path.terrain-tags", event.terrainTags.toList())
+                    config.set("$path.reward", event.reward)
+                    config.set("$path.lifetime-seconds", event.lifetimeSeconds)
+                    event.mobType?.let { config.set("$path.mob-type", it.name) }
+                }
+            }
+            config.set(marker, 1)
+            return true
+        }
+
         /** Upgrade only the previous defaults once; preserve customized and disabled populations. */
         fun upgradePopulationDefaults(config: ConfigurationSection): Boolean {
             val marker = "growth.population-revision"
@@ -66,7 +87,7 @@ data class GrowthSettings(
                     val mobType = mobName?.let { name -> GrowthEventDefinition.monsterTypes.firstOrNull { it.name == name } }
                     if (mobName != null && mobType == null) return@mapNotNull null
                     GrowthEventDefinition(id, e.getInt("day", 2).coerceIn(1, 100),
-                        e.getBoolean("night", false), e.getStringList("terrain-tags").toSet(), item,
+                        e.getBoolean("night", false), e.getStringList("terrain-tags").map { it.trim().lowercase() }.filter { it.isNotEmpty() }.toSet(), item,
                         e.getInt("lifetime-seconds", 90).coerceIn(10, 3600), mobType)
                 }
             } ?: GrowthEventDefinition.defaults
@@ -93,6 +114,8 @@ data class GrowthEventDefinition(val id: String, val day: Int, val night: Boolea
         val defaults = listOf(
             GrowthEventDefinition("ancient-grove", 2, false, setOf("forest", "plains"), "world-tree", 90),
             GrowthEventDefinition("midnight-relic", 3, true, emptySet(), "moon-heart", 90),
+            GrowthEventDefinition("grove-guardian", 1, true, setOf("forest", "plains"), "world-tree", 90, EntityType.ZOMBIE),
+            GrowthEventDefinition("moon-guardian", 2, true, emptySet(), "moon-heart", 90, EntityType.SKELETON),
         )
     }
 }

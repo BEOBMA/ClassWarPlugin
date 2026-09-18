@@ -40,4 +40,9 @@ class GrowthEventTracker {
     fun clear() = entries.clear()
 }
 
-data class GrowthEventMarker(val name: String, val location: Location, val active: Boolean, val monster: Boolean)
+data class GrowthEventMarker(val name: String, val location: Location, val active: Boolean, val monster: Boolean,
+    val rarity: GrowthRarity = GrowthRarity.LEGENDARY)
+
+/** WARNING regions are still playable until the next transition, just like normal mob camps. */
+fun GrowthEventDefinition.canSpawnIn(region: GrowthRegion): Boolean =
+    region.state != RegionState.FORBIDDEN && (terrainTags.isEmpty() || region.terrain in terrainTags)

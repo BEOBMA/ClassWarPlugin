@@ -60,6 +60,7 @@ class ClassWarPlugin : JavaPlugin() {
         instance = this
         saveDefaultConfig()
         if (org.beobma.classWarPlugin.growth.GrowthSettings.upgradePopulationDefaults(config)) saveConfig()
+        if (org.beobma.classWarPlugin.growth.GrowthSettings.upgradeEventDefaults(config)) saveConfig()
         GameSettings.load(config)
         ClassBalanceManager.load(config, GameManager.gameClassList)
         DamageIndicatorManager.start()

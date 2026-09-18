@@ -54,6 +54,34 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
     private val camps = mutableListOf<Camp>()
     private var spawnWave = 0
     private val events = GrowthEventTracker()
+    val eventFailures = linkedMapOf<String, String>()
+    private val eventChunks = mutableSetOf<Pair<Int, Int>>()
+
+    private fun holdEventChunks(location: Location) {
+        // Include the leash area so a guardian crossing a chunk edge also remains loaded.
+        for (x in (location.blockX shr 4) - 1..(location.blockX shr 4) + 1)
+            for (z in (location.blockZ shr 4) - 1..(location.blockZ shr 4) + 1) {
+                val key = x to z
+                if (key !in eventChunks && world.addPluginChunkTicket(x, z, ClassWarPlugin.instance)) eventChunks.add(key)
+            }
+    }
+
+    private fun eventFailed(event: GrowthEventDefinition, reason: String) {
+        eventFailures[event.id] = reason
+        notify("<yellow>[이벤트] ${event.id}: $reason")
+    }
+
+    private fun releaseUnusedEventChunks() {
+        if (eventChunks.isEmpty()) return
+        val locations = drops.values.map { it.entity.location } +
+            mobs.values.filter { it.event != null }.flatMap { listOf(it.home, it.data.entity.location) }
+        eventChunks.filter { (x, z) -> locations.none {
+            kotlin.math.abs((it.blockX shr 4) - x) <= 1 && kotlin.math.abs((it.blockZ shr 4) - z) <= 1
+        } }.forEach { (x, z) ->
+            world.removePluginChunkTicket(x, z, ClassWarPlugin.instance)
+            eventChunks.remove(x to z)
+        }
+    }
     private data class EventDrop(val entity: Item, val definition: GrowthEventDefinition, val regionId: Int, val expires: Int)
     private val drops = mutableMapOf<UUID, EventDrop>()
     val entityKey get() = NamespacedKey(ClassWarPlugin.instance, "growth-entity")
@@ -74,7 +102,7 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
             game.roundCenterZ = result.surface.originZ + result.surface.size / 2.0
             if (spawnLocations(count).size != count) { done("지역 안에서 참가자 사이의 최소 거리를 확보하지 못했습니다."); return@prepare }
             buildCamps()
-            // Forecast the seeded schedule: fixed events choose a region that is still SAFE at spawn time.
+            // Forecast the seeded schedule; warning regions remain playable until the next phase.
             val forecastMap = RegionLayout(result.surface, result.regions.map { it.copy() }, result.labels, result.seed)
             val forecast = RegionSchedule(forecastMap, settings.warningsPerPeriod, result.seed)
             val reserved = mutableListOf<Location>()
@@ -82,10 +110,10 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
                 while (forecast.phaseIndex < event.phaseIndex && forecast.finalRegion == null) forecast.advance()
                 var planned = false
                 if (forecast.phaseIndex == event.phaseIndex) {
-                    val candidates = forecastMap.regions.filter { it.state == RegionState.SAFE &&
-                        (event.terrainTags.isEmpty() || it.terrain in event.terrainTags) }
-                    for (region in candidates.shuffled(random)) {
-                        val loc = List(512) { region.walkable.random(random) }.asSequence().map(::location)
+                    val candidates = forecastMap.regions.filter(event::canSpawnIn).shuffled(random)
+                        .sortedBy { if (it.state == RegionState.SAFE) 0 else 1 }
+                    for (region in candidates) {
+                        val loc = region.walkable.toList().shuffled(random).asSequence().map(::location)
                             .firstOrNull { walkableNow(it) && reserved.none { other -> other.distanceSquared(it) < 16 } } ?: continue
                         events.plan(event, region.id, loc)
                         reserved += loc
@@ -93,7 +121,11 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
                         break
                     }
                 }
-                if (!planned) notify("<yellow>${event.id}: 예정 시간의 적합한 안전 위치가 없어 이번 경기에서는 생략됩니다.")
+                if (!planned) eventFailed(event, when {
+                    forecast.phaseIndex < event.phaseIndex -> "${event.day}일차 ${if (event.night) "밤" else "낮"} 전에 최종 지역에 도달하여 생략됩니다. 지역 수를 늘리거나 등장 날짜를 앞당기세요."
+                    result.regions.none { event.terrainTags.isEmpty() || it.terrain in event.terrainTags } -> "필요한 지형(${event.terrainTags.joinToString()})이 없어 생략됩니다."
+                    else -> "예정 시간에 이용 가능한 지형/보행 위치가 없어 생략됩니다."
+                })
             }
             notify("<green>${result.regions.size}개 지역 준비 완료 <gray>(seed=${result.seed}). /cw growth regions 로 확인하세요.")
             done(null)
@@ -218,6 +250,7 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
             layout!!.regions[it.regionId].state == RegionState.FORBIDDEN || !it.entity.isValid }.forEach {
             events.resolve(it.entity.uniqueId); it.entity.remove(); drops.remove(it.entity.uniqueId)
         }
+        releaseUnusedEventChunks()
     }
 
     fun nextPhase(): Boolean {
@@ -319,8 +352,8 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
             val state = players.getValue(killer.uniqueId)
             award(killer, ((settings.mobExperience + record.level * 3) * if (state.has(GrowthEffect.HUNTER)) 1.2 else 1.0).roundToInt())
             val chance = settings.dropChance + state.stat(GrowthStat.LUCK) * 0.001 + if (state.has(GrowthEffect.FORTUNE)) 0.10 else 0.0
-            if (record.event != null) grant(killer, record.event.reward)
-            else if (random.nextDouble() < chance.coerceIn(0.0, 1.0)) grant(killer, GrowthItems.ordinary.random(random).id)
+            if (record.event != null) grant(killer, GrowthItems.monsterReward(true, random).id)
+            else if (random.nextDouble() < chance.coerceIn(0.0, 1.0)) grant(killer, GrowthItems.monsterReward(false, random).id)
         }
         removeMob(id)
     }
@@ -344,7 +377,7 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
     fun grant(data: PlayerData, id: String): Boolean {
         val item = GrowthItems.byId(id) ?: return false
         val state = players[data.uniqueId] ?: return false
-        if (state.inventory.add(id)) data.player.sendMessage(mini.deserialize("<gold>[장비 획득] ${item.name} <gray>Shift + F로 장비 보관함 열기"))
+        if (state.inventory.add(id)) data.player.sendMessage(mini.deserialize("<gold>[장비 획득] ${item.displayName} <gray>Shift + F로 장비 보관함 열기"))
         else award(data, settings.mobExperience)
         return true
     }
@@ -407,6 +440,15 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
     fun reduceMobDamage(player: Player, event: org.bukkit.event.entity.EntityDamageByEntityEvent) {
         val state = players[player.uniqueId] ?: return
         event.damage *= GrowthCombatEquipment.incoming(state::has, healthFraction(player))
+        if (GrowthUniqueEquipment.equipped(state)) {
+            val projectile = event.damager as? org.bukkit.entity.Projectile
+            val source = (projectile?.shooter ?: event.damager) as? LivingEntity
+            if (source != null) {
+                val path = if (projectile != null) org.beobma.classWarPlugin.damage.DamagePath.RANGED_ATTACK
+                    else org.beobma.classWarPlugin.damage.DamagePath.BASIC_ATTACK
+                event.damage *= GrowthUniqueEquipment.incoming(state::has, GrowthUniqueEquipment.facts(source, player, path))
+            }
+        }
         if (state.has(GrowthEffect.WARD)) event.damage *= 0.9
         if (state.has(GrowthEffect.BARRIER) && state.trigger("barrier", game.combatTick, 20)) event.damage *= 0.7
         if (state.has(GrowthEffect.SECOND_WIND)) participants().firstOrNull { it.uniqueId == player.uniqueId }?.let(::afterHitRecovery)
@@ -419,30 +461,32 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
             val event = entry.definition
             val region = layout!!.regions.getOrNull(entry.regionId)
             if (region == null || region.state == RegionState.FORBIDDEN) {
-                notify("<gray>[이벤트] ${event.id}: 해당 지역 부재 또는 금지로 등장하지 않습니다."); continue
+                eventFailed(event, "해당 지역 부재 또는 금지로 등장하지 않습니다."); continue
             }
             // Never silently move an objective away from its announced map position.
             val loc = entry.location.clone()
             if (!isSafeLocation(loc) || !walkableNow(loc)) {
-                notify("<gray>[이벤트] ${event.id}: 예정 위치가 막혀 등장하지 않습니다."); continue
+                eventFailed(event, "예정 위치가 막혀 등장하지 않습니다."); continue
             }
+            holdEventChunks(loc)
             val definition = GrowthItems.byId(event.reward)!!
             if (event.mobType != null) {
                 val level = participants().map { players.getValue(it.uniqueId).level }.average()
                     .takeIf { it.isFinite() }?.roundToInt()?.coerceAtLeast(1) ?: 1
-                val record = spawnCamp(Camp(region.id, loc, event.mobType), level, event) ?: continue
+                val record = spawnCamp(Camp(region.id, loc, event.mobType), level, event)
+                if (record == null) { eventFailed(event, "몬스터 생성 위치가 유효하지 않습니다."); continue }
                 events.activate(event.id, record.data.entity.uniqueId)
-                notify("<gold>[한정 몬스터] ${region.name}에 ${definition.name} 수호자 등장! 처치 시 장비 획득 (${event.lifetimeSeconds}초).")
+                notify("<gold>[한정 몬스터] ${region.name}에 ${definition.name} 수호자 등장! <yellow>전설 90% <red>초월 10% <gray>장비 1개 확정 (${event.lifetimeSeconds}초).")
                 continue
             }
             val stack = org.bukkit.inventory.ItemStack(definition.material)
             val item = world.dropItem(loc, stack)
             item.persistentDataContainer.set(entityKey, PersistentDataType.STRING, "event")
             item.isPersistent = false; item.isInvulnerable = true; item.setGravity(false)
-            item.velocity = org.bukkit.util.Vector(); item.customName(mini.deserialize("<gold>${definition.name}")); item.isCustomNameVisible = true
+            item.velocity = org.bukkit.util.Vector(); item.customName(mini.deserialize(definition.displayName)); item.isCustomNameVisible = true
             drops[item.uniqueId] = EventDrop(item, event, region.id, seconds + event.lifetimeSeconds)
             events.activate(event.id, item.uniqueId)
-            notify("<gold>[한정 이벤트] ${region.name}에 ${definition.name} 등장! ${event.lifetimeSeconds}초 동안 획득 가능합니다.")
+            notify("<gold>[한정 이벤트] ${region.name}에 ${definition.displayName} 등장! ${event.lifetimeSeconds}초 동안 획득 가능합니다.")
         }
     }
     fun claim(item: Item, player: Player): Boolean {
@@ -461,10 +505,12 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
             if (active && (entity == null || !entity.isValid || entity.isDead || expired ||
                     layout?.regions?.getOrNull(entry.regionId)?.state == RegionState.FORBIDDEN)) return@mapNotNull null
             val monster = definition.mobType != null
-            val name = GrowthItems.byId(definition.reward)!!.name + if (monster) " 수호자" else ""
+            val reward = GrowthItems.byId(definition.reward)!!
+            val name = if (monster) "${reward.name} 수호자 [전설/초월]" else "[${reward.rarity.label}] ${reward.name}"
             val label = if (active) "★ $name · 등장 중" else
                 "$name · ${definition.day}일차 ${if (definition.night) "밤" else "낮"} 예정"
-            GrowthEventMarker(label, (entity?.location ?: entry.location).clone(), active, monster)
+            GrowthEventMarker(label, (entity?.location ?: entry.location).clone(), active, monster,
+                if (monster) GrowthRarity.LEGENDARY else reward.rarity)
         }
     }
 
@@ -475,6 +521,8 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
         mobs.keys.toList().forEach(::removeMob)
         drops.values.forEach { it.entity.remove() }; drops.clear()
         events.clear()
+        eventChunks.forEach { (x, z) -> world.removePluginChunkTicket(x, z, ClassWarPlugin.instance) }
+        eventChunks.clear(); eventFailures.clear()
         participants().forEach { data ->
             if (data.player.isOnline) {
                 GrowthControls.remove(data.player)

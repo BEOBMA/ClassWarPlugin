@@ -54,6 +54,11 @@ object GrowthCombatEquipment {
         context.addDamageDealtMultiplier(outgoing(attacker::has, context.path, attackerHealth,
             targetHealth, context.target.entity is Mob))
         if (defender != null) context.addDamageTakenMultiplier(incoming(defender::has, targetHealth))
+        if (!context.damageType.isFixed && (GrowthUniqueEquipment.equipped(attacker) || GrowthUniqueEquipment.equipped(defender))) {
+            val target = context.target.entity as? org.bukkit.entity.LivingEntity ?: return
+            val facts = GrowthUniqueEquipment.facts(context.attacker.player, target, context.path)
+            GrowthUniqueEquipment.apply(context, attacker, defender, facts)
+        }
     }
 
     /** Multiplicative bonuses match the normal damage pipeline. No extra hit events are emitted. */
