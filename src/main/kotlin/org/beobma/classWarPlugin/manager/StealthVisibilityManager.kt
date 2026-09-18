@@ -50,6 +50,7 @@ object StealthVisibilityManager {
         Bukkit.getOnlinePlayers().forEach { viewer ->
             if (shouldHide(viewer, targetData)) {
                 viewer.hidePlayer(ClassWarPlugin.instance, target)
+                targetData.game.growth?.presentation?.hideFrom(viewer, targetData.uniqueId)
             } else {
                 viewer.showPlayer(ClassWarPlugin.instance, target)
             }

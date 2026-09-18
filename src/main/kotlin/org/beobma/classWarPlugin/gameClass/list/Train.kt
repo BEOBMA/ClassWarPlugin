@@ -79,7 +79,7 @@ class Train : GameClass(), SneakInputHandler, WhenHitHandler, GameEndHandler, Pl
         override val definitionId = "train/red-skill"
         override val name = "<bold>기차역"
         override val description = listOf(
-            "<gray>사용 시 현재 블록에 기차역을 설치한다.",
+            "<gray>사용 시 현재 블록에 기차역을 설치한다. (최대 {g:feature/stations:8}개)",
             "<gray>기차역이 2개 이상 있다면 두 기차역은 선로로 연결된다."
         )
         override val cooldown = TRAIN_STATION_COOLDOWN_SECONDS
@@ -99,7 +99,7 @@ class Train : GameClass(), SneakInputHandler, WhenHitHandler, GameEndHandler, Pl
                 station.display.remove()
                 true
             }
-            if (stations.size >= TRAIN_MAX_STATIONS) stations.removeFirst().display.remove()
+            while (stations.size >= growthCount("stations", TRAIN_MAX_STATIONS)) stations.removeFirst().display.remove()
             val display = player.world.spawn(location, BlockDisplay::class.java).apply {
                 block = Material.POWERED_RAIL.createBlockData()
                 billboard = Display.Billboard.FIXED

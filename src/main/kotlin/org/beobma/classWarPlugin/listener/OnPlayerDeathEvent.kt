@@ -58,6 +58,7 @@ class OnPlayerDeathEvent : Listener{
         Mathematician.clearSessions(listOf(player.uniqueId))
         Vampire.clearForms(listOf(player.uniqueId))
         val killerId = attribution?.attackerId ?: player.killer?.uniqueId
+        currentGame.growth?.playerDeath(player.uniqueId, killerId)
         Referee.recordMurder(currentGame, killerId, playerData)
         currentGame.recordPlayerKill(player.uniqueId, killerId)
         AreaDevelopment.handlePlayerDeath(playerData, killerId)

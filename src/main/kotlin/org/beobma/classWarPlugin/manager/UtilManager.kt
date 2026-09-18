@@ -37,7 +37,7 @@ object UtilManager {
 
     /** `{keyword:NAME}` 토큰을 해당 키워드의 MiniMessage 설명으로 치환한다. */
     fun applyKeywords(text: String): String {
-        return keywordTokenRegex.replace(text) { match ->
+        return keywordTokenRegex.replace(org.beobma.classWarPlugin.description.GrowthDescription.baseText(text)) { match ->
             keywordTokens[match.groupValues[1]]?.string ?: match.value
         }
     }

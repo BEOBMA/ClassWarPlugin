@@ -42,7 +42,7 @@ class Blacksmith : GameClass(), GameStatusHandler, OnHitHandler {
 
     override fun onAttackHit(context: DamageContext) {
         if (context.path != DamagePath.BASIC_ATTACK || enhancementLevel <= 0) return
-        if (getWeaponClassId(player.inventory.itemInMainHand) != javaClass.name) return
+        if (getWeaponClassId(player.inventory.itemInMainHand) !in setOf(classId, javaClass.name)) return
         // DamageManager가 모든 기본 공격에 0.6배를 적용하므로, 아래 누적 추가 피해가
         // 최종 피해량에 그대로 반영되도록 역보정한다.
         context.addBaseDamage(damageBonusAt(enhancementLevel) / BLACKSMITH_BASIC_ATTACK_MULTIPLIER)
@@ -107,8 +107,8 @@ class Blacksmith : GameClass(), GameStatusHandler, OnHitHandler {
     private class EnhancedWeapon(private val level: Int, private val damageBonus: Double) : BaseWeapon() {
         override val name = "<gray>검 <white>(+$level)"
         override val description = listOf(
-            "<gray>현재 강화로 기본 공격 피해가 <red>$damageBonus</red> 증가한다.",
-            "<dark_gray>+1~15: +0.1 | +16~18: +0.5 | +19~22: +1 | +23~25: +2 | +26~30: +3",
+            "<gray>현재 강화로 기본 공격 피해가 <red>{g:basic:$damageBonus}</red> 증가한다.",
+            "<dark_gray>+1~15: +{g:basic:0.1} | +16~18: +{g:basic:0.5} | +19~22: +{g:basic:1} | +23~25: +{g:basic:2} | +26~30: +{g:basic:3}",
         )
         override val material = Material.IRON_SWORD
     }
@@ -120,7 +120,7 @@ class Blacksmith : GameClass(), GameStatusHandler, OnHitHandler {
             "<gray>검 강화를 시도한다.",
             "<gray>단계별 확률에 따라 강화에 성공하거나, 실패하거나, 파괴된다.",
             "<gray>파괴되면 게임 시작 시 제공되는 <white>검 (+0)</white>으로 돌아간다.",
-            "<gray>기본 공격 피해 증가: <red>+1~15 +0.1</red><gray>, <red>+16~18 +0.5</red><gray>, <red>+19~22 +1</red><gray>, <red>+23~25 +2</red><gray>, <red>+26~30 +3</red>",
+            "<gray>기본 공격 피해 증가: <red>+1~15 +{g:basic:0.1}</red><gray>, <red>+16~18 +{g:basic:0.5}</red><gray>, <red>+19~22 +{g:basic:1}</red><gray>, <red>+23~25 +{g:basic:2}</red><gray>, <red>+26~30 +{g:basic:3}</red>",
             "<gray>최대 강화 수치는 <gold>+$BLACKSMITH_MAX_ENHANCEMENT</gold>이다.",
         )
         override val cooldown = BLACKSMITH_ENHANCE_COOLDOWN_SECONDS
@@ -135,13 +135,14 @@ class Blacksmith : GameClass(), GameStatusHandler, OnHitHandler {
         override fun use(): Boolean {
             val before = enhancementLevel
             val chance = chanceAt(before)
+            val successChance = org.beobma.classWarPlugin.growth.GrowthScaling.chance(playerData, chance.success / 100.0) * 100.0
             val roll = Random.nextDouble(100.0)
 
             sounds.play(player, Sound.BLOCK_ANVIL_USE, volume = 0.9f, pitch = 0.92f + before * 0.025f)
             particles.spawn(player.location.clone().add(0.0, 1.0, 0.0), Particle.ENCHANT, count = 18, spread = 0.55, speed = 0.04)
 
             when {
-                roll < chance.success -> {
+                roll < successChance -> {
                     enhancementLevel++
                     refreshWeapon()
                     particles.spawn(player, Particle.HAPPY_VILLAGER, count = 30, spread = 0.65, speed = 0.1)
@@ -153,7 +154,7 @@ class Blacksmith : GameClass(), GameStatusHandler, OnHitHandler {
                     )
                 }
 
-                roll < chance.success + chance.destroy -> {
+                roll < successChance + chance.destroy -> {
                     enhancementLevel = 0
                     refreshWeapon()
                     particles.spawn(player, Particle.LARGE_SMOKE, count = 42, spread = 0.75, speed = 0.1)

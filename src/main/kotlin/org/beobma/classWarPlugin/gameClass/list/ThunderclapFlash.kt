@@ -46,14 +46,16 @@ class ThunderclapFlash : GameClass(), GameStatusHandler {
     private val hitHistory = mutableMapOf<UUID, Pair<Long, Int>>()
 
     override fun onBattleStart() {
-        charges = THUNDERCLAP_MAX_CHARGES
+        charges = growthCount("charges", THUNDERCLAP_MAX_CHARGES)
         rechargeSeconds = 0
         hitHistory.clear()
         refreshStatus()
     }
 
     override fun onGameTimePasses() {
-        if (charges < THUNDERCLAP_MAX_CHARGES && ++rechargeSeconds >= THUNDERCLAP_RECHARGE_SECONDS) {
+        val maximum = growthCount("charges", THUNDERCLAP_MAX_CHARGES)
+        charges = charges.coerceAtMost(maximum)
+        if (charges < maximum && ++rechargeSeconds >= org.beobma.classWarPlugin.growth.GrowthScaling.cooldown(playerData, THUNDERCLAP_RECHARGE_SECONDS, classId)) {
             rechargeSeconds = 0
             charges++
             sounds.playTo(player, Sound.BLOCK_RESPAWN_ANCHOR_CHARGE, volume = 0.45f, pitch = 1.75f)
@@ -62,17 +64,20 @@ class ThunderclapFlash : GameClass(), GameStatusHandler {
     }
 
     private fun refreshStatus() {
-        playerData.getOrCreateStatus(playerData) { ChargeStatus() }.updatePower(charges)
+        playerData.getOrCreateStatus(playerData) { ChargeStatus() }.apply {
+            maxPower = growthCount("charges", THUNDERCLAP_MAX_CHARGES)
+            updatePower(charges)
+        }
     }
 
     private inner class RedSkill : Skill() {
         override val definitionId = "thunderclap-flash/red-skill"
         override val name = "<bold>벽력일섬"
         override val description = listOf(
-            "<gray>최대 6회 충전되는 충전형 스킬.", "",
-            "<gray>6칸 내의 바라보는 적의 6칸 뒤로 순간이동한다. (벽이 있다면 벽에서 멈춘다.)",
-            "<gray>이때 적은 4의 피해를 입는다.",
-            "<gray>6초 안에 이 스킬로 여러번 피해를 입으면 피해량이 50%씩 감소한다. (최소 1의 피해를 보장함)"
+            "<gray>최대 {g:feature/charges:6}회 충전되는 충전형 스킬.", "",
+            "<gray>{g:range:6}칸 내의 바라보는 적의 6칸 뒤로 순간이동한다. (벽이 있다면 벽에서 멈춘다.)",
+            "<gray>이때 적은 {g:damage:4}의 피해를 입는다.",
+            "<gray>6초 안에 이 스킬로 여러번 피해를 입으면 피해량이 50%씩 감소한다. (최소 {g:damage:1}의 피해를 보장함)"
         )
         override val cooldown = 0
         private var selectedTarget: EntityData? by requestValue { null }

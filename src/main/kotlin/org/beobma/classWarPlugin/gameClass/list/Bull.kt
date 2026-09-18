@@ -87,7 +87,7 @@ class Bull : GameClass(), GameStatusHandler {
                 target.damage(damage, DamageType.Normal, playerData, damagePath = DamagePath.SKILL)
                 (target.entity as? LivingEntity)?.let { living ->
                     val push = Vector(dx, 0.0, dz).let { if (it.lengthSquared() > 1.0E-6) it.normalize() else player.location.direction.setY(0).normalize() }
-                    living.velocity = push.multiply(1.15 + damage * 0.07).setY(0.38)
+                    living.velocity = org.beobma.classWarPlugin.growth.GrowthScaling.knockback(playerData, push.multiply(1.15 + damage * 0.07).setY(0.38))
                 }
                 particles.spawn(target.entity, Particle.CRIT, count = 34, spread = 0.55, speed = 0.18)
                 sounds.play(target.entity, Sound.ENTITY_RAVAGER_ATTACK, volume = 0.9f, pitch = 0.78f)
@@ -110,7 +110,7 @@ class Bull : GameClass(), GameStatusHandler {
         override val description = listOf(
             "<gray>패시브", "", "<gray>달리기를 3초 이상 지속하면 이동 속도가 점점 빨라진다.",
             "<gray>멈추거나 적에게 충돌하면 이동 속도가 원래대로 돌아온다.",
-            "<gray>충돌한 적에게는 이동 속도에 비례하여 최대 10의 피해를 입히고 밀쳐낸다."
+            "<gray>충돌한 적에게는 이동 속도에 비례하여 최대 {g:damage:10}의 피해를 입히고 밀쳐낸다."
         )
     }
 }

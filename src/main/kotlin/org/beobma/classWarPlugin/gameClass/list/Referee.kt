@@ -103,7 +103,7 @@ class Referee : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.gameCl
         override val definitionId = "referee/prosecution"
         override val name = "<bold>기소"
         override val description = listOf(
-            "<gray>10칸 내의 바라보는 플레이어를 기소한다.",
+            "<gray>{g:range:10}칸 내의 바라보는 플레이어를 기소한다.",
             "<gray>게임 내 생존한 모든 플레이어는 재판장으로 이동된다.",
             "",
             "<gray>판사는 30초 안에 기록된 죄목을 채팅으로 지명한다.",
@@ -180,9 +180,9 @@ class Referee : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.gameCl
             "",
             "<gray>재판에서 유죄가 된 플레이어는 죄목에 따라 처벌받는다.",
             "<gray>  - 폭행: 최대 체력이 고정값 5 감소한다.",
-            "<gray>  - 상해: 10초간 {keyword:Snare}, {keyword:Silence}, {keyword:Disarm} 상태가 된다.",
+            "<gray>  - 상해: {g:duration:10}초간 {keyword:Snare}, {keyword:Silence}, {keyword:Disarm} 상태가 된다.",
             "<gray>  - 남용: 현재 적용 중인 모든 스킬 쿨타임이 2배가 된다.",
-            "<gray>  - 도주: 10초간 {keyword:Radiation} 및 {keyword:Snare} 상태가 된다.",
+            "<gray>  - 도주: {g:duration:10}초간 {keyword:Radiation} 및 {keyword:Snare} 상태가 된다.",
             "<gray>  - 살인: 살인의 죄를 물어 사형한다.",
             "<gray>  - 위증: 위력과 지속시간이 2배가 되며, 살인죄는 {keyword:Execution}으로 간주한다.",
         )

@@ -40,7 +40,7 @@ class GraveRobber : GameClass() {
         override val definitionId = "grave-robber/red-skill"
         override val name = "<bold>도굴"
         override val description = listOf(
-            "<gray>다른 플레이어가 사망한 위치에서만 사용할 수 있다.",
+            "<gray>다른 플레이어가 사망한 위치의 {g:feature/dig-range:2}칸 이내에서만 사용할 수 있다.",
             "",
             "<gray>사망한 플레이어를 도굴하여 해당 플레이어의 능력, 패시브를 모두 얻는다."
         )
@@ -52,7 +52,10 @@ class GraveRobber : GameClass() {
             selectedRecord = recordsFor(game)
                 .filter { it.location.world == player.world && it.victimId != player.uniqueId }
                 .minByOrNull { it.location.distanceSquared(player.location) }
-                ?.takeIf { it.location.distanceSquared(player.location) <= GRAVE_ROBBER_INTERACTION_RANGE_SQUARED }
+                ?.takeIf {
+                    val range = growthValue("dig-range", kotlin.math.sqrt(GRAVE_ROBBER_INTERACTION_RANGE_SQUARED))
+                    it.location.distanceSquared(player.location) <= range * range
+                }
             if (selectedRecord == null) {
                 player.sendMiniMessage("<red><bold>[!] 다른 플레이어가 사망한 위치에서만 사용할 수 있습니다.")
                 return false

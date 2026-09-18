@@ -56,18 +56,19 @@ class Darkness : GameClass(), EnvironmentalDamageHandler {
         override val definitionId = "darkness/red-skill"
         override val name = "<bold>어둠 확산"
         override val description = listOf(
-            "<gray>6초 동안 빛이 있는 곳에 있더라도 빛이 없는 곳으로 간주한다."
+            "<gray>{g:time:6}초 동안 빛이 있는 곳에 있더라도 빛이 없는 곳으로 간주한다."
         )
         override val cooldown = DARKNESS_SPREAD_COOLDOWN_SECONDS
 
         override fun use(): Boolean {
-            artificialDarknessUntilTick = game.combatTick + DARKNESS_SPREAD_DURATION_TICKS
+            val duration = growthDuration(DARKNESS_SPREAD_DURATION_TICKS.toInt())
+            artificialDarknessUntilTick = game.combatTick + duration
             passives.filterIsInstance<Passive>().firstOrNull()?.refreshDarknessState()
             sounds.play(player, Sound.ENTITY_WARDEN_HEARTBEAT, volume = 0.75f, pitch = 0.55f)
             playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 var ticks = 0
                 override fun run() {
-                    if (ticks++ >= DARKNESS_SPREAD_DURATION_TICKS || !player.isOnline || player.isDead) {
+                    if (ticks++ >= duration || !player.isOnline || player.isDead) {
                         passives.filterIsInstance<Passive>().firstOrNull()?.refreshDarknessState()
                         sounds.play(player, Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE, volume = 0.45f, pitch = 0.6f)
                         cancel()
@@ -92,7 +93,7 @@ class Darkness : GameClass(), EnvironmentalDamageHandler {
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>빛이 없는 곳에서 {keyword:Stealth} 상태가 되며 기본 공격 피해가 2 증가한다.",
+            "<gray>빛이 없는 곳에서 {keyword:Stealth} 상태가 되며 기본 공격 피해가 {g:attack-bonus:2} 증가한다.",
             "<gray>기본 공격을 하거나 피해를 받으면 3초 동안 {keyword:Stealth} 상태가 해제된다.",
             "<gray>{keyword:Stealth} 상태가 아닐 때 받는 피해가 50% 증가한다."
         )

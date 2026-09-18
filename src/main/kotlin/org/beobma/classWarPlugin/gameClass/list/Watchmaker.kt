@@ -85,9 +85,9 @@ class Watchmaker : GameClass(), GameStatusHandler {
             "<gray>시계침은 2초에 걸쳐 한 바퀴 회전하며",
             "<gray>각 적마다 한 번만 현재 {keyword:TimePhase}의 효과를 적용한다.",
             "",
-            "<gray>여명 - 4의 피해를 입히고 자신은 5초간 <aqua><bold>4의 피해를 막는 {keyword:Shield}을 얻는다.",
-            "<gray>정오 - 8의 피해를 입힌다.",
-            "<gray>자정 - 4의 피해를 입히고 자신은 체력을 4 회복한다."
+            "<gray>여명 - {g:damage:4}의 피해를 입히고 자신은 {g:duration:5}초간 <aqua><bold>{g:shield:4}의 피해를 막는 {keyword:Shield}을 얻는다.",
+            "<gray>정오 - {g:damage:8}의 피해를 입힌다.",
+            "<gray>자정 - {g:damage:4}의 피해를 입히고 자신은 체력을 {g:healing:4} 회복한다."
         )
         override val cooldown = WATCHMAKER_HAND_COOLDOWN_SECONDS
 

@@ -75,7 +75,7 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
         override val definitionId = "phantom/departure-skill"
         override val name = "<bold>이탈"
         override val description = listOf(
-            "<gray>자신의 육체를 남기고 전방으로 도약하며, 20초간 {keyword:Stealth} 상태가 되고 <gold><bold>이동 속도가 20% 증가</bold><gray>한다.",
+            "<gray>자신의 육체를 남기고 전방으로 도약하며, {g:duration:20}초간 {keyword:Stealth} 상태가 되고 <gold><bold>이동 속도가 {g:speed:20}% 증가</bold><gray>한다.",
             "<gray>남겨진 육체가 공격이나 스킬에 적중하면 자신이 대신 피해를 받는다.",
             "{keyword:Stealth} 상태에서 가장 가까운 적에게 가는 경로가 입자로 표시된다.",
             "<gray>상대는 {keyword:Stealth} 상태인 자신과 가까워지면 주변에 특수한 입자가 표시된다.",
@@ -133,7 +133,7 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
                     showPathToNearestEnemy()
                     warnNearbyEnemies()
                 }
-                if (ticks >= 400) {
+                if (ticks >= growthDuration(400)) {
                     beginReturn()
                     CooldownManager.setCooldown(player, departure, cooldownItem ?: ItemStack(Material.RED_DYE), departure.cooldown * 20)
                     cancel()
@@ -308,7 +308,7 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
         override val description = listOf(
             "<gray>패시브", "", "<gray>이탈 스킬 사용 중, 적에게 피해를 입히면 피해량이 0으로 고정된다.",
             "<gray>대신 피해를 입힐 때마다 검흔을 1 부여한다.",
-            "<gray>이탈 스킬 종료 후 몸으로 돌아온 뒤, 검흔을 베어 수치당 0.1의 고정 피해를 입힌다."
+            "<gray>이탈 스킬 종료 후 몸으로 돌아온 뒤, 검흔을 베어 수치당 {g:damage:0.1}의 고정 피해를 입힌다."
         )
         override fun onHit(context: DamageContext) {
             if (!active || returning || context.target == playerData) return

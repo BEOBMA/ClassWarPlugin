@@ -90,10 +90,10 @@ class BackRoom : GameClass(), GameEndHandler, PlayerDeathHandler {
         override val definitionId = "back-room/red-skill"
         override val name = "<bold>백룸"
         override val description = listOf(
-            "<gray>10칸 내의 바라보는 적을 30초간 백룸으로 보낸다.",
+            "<gray>{g:range:10}칸 내의 바라보는 적을 {g:time:30}초간 백룸으로 보낸다.",
             "<gray>백룸에는 상당히 넓고 복잡한 미로가 있으며, 미로를 탈출하면 원래 자리로 돌아온다.",
             "<gray>입구와 출구는 매번 무작위로 정해지며 서로 되도록 멀리 배치된다.",
-            "<gray>탈출하지 못하면 6의 피해를 입는다."
+            "<gray>탈출하지 못하면 {g:damage:6}의 피해를 입는다."
         )
         override val cooldown = BACKROOM_COOLDOWN_SECONDS
         private var selectedTarget: EntityData? by requestValue { null }
@@ -179,11 +179,12 @@ class BackRoom : GameClass(), GameEndHandler, PlayerDeathHandler {
         )
         val borderExpansion = MapTransferBorderManager.expandToMaximum(world)
         val created = Session(target, target.entity.location.clone(), snapshots, exitBox, borderExpansion)
+        val duration = growthDuration(BACKROOM_DURATION_TICKS)
         session = created
         target.entity.teleport(entrance)
         (target as? PlayerData)?.player?.showTitle(Title.title(
             miniMessage.deserialize("<yellow><bold>THE BACKROOMS"),
-            miniMessage.deserialize("<gray>30초 안에 초록색 출구를 찾으세요."),
+            miniMessage.deserialize("<gray>${duration / 20}초 안에 초록색 출구를 찾으세요."),
             Title.Times.times(Duration.ofMillis(250), Duration.ofSeconds(2), Duration.ofMillis(400)),
         ))
         sounds.play(entrance, Sound.BLOCK_RESPAWN_ANCHOR_DEPLETE, volume = 1.0f, pitch = 0.55f)
@@ -208,7 +209,7 @@ class BackRoom : GameClass(), GameEndHandler, PlayerDeathHandler {
                     cancel()
                     return
                 }
-                if (tick >= BACKROOM_DURATION_TICKS) {
+                if (tick >= duration) {
                     finishSession(escaped = false, playEffects = true)
                     cancel()
                     return

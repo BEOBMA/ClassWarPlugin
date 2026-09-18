@@ -33,7 +33,7 @@ class Tour : GameClass() {
         override val definitionId = "tour/red-skill"
         override val name = "<bold>순회공연 시작!"
         override val description = listOf(
-            "<gray>6칸 내의 바라보는 적이 순회공연을 하게 만든다.", "",
+            "<gray>{g:range:6}칸 내의 바라보는 적이 순회공연을 하게 만든다.", "",
             "<gray>순회공연 중인 플레이어는 3초마다 순서대로 생존한 모든 플레이어의 위치로 즉시 이동된다.",
             "<gray>순회공연이 종료되면 원래 위치로 돌아온다.", "",
             "<dark_gray>생존한 플레이어가 8명 이하라면 8번 이동할 때까지 반복된다."

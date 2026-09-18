@@ -56,10 +56,10 @@ class AbyssalVeil : GameClass() {
         override val definitionId = "abyssal-veil/red-skill"
         override val name = "<bold>검은 연기"
         override val description = listOf(
-            "<gray>자신 위치에 8초간 유지되는 검은 연기를 형성한다.",
+            "<gray>자신 위치에 {g:time:8}초간 유지되는 검은 연기를 형성한다.",
             "<gray>자신은 영역 안에서 {keyword:Stealth} 상태가 된다.",
             "",
-            "<dark_gray>웅크린 상태에서 사용하면 4칸 내의 바라보는 블럭에 연기를 형성할 수도 있다."
+            "<dark_gray>웅크린 상태에서 사용하면 {g:range:4}칸 내의 바라보는 블럭에 연기를 형성할 수도 있다."
         )
         override val cooldown = ABYSSAL_VEIL_SMOKE_COOLDOWN_SECONDS
 
@@ -97,8 +97,8 @@ class AbyssalVeil : GameClass() {
         override val name = "<bold>잠식"
         override val description = listOf(
             "<gray>바라보는 방향으로 잠식된 연기를 발사한다.",
-            "<gray>적중한 모든 적에게 5의 피해를 입히고 4초간 {keyword:Abyss} 상태로 만든다.",
-            "<gray>대상이 {keyword:Erosion} 상태였다면 소모하여 대상을 3초간 {keyword:Silence} 상태로 만든다.",
+            "<gray>적중한 모든 적에게 {g:damage:5}의 피해를 입히고 {g:duration:4}초간 {keyword:Abyss} 상태로 만든다.",
+            "<gray>대상이 {keyword:Erosion} 상태였다면 소모하여 대상을 {g:duration:3}초간 {keyword:Silence} 상태로 만든다.",
         )
         override val cooldown = ABYSSAL_VEIL_EROSION_COOLDOWN_SECONDS
 
@@ -145,7 +145,7 @@ class AbyssalVeil : GameClass() {
                 )
             }
             if (tick % 5 == 0) {
-                particles.circle(location, Particle.LARGE_SMOKE, radius, 32)
+                particles.circle(location, Particle.LARGE_SMOKE, effectRadius, 32)
             }
         }
 

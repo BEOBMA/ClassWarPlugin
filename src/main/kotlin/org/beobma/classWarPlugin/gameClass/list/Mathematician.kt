@@ -80,7 +80,7 @@ class Mathematician : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.
     private fun issueProblem() {
         activeProblems.remove(player.uniqueId)?.timeoutTask?.cancel()
         val (question, answer) = problems.generate(difficulty)
-        val timeLimitSeconds = problems.timeLimitSeconds(difficulty)
+        val timeLimitSeconds = growthValue("answer-time", problems.timeLimitSeconds(difficulty).toDouble()).toInt()
         val token = UUID.randomUUID()
         val timeout = playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
@@ -160,7 +160,8 @@ class Mathematician : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.
             "<gray>난이도는 1~10이며 최대 난이도에는 고등학교 3학년 과정이 포함된다.",
             "<gray>사칙연산부터 수열, 로그, 미적분, 확률, 벡터까지 120개 이상의 유형이 출제된다.", "",
             "<gray>정답을 맞추면 정답 스택을 맞춘 문제의 난이도에 비례하여 얻는다.",
-            "<gray>오답이거나 제한 시간 초과 시 정답 스택이 전부 사라진다.", "",
+            "<gray>오답이거나 제한 시간 초과 시 정답 스택이 전부 사라진다.",
+            "<gray>난이도 1~5의 제한시간은 {g:feature/answer-time:15}초, 6~10은 각각 {g:feature/answer-time:20}/{g:feature/answer-time:22}/{g:feature/answer-time:25}/{g:feature/answer-time:28}/{g:feature/answer-time:30}초다.", "",
             "<gray>정답 스택당 가하는 피해가 1% 증가하고 이동 속도가 1% 증가한다. (최대 100스택)"
         )
 

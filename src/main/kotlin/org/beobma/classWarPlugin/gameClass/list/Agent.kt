@@ -73,7 +73,7 @@ class Agent : GameClass(), GameStatusHandler, OnHitHandler, WhenHitHandler, Conf
         override val description get() = listOf("<gray>3회 적중하거나 10초가 지나면 다른 무기로 변형한다.",
             "<gray>외형과 관계없이 기본 피해는 철 검을 기준으로 계산한다.",
             form.keyword.requireDescription(),
-            "<gray>손도끼일 때 무기를 우클릭하면 도약 강타를 사용한다. (재사용 대기시간은 4초)")
+            "<gray>손도끼일 때 무기를 우클릭하면 도약 강타를 사용한다. (재사용 대기시간은 {g:cooldown:4}초)")
     }
     override var skills: List<Skill> = emptyList()
     private val slam = Slam()
@@ -209,16 +209,16 @@ class Agent : GameClass(), GameStatusHandler, OnHitHandler, WhenHitHandler, Conf
         val direction = target.entity.location.toVector().subtract(player.location.toVector()).setY(0.0)
         if (direction.lengthSquared() > .0001) direction.normalize() else direction.setZ(1.0)
         when (form) {
-            Form.HATCHET -> target.entity.velocity = direction.clone().multiply(.35).setY(.16)
+            Form.HATCHET -> target.entity.velocity = org.beobma.classWarPlugin.growth.GrowthScaling.knockback(playerData, direction.clone().multiply(.35).setY(.16))
             Form.HAMMER -> {
-                target.entity.velocity = direction.clone().multiply(.95).setY(.3)
+                target.entity.velocity = org.beobma.classWarPlugin.growth.GrowthScaling.knockback(playerData, direction.clone().multiply(.95).setY(.3))
                 target.getOrCreateStatus(playerData) { Stun() }.applyStatus(duration = 1)
             }
             Form.BASTARD -> {
                 comboHits = if (comboTarget == target.entity.uniqueId) comboHits + 1 else 1
                 comboTarget = target.entity.uniqueId
             }
-            Form.WHIP -> target.entity.velocity = direction.clone().multiply(-.4).setY(.12)
+            Form.WHIP -> target.entity.velocity = org.beobma.classWarPlugin.growth.GrowthScaling.knockback(playerData, direction.clone().multiply(-.4).setY(.12))
             Form.GREATSWORD -> sweep(target, context.baseDamage)
             Form.LANCE -> sprintDistance = 0.0
             Form.SCYTHE -> pierce(target, direction)
@@ -373,7 +373,7 @@ class Agent : GameClass(), GameStatusHandler, OnHitHandler, WhenHitHandler, Conf
         override val definitionId = "agent/slam"
         override val name = "<bold>도약 강타"
         override val description = listOf("<gray>손도끼 상태에서 무기를 우클릭하여 사용한다.",
-            "<gray>짧게 도약한 후 내려찍어 반경 2.5칸의 적에게 2의 피해를 입힌다.")
+            "<gray>짧게 도약한 후 내려찍어 반경 {g:range:2.5}칸의 적에게 {g:damage:2}의 피해를 입힌다.")
         override val cooldown = 4
         override fun isUseSuccess() = holdingWeapon() && form == Form.HATCHET && playerStatus.canMove && !slamActive
         override fun use(): Boolean {
@@ -473,13 +473,13 @@ class Agent : GameClass(), GameStatusHandler, OnHitHandler, WhenHitHandler, Conf
             "<gray>적에게 기본 공격 3회 적중 시 혹은 10초마다 자신의 무기가 무작위로 변형된다.",
             "<gray>무기별 효과는 아래와 같다.",
             "",
-            "<gray>  - ${Keyword.AgentHatchet.string}: 적중 시 약하게 밀어낸다. 우클릭하면 도약하여 내려찍고 2의 피해를 입힌다.",
-            "<gray>  - ${Keyword.AgentStiletto.string}: 방어력 20%를 무시한다. 배후 공격 시 피해 1을 추가한다.",
-            "<gray>  - ${Keyword.AgentBastard.string}: 사거리가 10% 증가한다. 같은 적에게 연속 적중할 때마다 피해 0.5를 추가한다.",
+            "<gray>  - ${Keyword.AgentHatchet.string}: 적중 시 약하게 밀어낸다. 우클릭하면 도약하여 내려찍고 {g:damage:2}의 피해를 입힌다.",
+            "<gray>  - ${Keyword.AgentStiletto.string}: 방어력 20%를 무시한다. 배후 공격 시 피해 {g:attack-bonus:1}을 추가한다.",
+            "<gray>  - ${Keyword.AgentBastard.string}: 사거리가 10% 증가한다. 같은 적에게 연속 적중할 때마다 피해 {g:attack-bonus:0.5}를 추가한다.",
             "<gray>  - ${Keyword.AgentRapier.string}: 피해가 25% 감소하고 공격 속도가 크게 증가한다.",
             "<gray>  - ${Keyword.AgentHammer.string}: 강하게 밀어내고 잠시 기절시킨다. {keyword:Shield}에 두 배의 피해를 입힌다.",
             "<gray>  - ${Keyword.AgentGreatsword.string}: 공격 속도가 감소한다. 적중 시 전방을 휩쓸어 적에게 피해를 입힌다.",
-            "<gray>  - ${Keyword.AgentLance.string}: 이동 속도가 20% 증가한다. 달린 거리에 비례하여 추가 피해를 입힌다.",
+            "<gray>  - ${Keyword.AgentLance.string}: 이동 속도가 {g:speed-bonus:20}% 증가한다. 달린 거리에 비례하여 추가 피해를 입힌다.",
             "<gray>  - ${Keyword.AgentWhip.string}: 사거리가 300% 증가한다. 적중 시 적을 약하게 끌어당긴다.",
             "<gray>  - ${Keyword.AgentScythe.string}: 사거리가 50% 감소한다. 적을 관통하여 이동하고 체력이 10% 미만이면 {keyword:Execution}한다."
         )

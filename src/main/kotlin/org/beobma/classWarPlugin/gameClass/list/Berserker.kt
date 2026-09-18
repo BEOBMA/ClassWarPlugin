@@ -53,8 +53,8 @@ class Berserker : GameClass() {
             get() = "<bold>라그나로크"
         override val description: List<String>
             get() = listOf(
-                "<gray>8초간 이동 속도와 공격 속도가 50% 증가한다.",
-                "<gray>라그나로크가 지속되는 동안 체력이 1 미만으로 감소하지 않는다."
+                "<gray>{g:duration:8}초간 이동 속도와 공격 속도가 {g:speed:50}% 증가한다.",
+                "<gray>라그나로크가 {g:time:8}초간 지속되는 동안 체력이 1 미만으로 감소하지 않는다.",
             )
         override val cooldown: Int
             get() = BERSERKER_RAGNAROK_COOLDOWN_SECONDS
@@ -71,7 +71,7 @@ class Berserker : GameClass() {
                 duration = BERSERKER_RAGNAROK_DURATION_SECONDS,
                 powerDelta = BERSERKER_RAGNAROK_SPEED_BONUS_PERCENT
             )
-            ragnarokUntil = game.combatTick + BERSERKER_RAGNAROK_DURATION_TICKS
+            ragnarokUntil = game.combatTick + growthDuration(BERSERKER_RAGNAROK_DURATION_TICKS.toInt())
             sounds.play(player, org.bukkit.Sound.ENTITY_RAVAGER_ROAR, volume = 1.1f, pitch = 0.75f)
             particles.spawn(player, org.bukkit.Particle.ANGRY_VILLAGER, count = 18, spread = 0.6)
             return true
@@ -85,7 +85,8 @@ class Berserker : GameClass() {
             get() = listOf(
                 "<gray>패시브",
                 "",
-                "<gray>기본 공격 적중 시 가하는 피해가 잃은 체력에 비례하여 증가한다. (최대 50%)"
+                "<gray>기본 공격 적중 시 추가 피해가 잃은 체력 1당 {g:attack-bonus:0.2} 증가한다. (최대 {g:attack-bonus:4})",
+                "<gray>체력이 절반 미만이면 기본 공격 시 피해의 {g:healing:10}%만큼 회복한다."
             )
 
         override fun onAttackHit(context: DamageContext) {

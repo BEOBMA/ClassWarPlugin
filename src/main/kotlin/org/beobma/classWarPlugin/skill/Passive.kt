@@ -20,6 +20,8 @@ abstract class Passive : EffectApiAccess {
     lateinit var ownerClass: org.beobma.classWarPlugin.gameClass.GameClass
         private set
     val abilityScope get() = ownerClass.abilityScope
+    protected fun growthCount(key: String, base: Int) = org.beobma.classWarPlugin.growth.GrowthScaling.count(playerData, ownerClass.classId, key, base)
+    protected fun growthValue(key: String, base: Double) = org.beobma.classWarPlugin.growth.GrowthScaling.feature(playerData, ownerClass.classId, key, base)
 
     fun bind(data: PlayerData, owner: org.beobma.classWarPlugin.gameClass.GameClass) {
         ownerClass = owner

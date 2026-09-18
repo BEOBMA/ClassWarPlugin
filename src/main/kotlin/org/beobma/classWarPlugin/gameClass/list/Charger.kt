@@ -181,8 +181,8 @@ class Charger : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
         override val description = listOf(
             "{keyword:Charge}이 100 이상일 때에만 사용할 수 있다.",
             "",
-            "<gray>3칸 내에 있는 모든 적에게 {keyword:Charge} 수치에 비례한 피해를 가한다.",
-            "<gray>피해량은 충전량이 높을수록 증가 효율이 감소하며 최대 20이다.",
+            "<gray>{g:range:3}칸 내에 있는 모든 적에게 {keyword:Charge} 수치에 비례한 피해를 가한다.",
+            "<gray>피해량은 충전량이 높을수록 증가 효율이 감소하며 최대 {g:damage:20}이다.",
         )
         override val cooldown = CHARGER_RELEASE_COOLDOWN_SECONDS
 

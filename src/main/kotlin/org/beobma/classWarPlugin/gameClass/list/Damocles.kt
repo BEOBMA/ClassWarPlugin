@@ -86,7 +86,7 @@ class Damocles : GameClass(), GameStatusHandler {
                     cancel()
                     return
                 }
-                if (Random.nextDouble() >= executionChance) return
+                if (Random.nextDouble() >= org.beobma.classWarPlugin.growth.GrowthScaling.harmfulChance(playerData, executionChance)) return
                 val blade = sword
                 sword = null
                 blade?.remove()
@@ -106,7 +106,7 @@ class Damocles : GameClass(), GameStatusHandler {
             "<gray>검이 존재하는 동안 아래의 효과를 모두 얻는다.", "",
             "<gray>  - 가하는 피해 50% 증가", "<gray>  - 받는 피해 50% 감소", "",
             "<gray>대신 처음 피해를 받은 순간부터 매 5틱마다 자신이 {keyword:Execution}당할 확률이 생긴다.",
-            "<gray>확률은 아래와 같다.", "<gray>  - 기본 확률 0.02%", "<gray>  - 이후 피해를 받을 때마다 0.05%씩 확률 증가."
+            "<gray>확률은 아래와 같다.", "<gray>  - 기본 확률 {g:risk:0.02}%", "<gray>  - 이후 피해를 받을 때마다 {g:risk:0.05}%씩 확률 증가."
         )
         override fun onHit(context: DamageContext) {
             if (sword?.isValid == true) context.addDamageDealtMultiplier(1.5)

@@ -98,6 +98,7 @@ class PortalGun : GameClass(), SkillInputHandler, org.beobma.classWarPlugin.game
             "<gray>좌클릭 시 파란색 포탈을 발사한다.",
             "<gray>우클릭 시 노란색 포탈을 발사한다.", "",
             "<gray>두 포탈이 모두 설치되면 서로 연결된다.",
+            "<gray>수직 포탈 반복 통과 시 기본 {g:feature/momentum:0.075} + 연속 횟수당 {g:feature/momentum:0.022}칸/틱만큼 가속한다. (최대 증가량 {g:feature/momentum:0.42})",
             "<gray>이 스킬의 재사용 대기 시간은 포탈이 연결된 후에 적용된다."
         )
         override val cooldown = PORTAL_GUN_FIRE_COOLDOWN_SECONDS
@@ -370,8 +371,8 @@ class PortalGun : GameClass(), SkillInputHandler, org.beobma.classWarPlugin.game
 
             val currentSpeed = velocity.length()
             if (currentSpeed > 1.0E-6) {
-                val speedGain = (PORTAL_GUN_BASE_SPEED_GAIN + chain * PORTAL_GUN_SPEED_GAIN_PER_CHAIN)
-                    .coerceAtMost(PORTAL_GUN_MAX_SPEED_GAIN)
+                val speedGain = growthValue("momentum", (PORTAL_GUN_BASE_SPEED_GAIN + chain * PORTAL_GUN_SPEED_GAIN_PER_CHAIN)
+                    .coerceAtMost(PORTAL_GUN_MAX_SPEED_GAIN))
                 val maximumSpeed = if (entity is Player) PORTAL_GUN_MAX_PLAYER_SPEED else PORTAL_GUN_MAX_ENTITY_SPEED
                 velocity.multiply((currentSpeed + speedGain).coerceAtMost(maximumSpeed) / currentSpeed)
             }

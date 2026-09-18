@@ -20,6 +20,7 @@ import org.beobma.classWarPlugin.manager.InventoryManager.getClassFromItem
 import org.beobma.classWarPlugin.manager.InventoryManager.getMatchModeFromItem
 import org.beobma.classWarPlugin.manager.InventoryManager.getMatchModifierFromItem
 import org.beobma.classWarPlugin.manager.InventoryManager.toggleMatchModifier
+import org.beobma.classWarPlugin.manager.InventoryManager.togglePrimaryMode
 import org.beobma.classWarPlugin.manager.InventoryManager.clearMatchModeSelection
 import org.beobma.classWarPlugin.manager.InventoryManager.openTrainingClassListInventory
 import org.beobma.classWarPlugin.manager.InventoryManager.openClassBalanceListInventory
@@ -71,6 +72,7 @@ class OnInventoryClickEvent : Listener {
     fun onClickItem(event: InventoryClickEvent) {
         val player = event.whoClicked as? Player ?: return
         val inventory = event.view
+        if (inventory.topInventory.holder is org.beobma.classWarPlugin.growth.GrowthMenu) return
         if (DeathNote.isSelectionInventoryOpen(player)) {
             event.isCancelled = true
             if (event.rawSlot !in 0 until inventory.topInventory.size) return
@@ -84,6 +86,10 @@ class OnInventoryClickEvent : Listener {
 
         if (PlayerTagManager.hasFlag(player, PlayerFlag.OPEN_GAME_MODE_INVENTORY)) {
             event.isCancelled = true
+            if (event.rawSlot == 4) {
+                if (player.isOp) player.togglePrimaryMode()
+                return
+            }
             if (event.rawSlot !in 0 until inventory.topInventory.size) return
             val clicked = event.currentItem ?: return
             val modifier = getMatchModifierFromItem(clicked)

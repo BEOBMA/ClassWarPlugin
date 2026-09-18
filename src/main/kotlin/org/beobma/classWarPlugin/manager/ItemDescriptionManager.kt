@@ -3,6 +3,7 @@ package org.beobma.classWarPlugin.manager
 import net.kyori.adventure.text.minimessage.MiniMessage
 import net.kyori.adventure.text.format.TextDecoration
 import org.beobma.classWarPlugin.description.DescriptionText
+import org.beobma.classWarPlugin.description.GrowthDescription
 import org.beobma.classWarPlugin.keyword.Keyword
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
@@ -30,12 +31,16 @@ object ItemDescriptionManager {
         detailedDescription: List<String>,
         briefDescription: List<String> = DescriptionText.brief(detailedDescription),
         alwaysVisibleLines: List<String> = emptyList(),
+        growthClassId: String? = null,
     ): ItemStack = item.apply {
         if (type.isAir) return@apply
         val mode = PlayerPreferenceManager.descriptionViewMode(player)
         val selected = if (mode == DescriptionViewMode.DETAILED) detailedDescription else briefDescription
+        val context = GrowthDescription.context(player, growthClassId)
         itemMeta = itemMeta.apply {
-            lore(render(sanitize(selected), alwaysVisibleLines, mode, detailedDescription))
+            lore(render(GrowthDescription.render(sanitize(selected), context),
+                GrowthDescription.render(alwaysVisibleLines, context), mode,
+                GrowthDescription.render(detailedDescription, context), context))
         }
     }
 
@@ -43,12 +48,12 @@ object ItemDescriptionManager {
         when (cooldown) {
             null, 0 -> "<dark_gray>재사용 대기시간: <gray>없음"
             Int.MAX_VALUE -> "<dark_gray>재사용 대기시간: <gray>재사용 불가"
-            else -> "<dark_gray>재사용 대기시간: <gray>${cooldown.coerceAtLeast(0)}초"
+            else -> "<dark_gray>재사용 대기시간: <gray>{g:cooldown:${cooldown.coerceAtLeast(0)}}초"
         }
     )
 
     fun renderLoreLine(line: String) =
-        miniMessage.deserialize(UtilManager.applyKeywords(line))
+        miniMessage.deserialize(UtilManager.applyKeywords(GrowthDescription.baseText(line)))
             .decoration(TextDecoration.ITALIC, false)
 
     private fun render(
@@ -56,6 +61,7 @@ object ItemDescriptionManager {
         alwaysVisibleLines: List<String>,
         mode: DescriptionViewMode,
         keywordSource: List<String> = lines,
+        growthContext: GrowthDescription.Context? = null,
     ) = buildList {
         add(renderLoreLine(
             if (mode == DescriptionViewMode.DETAILED) "<gold><bold>상세 효과</bold>"
@@ -67,7 +73,7 @@ object ItemDescriptionManager {
         val keywordExplanations = when (mode) {
             DescriptionViewMode.DETAILED -> Keyword.explanationsFor(keywordSource)
             DescriptionViewMode.BRIEF -> Keyword.briefExplanationsFor(keywordSource)
-        }.filterNot(lines::contains)
+        }.map { GrowthDescription.render(it, growthContext) }.filterNot(lines::contains)
         if (keywordExplanations.isNotEmpty()) {
             if (isNotEmpty()) add(renderLoreLine(""))
             add(renderLoreLine(

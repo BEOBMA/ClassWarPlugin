@@ -46,11 +46,12 @@ object StatusAbnormalityManager {
         if (applicationBlocked) return
         val caster = balanceCasterData()
         val shouldBalance = !isClassMechanic
+        val growthAxis = org.beobma.classWarPlugin.growth.GrowthScaling.statusAxis(this)
         val balancedPowerSet = powerSet?.let {
-            if (shouldBalance && showPower) ClassBalanceManager.scaleStatusPower(caster, it) else it
+            if (shouldBalance && showPower) ClassBalanceManager.scaleStatusPower(caster, it, growthAxis) else it
         }
         val balancedPowerDelta = powerDelta?.let {
-            if (shouldBalance && showPower) ClassBalanceManager.scaleStatusPower(caster, it) else it
+            if (shouldBalance && showPower) ClassBalanceManager.scaleStatusPower(caster, it, growthAxis) else it
         }
         val balancedDuration = duration?.let {
             if (shouldBalance) ClassBalanceManager.scaleStatusDuration(caster, it) else it

@@ -98,7 +98,9 @@ class Pioneer : GameClass(), GameStatusHandler, ConfirmedHitHandler, WhenHitHand
         }
         val tick = game.combatTick
         val changes = listOf(
-            playerData.getOrCreateStatus(playerData) { ForesightStatus() }.synchronize(state.foresight),
+            playerData.getOrCreateStatus(playerData) { ForesightStatus() }.apply {
+                maxPower = growthCount("foresight", 30)
+            }.synchronize(state.foresight),
             playerData.getOrCreateStatus(playerData) { AccelerationStatus() }
                 .synchronize(state.acceleration, state.accelerationRemainingTicks(tick)),
             playerData.getOrCreateStatus(playerData) { AccelerationBulletStatus() }.synchronize(state.bullets),
@@ -109,6 +111,7 @@ class Pioneer : GameClass(), GameStatusHandler, ConfirmedHitHandler, WhenHitHand
     }
     override fun onBattleStart() {
         state = PioneerState(); lastCombat = game.combatTick
+        state.foresight = growthCount("foresight", 30)
         speed = playerData.attributeEffects.walkSpeed(abilityScope, 1.0)
         attackSpeed = playerData.attributeEffects.multiply(abilityScope, Attribute.ATTACK_SPEED, 1.0)
         refresh()
@@ -122,7 +125,9 @@ class Pioneer : GameClass(), GameStatusHandler, ConfirmedHitHandler, WhenHitHand
         }.runTaskTimer(ClassWarPlugin.instance, 1L, 1L)
     }
     override fun onGameTimePasses() {
-        if (game.combatTick - lastCombat >= 200) state.foresight = (state.foresight + 1).coerceAtMost(30)
+        val maximum = growthCount("foresight", 30)
+        state.foresight = state.foresight.coerceAtMost(maximum)
+        if (game.combatTick - lastCombat >= 200) state.foresight = (state.foresight + 1).coerceAtMost(maximum)
     }
     override fun whenHit(context: DamageContext) {
         if (context.attacker == playerData || context.path == DamagePath.STATUS_EFFECT) return
@@ -330,11 +335,11 @@ class Pioneer : GameClass(), GameStatusHandler, ConfirmedHitHandler, WhenHitHand
         override val definitionId = "pioneer/red-skill"
         override val name = "<bold>속검"
         override val description = listOf(
-            "<gray>바라보는 방향으로 짧게 돌진하며 적을 베어 3의 피해를 입힌다.",
-            "<gray>적중 시 2초간 {keyword:Burn} 상태로 만들고 10초간 {keyword:Vibration}을 2 부여한다.",
+            "<gray>바라보는 방향으로 짧게 돌진하며 적을 베어 {g:damage:3}의 피해를 입힌다.",
+            "<gray>적중 시 {g:duration:2}초간 {keyword:Burn} 상태로 만들고 {g:duration:10}초간 {keyword:Vibration}을 {g:physical-power:2} 부여한다.",
             "",
             "<gray>{keyword:Acceleration} 스택이 3 이상이라면",
-            "<gray>스킬 적중 직후 기본 공격 적중 시 적의 뒤로 이동하며 추가로 2의 피해를 입힌다.",
+            "<gray>스킬 적중 직후 기본 공격 적중 시 적의 뒤로 이동하며 추가로 {g:damage:2}의 피해를 입힌다.",
             "",
             "<gray>{keyword:Acceleration} 스택이 5라면",
             "<gray>스킬 적중 직후 기본 공격 적중 시 {keyword:AccelerationBullet}을 1 얻는다.",
@@ -359,7 +364,7 @@ class Pioneer : GameClass(), GameStatusHandler, ConfirmedHitHandler, WhenHitHand
             "{keyword:Foresight} 스택을 $PIONEER_FORESIGHT_COST 소모하고 사용할 수 있다.",
             "",
             "<gray>적의 공격을 받기 직전에 스킬을 사용하면 해당 공격을 회피한다.",
-            "<gray>회피에 성공 직후 공격자에게 피해를 입히면 2의 추가 피해를 입히고 {keyword:AccelerationBullet}을 1 얻는다.",
+            "<gray>회피에 성공 직후 공격자에게 피해를 입히면 {g:damage:2}의 추가 피해를 입히고 {keyword:AccelerationBullet}을 1 얻는다.",
             "",
             "<dark_gray>이 스킬 대신 검을 우클릭하여 사용할 수도 있다.",
             "<dark_gray>사용 후 핫바키가 1번으로 자동 교체된다."
@@ -395,14 +400,14 @@ class Pioneer : GameClass(), GameStatusHandler, ConfirmedHitHandler, WhenHitHand
         override val description = listOf(
             "<gray>{keyword:Disposal}은 5번까지 사용할 수 있다.",
             "",
-            "<gray>1번째 사용 시 바라보는 방향으로 짧게 돌진하며 적을 베어 2의 피해를 입힌다.",
-            "<gray>적중 시 2초간 {keyword:Burn} 상태로 만들고 10초간 {keyword:Vibration}을 2 부여한다.",
+            "<gray>1번째 사용 시 바라보는 방향으로 짧게 돌진하며 적을 베어 {g:damage:2}의 피해를 입힌다.",
+            "<gray>적중 시 {g:duration:2}초간 {keyword:Burn} 상태로 만들고 {g:duration:10}초간 {keyword:Vibration}을 {g:physical-power:2} 부여한다.",
             "",
-            "<gray>2~4번째 사용 시 바라보는 방향으로 검을 휘둘러 1의 피해를 입힌다.",
-            "<gray>적중 시 10초간 {keyword:Vibration}을 1 부여한다.",
+            "<gray>2~4번째 사용 시 바라보는 방향으로 검을 휘둘러 {g:damage:1}의 피해를 입힌다.",
+            "<gray>적중 시 {g:duration:10}초간 {keyword:Vibration}을 {g:physical-power:1} 부여한다.",
             "<gray>사용 직후 기본 공격 적중 시 {keyword:AccelerationBullet}을 2 소모하여 위 효과와 피해를 2배로 다시 적용한다.",
             "",
-            "<gray>5번째 사용 시 바라보는 방향으로 마지막 일격을 날려 1의 피해를 입힌다.",
+            "<gray>5번째 사용 시 바라보는 방향으로 마지막 일격을 날려 {g:damage:1}의 피해를 입힌다.",
             "<gray>적중 시 {keyword:VibrationExplosion}을 2회 적용한다.",
             "<gray>위 효과로 {keyword:VibrationExplosion}이 2회 모두 적용될 때까지 적의 {keyword:Vibration}은 감소하지 않는다.",
             "",
@@ -428,9 +433,9 @@ class Pioneer : GameClass(), GameStatusHandler, ConfirmedHitHandler, WhenHitHand
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>게임 시작 시 {keyword:Foresight} 스택을 30 얻는다.",
+            "<gray>게임 시작 시 {keyword:Foresight} 스택을 {g:feature/foresight:30} 얻는다.",
             "<gray>피격 시 {keyword:Foresight} 스택이 3 감소한다.",
-            "<gray>전투에서 벗어난지 10초가 지나면 {keyword:Foresight} 스택은 천천히 30까지 회복한다.",
+            "<gray>전투에서 벗어난지 10초가 지나면 {keyword:Foresight} 스택은 천천히 {g:feature/foresight:30}까지 회복한다.",
             "",
             "<gray>{keyword:Foresight} 스택이 있으며, 적이 투사체, 순간이동, 이동 스킬, 공격 스킬을 발동할 때",
             "<gray>각각 아래의 효과를 발동하고 {keyword:Foresight} 스택이 2 감소한다.",
@@ -449,7 +454,7 @@ class Pioneer : GameClass(), GameStatusHandler, ConfirmedHitHandler, WhenHitHand
             "<gray>같은 적에게 피해를 입힐 때마다 {keyword:Acceleration} 스택을 1 얻는다. (최대 스택 5, 6초마다 최대 1만 얻을 수 있음)",
             "<gray>다른 적에게 피해를 입히면 스택이 초기화되며, 4초간 같은 적에게 피해를 입히지 못하면 소멸한다.",
             "",
-            "<gray>{keyword:Acceleration} 스택 1당 이동 속도와 공격 속도가 4%씩 증가한다.",
+            "<gray>{keyword:Acceleration} 스택 1당 이동 속도와 공격 속도가 {g:speed-bonus:4}%씩 증가한다.",
             "<gray>{keyword:Acceleration} 스택이 5라면 스킬 사용 후 발생하는 딜레이가 감소한다."
         )
     }

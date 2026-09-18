@@ -43,9 +43,9 @@ class Mars : PlanetClass() {
         override val name = "<bold>화성"
         override val description = listOf(
             "<gray>바라보는 방향으로 10칸 돌진한다.",
-            "<gray>돌진 중 충돌한 모든 적에게 4의 피해를 입힌다.", "",
+            "<gray>돌진 중 충돌한 모든 적에게 {g:damage:4}의 피해를 입힌다.", "",
             "<gray>돌진 중 자신은 {keyword:Invincibility} 상태가 되며",
-            "<gray>돌진 종료 후 자신은 5초간 <aqua><bold>4의 피해를 막는 {keyword:Shield}을 얻는다."
+            "<gray>돌진 종료 후 자신은 {g:duration:5}초간 <aqua><bold>{g:shield:4}의 피해를 막는 {keyword:Shield}을 얻는다."
         )
         override val cooldown = MARS_DASH_COOLDOWN_SECONDS
 

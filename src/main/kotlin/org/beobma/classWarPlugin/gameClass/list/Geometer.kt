@@ -117,7 +117,7 @@ class Geometer : GameClass() {
         override val definitionId = "geometer/red-skill"
         override val name = "<bold>좌표 설정"
         override val description = listOf(
-            "<gray>${GEOMETER_COORDINATE_RANGE.toInt()}칸 내의 바라보는 블럭에 좌표를 지정한다.",
+            "<gray>{g:range:${GEOMETER_COORDINATE_RANGE.toInt()}}칸 내의 바라보는 블럭에 좌표를 지정한다.",
             "",
             "<gray>첫 번째 좌표와 두 번째 좌표가 지정되면",
             "<gray>두 좌표를 꼭짓점으로 하는 직육면체가 생성된다.",
@@ -173,7 +173,7 @@ class Geometer : GameClass() {
             "<gray>내부의 모든 적에게 직육면체의 부피에 반비례하여 피해를 입힌다.",
             "<gray>이후 직육면체와 좌표가 모두 제거된다.",
             "",
-            "<dark_gray>피해량은 최대 (5)와 (16 - √부피) 중 큰 값으로 결정된다.",
+            "<dark_gray>피해량은 {g:damage:5}와 ({g:damage:16} - {g:damage:1} × √부피) 중 큰 값으로 결정된다.",
             "<dark_gray>"
         )
         override val cooldown = GEOMETER_COMPRESSION_COOLDOWN_SECONDS

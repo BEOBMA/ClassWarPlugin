@@ -146,8 +146,8 @@ class Parasite : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
         override val name = "<bold>부화"
         override val description = listOf(
             "<gray>기생 상태를 해제하고, 기생한 숙주의 몸을 뚫고 나온다.",
-            "<gray>숙주가 생존해있다면 10의 피해를 입힌다.",
-            "<gray>숙주가 사망해있다면 자신은 10의 피해를 입는다."
+            "<gray>숙주가 생존해있다면 {g:damage:10}의 피해를 입힌다.",
+            "<gray>숙주가 사망해있다면 자신은 {g:damage:10}의 피해를 입는다."
         )
         override val cooldown = PARASITE_HATCH_COOLDOWN_SECONDS
 

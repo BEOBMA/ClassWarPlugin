@@ -67,8 +67,8 @@ class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, Pla
         override val definitionId = "chameleon/red-skill"
         override val name = "<bold>위장"
         override val description = listOf(
-            "<gray>2칸 내의 바라보는 블럭으로 위장한다.",
-            "<gray>위장은 최대 ${CHAMELEON_DISGUISE_DURATION_SECONDS}초 동안 유지된다.",
+            "<gray>{g:range:2}칸 내의 바라보는 블럭으로 위장한다.",
+            "<gray>위장은 최대 {g:time:${CHAMELEON_DISGUISE_DURATION_SECONDS}}초 동안 유지된다.",
             "<gray>자신은 {keyword:Stealth} 상태가 되고, 블럭에 피격 판정이 전이된다.",
             "<gray>웅크리고 있으면 진짜 블럭처럼 밟을 수 있고, 한 칸에 고정된다.",
             "<gray>피격 혹은 공격 시 잠시 블럭이 빨간색으로 변한다."
@@ -93,7 +93,7 @@ class Chameleon : GameClass(), OnHitHandler, WhenHitHandler, GameEndHandler, Pla
     private fun activateDisguise(block: Block) {
         clearDisguise()
         val generation = ++disguiseGeneration
-        val expiresAtTick = game.combatTick + CHAMELEON_DISGUISE_DURATION_SECONDS * 20L
+        val expiresAtTick = game.combatTick + growthDuration(CHAMELEON_DISGUISE_DURATION_SECONDS * 20)
         copiedMaterial = block.type.takeUnless { it.isAir } ?: Material.STONE
         val normalBlockData = block.blockData.clone()
         val visual = player.world.spawn(player.location, BlockDisplay::class.java).apply {

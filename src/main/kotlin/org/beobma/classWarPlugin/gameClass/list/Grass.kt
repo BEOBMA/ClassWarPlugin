@@ -166,7 +166,7 @@ class Grass : GameClass(), GameStatusHandler, OnHitHandler, WhenHitHandler, Envi
         override val name = "<bold>가시"
         override val description = listOf(
             "<gray>패시브", "", "<gray>그냥 풀의 효과가 발동 중일 때",
-            "<gray>자신 주위 4칸 이내에 있는 적은 매 초마다 1의 피해를 입는다."
+            "<gray>자신 주위 4칸 이내에 있는 적은 매 초마다 {g:status-damage:1}의 피해를 입는다."
         )
     }
 }

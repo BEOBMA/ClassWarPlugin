@@ -73,7 +73,7 @@ class Terra : PlanetClass(), GameStatusHandler {
         override val description = listOf(
             "<gray>패시브", "",
             "<gray>체력 재생 조건이 5초로 완화된다.",
-            "<gray>식물, 잔디, 물, 흙 블럭 주위에 있을 때 매 초마다 체력을 0.5씩 회복한다."
+            "<gray>식물, 잔디, 물, 흙 블럭 주위에 있을 때 매 초마다 체력을 {g:healing:0.5}씩 회복한다."
         )
     }
 }

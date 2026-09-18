@@ -405,7 +405,7 @@ class SolarSystem : GameClass(), GameStatusHandler, GameEndHandler {
         override val description = listOf(
             "<gray>패시브", "",
             "<gray>현실의 크기와 순서를 반영한 태양계 천체들이 서로 다른 속도로 자신 주위를 공전한다.",
-            "<gray>공전하는 천체에 충돌한 적은 2의 피해를 입고, 20초간 해당 천체가 파괴된다.",
+            "<gray>공전하는 천체에 충돌한 적은 {g:damage:2}의 피해를 입고, 20초간 해당 천체가 파괴된다.",
             "<gray>천체는 적의 기본 공격 또는 투사체에 적중해도 파괴된다.", "",
             "<gray>공전 중인 천체 클래스의 능력, 패시브, 무기를 모두 얻는다.",
             "<gray>파괴된 천체의 능력, 패시브, 무기는 재생될 때까지 제거된다."

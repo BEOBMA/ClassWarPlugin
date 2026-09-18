@@ -75,6 +75,7 @@ class Swordplay : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.game
     private var blossomActive = false
     private var infiniteTask: BukkitTask? = null
     private val infiniteSwords = mutableListOf<FlyingSword>()
+    private var activeInfiniteCount = INFINITE_SWORD_COUNT
     private val infiniteHitCounts = mutableMapOf<UUID, Int>()
 
     override fun onBattleStart() {
@@ -93,7 +94,9 @@ class Swordplay : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.game
             true
         }
         var created = 0
-        while (baseSwords.size < PASSIVE_SWORD_COUNT) {
+        val desired = growthCount("passive-swords", PASSIVE_SWORD_COUNT)
+        while (baseSwords.size > desired) baseSwords.removeLast().display.remove()
+        while (baseSwords.size < desired) {
             val index = baseSwords.size
             val spawn = passiveOrbitLocation(index, passiveTick)
             baseSwords += FlyingSword(
@@ -162,7 +165,7 @@ class Swordplay : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.game
                 returnAcceleration = BASE_RETURN_ACCELERATION,
                 returnMaxSpeed = BASE_RETURN_MAX_SPEED,
             )
-            if (passiveTick % 8 == index * 2) {
+            if (passiveTick % 8 == (index * 2) % 8) {
                 particles.spawn(sword.position, Particle.ENCHANT, count = 2, spread = 0.08, speed = 0.01)
             }
             return
@@ -281,7 +284,7 @@ class Swordplay : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.game
         override val definitionId = "swordplay/blossom-skill"
         override val name = "<bold>블로섬"
         override val description = listOf(
-            "<gray>어검술로 소환된 검을 해당 위치에서 회전시켜 적중한 모든 적에게 4의 피해를 입힌다.",
+            "<gray>어검술로 소환된 검을 해당 위치에서 회전시켜 적중한 모든 적에게 {g:damage:4}의 피해를 입힌다.",
             "<gray>여러 검에 피격되더라도 피해는 한 번만 입는다.",
         )
         override val cooldown = SWORDPLAY_BLOSSOM_COOLDOWN_SECONDS
@@ -366,10 +369,10 @@ class Swordplay : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.game
         override val definitionId = "swordplay/infinite-skill"
         override val name = "<bold>인피니트"
         override val description = listOf(
-            "<gray>20초간 무수한 검이 창조되는 공간을 만든다.",
-            "<gray>18자루의 다이아몬드 검이 구형 궤도로 자신 주위를 공전하며 주위의 적을 공격한다.",
+            "<gray>{g:time:20}초간 무수한 검이 창조되는 공간을 만든다.",
+            "<gray>{g:feature/infinite-swords:18}자루의 다이아몬드 검이 구형 궤도로 자신 주위를 공전하며 주위의 적을 공격한다.",
             "<gray>타격한 검은 대상을 꿰뚫는 ∞ 궤도로 가속하며 계속 공격한다.",
-            "<gray>적은 인피니트로 소환된 검에 9번 피격될 때마다 1의 피해를 입는다.",
+            "<gray>적은 인피니트로 소환된 검에 9번 피격될 때마다 {g:damage:1}의 피해를 입는다.",
             "<gray>인피니트로 소환된 검은 블로섬 스킬의 영향을 받지 않는다.",
         )
         override val cooldown = SWORDPLAY_INFINITE_COOLDOWN_SECONDS
@@ -386,7 +389,10 @@ class Swordplay : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.game
     private fun startInfinite() {
         clearInfinite(playEndEffect = false)
         infiniteHitCounts.clear()
-        repeat(INFINITE_SWORD_COUNT) { index ->
+        val swordCount = growthCount("infinite-swords", INFINITE_SWORD_COUNT)
+        activeInfiniteCount = swordCount
+        val duration = growthDuration(INFINITE_DURATION_TICKS)
+        repeat(swordCount) { index ->
             val spawn = infiniteOrbitLocation(index, 0)
             infiniteSwords += FlyingSword(
                 display = spawnSwordDisplay(spawn, Material.DIAMOND_SWORD, INFINITE_SWORD_SCALE),
@@ -403,7 +409,7 @@ class Swordplay : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.game
             private var tick = 0
 
             override fun run() {
-                if (!player.isOnline || playerStatus.isDead || tick >= INFINITE_DURATION_TICKS) {
+                if (!player.isOnline || playerStatus.isDead || tick >= duration) {
                     clearInfinite(playEndEffect = player.isOnline && !playerStatus.isDead)
                     cancel()
                     return
@@ -610,9 +616,10 @@ class Swordplay : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.game
     }
 
     private fun passiveOrbitLocation(index: Int, tick: Int): Location {
-        val angle = tick * PASSIVE_ORBIT_SPEED + index * (2.0 * PI / PASSIVE_SWORD_COUNT)
-        val inclination = Math.toRadians(-58.0 + index * 58.0)
-        val yaw = index * PI / PASSIVE_SWORD_COUNT
+        val count = growthCount("passive-swords", PASSIVE_SWORD_COUNT)
+        val angle = tick * PASSIVE_ORBIT_SPEED + index * (2.0 * PI / count)
+        val inclination = Math.toRadians(-58.0 + index * 116.0 / (count - 1).coerceAtLeast(1))
+        val yaw = index * PI / count
         return player.location.clone().add(0.0, PASSIVE_ORBIT_CENTER_HEIGHT, 0.0).add(
             tiltedOrbitOffset(angle, PASSIVE_ORBIT_RADIUS, inclination, yaw),
         )
@@ -624,11 +631,12 @@ class Swordplay : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.game
     private fun infiniteOrbitLocation(index: Int, tick: Int): Location {
         val shell = index % INFINITE_ORBIT_SHELL_COUNT
         val plane = index / INFINITE_ORBIT_SHELL_COUNT
+        val planes = kotlin.math.ceil(activeInfiniteCount.toDouble() / INFINITE_ORBIT_SHELL_COUNT).toInt()
         val speed = INFINITE_ORBIT_SPEED + shell * INFINITE_ORBIT_SHELL_SPEED_STEP
-        val angle = tick * speed + plane * (2.0 * PI / INFINITE_ORBIT_PLANE_COUNT) + shell * 0.42
+        val angle = tick * speed + plane * (2.0 * PI / planes) + shell * 0.42
         val radius = INFINITE_ORBIT_INNER_RADIUS + shell * INFINITE_ORBIT_RADIUS_STEP
-        val inclination = Math.toRadians(-70.0 + plane * 28.0)
-        val yaw = plane * PI / INFINITE_ORBIT_PLANE_COUNT + shell * 0.21
+        val inclination = Math.toRadians(-70.0 + plane * 140.0 / (planes - 1).coerceAtLeast(1))
+        val yaw = plane * PI / planes + shell * 0.21
         return player.location.clone().add(0.0, INFINITE_ORBIT_CENTER_HEIGHT, 0.0).add(
             tiltedOrbitOffset(angle, radius, inclination, yaw),
         )
@@ -799,9 +807,9 @@ class Swordplay : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.game
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>자신 주위를 날아다니는 검을 세 자루 생성한다.",
+            "<gray>자신 주위를 날아다니는 검을 {g:feature/passive-swords:3}자루 생성한다.",
             "<gray>검은 사선의 구형 궤도로 공전하며, 자신 주위 6칸 내에 적이 접근하면 가속하여 공격한다.",
-            "<gray>적은 어검술로 소환된 검에 3번 피격될 때마다 1의 피해를 입는다.",
+            "<gray>적은 어검술로 소환된 검에 3번 피격될 때마다 {g:damage:1}의 피해를 입는다.",
             "<gray>타격한 검은 대상을 꿰뚫고 돌아오는 ∞ 궤도로 가속하며 계속 타격한다.",
             "<gray>적에게 기본 공격으로 피해를 입힌지 3초가 지나면 검은 적이 근접해도 타격하지 않는다.",
         )

@@ -49,7 +49,10 @@ class Sagittarius : GameClass() {
             .subtract(forward.clone().multiply(1.15))
             .add(0.0, 0.2, 0.0)
         val targetCenter = target.boundingBox.center.toLocation(target.world)
-        listOf(-0.82 to 0.28, 0.82 to -0.18).forEach { (side, height) ->
+        val arrowCount = growthCount("arrows", 2)
+        repeat(arrowCount) { index ->
+            val side = if (index % 2 == 0) -0.82 else 0.82
+            val height = (if (index % 2 == 0) 0.28 else -0.18) + index / 2 * 0.35
             val start = rearCenter.clone()
                 .add(horizontalRight.clone().multiply(side))
                 .add(0.0, height, 0.0)
@@ -111,15 +114,15 @@ class Sagittarius : GameClass() {
 
     private class Weapon : BaseWeapon() {
         override val name = "<gray>활"
-        override val description = listOf("<gray>화살 적중 시 빛의 화살 2개를 추가로 발사한다.")
+        override val description = listOf("<gray>화살 적중 시 빛의 화살 {g:feature/arrows:2}개를 추가로 발사한다.")
         override val material = Material.BOW
     }
 
     private class Passive : BasePassive() {
         override val name = "<bold>궁수"
         override val description = listOf(
-            "<gray>패시브", "", "<gray>화살 적중 시 빛으로 이루어진 화살 2개를 더 발사한다.",
-            "<gray>이 효과로 발사된 화살은 적중 시 4의 피해를 입힌다."
+            "<gray>패시브", "", "<gray>화살 적중 시 빛으로 이루어진 화살 {g:feature/arrows:2}개를 더 발사한다.",
+            "<gray>이 효과로 발사된 화살은 적중 시 {g:damage:4}의 피해를 입힌다."
         )
     }
 

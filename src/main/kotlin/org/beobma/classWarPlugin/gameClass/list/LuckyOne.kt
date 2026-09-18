@@ -33,7 +33,7 @@ class LuckyOne : GameClass(), EnvironmentalDamageHandler, OnHitHandler, WhenHitH
     override var passives: List<BasePassive> = listOf(Passive())
 
     override fun onEnvironmentalDamage(event: EntityDamageEvent) {
-        if (event.cause != EntityDamageEvent.DamageCause.FALL || Random.nextDouble() >= LUCKY_FALL_SAVE_CHANCE) return
+        if (event.cause != EntityDamageEvent.DamageCause.FALL || Random.nextDouble() >= org.beobma.classWarPlugin.growth.GrowthScaling.chance(playerData, LUCKY_FALL_SAVE_CHANCE)) return
         event.isCancelled = true
         player.sendMiniMessage("<gold><bold>[행운] <white>낙법에 성공했다.")
         particles.spawn(player.location, Particle.CLOUD, count = 18, spread = 0.55, speed = 0.08)
@@ -41,7 +41,7 @@ class LuckyOne : GameClass(), EnvironmentalDamageHandler, OnHitHandler, WhenHitH
     }
 
     override fun whenHit(context: DamageContext) {
-        if (context.attacker == playerData || Random.nextDouble() >= LUCKY_DODGE_CHANCE) return
+        if (context.attacker == playerData || Random.nextDouble() >= org.beobma.classWarPlugin.growth.GrowthScaling.chance(playerData, LUCKY_DODGE_CHANCE)) return
         context.isCancelled = true
         val message = if (Random.nextBoolean()) "적의 공격을 회피했다." else "적의 공격이 빗나갔다."
         player.sendMiniMessage("<gold><bold>[행운] <white>$message")
@@ -51,7 +51,7 @@ class LuckyOne : GameClass(), EnvironmentalDamageHandler, OnHitHandler, WhenHitH
     }
 
     override fun onHit(context: DamageContext) {
-        if (Random.nextDouble() >= LUCKY_ATTACK_PROC_CHANCE) return
+        if (Random.nextDouble() >= org.beobma.classWarPlugin.growth.GrowthScaling.chance(playerData, LUCKY_ATTACK_PROC_CHANCE)) return
         when (Random.nextInt(3)) {
             0 -> {
                 context.target.addStatus(MoveSpeedDecrease(), playerData)

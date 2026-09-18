@@ -24,17 +24,17 @@ class Dwarf : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler
 
     private var initialized = false
     private var scaleEffect: AutoCloseable? = null
-    private var healthEffect: AutoCloseable? = null
+    private var healthEffect: org.beobma.classWarPlugin.ability.AttributeEffects.Lease? = null
 
     override fun onBattleStart() {
         if (initialized) return
         initialized = true
         scaleEffect = playerData.attributeEffects.multiply(abilityScope, Attribute.SCALE, DWARF_SCALE_MULTIPLIER)
-        healthEffect = playerData.attributeEffects.multiply(abilityScope, Attribute.MAX_HEALTH, DWARF_MAX_HEALTH_MULTIPLIER)
+        healthEffect = playerData.attributeEffects.multiply(abilityScope, Attribute.MAX_HEALTH, growthValue("health", DWARF_MAX_HEALTH_MULTIPLIER))
         sounds.play(player, Sound.ENTITY_CHICKEN_AMBIENT, volume = 0.75f, pitch = 1.75f)
     }
 
-    override fun onGameTimePasses() = Unit
+    override fun onGameTimePasses() { healthEffect?.setMultiplier(growthValue("health", DWARF_MAX_HEALTH_MULTIPLIER)) }
 
     override fun onGameEnd() = restoreAttributes()
     override fun onPlayerDeath() = restoreAttributes()
@@ -52,7 +52,7 @@ class Dwarf : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler
     private class Passive : BasePassive() {
         override val name = "<bold>난쟁이"
         override val description = listOf(
-            "<gray>패시브", "", "<gray>크기가 대폭 감소하고, 최대 체력이 75% 감소한다."
+            "<gray>패시브", "", "<gray>크기가 대폭 감소하고, 최대 체력이 원래의 {g:feature/health:25}%가 된다."
         )
     }
 }

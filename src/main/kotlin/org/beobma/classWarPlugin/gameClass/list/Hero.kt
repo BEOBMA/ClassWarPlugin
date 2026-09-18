@@ -55,7 +55,7 @@ class Hero : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
     }
 
     private fun tryResistDeath(): Boolean {
-        if (survivalChance <= 0 || Random.nextInt(100) >= survivalChance) return false
+        if (survivalChance <= 0 || Random.nextDouble() >= org.beobma.classWarPlugin.growth.GrowthScaling.chance(playerData, survivalChance / 100.0)) return false
         survivalChance = (survivalChance - 20).coerceAtLeast(0)
         player.health = 1.0
         addStress(25)
@@ -76,7 +76,7 @@ class Hero : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
         }
         if (stress >= 100 && !thresholdRolled) {
             thresholdRolled = true
-            if (Random.nextBoolean()) {
+            if (Random.nextDouble() < org.beobma.classWarPlugin.growth.GrowthScaling.chance(playerData, 0.5)) {
                 stress = 0
                 thresholdRolled = false
                 playerData.heal(6.0, DamageType.Normal, playerData)
@@ -95,7 +95,7 @@ class Hero : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
     private inner class Indomitable : Passive(), WhenHitHandler {
         override val name = "<bold>불굴"
         override val description = listOf(
-            "<gray>패시브", "", "<gray>사망 시 80% 확률로 사망하지 않는다.", "<gray>위 효과가 발동할 때마다 확률은 20%씩 감소한다."
+            "<gray>패시브", "", "<gray>사망 시 {g:chance:80}% 확률로 사망하지 않는다.", "<gray>위 효과가 발동할 때마다 확률은 20%씩 감소한다."
         )
         override fun whenHit(context: DamageContext) {
             if (player.health - context.damage <= 0.0 && tryResistDeath()) context.isCancelled = true
@@ -107,8 +107,8 @@ class Hero : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
         override val description = listOf(
             "<gray>패시브", "", "<gray>자신은 스트레스 수치를 가진다.",
             "<gray>피해를 받거나 불굴 효과로 죽음에 저항할 때마다 수치가 증가한다.",
-            "<gray>수치가 100에 도달하면 50% 확률로 영웅의 기상이 발동한다.",
-            "<gray>영웅의 기상 발동 시 스트레스 수치가 0이 되고, 체력을 6 회복한다.",
+            "<gray>수치가 100에 도달하면 {g:chance:50}% 확률로 영웅의 기상이 발동한다.",
+            "<gray>영웅의 기상 발동 시 스트레스 수치가 0이 되고, 체력을 {g:healing:6} 회복한다.",
             "<gray>스트레스 수치는 매 초마다 1씩 감소하고, 200이 되면 자신은 {keyword:Execution}된다."
         )
         override fun whenHit(context: DamageContext) {

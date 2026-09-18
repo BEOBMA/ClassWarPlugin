@@ -40,9 +40,9 @@ class Trapper : GameClass() {
         override val definitionId = "trapper/red-skill"
         override val name = "<bold>선"
         override val description = listOf(
-            "<gray>${TRAPPER_ANCHOR_RANGE.toInt()}칸 내의 바라보는 블럭에 기준점을 설치한다.",
+            "<gray>{g:range:${TRAPPER_ANCHOR_RANGE.toInt()}}칸 내의 바라보는 블럭에 기준점을 설치한다.",
             "<gray>기준점을 2개 설치하면 기준점 사이에 보이지 않는 선을 만든다.",
-            "<gray>적이 선을 통과하면 4의 피해를 입고 선이 제거된다.",
+            "<gray>적이 선을 통과하면 {g:damage:4}의 피해를 입고 선이 제거된다.",
             "",
             "<dark_gray>선은 최대 10개까지 만들 수 있으며, 최대치를 초과한 경우 오래된 선을 제거하고 만든다.",
             "<dark_gray>선을 만들 때 기준점 사이의 거리가 10칸을 초과하거나 장애물로 막힌 경우 실패한다.",

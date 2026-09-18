@@ -33,6 +33,10 @@ class OnPlayerInteractEvent : Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     fun onPlayerInteractEntity(event: PlayerInteractEntityEvent) {
+        val held = event.player.inventory.getItem(event.hand)
+        if (org.beobma.classWarPlugin.growth.GrowthControls.useToken(event.player, held)) {
+            event.isCancelled = true; return
+        }
         if (event.hand != EquipmentSlot.HAND) return
         val data = findGameForPlayer(event.player)?.playerDatas?.filterIsInstance<PlayerData>()
             ?.firstOrNull { it.player == event.player } ?: return
@@ -56,6 +60,11 @@ class OnPlayerInteractEvent : Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     fun onPlayerInteract(event: PlayerInteractEvent) {
+        val held = event.hand?.let { event.player.inventory.getItem(it) }
+        if (org.beobma.classWarPlugin.growth.GrowthControls.useToken(event.player, held,
+                event.action == Action.RIGHT_CLICK_AIR || event.action == Action.RIGHT_CLICK_BLOCK)) {
+            event.isCancelled = true; return
+        }
         if (HideAndSeek.handleInteract(event)) return
         if (event.action == Action.RIGHT_CLICK_BLOCK && Referee.hasActiveTrial(event.player.uniqueId)) {
             event.isCancelled = true

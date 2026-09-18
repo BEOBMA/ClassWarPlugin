@@ -43,7 +43,7 @@ class Barrier : GameClass(), GameStatusHandler, GameEndHandler {
         override val definitionId = "barrier/red-skill"
         override val name = "<bold>방패 세우기"
         override val description = listOf(
-            "<gray>4초간 방패를 들어 바라보는 방향에서 <gold><bold>받는 피해를 60% 감소</bold><gray>시킨다."
+            "<gray>{g:time:4}초간 방패를 들어 바라보는 방향에서 <gold><bold>받는 피해를 60% 감소</bold><gray>시킨다."
         )
         override val cooldown = BARRIER_SHIELD_COOLDOWN_SECONDS
 
@@ -55,7 +55,7 @@ class Barrier : GameClass(), GameStatusHandler, GameEndHandler {
         override fun use(): Boolean {
             reset()
             active = true
-            activeUntilTick = game.combatTick + BARRIER_SHIELD_DURATION_TICKS
+            activeUntilTick = game.combatTick + growthDuration(BARRIER_SHIELD_DURATION_TICKS.toInt())
             val display = player.world.spawn(player.location, ItemDisplay::class.java).apply {
                 setItemStack(ItemStack(Material.SHIELD))
                 itemDisplayTransform = ItemDisplay.ItemDisplayTransform.FIXED

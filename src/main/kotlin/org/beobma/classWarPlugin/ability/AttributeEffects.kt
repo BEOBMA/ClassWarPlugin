@@ -7,6 +7,7 @@ import org.bukkit.attribute.Attribute
 class AttributeEffects(private val data: PlayerData) {
     private val values = mutableMapOf<Attribute, ScalarModifiers>()
     private var walk: ScalarModifiers? = null
+    private val growthRefreshers = mutableMapOf<Any, () -> Unit>()
 
     private fun ledger(attribute: Attribute) = values.getOrPut(attribute) {
         ScalarModifiers(data.player.getAttribute(attribute)?.baseValue ?: 1.0,
@@ -23,12 +24,23 @@ class AttributeEffects(private val data: PlayerData) {
 
     fun multiply(scope: AbilityScope, attribute: Attribute, multiplier: Double, maximum: Double = Double.POSITIVE_INFINITY): Lease {
         val value = ledger(attribute)
-        return lease(scope, value, multiplier, maximum) { apply(attribute, value) }
+        val axis = when (attribute) {
+            Attribute.MOVEMENT_SPEED, Attribute.ATTACK_SPEED -> org.beobma.classWarPlugin.growth.GrowthAxis.SPEED
+            Attribute.MAX_HEALTH -> org.beobma.classWarPlugin.growth.GrowthAxis.SHIELD
+            else -> null
+        }
+        return lease(scope, value, multiplier, maximum, transform = { raw ->
+            if (axis == null || raw <= 1.0) raw else 1.0 + (raw - 1.0) *
+                org.beobma.classWarPlugin.growth.GrowthScaling.multiplier(data, axis, scope.classId)
+        }) { apply(attribute, value) }
     }
 
     fun walkSpeed(scope: AbilityScope, multiplier: Double): Lease {
         val value = walk ?: ScalarModifiers(data.player.walkSpeed.toDouble()).also { walk = it }
-        return lease(scope, value, multiplier) { data.player.walkSpeed = value.value.coerceIn(-1.0, 1.0).toFloat() }
+        return lease(scope, value, multiplier, transform = { raw ->
+            if (raw <= 1.0) raw else 1.0 + (raw - 1.0) * org.beobma.classWarPlugin.growth.GrowthScaling.multiplier(
+                data, org.beobma.classWarPlugin.growth.GrowthAxis.SPEED, scope.classId)
+        }) { data.player.walkSpeed = value.value.coerceIn(-1.0, 1.0).toFloat() }
     }
 
     fun changeBase(attribute: Attribute, transform: (Double) -> Double) {
@@ -39,6 +51,7 @@ class AttributeEffects(private val data: PlayerData) {
     }
 
     fun refresh() {
+        growthRefreshers.values.forEach { it() }
         values.forEach { (attribute, value) -> apply(attribute, value) }
         walk?.let { data.player.walkSpeed = it.value.coerceIn(-1.0, 1.0).toFloat() }
     }
@@ -53,12 +66,15 @@ class AttributeEffects(private val data: PlayerData) {
     }
 
     private fun lease(scope: AbilityScope, value: ScalarModifiers, multiplier: Double,
-                      maximum: Double = Double.POSITIVE_INFINITY, apply: () -> Unit): Lease {
+                      maximum: Double = Double.POSITIVE_INFINITY, transform: (Double) -> Double = { it }, apply: () -> Unit): Lease {
         val key = Any()
-        value.set(key, multiplier, maximum)
+        var raw = multiplier
+        fun recalculate() { value.set(key, transform(raw), maximum) }
+        growthRefreshers[key] = ::recalculate
+        recalculate()
         apply()
-        val handle = scope.resources.own { value.remove(key); apply() }
-        return Lease(handle) { next -> value.set(key, next, maximum); apply() }
+        val handle = scope.resources.own { growthRefreshers.remove(key); value.remove(key); apply() }
+        return Lease(handle) { next -> raw = next; recalculate(); apply() }
     }
 
     class Lease(private val handle: AutoCloseable, private val update: (Double) -> Unit) : AutoCloseable {

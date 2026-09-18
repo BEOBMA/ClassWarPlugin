@@ -6,8 +6,10 @@ enum class Keyword(
     /** 간략 설명에서도 조작법·발동 조건 등 플레이에 필수적인 해설을 표시한다. */
     val showDescriptionInBrief: Boolean = false,
 ) {
+    VariableRhythm("<aqua><bold>가변 박자</bold><gray>",
+        "{keyword:VariableRhythm}: 들리는 음악의 BPM과 같은 박자 또는 2·4분할(72 BPM 이하에서는 8분할)에 맞춰 기본 공격한다. 연속 정박과 공격 속도에 따라 24곡이 전개되고 피해가 최대 150% 증가한다. 엇박은 피해가 0이며 연속 기록이 초기화된다.", true),
     Writing("<gold><bold>작문</bold><gray>",
-        "{keyword:Writing}: 제시된 한 줄을 채팅으로 그대로 작성한다. 정답마다 기본 공격 피해 +0.1, 받는 피해 -1%. 오답마다 기본 공격 피해 -0.2, 받는 피해 +2%를 누적한다.", true),
+        "{keyword:Writing}: 제시된 한 줄을 채팅으로 그대로 작성한다. 정답마다 기본 공격 피해 +{g:writer-reward:0.1}, 받는 피해 -1%. 오답마다 기본 공격 피해 -{g:basic:0.2}, 받는 피해 +2%를 누적한다.", true),
     Caduceus("<gold><bold>카두세우스</bold><gray>",
         "{keyword:Caduceus}: 기본 공격 3회 적중 또는 10초마다 9종 중 다른 무기로 변형한다. 손도끼의 우클릭으로 도약 강타를 사용한다.", true),
     Directive("<yellow><bold>지령</bold><gray>",
@@ -15,12 +17,12 @@ enum class Keyword(
     AgentDamageDealt("<gold><bold>가하는 피해</bold><gray>", "지령의 성공과 실패로 변화하는 피해 배율이다. 최소 50%를 유지한다."),
     AgentDamageTaken("<red><bold>받는 피해</bold><gray>", "지령 완수 시 감소하고 실패 시 증가하는 피해 배율이다. 0~150%로 제한한다."),
     AgentHatchet("<#F0A04B><bold>손도끼</bold><gray>", "적중 시 약하게 밀어낸다. 무기를 우클릭하면 도약하여 내려찍는다."),
-    AgentStiletto("<#BFEFFF><bold>스틸레토</bold><gray>", "방어력 20%를 무시하고 배후 공격 시 피해 1을 추가한다."),
-    AgentBastard("<#FFD166><bold>바스타드 소드</bold><gray>", "사거리가 10% 증가하고 같은 적에게 연속 적중할 때마다 피해 0.5를 추가한다."),
+    AgentStiletto("<#BFEFFF><bold>스틸레토</bold><gray>", "방어력 20%를 무시하고 배후 공격 시 피해 {g:attack-bonus:1}을 추가한다."),
+    AgentBastard("<#FFD166><bold>바스타드 소드</bold><gray>", "사거리가 10% 증가하고 같은 적에게 연속 적중할 때마다 피해 {g:attack-bonus:0.5}를 추가한다."),
     AgentRapier("<#7EE8FA><bold>레이피어</bold><gray>", "피해가 25% 감소하고 공격 속도가 크게 증가한다."),
     AgentHammer("<#D6A878><bold>망치</bold><gray>", "강하게 밀어내고 기절시킨다. 보호막에 두 배의 피해를 입힌다."),
     AgentGreatsword("<#FF916B><bold>대검</bold><gray>", "공격 속도가 감소하고 전방의 적을 휩쓸어 공격한다."),
-    AgentLance("<#73CFFF><bold>랜스</bold><gray>", "이동 속도가 20% 증가하고 달린 거리에 비례해 추가 피해를 입힌다."),
+    AgentLance("<#73CFFF><bold>랜스</bold><gray>", "이동 속도가 {g:speed-bonus:20}% 증가하고 달린 거리에 비례해 추가 피해를 입힌다."),
     AgentWhip("<#E8A0FF><bold>채찍</bold><gray>", "사거리가 300% 증가하고 적을 약하게 끌어당긴다."),
     AgentScythe("<#AD80FF><bold>낫</bold><gray>", "사거리가 50% 감소하고 적을 관통하여 이동한다. 체력이 10% 미만인 적을 처형한다."),
     Arrow("<gold><bold>화살</bold><gray>"),
@@ -92,7 +94,7 @@ enum class Keyword(
     ),
     Electrocution(
         "<light_purple><bold>감전</bold><gray>",
-        "{keyword:Electrocution}: 20초간 <gold><bold>이동 속도가 5% 감소</bold><gray>한다. 지속 시간 도중 {keyword:Electrocution}이 다시 적용되면 {keyword:Electrocution}을 제거하고 2초간 {keyword:Stun}한다.",
+        "{keyword:Electrocution}: 20초간 <gold><bold>이동 속도가 5% 감소</bold><gray>한다. 지속 시간 도중 {keyword:Electrocution}이 다시 적용되면 {keyword:Electrocution}을 제거하고 {g:duration:2}초간 {keyword:Stun}한다.",
         showDescriptionInBrief = true,
     ),
     Stun(
@@ -105,7 +107,7 @@ enum class Keyword(
     ),
     Brightness(
         "<white><bold>광휘</bold><gray>",
-        "{keyword:Brightness}: 수치가 5가 되면 {keyword:Brightness}를 제거하고 2초간 {keyword:Snare}된다.",
+        "{keyword:Brightness}: 수치가 5가 되면 {keyword:Brightness}를 제거하고 {g:duration:2}초간 {keyword:Snare}된다.",
         showDescriptionInBrief = true,
     ),
     Radiation(
@@ -127,12 +129,12 @@ enum class Keyword(
     ),
     Frostbite(
         "<aqua><bold>동상</bold><gray>",
-        "{keyword:Frostbite}: 5초간 <gold><bold>이동 속도가 (수치 x 5)% 만큼 감소</bold><gray>한다. 수치가 10 이상이면 {keyword:Frostbite}을 제거하고 {keyword:Freezing} 상태가 된다.",
+        "{keyword:Frostbite}: {g:duration:5}초간 <gold><bold>이동 속도가 (수치 x 5)% 만큼 감소</bold><gray>한다. 수치가 10 이상이면 {keyword:Frostbite}을 제거하고 {keyword:Freezing} 상태가 된다.",
         showDescriptionInBrief = true,
     ),
     Freezing(
         "<white><bold>빙결</bold><gray>",
-        "{keyword:Freezing}: 3초간 {keyword:Stun}과 동일한 효과를 적용하며, 지속 시간동안 기본 공격 피격 시 {keyword:Freezing} 상태가 해제되고 피해량의 50% 만큼 추가 {keyword:AbnormalStatusDamage}를 입는다.",
+        "{keyword:Freezing}: {g:duration:3}초간 {keyword:Stun}과 동일한 효과를 적용하며, 지속 시간동안 기본 공격 피격 시 {keyword:Freezing} 상태가 해제되고 피해량의 50% 만큼 추가 {keyword:AbnormalStatusDamage}를 입는다.",
         showDescriptionInBrief = true,
     ),
     DimensionMarker(
@@ -142,7 +144,7 @@ enum class Keyword(
     ),
     Erosion(
         "<blue><bold>잠식</bold><gray>",
-        "{keyword:Erosion}: 8초간 지속되며, 특정 스킬로 소모된다.",
+        "{keyword:Erosion}: {g:duration:8}초간 지속되며, 특정 스킬로 소모된다.",
     ),
     Bullet(
         "<gold><bold>탄환</bold><gray>",
@@ -159,12 +161,12 @@ enum class Keyword(
     ),
     Foresight(
         "<aqua><bold>예지안</bold><gray>",
-        "{keyword:Foresight}: 최대 30. 피격 시 3, 적의 행동 예지 시 2를 소모한다. 10초간 전투하지 않으면 초당 1 회복한다.",
+        "{keyword:Foresight}: 최대 {g:feature/foresight:30}. 피격 시 3, 적의 행동 예지 시 2를 소모한다. 10초간 전투하지 않으면 초당 1 회복한다.",
         showDescriptionInBrief = true,
     ),
     Acceleration(
         "<yellow><bold>가속</bold><gray>",
-        "{keyword:Acceleration}: 최대 5. 중첩당 이동 속도와 공격 속도가 4% 증가한다. 같은 적 적중으로 유지하며 6초마다 최대 1중첩을 얻는다. 다른 적을 공격하거나 같은 적에게 4초간 피해를 주지 않으면 초기화된다.",
+        "{keyword:Acceleration}: 최대 5. 중첩당 이동 속도와 공격 속도가 {g:speed-bonus:4}% 증가한다. 같은 적 적중으로 유지하며 6초마다 최대 1중첩을 얻는다. 다른 적을 공격하거나 같은 적에게 4초간 피해를 주지 않으면 초기화된다.",
         showDescriptionInBrief = true,
     ),
     Disposal(

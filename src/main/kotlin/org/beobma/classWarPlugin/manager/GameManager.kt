@@ -143,6 +143,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         if (game != null) return "이미 진행중인 게임이 있습니다."
 
         val newGame = Game(mutableListOf(), mode = mode, testMode = testMode)
+        mode.validateRules(newGame.settings)?.let { return it }
         val participants = Bukkit.getOnlinePlayers()
             .filterNot(PlayerTagManager::isTraining)
             .map { PlayerData(it, newGame) }
@@ -170,6 +171,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         }
 
         game = this
+        if (mode.isGrowth) growth = org.beobma.classWarPlugin.growth.GrowthModeRuntime(this, gameWorld)
         phase = GamePhase.CLASS_SELECTION
         originalWorldTime = gameWorld.time
         originalDaylightCycle = gameWorld.getGameRuleValue(GameRules.ADVANCE_TIME)
@@ -181,6 +183,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         availableClasses.addAll(availableClassesFor(mode))
         confirmedPlayers.clear()
         refreshesRemaining.clear()
+        classSelectionHistory.clear()
         playerKillCounts.clear()
         tailTargets.clear()
         initializeMatchGroups(participants)
@@ -205,6 +208,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
                 drawRandomClass()?.let(assignedClasses::add)
             }
             playerData.assignGameClasses(assignedClasses)
+            classSelectionHistory.record(player.uniqueId, assignedClasses.map { it.classId })
             val teamNumber = (teamOf(player.uniqueId) ?: 0) + 1
             val role = cooperativeRoleOf(player.uniqueId)
             val assignment = buildString {
@@ -244,20 +248,23 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
 
         val previousClasses = gameClasses.toList()
         if (previousClasses.isEmpty()) return
+        val previousPool = currentGame.availableClasses.toList()
         currentGame.availableClasses.addAll(previousClasses)
-        val excludedTypes = previousClasses.map { it.javaClass }.toSet()
+        val excludedIds = currentGame.classSelectionHistory.exclusions(player.uniqueId,
+            previousClasses.map { it.classId }, currentGame.settings.excludePreviousClasses)
         val replacements = mutableListOf<GameClass>()
         repeat(currentGame.mode.assignedClassCount) {
-            currentGame.drawRandomClass(excludedTypes)?.let(replacements::add)
+            currentGame.drawRandomClass(excludedIds + replacements.map { it.classId })?.let(replacements::add)
         }
         if (replacements.size != currentGame.mode.assignedClassCount) {
-            currentGame.availableClasses.addAll(replacements)
-            previousClasses.forEach(currentGame.availableClasses::remove)
+            currentGame.availableClasses.clear()
+            currentGame.availableClasses.addAll(previousPool)
             player.sendMessage(miniMessage.deserialize("<red><bold>[!] 새로 배정할 수 있는 클래스 조합이 없습니다."))
             return
         }
 
         assignGameClasses(replacements)
+        currentGame.classSelectionHistory.record(player.uniqueId, previousClasses.map { it.classId } + replacements.map { it.classId })
         currentGame.refreshesRemaining[player.uniqueId] = remaining - 1
         player.playSound(player.location, Sound.BLOCK_ENCHANTMENT_TABLE_USE, SoundCategory.MASTER, 1.0F, 1.2F)
         openAssignedClassInventory()
@@ -280,11 +287,11 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         }
     }
 
-    private fun Game.drawRandomClass(excludedTypes: Set<Class<out GameClass>> = emptySet()): GameClass? {
-        var candidates = availableClasses.filter { it.javaClass !in excludedTypes }
+    private fun Game.drawRandomClass(excludedIds: Set<String> = emptySet()): GameClass? {
+        var candidates = availableClasses.filter { it.classId !in excludedIds }
         if (candidates.isEmpty() && testMode) {
             availableClasses.addAll(availableClassesFor(mode))
-            candidates = availableClasses.filter { it.javaClass !in excludedTypes }
+            candidates = availableClasses.filter { it.classId !in excludedIds }
         }
         if (candidates.isEmpty()) return null
 
@@ -355,6 +362,14 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
             it.entityStatus.canMove = false
         }
 
+        if (mode.isGrowth) {
+            growth!!.prepare(participants.size) { error ->
+                if (game !== this || phase != GamePhase.COUNTDOWN) return@prepare
+                if (error != null) { sendNotification(error); stop() }
+                else startCountdownTimer(participants)
+            }
+            return
+        }
         if (settings.fixedSpawnEnabled) {
             val fixedSpawn = resolveFixedSpawn()
             if (fixedSpawn == null) {
@@ -392,6 +407,10 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
             spawnLocations.addAll(spawnPoints)
         }
 
+        startCountdownTimer(participants)
+    }
+
+    private fun Game.startCountdownTimer(participants: List<PlayerData>) {
         var remaining = settings.countdownSeconds
         val task = object : BukkitRunnable() {
             override fun run() {
@@ -431,7 +450,13 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
     private fun Game.scatterAndBegin() {
         phase = GamePhase.SCATTERING
         val participants = contenders()
-        if (settings.fixedSpawnEnabled) {
+        if (mode.isGrowth) {
+            val destinations = growth?.spawnLocations(participants.size).orEmpty()
+            if (destinations.size != participants.size) {
+                sendNotification("성장 지역의 안전한 스폰을 확보하지 못했습니다."); stop(); return
+            }
+            spawnLocations.clear(); spawnLocations.addAll(destinations)
+        } else if (settings.fixedSpawnEnabled) {
             val fixedSpawn = resolveFixedSpawn()
             if (fixedSpawn == null) {
                 sendNotification("저장된 고정 스폰 좌표를 불러오지 못해 게임을 종료합니다.")
@@ -540,9 +565,12 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
             if (mode.usesTailTagRules) sendTailTargetNotice(playerData)
         }
         sendNotification("${mode.displayName} <gray>게임이 시작되었습니다.")
+        if (mode.isGrowth) {
+            sendNotification("<red><bold>주의: 성장 모드는 베타 버전입니다.</bold> 플레이 중 버그 및 여러 문제가 발생할 수 있습니다.")
+        }
         startClassTickTask()
         startTailHeartbeatTask()
-        startWorldBorder()
+        if (mode.isGrowth) growth?.start() else startWorldBorder()
     }
 
     private fun Game.initializeTailTargets(participants: List<PlayerData>) {
@@ -1593,6 +1621,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
     }
 
     private fun Game.findRespawnLocation(playerData: PlayerData): Location? {
+        if (mode.isGrowth) return growth?.spawnLocations(1)?.firstOrNull()
         val occupied = contenders()
             .filter { it.uniqueId != playerData.uniqueId && it.player.isOnline && it.player.world == gameWorld }
             .map { it.player.location }
@@ -1848,6 +1877,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         CombatManager.clear(participantIds)
         clearDamageInvincibility(participantIds)
         CooldownManager.clear(participantIds)
+        growth?.close()
         DamageIndicatorManager.clearForPlayers(participantIds)
         BattleMapManager.cleanup(this)
         disconnectTasks.values.forEach { it.cancel() }
@@ -1858,6 +1888,8 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         borderBossBar?.let { bar -> activePlayers().filter { it.player.isOnline }.forEach { it.player.hideBossBar(bar) } }
         borderBossBar = null
         gameWorld.worldBorder.reset()
+        growth?.restoreBorder()
+        growth = null
 
         activePlayers().forEach { playerData ->
             StealthVisibilityManager.reveal(playerData)
@@ -1895,6 +1927,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         cooperativeRoles.clear()
         availableClasses.clear()
         refreshesRemaining.clear()
+        classSelectionHistory.clear()
         confirmedPlayers.clear()
         playerKillCounts.clear()
         spawnLocations.clear()

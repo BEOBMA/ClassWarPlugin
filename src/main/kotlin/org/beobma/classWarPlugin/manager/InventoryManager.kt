@@ -170,19 +170,21 @@ object InventoryManager {
 
     private fun populateSingleAssignedClass(inventory: Inventory, gameClass: GameClass, viewer: Player) {
         inventory.setItem(4, createClassItem(gameClass, viewer))
-        inventory.setItem(19, gameClass.weapon.toItemStack(viewer))
+        inventory.setItem(19, gameClass.weapon.toItemStack(viewer, gameClass.classId))
         val skillSlots = listOf(20, 21, 22, 23, 24, 25, 26, 27)
         gameClass.skills.forEachIndexed { index, skill ->
             val slot = skillSlots.getOrNull(index) ?: return@forEachIndexed
             inventory.setItem(slot, createFullDescriptionItem(
                 viewer, skillDyeMaterial(index), skill.name, skill.description, skill.briefDescription,
                 ItemDescriptionManager.cooldownLines(skill.cooldown),
+                growthClassId = gameClass.classId,
             ))
         }
         gameClass.passives.forEachIndexed { index, passive ->
             if (index >= 7) return@forEachIndexed
             inventory.setItem(30 + index, createFullDescriptionItem(
                 viewer, Material.WHITE_DYE, passive.name, passive.description, passive.briefDescription,
+                growthClassId = gameClass.classId,
             ))
         }
     }
@@ -192,8 +194,8 @@ object InventoryManager {
         val second = classes[1]
         inventory.setItem(2, createClassItem(first, viewer))
         inventory.setItem(6, createClassItem(second, viewer))
-        inventory.setItem(11, first.weapon.toItemStack(viewer))
-        inventory.setItem(15, second.weapon.toItemStack(viewer))
+        inventory.setItem(11, first.weapon.toItemStack(viewer, first.classId))
+        inventory.setItem(15, second.weapon.toItemStack(viewer, second.classId))
 
         populateAssignedSkills(inventory, first, (18..25).toList(), viewer = viewer)
         populateAssignedSkills(inventory, second, (27..34).toList(), first.skills.size, viewer)
@@ -213,6 +215,7 @@ object InventoryManager {
             inventory.setItem(slot, createFullDescriptionItem(
                 viewer, skillDyeMaterial(dyeOffset + index), skill.name, skill.description, skill.briefDescription,
                 ItemDescriptionManager.cooldownLines(skill.cooldown),
+                growthClassId = gameClass.classId,
             ))
         }
     }
@@ -227,6 +230,7 @@ object InventoryManager {
             val slot = slots.getOrNull(index) ?: return@forEachIndexed
             inventory.setItem(slot, createFullDescriptionItem(
                 viewer, Material.WHITE_DYE, passive.name, passive.description, passive.briefDescription,
+                growthClassId = gameClass.classId,
             ))
         }
     }
@@ -619,6 +623,9 @@ object InventoryManager {
         val inventory = Bukkit.createInventory(null, 27, miniMessage.deserialize("<dark_gray>게임 모드 선택"))
         fillWith(inventory, Material.BLACK_STAINED_GLASS_PANE, " ")
         inventory.setItem(10, createModeToggleItem(Material.AMETHYST_SHARD, MatchModifier.DUAL, selected))
+        inventory.setItem(4, createDescriptionItem(Material.EXPERIENCE_BOTTLE,
+            if (selected.isGrowth) "<green>주 모드: 성장 (클릭하여 클래식)" else "<gold>주 모드: 클래식 (클릭하여 성장)",
+            listOf("<gray>지역·사냥·스탯·장비로 성장합니다.", "<red>${org.beobma.classWarPlugin.growth.GrowthSettings.WARNING}")))
         inventory.setItem(12, createModeToggleItem(Material.RECOVERY_COMPASS, MatchModifier.TAIL_TAG, selected))
         inventory.setItem(14, createModeToggleItem(Material.SHIELD, MatchModifier.TEAM, selected))
         inventory.setItem(16, createModeToggleItem(Material.CHAINMAIL_CHESTPLATE, MatchModifier.COOPERATIVE, selected))
@@ -657,6 +664,13 @@ object InventoryManager {
         openGameModeInventory()
     }
 
+    fun Player.togglePrimaryMode() {
+        val current = selectedModes[uniqueId] ?: MatchMode.CLASSIC
+        selectedModes[uniqueId] = current.copy(primary = if (current.isGrowth)
+            org.beobma.classWarPlugin.game.PrimaryMode.CLASSIC else org.beobma.classWarPlugin.game.PrimaryMode.GROWTH)
+        openGameModeInventory()
+    }
+
     fun clearMatchModeSelection(player: Player) {
         selectedModes.remove(player.uniqueId)
     }
@@ -673,7 +687,7 @@ object InventoryManager {
 
     fun Player.openClassStatusInventory(gameClass: GameClass) {
         val inventory = Bukkit.createInventory(null, 27, miniMessage.deserialize(UtilManager.applyKeywords(gameClass.name)))
-        inventory.setItem(0, gameClass.weapon.toItemStack(this))
+        inventory.setItem(0, gameClass.weapon.toItemStack(this, gameClass.classId))
         for (i in 0..gameClass.skills.size) {
             val skill = gameClass.skills.getOrNull(i) ?: break
             inventory.setItem(i + 1, createFullDescriptionItem(
@@ -683,6 +697,7 @@ object InventoryManager {
                 skill.description,
                 skill.briefDescription,
                 ItemDescriptionManager.cooldownLines(skill.cooldown),
+                growthClassId = gameClass.classId,
             ))
         }
         for (i in gameClass.skills.size + 1..gameClass.passives.size + gameClass.skills.size + 1) {
@@ -690,6 +705,7 @@ object InventoryManager {
             val material = Material.WHITE_DYE
             inventory.setItem(i, createFullDescriptionItem(
                 this, material, passive.name, passive.description, passive.briefDescription,
+                growthClassId = gameClass.classId,
             ))
         }
         openInventory(inventory)
@@ -800,6 +816,7 @@ object InventoryManager {
         details: List<String>,
         briefDetails: List<String>,
         alwaysVisibleLines: List<String> = emptyList(),
+        growthClassId: String? = null,
     ): ItemStack = ItemDescriptionManager.applyForPlayer(
         ItemStack(material).apply {
             itemMeta = itemMeta.apply {
@@ -810,6 +827,7 @@ object InventoryManager {
         details,
         briefDetails,
         alwaysVisibleLines,
+        growthClassId,
     )
 
     private fun createSettingItem(material: Material, name: String, value: Number, unit: String): ItemStack =

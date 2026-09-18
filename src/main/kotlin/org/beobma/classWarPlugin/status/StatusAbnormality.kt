@@ -58,9 +58,19 @@ abstract class StatusAbnormality {
     open val showPower = true
     open val showInActionBar = true
     open val isClassMechanic = false
+    open val growsWithStats: Boolean get() = !isClassMechanic
     open var duration: Int? = null
     open val durationMode: StatusDurationMode = StatusDurationMode.Refresh
     open var continueWhile: (() -> Boolean)? = null
+
+    /** Only real combat caps grow; numeric class-resource thresholds retain their mechanics. */
+    fun effectiveMaxPower(): Int? = maxPower?.let { maximum ->
+        if (!growsWithStats || maximum <= 0 || !::casterData.isInitialized) maximum else
+            org.beobma.classWarPlugin.growth.GrowthScaling.cap(casterData, maximum, effectSource?.classId,
+                org.beobma.classWarPlugin.growth.GrowthScaling.statusAxis(this).let {
+                    if (it == org.beobma.classWarPlugin.growth.GrowthAxis.POWER) org.beobma.classWarPlugin.growth.GrowthAxis.CAP else it
+                })
+    }
 
     /** 상태의 대상 [entityData]와 밸런스 계산에 사용할 효과 출처 [victimData]를 연결한다. */
     fun inject(entityData: EntityData, victimData: PlayerData) {
@@ -85,7 +95,7 @@ abstract class StatusAbnormality {
     /** 현재 세기에 [amount]를 더하고 [maxPower]가 있으면 상한을 적용한다. */
     open fun increasePower(amount: Int) {
         if (applicationBlocked) return
-        val maxPower = maxPower
+        val maxPower = effectiveMaxPower()
         power += amount
         if (maxPower != null && power > maxPower) {
             power = maxPower
@@ -96,7 +106,7 @@ abstract class StatusAbnormality {
     /** 현재 세기를 [amount]로 교체하고 [maxPower]가 있으면 상한을 적용한다. */
     open fun updatePower(amount: Int) {
         if (applicationBlocked) return
-        val maxPower = maxPower
+        val maxPower = effectiveMaxPower()
         power = amount
         if (maxPower != null && power > maxPower) {
             power = maxPower
@@ -203,7 +213,7 @@ abstract class StatusAbnormality {
         val durationLabel = "<dark_gray>|</dark_gray><yellow>$durationText</yellow>"
         val powerLabel = if (showPower) "<gold>${power}</gold>" else ""
         val maxPowerLabel =
-            if (showMaxPower) maxPower?.let { "<dark_gray>/</dark_gray><gold>${it}</gold>" } ?: "" else ""
+            if (showMaxPower) effectiveMaxPower()?.let { "<dark_gray>/</dark_gray><gold>${it}</gold>" } ?: "" else ""
         return "$name: $powerLabel$maxPowerLabel$durationLabel"
     }
 

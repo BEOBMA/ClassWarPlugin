@@ -69,15 +69,15 @@ class AreaDevelopment : GameClass(), org.beobma.classWarPlugin.gameClass.handler
         override val definitionId = "area-development/red-skill"
         override val name = "<bold>영역전개"
         override val description = listOf(
-            "<gray>자신의 위치에 60초간 지름 20칸 크기의 영역을 전개한다.",
+            "<gray>자신의 위치에 {g:time:60}초간 지름 20칸 크기의 영역을 전개한다.",
             "",
             "<gray>원래 영역 안에 있던 플레이어를 제외한 다른 플레이어는 접근할 수 없다.",
             "<gray>원래 영역 안에 있던 플레이어는 영역 밖으로 나갈 수 없다.",
             "<gray>영역 안의 플레이어는 영역 밖의 플레이어로부터 피해를 받지 않는다.",
             "<gray>영역 내 모든 적과 아군은 실명 상태가 된다.",
             "<gray>영역 내의 적은 4틱마다 무작위 사선에서 사슬이 내리꽂힌다.",
-            "<gray>사슬에 실제로 적중한 적에게만 1의 피해를 입힌다.",
-            "<gray>자신이 영역 내의 적을 하나라도 처치하면 영역이 파괴되며 영역 내 모든 적이 10의 피해를 입는다."
+            "<gray>사슬에 실제로 적중한 적에게만 {g:damage:1}의 피해를 입힌다.",
+            "<gray>자신이 영역 내의 적을 하나라도 처치하면 영역이 파괴되며 영역 내 모든 적이 {g:damage:10}의 피해를 입는다."
         )
         override val cooldown = AREA_DEVELOPMENT_COOLDOWN_SECONDS
 
@@ -126,13 +126,14 @@ class AreaDevelopment : GameClass(), org.beobma.classWarPlugin.gameClass.handler
             playOpeningEffect(origin)
 
             var elapsedTicks = 0
+            val domainDuration = growthDuration(AREA_DEVELOPMENT_DOMAIN_DURATION_SECONDS * 20)
             domainTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
                 override fun run() {
                     if (!active || !player.isOnline || playerStatus.isDead) {
                         finishDomain(collapse = false)
                         return
                     }
-                    if (elapsedTicks >= 1200) {
+                    if (elapsedTicks >= domainDuration) {
                         finishDomain(collapse = false, naturalExpiration = true)
                         return
                     }

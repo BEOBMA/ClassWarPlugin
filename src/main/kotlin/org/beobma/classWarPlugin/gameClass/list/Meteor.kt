@@ -48,9 +48,9 @@ class Meteor : GameClass() {
         override val definitionId = "meteor/red-skill"
         override val name = "<bold>유성 낙하"
         override val description = listOf(
-            "<gray>18칸 내의 바라보는 위치에 2.5초 후 운석을 떨어트린다.",
-            "<gray>적중한 모든 대상에게 중심부는 10, 외각은 거리에 비례하여 최소 5의 피해를 입히고 5초간 {keyword:Burn} 상태로 만든다.",
-            "<gray>운석이 떨어진 위치에는 10초간 불타는 지형이 남으며, 지형 위의 적은 초당 1의 피해를 받고 {keyword:Burn} 지속 시간이 감소하지 않는다",
+            "<gray>{g:range:18}칸 내의 바라보는 위치에 2.5초 후 운석을 떨어트린다.",
+            "<gray>적중한 모든 대상에게 중심부는 {g:damage:10}, 외각은 거리에 비례하여 최소 {g:damage:5}의 피해를 입히고 {g:duration:5}초간 {keyword:Burn} 상태로 만든다.",
+            "<gray>운석이 떨어진 위치에는 10초간 불타는 지형이 남으며, 지형 위의 적은 초당 {g:damage:1}의 피해를 받고 {keyword:Burn} 지속 시간이 감소하지 않는다",
             "",
             "<dark_gray>웅크린 상태에서 사용하면 자신의 위치에 시전할 수도 있다."
         )
@@ -158,7 +158,7 @@ class Meteor : GameClass() {
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>기본 공격 피격 시 공격자를 2초간 {keyword:Burn} 상태로 만든다."
+            "<gray>기본 공격 피격 시 공격자를 {g:duration:2}초간 {keyword:Burn} 상태로 만든다."
         )
 
         override fun whenAttackHit(context: DamageContext) {

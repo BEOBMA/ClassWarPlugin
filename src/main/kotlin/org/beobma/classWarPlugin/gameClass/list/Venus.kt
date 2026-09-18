@@ -58,7 +58,7 @@ class Venus : PlanetClass(), GameStatusHandler {
         override val name = "<bold>금성"
         override val description = listOf(
             "<gray>패시브", "",
-            "<gray>자신 주위 5칸 이내에 접근한 적을 3초간 {keyword:Enchantment} 상태로 만든다.",
+            "<gray>자신 주위 5칸 이내에 접근한 적을 {g:duration:3}초간 {keyword:Enchantment} 상태로 만든다.",
             "<gray>이 효과는 대상 당 20초의 재사용 대기 시간을 가진다.",
         )
     }

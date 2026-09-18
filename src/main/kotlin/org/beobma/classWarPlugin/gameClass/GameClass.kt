@@ -40,6 +40,11 @@ abstract class GameClass : EffectApiAccess {
     abstract var passives: List<Passive>
     open val extraItemMaterials: List<ItemStack> = listOf()
 
+    protected fun growthCount(key: String, base: Int) = org.beobma.classWarPlugin.growth.GrowthScaling.count(playerData, classId, key, base)
+    protected fun growthValue(key: String, base: Double) = org.beobma.classWarPlugin.growth.GrowthScaling.feature(playerData, classId, key, base)
+    protected fun growthDuration(ticks: Int) = (ticks * org.beobma.classWarPlugin.growth.GrowthScaling.multiplier(
+        playerData, org.beobma.classWarPlugin.growth.GrowthAxis.DURATION, classId)).toInt()
+
     /** 클래스가 참조할 플레이어·상태·경기를 [playerData] 기준으로 연결한다. */
     fun inject(playerData: PlayerData) {
         if (playerData.entityStatus !is PlayerStatus) return

@@ -18,6 +18,13 @@ class OnPlayerSwapHandItemsEvent : Listener {
     @EventHandler(ignoreCancelled = true)
     fun onSwap(event: PlayerSwapHandItemsEvent) {
         val player = event.player
+        if (org.beobma.classWarPlugin.growth.GrowthControls.equipmentKey(player)) {
+            event.isCancelled = true; return
+        }
+        if (org.beobma.classWarPlugin.growth.GrowthControls.isToken(player.inventory.itemInMainHand) ||
+            org.beobma.classWarPlugin.growth.GrowthControls.isToken(player.inventory.itemInOffHand)) {
+            event.isCancelled = true; return
+        }
         if (!isGaming() && !PlayerTagManager.isTraining(player)) return
         val playerData = findGameForPlayer(player)?.playerDatas?.filterIsInstance<PlayerData>()
             ?.find { it.uniqueId == player.uniqueId } ?: return

@@ -29,7 +29,7 @@ class Anchor : GameClass() {
         override val description = listOf(
             "<gray>패시브", "",
             "<gray>6칸 내에서 다른 플레이어가 이동 스킬을 사용하면",
-            "<gray>5초간 해당 플레이어의 <gold><bold>이동 속도가 50% 감소</bold><gray>한다.",
+            "<gray>{g:duration:5}초간 해당 플레이어의 <gold><bold>이동 속도가 {g:speed:50}% 감소</bold><gray>한다.",
             "<gray>이 효과는 대상 당 20초의 재사용 대기 시간을 가진다."
         )
         private val cooldownUntil = mutableMapOf<UUID, Long>()

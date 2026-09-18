@@ -67,8 +67,18 @@ object DamageManager {
         }
         if (!canDamage) return false
 
+        for (bound in AbilityTree.handlers(context.attacker.gameClasses, org.beobma.classWarPlugin.gameClass.list.Metronome::class.java)) {
+            if (!bound.call { it.allowDamage(context) }) {
+                context.capDamage(0.0)
+                context.isCancelled = true
+                return false
+            }
+        }
+
         dispatchHandlers(context)
         if (context.isCancelled) return false
+
+        context.attacker.game.growth?.beforeDamage(context)
 
         if (context.path.isBasicAttack) {
             context.addDamageDealtMultiplier(BASIC_ATTACK_DAMAGE_MULTIPLIER)
@@ -81,6 +91,7 @@ object DamageManager {
     /** 실제 피해 적용에 성공한 뒤 전투 상태와 사망 귀속 정보를 기록한다. */
     fun recordSuccessfulDamage(context: DamageContext) {
         notifyConfirmedHit(context)
+        context.attacker.game.growth?.afterDamage(context)
         val target = context.target.entity
         CombatManager.recordSuccessfulDamage(context)
         lastDamageByTarget[target.uniqueId] = Attribution(
