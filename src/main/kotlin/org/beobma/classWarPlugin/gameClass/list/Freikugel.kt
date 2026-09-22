@@ -11,6 +11,7 @@ import org.beobma.classWarPlugin.gameClass.handler.*
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetEntityData
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.hasStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.status.list.RevolverBulletStatus
 import org.beobma.classWarPlugin.status.list.FreikugelBulletStatus
@@ -30,7 +31,12 @@ import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
 // 밸런스 조정 상수
 private const val FREIKUGEL_RED_SKILL_COOLDOWN_SECONDS = 8
 
-class Freikugel : GameClass(), GameStatusHandler, WeaponInputHandler {
+class Freikugel : GameClass(), GameStatusHandler, WeaponInputHandler,
+    org.beobma.classWarPlugin.gameClass.firearm.BorrowableFirearm {
+    override var reloadDisabled = false
+    override var onMagazineEmpty: (() -> Unit)? = null
+    override val ammunition get() = bullets + if (magic) 1 else 0
+    override val reloadSkillIds = emptySet<String>()
     override val classId = "freikugel"
     override val name = "<gray>마탄의 사수"
     override val rank = Rank.A
@@ -50,11 +56,15 @@ class Freikugel : GameClass(), GameStatusHandler, WeaponInputHandler {
     private var firing = false
     private var nextShot = 0L
     private var reloadUntil = 0L
+    private var normalStatus: RevolverBulletStatus? = null
+    private var magicStatus: FreikugelBulletStatus? = null
 
     private fun syncAmmo() {
         val remaining = if (reloading) (reloadUntil - game.combatTick).coerceIn(0, 40).toInt() else 0
-        val normalChanged = playerData.getOrCreateStatus(playerData) { RevolverBulletStatus() }.synchronize(bullets, remaining)
-        val magicChanged = playerData.getOrCreateStatus(playerData) { FreikugelBulletStatus() }.synchronize(if (magic) 1 else 0, remaining)
+        val normal = normalStatus ?: RevolverBulletStatus().also { playerData.addStatus(it, playerData); normalStatus = it }
+        val special = magicStatus ?: FreikugelBulletStatus().also { playerData.addStatus(it, playerData); magicStatus = it }
+        val normalChanged = normal.synchronize(bullets, remaining)
+        val magicChanged = special.synchronize(if (magic) 1 else 0, remaining)
         if (normalChanged || magicChanged) playerData.updateStatusActionBar()
     }
 
@@ -65,6 +75,7 @@ class Freikugel : GameClass(), GameStatusHandler, WeaponInputHandler {
         syncAmmo()
         renderCylinder()
         if (bullets > 0 || magic || reloading) return
+        if (reloadDisabled) { if (!firing) onMagazineEmpty?.invoke(); return }
         reloading = true
         reloadUntil = game.combatTick + org.beobma.classWarPlugin.growth.GrowthScaling.cooldown(playerData, 40, classId)
         syncAmmo()

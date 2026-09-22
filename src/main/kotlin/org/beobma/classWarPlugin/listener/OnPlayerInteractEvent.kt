@@ -33,6 +33,7 @@ class OnPlayerInteractEvent : Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     fun onPlayerInteractEntity(event: PlayerInteractEntityEvent) {
+        if (org.beobma.classWarPlugin.domain.DomainManager.isLocked(event.player.uniqueId)) return
         val held = event.player.inventory.getItem(event.hand)
         if (org.beobma.classWarPlugin.growth.GrowthControls.useToken(event.player, held)) {
             event.isCancelled = true; return
@@ -60,6 +61,7 @@ class OnPlayerInteractEvent : Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     fun onPlayerInteract(event: PlayerInteractEvent) {
+        if (org.beobma.classWarPlugin.domain.DomainManager.isLocked(event.player.uniqueId)) return
         val held = event.hand?.let { event.player.inventory.getItem(it) }
         if (org.beobma.classWarPlugin.growth.GrowthControls.useToken(event.player, held,
                 event.action == Action.RIGHT_CLICK_AIR || event.action == Action.RIGHT_CLICK_BLOCK)) {

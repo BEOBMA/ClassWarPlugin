@@ -17,6 +17,7 @@ class Brightness : StatusAbnormality() {
         if (power >= 5) {
             entityData.addStatus(Snare(), casterData).applyStatus(duration = 2, powerSet = 1)
             remove()
+            org.beobma.classWarPlugin.gameClass.list.Referee.onBrightnessBurst(entityData)
             return
         }
         super.onPowerChanged()

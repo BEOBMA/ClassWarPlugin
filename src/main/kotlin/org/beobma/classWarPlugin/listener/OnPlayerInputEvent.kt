@@ -16,6 +16,7 @@ import org.beobma.classWarPlugin.game.CooperativeAction
 class OnPlayerInputEvent : Listener {
     @EventHandler
     fun onPlayerInput(event: PlayerInputEvent) {
+        if (org.beobma.classWarPlugin.domain.DomainManager.isLocked(event.player.uniqueId)) return
         val player = event.player
         if (!isGaming() && !PlayerTagManager.isTraining(player)) return
         val playerData = findGameForPlayer(player)?.playerDatas?.filterIsInstance<PlayerData>()

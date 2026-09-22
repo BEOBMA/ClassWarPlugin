@@ -116,7 +116,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
     }
 
     // 이 목록에 등록된 클래스만 실제 배정, 클래스 목록 및 훈련 선택에 노출된다.
-    // 심판자, 숨바꼭질, 공포, 백룸은 비활성화 대상으로 의도적으로 등록하지 않는다.
+    // 숨바꼭질, 공포, 백룸은 비활성화 대상으로 의도적으로 등록하지 않는다.
 
     private val miniMessageTagPattern = Regex("<[^>]+>")
 
@@ -780,7 +780,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
                     return
                 }
 
-                if (isPaused || MapTransferBorderManager.isExpanded(gameWorld)) {
+                if (isPaused || org.beobma.classWarPlugin.domain.DomainManager.isExpanded(gameWorld) || MapTransferBorderManager.isExpanded(gameWorld)) {
                     if (!borderPaused && shrinking) border.changeSize(border.size, 0L)
                     borderPaused = true
                     return
@@ -930,7 +930,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
                     cancel()
                     return
                 }
-                if (isPaused || MapTransferBorderManager.isExpanded(world)) return
+                if (isPaused || org.beobma.classWarPlugin.domain.DomainManager.isExpanded(world) || MapTransferBorderManager.isExpanded(world)) return
 
                 val progress = if (totalTicks == 0L) {
                     1.0
@@ -1651,7 +1651,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         Mathematician.clearSessions(listOf(player.uniqueId))
         Vampire.clearForms(listOf(player.uniqueId))
         PortalGun.clearForPlayers(listOf(player.uniqueId))
-        AreaDevelopment.clearDomains(listOf(player.uniqueId))
+        org.beobma.classWarPlugin.domain.DomainManager.clearDomains(listOf(player.uniqueId))
         if (!currentGame.disconnectedPlayers.add(player.uniqueId)) return
         AbilityTree.suspend(playerData.gameClasses.filter { it.isInjectedFor(playerData) })
 
@@ -1872,7 +1872,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         Referee.clearSessions(participantIds)
         Vampire.clearForms(participantIds)
         PortalGun.clearForPlayers(participantIds)
-        AreaDevelopment.clearDomains(participantIds)
+        org.beobma.classWarPlugin.domain.DomainManager.clearDomains(participantIds)
         DamageManager.clearAttributions(participantIds)
         CombatManager.clear(participantIds)
         clearDamageInvincibility(participantIds)
@@ -2152,7 +2152,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         Referee.clearSessions(listOf(uniqueId))
         Vampire.clearForms(listOf(uniqueId))
         PortalGun.clearForPlayers(listOf(uniqueId))
-        AreaDevelopment.clearDomains(listOf(uniqueId))
+        org.beobma.classWarPlugin.domain.DomainManager.clearDomains(listOf(uniqueId))
         trainingGame.tasks.toList().forEach { it.cancel() }
         TemporaryDisplayManager.clear(world, uniqueId)
         trainingGame.playerDatas.forEach { entityData ->

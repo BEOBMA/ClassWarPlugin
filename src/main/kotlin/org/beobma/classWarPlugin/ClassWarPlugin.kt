@@ -1,6 +1,7 @@
 package org.beobma.classWarPlugin
 
 import org.beobma.classWarPlugin.listener.OnMetronomeAttackEvent
+import org.beobma.classWarPlugin.listener.OnFirearmInputEvent
 
 import org.beobma.classWarPlugin.command.Command
 import org.beobma.classWarPlugin.info.Info
@@ -76,6 +77,7 @@ class ClassWarPlugin : JavaPlugin() {
 
     override fun onDisable() {
         statusActionBarTask?.cancel()
+        org.beobma.classWarPlugin.domain.DomainManager.shutdown()
         releaseUpdater.stop()
         GameManager.run {
             Info.game?.stop()
@@ -139,12 +141,14 @@ class ClassWarPlugin : JavaPlugin() {
         }
 
         server.pluginManager.registerEvents(command, this)
+        server.pluginManager.registerEvents(org.beobma.classWarPlugin.domain.DomainListener(), this)
         server.pluginManager.registerEvents(org.beobma.classWarPlugin.growth.GrowthListener(), this)
         server.pluginManager.registerEvents(OnInventoryClickEvent(), this)
         server.pluginManager.registerEvents(OnInventoryCloseEvent(), this)
         server.pluginManager.registerEvents(OnPlayerDeathEvent(), this)
         server.pluginManager.registerEvents(OnEntityDamageByEntityEvent(), this)
         server.pluginManager.registerEvents(OnMetronomeAttackEvent(), this)
+        server.pluginManager.registerEvents(OnFirearmInputEvent(), this)
         server.pluginManager.registerEvents(OnEntityDamageEvent(), this)
         server.pluginManager.registerEvents(OnEntityRegainHealthEvent(), this)
         server.pluginManager.registerEvents(OnEntityDeathEvent(), this)

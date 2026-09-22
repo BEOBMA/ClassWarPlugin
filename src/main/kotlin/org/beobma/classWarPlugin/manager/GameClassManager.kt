@@ -44,6 +44,17 @@ object GameClassManager {
             }
             if (viewer != null) ItemDescriptionManager.applyForPlayer(this, viewer, weapon.description, weapon.briefDescription,
                 growthClassId = this@toWeaponItemStack.classId)
+            val effectiveClass = (this@toWeaponItemStack as? org.beobma.classWarPlugin.gameClass.list.FirearmsMaster)?.activeFirearm ?: this@toWeaponItemStack
+            val firearm = effectiveClass as? org.beobma.classWarPlugin.gameClass.firearm.FirearmClass
+            if (firearm?.firearmProfile?.automatic == true) {
+                setData(io.papermc.paper.datacomponent.DataComponentTypes.CONSUMABLE,
+                    io.papermc.paper.datacomponent.item.Consumable.consumable().consumeSeconds(3600f)
+                        .animation(io.papermc.paper.datacomponent.item.consumable.ItemUseAnimation.NONE)
+                        .hasConsumeParticles(false).build())
+                setData(io.papermc.paper.datacomponent.DataComponentTypes.USE_EFFECTS,
+                    io.papermc.paper.datacomponent.item.UseEffects.useEffects().speedMultiplier(1f)
+                        .canSprint(true).interactVibrations(false).build())
+            }
         }
     }
 

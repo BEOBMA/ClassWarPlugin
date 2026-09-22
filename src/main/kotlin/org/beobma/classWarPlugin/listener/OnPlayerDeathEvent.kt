@@ -13,7 +13,7 @@ import org.bukkit.event.Listener
 import org.bukkit.event.entity.PlayerDeathEvent
 import org.beobma.classWarPlugin.gameClass.list.GraveRobber
 import org.beobma.classWarPlugin.gameClass.list.Hacker
-import org.beobma.classWarPlugin.gameClass.list.AreaDevelopment
+import org.beobma.classWarPlugin.domain.DomainManager
 import org.beobma.classWarPlugin.gameClass.list.Mathematician
 import org.beobma.classWarPlugin.gameClass.list.Vampire
 import org.beobma.classWarPlugin.gameClass.list.PortalGun
@@ -61,11 +61,10 @@ class OnPlayerDeathEvent : Listener{
         currentGame.growth?.playerDeath(player.uniqueId, killerId)
         Referee.recordMurder(currentGame, killerId, playerData)
         currentGame.recordPlayerKill(player.uniqueId, killerId)
-        AreaDevelopment.handlePlayerDeath(playerData, killerId)
         Levatain.handleKill(killerId)
         DeathNote.clearSessions(listOf(player.uniqueId))
         PortalGun.clearForPlayers(listOf(player.uniqueId))
-        AreaDevelopment.clearDomains(listOf(player.uniqueId))
+        org.beobma.classWarPlugin.domain.DomainManager.clearDomains(listOf(player.uniqueId))
         GraveRobber.recordDeath(playerData)
         val outcome = handleCombatDeath(playerData)
         rewardKiller(killerId, player.uniqueId, outcome)

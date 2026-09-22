@@ -44,12 +44,12 @@ data class GrowthProfile(val primary: GrowthStat, val secondary: GrowthStat,
             GrowthAxis.PHYSICAL_POWER to GrowthEffectRule(GrowthStat.STRENGTH, 0.6, 1.0),
         )
         private val intellect = setOf("abyssal-veil", "barrier", "back-room", "contractor", "death-note", "darkness",
-            "elementalist", "astronomer", "geometer", "grass", "area-development", "hacker", "hikikomori",
+            "elementalist", "astronomer", "geometer", "grass", "hacker", "hikikomori",
             "ice-wizard", "just-light", "jupiter", "land-wizard", "lightning-wizard", "light-wizard", "luna",
             "mathematician", "meteor", "neptune", "parasite", "pacifist", "pat-and-matt", "portal-gun", "pluto",
             "referee", "rainbow-bridge", "saturnus", "sol", "solar-system", "terra", "time-maniqulator", "tour",
             "uranus", "warlock", "writer", "watchmaker", "venus")
-        private val agile = setOf("agent", "assassin", "chameleon", "crossbow", "charger", "duelist", "feather",
+        private val agile = setOf("hunter", "sturmtruppe", "spezialeinheitsmitglied", "schwerekavallerie", "firearmsmaster", "agent", "assassin", "chameleon", "crossbow", "charger", "duelist", "feather",
             "freikugel", "ghost", "gun-blader", "hide-and-seek", "high-jumper", "mercurius", "metronome", "phantom", "pioneer",
             "refugees", "sagittarius", "sniper", "shy-person", "spider-man", "stalker", "swordplay", "trapper",
             "thunderclap-flash", "vampire", "warcorrespondent", "wounds-wind")

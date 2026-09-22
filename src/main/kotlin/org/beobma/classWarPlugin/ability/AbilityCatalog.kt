@@ -11,7 +11,6 @@ object AbilityCatalog {
         "abyssal-veil" to ::AbyssalVeil,
         "anchor" to ::Anchor,
         "agent" to ::Agent,
-        "area-development" to ::AreaDevelopment,
         "assassin" to ::Assassin,
         "astronomer" to ::Astronomer,
         "avenger" to ::Avenger,
@@ -109,6 +108,11 @@ object AbilityCatalog {
         "pioneer" to ::Pioneer,
         "writer" to ::Writer,
         "metronome" to ::Metronome,
+        "hunter" to ::Hunter,
+        "sturmtruppe" to ::Sturmtruppe,
+        "spezialeinheitsmitglied" to ::Spezialeinheitsmitglied,
+        "schwerekavallerie" to ::SchwereKavallerie,
+        "firearmsmaster" to ::FirearmsMaster,
     )
     private val enabledIds = listOf(
         "berserker", "sniper", "meteor", "time-maniqulator", "land-wizard",
@@ -117,7 +121,7 @@ object AbilityCatalog {
         "ice-wizard", "gun-blader", "watchmaker", "barrier", "darkness",
         "feather", "general-person", "grave-robber", "hacker", "spider-man",
         "trapper", "mathematician", "portal-gun", "tour", "pacifist",
-        "roulette", "area-development", "parasite", "chubby", "vampire",
+        "roulette", "parasite", "chubby", "vampire", "referee",
         "contractor", "levatain", "weapon-master", "death-note", "swordplay",
         "anchor", "avenger", "bull", "con-artist", "conflict",
         "damocles", "devastating-blow", "error", "exodia", "ghost",
@@ -130,6 +134,7 @@ object AbilityCatalog {
         "mercurius", "venus", "terra", "mars", "jupiter",
         "saturnus", "uranus", "neptune", "pluto",
         "crossbow", "freikugel", "warcorrespondent", "pioneer", "agent", "writer", "metronome",
+        "hunter", "sturmtruppe", "spezialeinheitsmitglied", "schwerekavallerie", "firearmsmaster",
     )
     fun create(id: String): GameClass = requireNotNull(factories[id]) { "Unknown class ID: $id" }.invoke()
     internal fun enabledClassIds(): List<String> = enabledIds.toList()

@@ -114,7 +114,10 @@ object PlayerManager {
         }
 
         val allAbilities = AbilityTree.nodes(assignedClasses, activeOnly = true)
+        val borrowedGuns = allAbilities.filterIsInstance<org.beobma.classWarPlugin.gameClass.list.FirearmsMaster>()
+            .map { it.activeFirearm }.toSet()
         allAbilities.filter { it !in assignedClasses && it.weapon !== org.beobma.classWarPlugin.gameClass.DefaultWeapon }
+            .filter { it !in borrowedGuns }
             .distinctBy { it.classId }.forEach { child ->
                 if (inventorySlots.hasNext()) player.inventory.setItem(inventorySlots.next(), child.toWeaponItemStack(player))
             }

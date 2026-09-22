@@ -188,6 +188,18 @@ enum class Keyword(
         "<yellow><bold>시간대</bold><gray>",
         "{keyword:TimePhase}: 시계공의 현재 시간대이며 남은 시간이 끝나면 다음 시간대로 변경된다.",
     ),
+    Area(
+        "<gold><bold>영역</bold><gray>",
+        "{keyword:Area}: 내부와 외부를 차단하며, 내부의 모든 플레이어에게 특정 규칙을 강제로 적용한다.",
+    ),
+    Distortion(
+        "<gold><bold>왜곡</bold><gray>",
+        "{keyword:Distortion}: 시간이 느려져 움직이는 속도, 화면을 돌리는 속도 등. 모든 행동에 최대 속도 제한이 생긴다.",
+    ),
+    Disability(
+        "<gold><bold>불구화</bold><gray>",
+        "{keyword:Disability}: 화면을 돌리는 것을 제외한 모든 행동을 할 수 없다.",
+    ),
     Invincibility(
         "<yellow><bold>무적</bold><gray>",
         "{keyword:Invincibility}: 어떠한 방법으로도 피해를 받지 않는다.",

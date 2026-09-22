@@ -45,6 +45,7 @@ object DamageManager {
      */
     fun process(context: DamageContext): Boolean {
         if (context.damage <= 0.0 || context.attacker.game.isPaused) return false
+        if (org.beobma.classWarPlugin.gameClass.list.Referee.blocksDamage(context.attacker.uniqueId, context.target.entity.uniqueId)) return false
         if (AbilityExecution.current?.isClosed == true && context.path != DamagePath.STATUS_EFFECT) return false
         if (AbilityTree.nodes(context.attacker.gameClasses, activeOnly = true).filterIsInstance<Parasite>().any { it.isParasitizing() }) return false
         if ((context.target as? PlayerData)?.findGameClass(Parasite::class.java)?.let { listOf(it) }

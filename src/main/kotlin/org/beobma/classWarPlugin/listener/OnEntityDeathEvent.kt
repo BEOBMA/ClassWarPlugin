@@ -1,6 +1,5 @@
 package org.beobma.classWarPlugin.listener
 
-import org.beobma.classWarPlugin.gameClass.list.AreaDevelopment
 import org.beobma.classWarPlugin.gameClass.list.Levatain
 import org.beobma.classWarPlugin.manager.DamageManager
 import org.bukkit.entity.Player
@@ -23,8 +22,6 @@ class OnEntityDeathEvent : Listener {
             }
         }
         val killerId = creditedKiller ?: return
-        val deathCenter = entity.boundingBox.center.toLocation(entity.world)
-        AreaDevelopment.handleEntityDeath(entity.uniqueId, deathCenter, killerId)
         Levatain.handleKill(killerId)
     }
 }

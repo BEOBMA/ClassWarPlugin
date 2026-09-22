@@ -31,6 +31,7 @@ import kotlin.math.cos
 
 /** 스킬 아이템 식별, 사용 검증과 공통 대상 탐색을 담당한다. */
 object SkillManager {
+    private val distortedCasts = mutableSetOf<UUID>()
     private val skillIdKey: NamespacedKey
         get() = NamespacedKey(ClassWarPlugin.instance, "skill-id")
     private val skillOwnerKey: NamespacedKey
@@ -57,9 +58,11 @@ object SkillManager {
     /**
      * 상태·침묵·쿨다운·이동 제한을 검사한 뒤 스킬 이벤트와 효과를 실행한다.
      *
-     * @return 효과가 실행되어 사용 요청이 최종 승인됐는지 여부
+     * @return 실행 또는 왜곡에 의한 지연 시전 요청이 승인됐는지 여부. 지연 시전은 실행 시 다시 검증한다.
      */
-    fun EntityData.use(skill: Skill, clickedItem: ItemStack): Boolean {
+    fun EntityData.use(skill: Skill, clickedItem: ItemStack): Boolean = useValidated(skill, clickedItem, false)
+
+    private fun EntityData.useValidated(skill: Skill, clickedItem: ItemStack, delayed: Boolean): Boolean {
         val playerData = this as? PlayerData ?: return false
         if (skill.abilityScope.playerData !== playerData || skill.abilityScope.isClosed ||
             skill.abilityScope.suspended || entityStatus.isDead || game.isPaused) return false
@@ -86,6 +89,17 @@ object SkillManager {
         if (skill is MovementSkill && playerData.hasStatus<Fix>()) {
             playerData.player.sendMiniMessage("<red><bold>[!] 고정 상태에서는 이동 스킬을 사용할 수 없습니다.")
             return false
+        }
+
+        if (skill is MovementSkill && org.beobma.classWarPlugin.domain.DomainManager.blocksMovementSkill(playerData.uniqueId)) return false
+        if (!delayed && org.beobma.classWarPlugin.domain.DomainManager.isDistorted(playerData.uniqueId)) {
+            if (!distortedCasts.add(playerData.uniqueId)) return false
+            val item = clickedItem.clone()
+            object : org.beobma.classWarPlugin.ability.AbilityRunnable(skill.abilityScope, cancelOnDisconnect = true) {
+                override fun run() { playerData.useValidated(skill, item, true) }
+                override fun onCancel() { distortedCasts.remove(playerData.uniqueId) }
+            }.runTaskLater(ClassWarPlugin.instance, 1L)
+            return true
         }
 
         val baseCooldownTicks = when (val cooldown = skill.cooldown) {

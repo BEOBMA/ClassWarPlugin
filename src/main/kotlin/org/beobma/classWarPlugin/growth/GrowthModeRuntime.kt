@@ -190,7 +190,7 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
         game.tasks.add(object : BukkitRunnable() {
             override fun run() {
                 if (closed || game.phase != GamePhase.RUNNING) { cancel(); return }
-                if (game.isPaused || MapTransferBorderManager.isExpanded(world)) {
+                if (game.isPaused || org.beobma.classWarPlugin.domain.DomainManager.isExpanded(world) || MapTransferBorderManager.isExpanded(world)) {
                     mobs.values.forEach { it.data.entity.setAI(false) }; return
                 }
                 tick()
