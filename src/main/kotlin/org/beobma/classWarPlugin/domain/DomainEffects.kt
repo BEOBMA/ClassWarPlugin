@@ -34,7 +34,7 @@ internal object DomainEffectGeometry {
 }
 
 /** Driven only by DomainSession: no independent timers or looping sounds can outlive the domain. */
-internal class DomainEffects(private val session: DomainSession) {
+internal class DomainEffects(private val session: DomainSession) : DomainPresentation {
     private val center get() = session.center
     // Keep the glow in front of the inner faces of the opaque, voxel-shaped shell.
     private val radius = session.definition.radius.toDouble() - 1.8
@@ -57,14 +57,14 @@ internal class DomainEffects(private val session: DomainSession) {
         }.forEach { it.playSound(it.location, sound, SoundCategory.PLAYERS, volume, pitch) }
     }
 
-    fun start() {
+    override fun start() {
         sound(Sound.BLOCK_BEACON_ACTIVATE, 0.65f, 0.55f)
         sound(Sound.BLOCK_END_PORTAL_FRAME_FILL, 0.7f, 0.65f)
         burst(center.clone().add(0.0, 0.4, 0.0), Particle.REVERSE_PORTAL, 55, 1.0, 0.08)
         dust(DomainEffectGeometry.ring(1.2, 0.15), gold)
     }
 
-    fun formation(progress: Double) {
+    override fun formation(progress: Double) {
         val tick = introductionTicks++
         if (tick % 2 != 0) return
         val p = progress.coerceIn(0.0, 1.0)
@@ -80,7 +80,14 @@ internal class DomainEffects(private val session: DomainSession) {
         }
     }
 
-    fun reveal(subtitle: Boolean) {
+    override fun reveal(subtitle: Boolean) {
+        val stay = java.time.Duration.ofMillis(session.definition.titleDurationMillis + 1000)
+        session.players().forEach { it.showTitle(net.kyori.adventure.title.Title.title(
+            net.kyori.adventure.text.Component.text("「영역전개」", net.kyori.adventure.text.format.NamedTextColor.LIGHT_PURPLE)
+                .decorate(net.kyori.adventure.text.format.TextDecoration.BOLD),
+            net.kyori.adventure.text.Component.text(if (subtitle) "「${session.definition.name}」" else "",
+                net.kyori.adventure.text.format.NamedTextColor.GOLD),
+            net.kyori.adventure.title.Title.Times.times(java.time.Duration.ZERO, stay, java.time.Duration.ZERO))) }
         if (subtitle) {
             sound(Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.8f, 1.25f)
             sound(Sound.BLOCK_NOTE_BLOCK_BELL, 0.6f, 0.75f)
@@ -93,13 +100,13 @@ internal class DomainEffects(private val session: DomainSession) {
         }
     }
 
-    fun activate() {
+    override fun activate() {
         sound(Sound.BLOCK_BEACON_POWER_SELECT, 0.55f, 1.4f)
         dust(DomainEffectGeometry.ring(radius * 0.6, 0.15), gold)
         burst(center.clone().add(0.0, radius * 0.8, 0.0), Particle.END_ROD, 24, 1.5, 0.015)
     }
 
-    fun sustain(tick: Int) {
+    override fun sustain(tick: Int) {
         if (tick % 4 != 0) return
         val phase = tick * 0.009
         dust(DomainEffectGeometry.ring(radius, 0.14, phase), violet)
@@ -113,13 +120,13 @@ internal class DomainEffects(private val session: DomainSession) {
         if (tick % 80 == 0) sound(Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 0.23f, 0.65f)
     }
 
-    fun beginDissolve() {
+    override fun beginDissolve() {
         sound(Sound.BLOCK_BEACON_DEACTIVATE, 0.65f, 0.6f)
         sound(Sound.BLOCK_AMETHYST_BLOCK_BREAK, 0.6f, 0.7f)
         burst(center.clone().add(0.0, 1.0, 0.0), Particle.REVERSE_PORTAL, 45, 2.0, 0.08)
     }
 
-    fun dissolve(tick: Int) {
+    override fun dissolve(tick: Int) {
         if (tick % 2 != 0) return
         val remaining = (1 - tick / 40.0).coerceIn(0.0, 1.0)
         dust(DomainEffectGeometry.ring(radius * remaining, 0.2, tick * 0.08), gold)

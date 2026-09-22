@@ -26,7 +26,7 @@ object DomainManager {
                 data, PlayerTagManager.isTraining(data.player)) ?: return false
         } else null
         val center = data.player.location.clone().apply { x = blockX + 0.5; y = blockY.toDouble(); z = blockZ + 0.5 }
-        if (center.y < center.world.minHeight + 2 || center.y + definition.radius + 2 >= center.world.maxHeight) return false
+        if (!DomainShell.fitsHeight(center.blockY, definition.radius, center.world.minHeight, center.world.maxHeight)) return false
         if (target != null && (target.player.world != center.world || target.player.location.y < center.y - 1 ||
                 target.player.location.distance(center) > definition.radius - 2)) return false
         val session = DomainSession(scope, definition, center, target)

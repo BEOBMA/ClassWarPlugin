@@ -3,7 +3,18 @@ package org.beobma.classWarPlugin.gameClass.referee
 import java.util.UUID
 
 enum class CrimeType(val label: String, val severity: Int) { ASSAULT("폭행", 2), MURDER("살인", 3) }
-enum class Plea { CONFESS, SELF_DEFENSE, DENY }
+enum class Plea {
+    CONFESS, SELF_DEFENSE, DENY;
+
+    companion object {
+        fun fromChat(input: String): Plea? = when (input.trim()) {
+            "인정", "1" -> CONFESS
+            "정당방위", "2" -> SELF_DEFENSE
+            "부인", "3" -> DENY
+            else -> null
+        }
+    }
+}
 data class CrimeRecord(val type: CrimeType, val offender: UUID, val victim: UUID,
     val victimName: String, val tick: Long, val damage: Double, val selfDefense: Boolean)
 data class Verdict(val severity: Int, val perjury: Boolean = false)

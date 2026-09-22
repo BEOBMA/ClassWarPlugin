@@ -22,12 +22,15 @@ data class DomainDefinition(
     val target: DomainTarget = DomainTarget.SURROUNDING,
     val targetRange: Double = radius.toDouble() - 2.0,
     val subtitleDelayMillis: Long = 600,
-    val titleDurationMillis: Long = 1800,
+    val titleDurationMillis: Long = 2600,
     val floor: Material = Material.DEEPSLATE_TILES,
     val interior: (Int) -> List<DomainBlock> = { emptyList() },
     val onStart: (DomainSession) -> Unit = {},
     val onTick: (DomainSession) -> Unit = {},
     val onEnd: (DomainSession) -> Unit = {},
+    val presentation: (DomainSession) -> DomainPresentation = { DomainEffects(it) },
+    /** Null leaves lighting unchanged; explicit LIGHT blocks are restored with the terrain. */
+    val interiorLightLevel: Int? = null,
 ) {
     init {
         require(name.isNotBlank())
@@ -35,6 +38,7 @@ data class DomainDefinition(
         require(durationTicks > 0 && targetRange.isFinite() && targetRange > 0)
         require(subtitleDelayMillis >= 0 && titleDurationMillis > subtitleDelayMillis)
         require(floor.isBlock && floor.isSolid)
+        require(interiorLightLevel == null || interiorLightLevel in 0..15)
     }
 }
 

@@ -4,6 +4,20 @@ import java.util.UUID
 import kotlin.test.*
 
 class CrimeLedgerTest {
+    @Test fun `chat accepts each advertised plea and its number with surrounding spaces`() {
+        for ((text, number, expected) in listOf(Triple("인정", "1", Plea.CONFESS),
+            Triple("정당방위", "2", Plea.SELF_DEFENSE), Triple("부인", "3", Plea.DENY))) {
+            assertEquals(expected, Plea.fromChat(text))
+            assertEquals(expected, Plea.fromChat(number))
+            assertEquals(expected, Plea.fromChat("  $text  "))
+        }
+    }
+
+    @Test fun `unrecognized chat cannot silently choose a plea`() {
+        for (text in listOf("", " ", "0", "4", "인정 부인", "정당방이", "/인정"))
+            assertNull(Plea.fromChat(text))
+    }
+
     private val attacker = UUID.randomUUID()
     private val victim = UUID.randomUUID()
 

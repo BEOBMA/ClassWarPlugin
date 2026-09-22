@@ -23,17 +23,11 @@ import org.beobma.classWarPlugin.status.list.*
 import org.beobma.classWarPlugin.util.DamageType
 import org.beobma.classWarPlugin.util.TargetType
 import org.bukkit.Bukkit
-import org.bukkit.Sound
-import org.bukkit.Particle
 import org.bukkit.entity.Player
 import org.bukkit.event.Listener
 import org.bukkit.event.EventHandler
 import org.bukkit.event.HandlerList
-import org.bukkit.event.inventory.InventoryClickEvent
-import org.bukkit.event.inventory.InventoryDragEvent
-import org.bukkit.inventory.ItemStack
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.title.Title
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
@@ -70,7 +64,7 @@ class Referee : GameClass(), OnHitHandler, ConfirmedHitHandler, GameEndHandler {
     private fun illuminate(target: EntityData, amount: Int) {
         if (game.combatTick < exhaustedUntil) return
         target.getOrCreateStatus(playerData) { Brightness() }.applyStatus(powerDelta = amount)
-        particles.spawn(target.entity.location, Particle.END_ROD, count = 12, spread = 0.4)
+        RefereeEffects.mark(target.entity.location)
     }
 
     private fun target(range: Double): EntityData? = playerData.shotLaserGetEntityData(range, TargetType.Enemy, false)
@@ -80,14 +74,14 @@ class Referee : GameClass(), OnHitHandler, ConfirmedHitHandler, GameEndHandler {
         val direction = enemy.entity.location.toVector().subtract(player.location.toVector()).setY(0.0)
         if (direction.lengthSquared() > 0.01) direction.normalize().multiply(0.55)
         player.velocity = direction.setY(0.55)
+        RefereeEffects.leap(player.location)
         object : AbilityRunnable(abilityScope) {
             override fun run() {
                 if (!enemy.entity.isValid || enemy.entityStatus.isDead || enemy.entity.world != player.world ||
                     player.location.distanceSquared(enemy.entity.location) > 36.0) return
                 enemy.damage(6.0, DamageType.Normal, playerData)
                 if (ledger.heaviest(enemy.entity.uniqueId) != null) illuminate(enemy, 2)
-                sounds.play(enemy.entity.location, Sound.BLOCK_ANVIL_LAND, pitch = 0.8f)
-                particles.spawn(enemy.entity.location, Particle.CRIT, count = 25, spread = 0.5)
+                RefereeEffects.strike(enemy.entity.location)
             }
         }.runTaskLater(ClassWarPlugin.instance, 8L)
         return true
@@ -99,8 +93,7 @@ class Referee : GameClass(), OnHitHandler, ConfirmedHitHandler, GameEndHandler {
         enemy.addStatus(WhenDamageIncreased(), playerData).applyStatus(duration = 10, powerSet = 20)
         indictments.entries.removeIf { it.value <= game.combatTick }
         if (ledger.heaviest(enemy.entity.uniqueId) != null) indictments[enemy.entity.uniqueId] = game.combatTick + 200
-        particles.spawn(enemy.entity.location.clone().add(0.0, 2.0, 0.0), Particle.END_ROD, count = 30, spread = 0.4)
-        sounds.play(enemy.entity.location, Sound.BLOCK_ENCHANTMENT_TABLE_USE, pitch = 0.8f)
+        RefereeEffects.indict(enemy.entity.location)
         return true
     }
 
@@ -114,7 +107,7 @@ class Referee : GameClass(), OnHitHandler, ConfirmedHitHandler, GameEndHandler {
         val charge = CrimeLedger.trialCharge(ledger.heaviest(defendant.uniqueId), training, defendant.uniqueId, game.combatTick)
         if (charge == null || trial != null || activeTrials.containsKey(defendant.uniqueId)) {
             player.sendMiniMessage("<red>기록된 죄가 있는 재판 가능한 플레이어를 바라보세요.")
-            sounds.play(player, Sound.BLOCK_NOTE_BLOCK_BASS, pitch = 0.5f)
+            RefereeEffects.rejected(player)
             return false
         }
         val murders = ledger.murders(defendant.uniqueId)
@@ -123,7 +116,10 @@ class Referee : GameClass(), OnHitHandler, ConfirmedHitHandler, GameEndHandler {
         var court: Trial? = null
         return DomainManager.expand(abilityScope, DomainDefinition(
             name = "대천칭", radius = 10, durationTicks = 400, target = DomainTarget.SURROUNDING,
-            interior = DomainInteriors::courtroom,
+            floor = Material.POLISHED_BLACKSTONE,
+            interiorLightLevel = 15,
+            interior = RefereeEffects::courtroom,
+            presentation = ::RefereeCourtEffects,
             onStart = { session ->
                 if (defendant.uniqueId !in session.participants || defendant.entityStatus.isDead || !defendant.player.isOnline) {
                     session.close()
@@ -159,7 +155,6 @@ class Referee : GameClass(), OnHitHandler, ConfirmedHitHandler, GameEndHandler {
     private inner class Trial(val session: DomainSession, val defendant: PlayerData,
         val charge: CrimeRecord, val murders: Int) : Listener, AutoCloseable {
         private val resources = ResourceScope()
-        private val menu = Bukkit.createInventory(null, 9, Component.text("대천칭 — 변론 선택"))
         private var plea: Plea? = null
         private var elapsed = 0
         var completed = false
@@ -178,33 +173,17 @@ class Referee : GameClass(), OnHitHandler, ConfirmedHitHandler, GameEndHandler {
             if (defendant.uniqueId != playerData.uniqueId)
                 session.relocate(player, session.center.clone().add(0.0, 0.0, -3.0).apply { yaw = 0f; pitch = 0f })
             session.relocate(defendant.player, session.center.clone().add(0.0, 0.0, 0.0).apply { yaw = 180f; pitch = 0f })
-            listOf(Triple(1, Material.PAPER, "죄를 인정한다 — 한 단계 경감"),
-                Triple(4, Material.SHIELD, "정당방위였다 — 선제 공격 기록 확인"),
-                Triple(7, Material.BARRIER, "내가 저지르지 않았다 — 위증 시 가중")).forEach { (slot, material, label) ->
-                menu.setItem(slot, ItemStack(material).apply { itemMeta = itemMeta.apply { displayName(Component.text(label)) } })
-            }
             Bukkit.getPluginManager().registerEvents(this, ClassWarPlugin.instance)
             resources.own { HandlerList.unregisterAll(this) }
-            resources.own { if (defendant.player.openInventory.topInventory === menu) defendant.player.closeInventory() }
             session.players().forEach {
                 it.sendMessage(Component.text("[죄목] ${charge.type.label} / 피해자: ${charge.victimName} / 피해: ${charge.damage} / 기록 틱: ${charge.tick}"))
-                it.sendMessage(Component.text("20초 내 변론. 미응답 시 원래 형량. 사형은 살인 2건 이상과 위증이 함께 있을 때만 적용됩니다."))
+                it.sendMessage(Component.text("20초 내 변론."))
             }
-            defendant.player.openInventory(menu)
-            defendant.player.sendMiniMessage("<gold>창을 닫았다면 채팅으로 인정 / 정당방위 / 부인을 입력하세요.")
+            defendant.player.sendMiniMessage("<gold>아래 단어 또는 번호를 입력하여 변론하십시오.")
+            defendant.player.sendMiniMessage("<yellow>1. 인정 <gray>— 죄를 인정하여 형량을 한 단계 낮춘다.")
+            defendant.player.sendMiniMessage("<yellow>2. 정당방위 <gray>— 상대가 먼저 공격했다는 증거로 반론한다.")
+            defendant.player.sendMiniMessage("<yellow>3. 부인 <gray>— 범행을 부인한다. 위증이면 형량이 가중된다.")
         }
-
-        @EventHandler
-        fun click(event: InventoryClickEvent) {
-            if (event.view.topInventory !== menu) return
-            event.isCancelled = true
-            if (event.whoClicked.uniqueId != defendant.uniqueId) return
-            val choice = when (event.rawSlot) { 1 -> Plea.CONFESS; 4 -> Plea.SELF_DEFENSE; 7 -> Plea.DENY; else -> return }
-            choose(choice)
-        }
-
-        @EventHandler
-        fun drag(event: InventoryDragEvent) { if (event.view.topInventory === menu) event.isCancelled = true }
 
         @EventHandler
         fun teleport(event: org.bukkit.event.player.PlayerTeleportEvent) {
@@ -219,28 +198,16 @@ class Referee : GameClass(), OnHitHandler, ConfirmedHitHandler, GameEndHandler {
         fun choose(choice: Plea) {
             if (plea != null || completed || game.isPaused) return
             plea = choice
-            defendant.player.sendMessage(Component.text("변론이 접수되었습니다. 판결을 기다리세요."))
+            RefereeEffects.plea(defendant.player.location)
+            defendant.player.sendMessage(Component.text("변론 완료."))
         }
 
         fun tick() {
-            if (elapsed % 20 == 0) {
-                val beam = session.center.clone().add(0.0, 4.0, -2.0)
-                particles.line(beam.clone().add(-2.0, 0.0, 0.0), beam.clone().add(2.0, 0.0, 0.0), Particle.END_ROD, spacing = 0.2)
-                for (side in listOf(-2.0, 2.0)) {
-                    val pan = beam.clone().add(side, -1.5, 0.0)
-                    particles.line(pan, beam.clone().add(side, 0.0, 0.0), Particle.END_ROD, spacing = 0.25)
-                    particles.circle(pan, Particle.END_ROD, 0.7, 16)
-                }
-                defendant.player.sendActionBar(Component.text("변론 시간: ${20 - elapsed / 20}초"))
-            }
+            RefereeEffects.trial(session, elapsed, plea != null)
             if (++elapsed != 400) return
             completed = true
             val verdict = CrimeLedger.verdict(charge, plea, murders)
-            val text = when (verdict.severity) { 0 -> "무죄"; 1 -> "경형"; 2 -> "중형"; 3 -> "중형 · 가중"; else -> "사형" }
-            session.players().forEach {
-                it.showTitle(Title.title(Component.text(if (verdict.perjury) "「위증 · 판결」" else "「판결」"), Component.text(text)))
-                it.playSound(it.location, Sound.BLOCK_ANVIL_LAND, 1f, 0.6f)
-            }
+            RefereeEffects.verdict(session, defendant.player.location, verdict)
         }
 
         fun punish() {
@@ -304,8 +271,8 @@ class Referee : GameClass(), OnHitHandler, ConfirmedHitHandler, GameEndHandler {
         }
         fun handleChatInput(player: Player, input: String) {
             val referee = activeTrials[player.uniqueId] ?: return
-            val plea = when (input.trim()) { "인정", "1" -> Plea.CONFESS; "정당방위", "2" -> Plea.SELF_DEFENSE; "부인", "3" -> Plea.DENY; else -> null }
-            if (plea == null) player.sendMiniMessage("<yellow>인정 / 정당방위 / 부인 중 하나를 입력하세요.")
+            val plea = Plea.fromChat(input)
+            if (plea == null) player.sendMiniMessage("<yellow>채팅으로 인정(1) / 정당방위(2) / 부인(3) 중 하나를 입력하세요.")
             else referee.trial?.choose(plea)
         }
         fun clearSessions(ids: Collection<UUID>) {
@@ -384,6 +351,7 @@ class Referee : GameClass(), OnHitHandler, ConfirmedHitHandler, GameEndHandler {
             "<gray>바라보는 플레이어는 피고인, 자신은 심판자가 되어 재판을 시작한다.",
             "<gray>피고인에게 기록된 죄 중, 가장 무거운 죄가 지정된다.",
             "<gray>피고인은 {keyword:Area}이 종료되기 전까지 죄를 인정하거나, 반론해야한다.",
+            "<gray>채팅으로 인정 / 정당방위 / 부인 중 하나를 입력하여 변론한다.",
             "<gray>반론 도중 위증이 섞인 주장을 했다면 위증의 죄를 물어 죄가 증가한다.",
             "<gray>죄를 인정했다면 죄가 경감된다.",
             "<gray>성공적으로 반론했다면 무죄가 된다.",

@@ -7,6 +7,7 @@ import org.bukkit.event.entity.*
 import org.bukkit.event.inventory.InventoryClickEvent
 import org.bukkit.event.inventory.InventoryDragEvent
 import org.bukkit.event.player.*
+import org.bukkit.event.world.StructureGrowEvent
 import kotlin.math.abs
 
 /** Enforce server-authoritative movement, including rotation and plugin/pearl teleports. */
@@ -57,9 +58,9 @@ class DomainListener : Listener {
     @EventHandler fun quit(e: PlayerQuitEvent) { DomainManager.sessions.toList().forEach { it.removePlayer(e.player.uniqueId) } }
 
     private fun protected(block: org.bukkit.block.Block) = DomainManager.sessions.any {
-        block.world == it.center.world && abs(block.x - it.center.blockX) <= it.definition.radius + 1 &&
-            abs(block.z - it.center.blockZ) <= it.definition.radius + 1 &&
-            block.y in (it.center.blockY - 2)..(it.center.blockY + it.definition.radius + 1)
+        block.world == it.center.world && abs(block.x - it.center.blockX) <= it.definition.radius + 3 &&
+            abs(block.z - it.center.blockZ) <= it.definition.radius + 3 &&
+            block.y in (it.center.blockY - it.definition.radius - 3)..(it.center.blockY + it.definition.radius + 3)
     }
     @EventHandler(ignoreCancelled = true) fun breakBlock(e: BlockBreakEvent) { if (protected(e.block) || DomainManager.isLocked(e.player.uniqueId)) e.isCancelled = true }
     @EventHandler(ignoreCancelled = true) fun place(e: BlockPlaceEvent) { if (protected(e.block) || DomainManager.isLocked(e.player.uniqueId)) e.isCancelled = true }
@@ -67,8 +68,14 @@ class DomainListener : Listener {
     @EventHandler(ignoreCancelled = true) fun blockExplode(e: BlockExplodeEvent) { e.blockList().removeIf(::protected) }
     @EventHandler(ignoreCancelled = true) fun fluid(e: BlockFromToEvent) { if (protected(e.block) || protected(e.toBlock)) e.isCancelled = true }
     @EventHandler(ignoreCancelled = true) fun piston(e: BlockPistonExtendEvent) { if (protected(e.block) || e.blocks.any { protected(it) || protected(it.getRelative(e.direction)) }) e.isCancelled = true }
-    @EventHandler(ignoreCancelled = true) fun retract(e: BlockPistonRetractEvent) { if (protected(e.block) || e.blocks.any(::protected)) e.isCancelled = true }
+    @EventHandler(ignoreCancelled = true) fun retract(e: BlockPistonRetractEvent) { if (protected(e.block) || e.blocks.any { protected(it) || protected(it.getRelative(e.direction)) }) e.isCancelled = true }
     @EventHandler(ignoreCancelled = true) fun entityBlock(e: EntityChangeBlockEvent) { if (protected(e.block)) e.isCancelled = true }
     @EventHandler(ignoreCancelled = true) fun physics(e: BlockPhysicsEvent) { if (protected(e.block)) e.isCancelled = true }
     @EventHandler(ignoreCancelled = true) fun burn(e: BlockBurnEvent) { if (protected(e.block)) e.isCancelled = true }
+    @EventHandler(ignoreCancelled = true) fun fade(e: BlockFadeEvent) { if (protected(e.block)) e.isCancelled = true }
+    @EventHandler(ignoreCancelled = true) fun ignite(e: BlockIgniteEvent) { if (protected(e.block)) e.isCancelled = true }
+    @EventHandler(ignoreCancelled = true) fun form(e: BlockFormEvent) { if (protected(e.block)) e.isCancelled = true }
+    @EventHandler(ignoreCancelled = true) fun growBlock(e: BlockGrowEvent) { if (protected(e.block)) e.isCancelled = true }
+    @EventHandler(ignoreCancelled = true) fun spread(e: BlockSpreadEvent) { if (protected(e.block) || protected(e.source)) e.isCancelled = true }
+    @EventHandler(ignoreCancelled = true) fun grow(e: StructureGrowEvent) { if (e.blocks.any { protected(it.block) }) e.isCancelled = true }
 }
