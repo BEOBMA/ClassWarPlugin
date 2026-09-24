@@ -4,13 +4,43 @@ import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.skill.Skill
 import org.bukkit.Material
-import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
 // 밸런스 조정 상수
-private const val DUMMY_RED_SKILL_COOLDOWN_SECONDS = 10
+private const val STREAMER_SHOP_COOLDOWN_SECONDS = 10
 
-class Streamer : GameClass() {
+class Streamer : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler,
+    org.beobma.classWarPlugin.gameClass.handler.OnHitHandler,
+    org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler,
+    org.beobma.classWarPlugin.gameClass.handler.EnvironmentalDamageHandler,
+    org.beobma.classWarPlugin.gameClass.handler.ConfirmedHitHandler {
+    private lateinit var runtime: org.beobma.classWarPlugin.gameClass.streamer.BroadcastRuntime
+    override fun onBattleStart() {
+        runtime = org.beobma.classWarPlugin.gameClass.streamer.BroadcastRuntime(abilityScope)
+        runtime.start()
+    }
+    override fun onGameTimePasses() { if (::runtime.isInitialized) runtime.tick() }
+    override fun onSuspend() { if (::runtime.isInitialized) runtime.hide() }
+    override fun onResume() { if (::runtime.isInitialized) runtime.show() }
+    override fun onAttackHit(context: org.beobma.classWarPlugin.damage.DamageContext) {
+        if (::runtime.isInitialized) context.addDamageDealtMultiplier(1.0 + runtime.bonus)
+    }
+    override fun whenHit(context: org.beobma.classWarPlugin.damage.DamageContext) {
+        if (::runtime.isInitialized) context.addDamageTakenMultiplier(1.0 - runtime.bonus / 2)
+    }
+    override fun onEnvironmentalDamage(event: org.bukkit.event.entity.EntityDamageEvent) {
+        if (!::runtime.isInitialized || event.isCancelled || event.damage <= 0) return
+        // Player melee/projectiles are already modified through DamageContext.
+        val damager = (event as? org.bukkit.event.entity.EntityDamageByEntityEvent)?.damager
+        if (damager is org.bukkit.entity.Player || (damager as? org.bukkit.entity.Projectile)?.shooter is org.bukkit.entity.Player) return
+        event.damage *= 1.0 - runtime.bonus / 2
+    }
+    override fun onConfirmedHit(context: org.beobma.classWarPlugin.damage.DamageContext) {
+        if (::runtime.isInitialized && context.target !== playerData) runtime.excite(false)
+    }
+    override fun onConfirmedDamageTaken(context: org.beobma.classWarPlugin.damage.DamageContext) {
+        if (::runtime.isInitialized) runtime.excite(true)
+    }
     override val classId = "streamer"
     override val name = "<gray>스트리머"
     override val rank = Rank.S
@@ -24,17 +54,17 @@ class Streamer : GameClass() {
         PassiveTwo()
     )
 
-    private class RedSkill : Skill() {
-        override val definitionId = "dummy/red-skill"
+    private inner class RedSkill : Skill() {
+        override val definitionId = "streamer/red-skill"
         override val name = "<bold>상점"
         override val description = listOf(
             "<gray>자신이 후원받은 금액을 소모하여 아이템을 구매할 수 있는 상점을 연다.",
             "<gray>상점에서는 무기, 갑옷, 물약, 불사의 토템과 같이 전투에 도움이 되는 아이템이 등장한다."
         )
-        override val cooldown = DUMMY_RED_SKILL_COOLDOWN_SECONDS
+        override val cooldown = STREAMER_SHOP_COOLDOWN_SECONDS
 
         override fun use(): Boolean {
-            return true
+            return runtime.openShop()
         }
     }
 
@@ -54,6 +84,7 @@ class Streamer : GameClass() {
             "<gray>관심을 끌만한 행동을 하면 시청자 수가 증가한다.",
             "",
             "<gray>시청자 수에 비례하여 자신이 받는 피해가 감소하며, 기본 공격으로 가하는 피해가 증가한다.",
+            "<gray>기본 공격 증가는 최대 100%, 받는 피해 감소는 최대 50%다.",
             )
     }
 
@@ -67,6 +98,7 @@ class Streamer : GameClass() {
             "<gray>시청자 수에 비례하여, 자신이 자극적인 행동을 할 때마다 일정 확률로 치즈를 후원받는다. (후원 금액은 시청자 수에 비례하여 증가한다)",
             "<gray>후원받은 치즈에 비례하여 자신 혹은 자신과 가장 가까운 적에게 아래 효과가 적용된다.",
             "<gray>자신과 적 중 어떤 대상에게 적용될지는 무작위로 결정된다.",
+            "<gray>한 번의 후원 금액이 충족하는 가장 높은 단계의 효과 하나를 적용한다.",
             "",
             "<gray>1,000 치즈: 머리 위에서 모루가 떨어진다.",
             "<gray>3,000 치즈: 핫바키에 있는 아이템의 순서가 무작위로 재배치된다.",

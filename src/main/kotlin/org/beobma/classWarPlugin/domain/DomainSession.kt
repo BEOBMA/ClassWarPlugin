@@ -252,7 +252,7 @@ class DomainSession internal constructor(
     private fun transformInterior() {
         val r = definition.radius
         val plan = definition.interior(r)
-        require(plan.size <= 8192 && plan.all { it.material.isBlock && it.y in 0 until r &&
+        require(plan.size <= 8192 && plan.all { it.material.isBlock && it.y in -1 until r &&
             it.x * it.x + it.y * it.y + it.z * it.z < (r - 1) * (r - 1) }) { "Interior exceeds domain bounds" }
         // Match the shell's voxel geometry exactly, including underground and edge cells.
         DomainShell.interiorCells(r).forEach { cell ->
@@ -271,7 +271,8 @@ class DomainSession internal constructor(
             if (players().none { abs(it.location.x - location.x) < 1.5 && abs(it.location.z - location.z) < 1.5 &&
                     location.y >= it.location.y - 0.5 && location.y <= it.location.y + 2 }) {
                 change(block.x, block.y, block.z, block.material)
-                interiorBlocks += location.block.location
+                // Floor inlays stay solid during dissolution and restore through the terrain ledger.
+                if (block.y >= 0) interiorBlocks += location.block.location
             }
         }
         fillInteriorLight()

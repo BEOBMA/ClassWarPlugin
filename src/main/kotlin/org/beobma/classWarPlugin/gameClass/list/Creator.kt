@@ -4,16 +4,21 @@ import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.skill.Skill
 import org.bukkit.Material
-import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
 // 밸런스 조정 상수
-private const val DUMMY_RED_SKILL_COOLDOWN_SECONDS = 1
-private const val DUMMY_ORANGE_SKILL_COOLDOWN_SECONDS = 2
-private const val DUMMY_YELLOW_SKILL_COOLDOWN_SECONDS = 0
-private const val DUMMY_DOMAIN_SKILL_COOLDOWN_SECONDS = 300
+private const val CREATOR_CHAIN_COOLDOWN_SECONDS = 1
+private const val CREATOR_SPEAR_COOLDOWN_SECONDS = 2
+private const val CREATOR_DESTROY_COOLDOWN_SECONDS = 0
+private const val CREATOR_DOMAIN_COOLDOWN_SECONDS = 300
 
-class Creator : GameClass() {
+class Creator : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler {
+    private lateinit var runtime: org.beobma.classWarPlugin.gameClass.creator.CreationRuntime
+    override fun onBattleStart() {
+        runtime = org.beobma.classWarPlugin.gameClass.creator.CreationRuntime(abilityScope)
+        runtime.start()
+    }
+    override fun onGameTimePasses() { if (::runtime.isInitialized) runtime.recoverMana() }
     override val classId = "creator"
     override val name = "<gray>창조자"
     override val rank = Rank.SPECIAL
@@ -21,6 +26,7 @@ class Creator : GameClass() {
     override var skills: List<Skill> = listOf(
         RedSkill(),
         OrangeSkill(),
+        YellowSkill(),
         DomainSkill()
     )
 
@@ -28,10 +34,11 @@ class Creator : GameClass() {
         Passive()
     )
 
-    private class RedSkill : Skill() {
-        override val definitionId = "dummy/red-skill"
+    private inner class RedSkill : Skill() {
+        override val definitionId = "creator/red-skill"
         override val name = "<bold>창조 - 사슬"
         override val description = listOf(
+            "{keyword:Mana}를 10 소모하여 발동한다.",
             "<gray>창조:",
             "<gray> 20칸 내의 바라보는 블럭에 사슬을 내려 꽂는다.",
             "<gray> 사슬의 너비는 1칸이며, 적중한 모든 적에게 2의 피해를 입힌다.",
@@ -41,15 +48,18 @@ class Creator : GameClass() {
             "<gray> 사슬로부터 2칸 내에 있는 모든 적의 4초간 이동 속도를 20% 감소시킨다.",
             "<gray> 위 효과가 5초 안에 5번 적용되면 대신 사슬에 묶여 2초간 {keyword:Snare} 상태가 된다."
         )
-        override val cooldown = DUMMY_RED_SKILL_COOLDOWN_SECONDS
+        override val cooldown = CREATOR_CHAIN_COOLDOWN_SECONDS
 
         override fun use(): Boolean {
+            val accelerated = runtime.isCreationSpaceActive
+            if (!runtime.chain()) return false
+            if (accelerated) multiplyCurrentCooldown(0.1)
             return true
         }
     }
 
-    private class OrangeSkill : Skill() {
-        override val definitionId = "dummy/orange-skill"
+    private inner class OrangeSkill : Skill() {
+        override val definitionId = "creator/orange-skill"
         override val name = "<bold>창조 - 빛의 창"
         override val description = listOf(
             "{keyword:Mana}를 30 소모하여 발동할 수 있다.",
@@ -62,45 +72,46 @@ class Creator : GameClass() {
             "<gray>파괴:",
             "<gray> 빛의 창이 폭발하여 3칸 이내의 적에게 2의 피해를 입힌다."
         )
-        override val cooldown = DUMMY_ORANGE_SKILL_COOLDOWN_SECONDS
+        override val cooldown = CREATOR_SPEAR_COOLDOWN_SECONDS
 
         override fun use(): Boolean {
-            return true
+            return runtime.spear()
         }
     }
 
-    private class YellowSkill : Skill() {
-        override val definitionId = "dummy/orange-skill"
+    private inner class YellowSkill : Skill() {
+        override val definitionId = "creator/yellow-skill"
         override val name = "<bold>파괴"
         override val description = listOf(
             "{keyword:Mana}를 50 소모하여 발동할 수 있다.",
             "",
             "<gray>자신의 스킬로 창조한 모든 창조물을 파괴한다."
         )
-        override val cooldown = DUMMY_YELLOW_SKILL_COOLDOWN_SECONDS
+        override val cooldown = CREATOR_DESTROY_COOLDOWN_SECONDS
 
         override fun use(): Boolean {
-            return true
+            return runtime.destroyAll()
         }
     }
 
-    private class DomainSkill : Skill() {
-        override val definitionId = "dummy/domain-skill"
+    private inner class DomainSkill : Skill() {
+        override val definitionId = "creator/domain-skill"
         override val name = "<bold>「영역 전개」-「창조 공간」"
         override val description = listOf(
-            "<gray>15초간 30칸 너비의 {keyword:Area}을 전개한다.",
+            "<gray>15초간 50칸 너비의 {keyword:Area}을 전개한다.",
             "",
             "{keyword:Area}에서 자신의 {keyword:Mana}는 무한대가 되며",
             "<gray>자신의 모든 창조 스킬은 반드시 적에게 적중한다.",
             "<gray>창조물은 파괴 스킬 없이도 1초 후 자동으로 파괴된다.",
+            "<gray>사슬 창조의 재사용 대기시간은 0.1초, 적중 피해는 0.2가 된다.",
             "",
             "<gray>영역 종료 후, 자신이 창조한 모든 창조물이 제거된다.",
             "<gray>또한 20초간 {keyword:Mana} 회복 속도가 대폭 감소한다."
         )
-        override val cooldown = DUMMY_DOMAIN_SKILL_COOLDOWN_SECONDS
+        override val cooldown = CREATOR_DOMAIN_COOLDOWN_SECONDS
 
         override fun use(): Boolean {
-            return true
+            return runtime.expand()
         }
     }
 
@@ -112,6 +123,8 @@ class Creator : GameClass() {
             "<gray>일부 스킬이 창조와 파괴로 나뉜다.",
             "<gray>창조는 {keyword:Mana}를 소모하여 창조물을 소환하고",
             "<gray>파괴는 다른 스킬을 사용하여 창조물을 파괴한다.",
+            "<gray>마나는 100으로 시작하며 초당 10 회복한다.",
+            "<gray>창조 공간 종료 후 20초간 초당 회복량이 1이 된다.",
         )
     }
 }

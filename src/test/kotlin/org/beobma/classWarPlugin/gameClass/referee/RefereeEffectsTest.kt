@@ -29,14 +29,21 @@ class RefereeEffectsTest {
         }
     }
 
-    @Test fun `new courtroom palette changes no collision coordinates or center aisle`() {
+    @Test fun `detailed courtroom fits bounds and keeps trial positions and aisle clear`() {
         for (radius in 4..24) {
-            val previous = DomainInteriors.courtroom(radius)
             val replacement = RefereeEffects.courtroom(radius)
-            assertEquals(previous.map { Triple(it.x, it.y, it.z) }, replacement.map { Triple(it.x, it.y, it.z) })
-            assertTrue(replacement.all { it.material in setOf(Material.POLISHED_DEEPSLATE, Material.CHISELED_POLISHED_BLACKSTONE) })
-            assertTrue(replacement.none { it.x == 0 && it.z == 0 })
+            assertTrue(replacement.size <= 8192)
+            assertEquals(replacement.size, replacement.map { Triple(it.x, it.y, it.z) }.distinct().size)
+            assertTrue(replacement.all { it.y in -1 until radius && it.x * it.x + it.y * it.y + it.z * it.z < (radius - 1) * (radius - 1) })
+            assertTrue(replacement.none { it.y in 0..2 && abs(it.x) <= 1 && it.z in -3..radius })
+            val positions = replacement.associateBy { Triple(it.x, it.y, it.z) }
+            replacement.forEach { assertEquals(it.material, positions[Triple(-it.x, it.y, it.z)]?.material) }
         }
+        val court = RefereeEffects.courtroom(10)
+        assertTrue(court.size > DomainInteriors.courtroom(10).size * 4)
+        assertTrue(court.any { it.y >= 6 })
+        assertTrue(court.any { it.material == Material.IRON_CHAIN })
+        assertTrue(court.any { it.y == -1 && it.material == Material.RED_NETHER_BRICKS })
     }
 
     @Test fun `stroke includes both endpoints without nonfinite coordinates`() {

@@ -99,7 +99,7 @@ object ClassBalanceManager {
 
     /** 등록 클래스의 배율을 불러오고 누락된 설정 항목을 기본값으로 생성한다. */
     fun load(config: FileConfiguration, classes: Collection<GameClass>) {
-        val uniqueClasses = classes.distinctBy { it.javaClass.name }
+        val uniqueClasses = classes.filterNot { org.beobma.classWarPlugin.ability.AbilityCatalog.isDeferred(it.classId) }.distinctBy { it.javaClass.name }
         descriptors = uniqueClasses.map { ClassDescriptor(it.javaClass.name, configKey(it)) }
 
         defaultModifiers = readModifiers(config, "$ROOT_PATH.defaults", ClassBalanceModifiers())
@@ -149,10 +149,11 @@ object ClassBalanceManager {
         modifiersByKey[configKey(gameClass)] ?: defaultModifiers
 
     /** 해당 클래스가 무작위 경기 배정 풀에 포함되는지 반환한다. */
-    fun isEnabled(gameClass: GameClass): Boolean = enabledByKey[configKey(gameClass)] ?: true
+    fun isEnabled(gameClass: GameClass): Boolean = !org.beobma.classWarPlugin.ability.AbilityCatalog.isDeferred(gameClass.classId) && (enabledByKey[configKey(gameClass)] ?: true)
 
     /** 무작위 경기 등장 여부를 전환하고 즉시 설정 파일에 저장한다. */
     fun toggleEnabled(gameClass: GameClass) {
+        if (org.beobma.classWarPlugin.ability.AbilityCatalog.isDeferred(gameClass.classId)) return
         val key = configKey(gameClass)
         val enabled = !isEnabled(gameClass)
         enabledByKey = enabledByKey.toMutableMap().apply { put(key, enabled) }
@@ -163,6 +164,7 @@ object ClassBalanceManager {
 
     /** [field]를 `0.1 * stepMultiplier`만큼 변경하고 즉시 설정 파일에 저장한다. */
     fun adjust(gameClass: GameClass, field: ClassBalanceField, increase: Boolean, stepMultiplier: Int) {
+        if (org.beobma.classWarPlugin.ability.AbilityCatalog.isDeferred(gameClass.classId)) return
         val key = configKey(gameClass)
         val current = modifiersByKey[key] ?: defaultModifiers
         val direction = if (increase) 1.0 else -1.0
@@ -176,6 +178,7 @@ object ClassBalanceManager {
 
     /** [gameClass]의 모든 배율을 현재 기본 배율로 되돌리고 저장한다. */
     fun reset(gameClass: GameClass) {
+        if (org.beobma.classWarPlugin.ability.AbilityCatalog.isDeferred(gameClass.classId)) return
         val key = configKey(gameClass)
         modifiersByKey = modifiersByKey.toMutableMap().apply { put(key, defaultModifiers) }
         val plugin = ClassWarPlugin.instance

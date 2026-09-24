@@ -81,7 +81,7 @@ class GrowthClassScalingTest {
         val ids = Files.walk(root).use { paths ->
             paths.filter { it.toString().endsWith(".kt") }.toList().flatMap {
                 pattern.findAll(Files.readString(it)).map { match -> match.groupValues[1] }.toList()
-            }.filter { it != "dummy" }.toSet()
+            }.filter { it != "dummy" && !org.beobma.classWarPlugin.ability.AbilityCatalog.isDeferred(it) }.toSet()
         }
         assertEquals(ids, GrowthClassCatalog.styles.keys)
         ids.forEach { id -> GrowthAxis.entries.forEach { axis ->

@@ -26,6 +26,7 @@ object GrowthClassCatalog {
         register(GrowthCombatStyle.ABILITY, "back-room charger contractor death-note devastating-blow elementalist geometer hacker hide-and-seek ice-wizard land-wizard lightning-wizard light-wizard mars meteor parasite pat-and-matt phantom portal-gun rainbow-bridge referee thunderclap-flash tour train trapper uranus warcorrespondent warlock watchmaker weapon-master wounds-wind")
         register(GrowthCombatStyle.SUMMON, "astronomer fear jupiter levatain sagittarius saturnus sol swordplay terrorist")
         register(GrowthCombatStyle.ABILITY, "hunter sturmtruppe spezialeinheitsmitglied schwerekavallerie firearmsmaster")
+        register(GrowthCombatStyle.ABILITY, "creator")
     }
     fun style(id: String) = styles[id] ?: GrowthCombatStyle.HYBRID
 

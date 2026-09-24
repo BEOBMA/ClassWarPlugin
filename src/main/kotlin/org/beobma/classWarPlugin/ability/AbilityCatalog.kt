@@ -7,6 +7,8 @@ import org.beobma.classWarPlugin.gameClass.list.dummy.Dummy
 
 /** Stable IDs are the persistence contract; constructor names remain an implementation detail. */
 object AbilityCatalog {
+    /** Parked implementations cannot be restored by configuration or direct factory requests. */
+    fun isDeferred(id: String): Boolean = id == "streamer"
     private val factories: Map<String, () -> GameClass> = mapOf(
         "abyssal-veil" to ::AbyssalVeil,
         "anchor" to ::Anchor,
@@ -113,6 +115,8 @@ object AbilityCatalog {
         "spezialeinheitsmitglied" to ::Spezialeinheitsmitglied,
         "schwerekavallerie" to ::SchwereKavallerie,
         "firearmsmaster" to ::FirearmsMaster,
+        "creator" to ::Creator,
+        "streamer" to ::Streamer,
     )
     private val enabledIds = listOf(
         "berserker", "sniper", "meteor", "time-maniqulator", "land-wizard",
@@ -135,8 +139,12 @@ object AbilityCatalog {
         "saturnus", "uranus", "neptune", "pluto",
         "crossbow", "freikugel", "warcorrespondent", "pioneer", "agent", "writer", "metronome",
         "hunter", "sturmtruppe", "spezialeinheitsmitglied", "schwerekavallerie", "firearmsmaster",
+        "creator",
     )
-    fun create(id: String): GameClass = requireNotNull(factories[id]) { "Unknown class ID: $id" }.invoke()
+    fun create(id: String): GameClass {
+        require(!isDeferred(id)) { "Deferred class: $id" }
+        return requireNotNull(factories[id]) { "Unknown class ID: $id" }.invoke()
+    }
     internal fun enabledClassIds(): List<String> = enabledIds.toList()
     fun enabledClasses(): List<GameClass> = enabledIds.map(::create)
 }

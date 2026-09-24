@@ -4,7 +4,6 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextDecoration
 import net.kyori.adventure.title.Title
-import org.beobma.classWarPlugin.domain.DomainInteriors
 import org.beobma.classWarPlugin.domain.DomainPresentation
 import org.beobma.classWarPlugin.domain.DomainSession
 import org.bukkit.*
@@ -120,9 +119,7 @@ internal object RefereeEffects {
         }
     }
 
-    fun courtroom(radius: Int) = DomainInteriors.courtroom(radius).map {
-        it.copy(material = if (it.material == Material.DARK_OAK_PLANKS) Material.POLISHED_DEEPSLATE else Material.CHISELED_POLISHED_BLACKSTONE)
-    }
+    fun courtroom(radius: Int) = CourtArchitecture.plan(radius)
 }
 
 /** Oppressive black-and-crimson ritual. All cues are finite and owned by the domain session. */

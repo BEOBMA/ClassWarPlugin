@@ -4,6 +4,13 @@ import org.beobma.classWarPlugin.keyword.Keyword
 import org.beobma.classWarPlugin.status.StatusAbnormality
 
 class Mana : StatusAbnormality() {
+    private val infiniteDisplays = mutableSetOf<Any>()
+    /** A scoped presentation lease; does not corrupt the shared numeric resource. */
+    fun displayInfinite(owner: Any): AutoCloseable {
+        infiniteDisplays += owner
+        return AutoCloseable { infiniteDisplays -= owner }
+    }
+    override fun actionBarText(): String = if (infiniteDisplays.isNotEmpty()) "$name: <light_purple>∞</light_purple>" else super.actionBarText()
     override val name: String = Keyword.Mana.string
     override val description: List<String> = listOf(
         Keyword.Mana.description ?: "",

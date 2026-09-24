@@ -34,7 +34,7 @@ data class DomainDefinition(
 ) {
     init {
         require(name.isNotBlank())
-        require(radius in 4..24) { "Domain radius must be between 4 and 24 blocks" }
+        require(radius in 4..25) { "Domain radius must be between 4 and 25 blocks" }
         require(durationTicks > 0 && targetRange.isFinite() && targetRange > 0)
         require(subtitleDelayMillis >= 0 && titleDurationMillis > subtitleDelayMillis)
         require(floor.isBlock && floor.isSolid)
