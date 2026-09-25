@@ -7,13 +7,13 @@ import org.beobma.classWarPlugin.status.StatusAbnormality
 import org.beobma.classWarPlugin.util.DamageType
 import org.bukkit.entity.LivingEntity
 
-/** Instant conversion of remaining status power and time into one status-damage hit. */
+/** Instant conversion of removed status power into one status-damage hit, independent of duration. */
 class Settlement : StatusAbnormality() {
     override val name get() = Keyword.Settlement.string
     override val description get() = listOf(
         Keyword.Settlement.requireDescription(),
-        "<gray>피해량: 제거한 수치 × 남은 초의 합. 무기한 상태는 1초로 계산한다.",
-        "<gray>화상은 실제 남은 연소 시간을 반영하며, 발동 후 결산은 사라진다.",
+        "<gray>피해량: 제거한 상태이상 수치의 합. 남은 지속 시간은 반영하지 않는다.",
+        "<gray>실제 연소만 있는 화상은 수치 1로 계산하며, 발동 후 결산은 사라진다.",
     )
     override val canRemove = true
     override val showPower = false
@@ -28,22 +28,21 @@ class Settlement : StatusAbnormality() {
             it is Bleeding || it is Burn || it is Brightness || it is Frostbite
         }
         val living = entity as? LivingEntity
-        val statusDamage = consumed.filterNot { it is Burn }.sumOf { contribution(it.power, it.duration) }
+        val statusDamage = consumed.filterNot { it is Burn }.sumOf { contribution(it.power) }
         // Fire ticks and Burn describe the same fire, so never count them twice.
-        val burnSeconds = maxOf(
-            (living?.fireTicks ?: 0).coerceAtLeast(0) / 20.0,
-            consumed.filterIsInstance<Burn>().maxOfOrNull { contribution(it.power, it.duration) } ?: 0.0,
-        )
+        val burnPower = burnContribution(living?.fireTicks ?: 0,
+            consumed.filterIsInstance<Burn>().maxOfOrNull { it.power } ?: 0)
         remove()
         consumed.forEach { it.remove() }
         if (living != null) living.fireTicks = 0
-        val total = statusDamage + burnSeconds
+        val total = statusDamage + burnPower
         if (total > 0.0) entityData.damage(total, DamageType.StatusAbnormality, casterData,
             appearance = DamageAppearance.SETTLEMENT)
     }
 
     companion object {
-        internal fun contribution(power: Int, seconds: Int?): Double =
-            power.coerceAtLeast(0).toDouble() * (seconds ?: 1).coerceAtLeast(0)
+        internal fun contribution(power: Int): Double = power.coerceAtLeast(0).toDouble()
+        internal fun burnContribution(fireTicks: Int, power: Int): Double =
+            maxOf(if (fireTicks > 0) 1.0 else 0.0, contribution(power))
     }
 }

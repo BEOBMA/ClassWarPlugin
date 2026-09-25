@@ -29,6 +29,7 @@ object DamageIndicatorManager {
         val originX: Double,
         val outlines: List<TextDisplay>,
         val slot: Int,
+        val priority: Int,
         var age: Int = 0,
     )
 
@@ -85,14 +86,22 @@ object DamageIndicatorManager {
 
     private fun render(entity: LivingEntity, damage: Double, enabled: Boolean, appearance: DamageAppearance, labelOnly: Boolean) {
         if (!enabled || !damage.isFinite() || (!labelOnly && damage <= 0.0) || entity.isDead || (entity is Player && !entity.isOnline)) return
-        // Separate simultaneous basic/status hits in camera-facing rows, bounded per target.
+        val priority = if (labelOnly || appearance == DamageAppearance.EXECUTION) 2
+            else if (appearance != DamageAppearance.NORMAL) 1 else 0
+        // Independent lanes: a burst of numeric damage cannot erase a resonance activation.
         val occupied = indicators.filter { it.ownerId == entity.uniqueId }
-        val slot = (0..2).firstOrNull { candidate -> occupied.none { it.slot == candidate } }
-            ?: occupied.first().let { oldest ->
+        val lane = IndicatorLayout.slots(priority)
+        val slot = lane.firstOrNull { candidate -> occupied.none { it.slot == candidate } }
+            ?: occupied.first { it.slot in lane }.let { oldest ->
                 removeDisplay(oldest)
                 indicators.remove(oldest)
                 oldest.slot
             }
+        // Keep the global entity cap, but never evict a higher-priority label for normal damage.
+        if (indicators.size >= 80) {
+            val victim = IndicatorLayout.eviction(indicators.map { it.priority }, priority) ?: return
+            removeDisplay(indicators.removeAt(victim))
+        }
         val spawnLocation = entity.location.clone().add(0.0, entity.height + 0.45, 0.0)
         val display = entity.world.spawnEntity(spawnLocation, EntityType.TEXT_DISPLAY) as TextDisplay
         display.text(miniMessage.deserialize(appearance.markup(damage, labelOnly = labelOnly)))
@@ -100,7 +109,8 @@ object DamageIndicatorManager {
         display.interpolationDuration = 1
         display.transformation = display.transformation.apply {
             scale.set(appearance.animatedScale(0))
-            translation.y = slot * 1.8f
+            translation.x = IndicatorLayout.x(slot)
+            translation.y = IndicatorLayout.y(slot)
         }
         display.billboard = Display.Billboard.CENTER
         display.isSeeThrough = appearance == DamageAppearance.NORMAL
@@ -126,8 +136,7 @@ object DamageIndicatorManager {
             }
         }
         // Upper bounds include the four outline layers: at most 400 display entities globally.
-        if (indicators.size >= 80) removeDisplay(indicators.removeAt(0))
-        indicators.add(Indicator(entity.uniqueId, display, appearance, spawnLocation.x, outlines, slot))
+        indicators.add(Indicator(entity.uniqueId, display, appearance, spawnLocation.x, outlines, slot, priority))
         ensureTickingTask()
     }
 
@@ -176,8 +185,9 @@ object DamageIndicatorManager {
                     layer.transformation = layer.transformation.apply { scale.set(indicator.appearance.animatedScale(indicator.age)) }
                 }
             }
-            if (indicator.age >= fadeStartTick) {
-                val fadeDuration = lifetimeTicks - fadeStartTick
+            val fadeStart = if (indicator.priority == 2) 20 else fadeStartTick
+            if (indicator.age >= fadeStart) {
+                val fadeDuration = lifetimeTicks - fadeStart
                 val remaining = lifetimeTicks - indicator.age
                 val opacity = (255.0 * remaining / fadeDuration).toInt().coerceIn(0, 255)
                 display.textOpacity = opacity.toByte()

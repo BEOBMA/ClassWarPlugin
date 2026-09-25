@@ -71,6 +71,8 @@ class ConstellationRuntime(private val scope: AbilityScope) : Listener {
         val registrations: MutableMap<Class<*>, AttackableObjectManager.Registration> = linkedMapOf(),
         var ringStarted: Long? = null)
     private val stars = mutableListOf<Star>()
+    private data class StarVolley(val origin: Location, val count: Int, var emitted: Int = 0)
+    private val volleys = ArrayDeque<StarVolley>()
     private val orbits = mutableMapOf<UUID, Orbit>()
 
     fun start() {
@@ -80,6 +82,7 @@ class ConstellationRuntime(private val scope: AbilityScope) : Listener {
             override fun run() {
                 clock++
                 if (challenge?.let { clock >= it.end } == true) finishChallenge(true)
+                tickVolley()
                 stars.toList().forEach(::tickStar)
                 orbits.values.toList().forEach(::tickOrbit)
                 ownedStatuses.removeIf { it.power <= 0 }
@@ -206,15 +209,26 @@ class ConstellationRuntime(private val scope: AbilityScope) : Listener {
         if (player.openInventory.topInventory === puzzle.inventory) player.closeInventory()
         puzzle.statuses.forEach { it.remove() }
         if (!fire || !player.isOnline || owner.entityStatus.isDead || scope.isClosed) return
-        val origin = player.location.clone()
-        val targets = enemies().filter { it.entity.location.distanceSquared(origin) <= 18*18 }
-        repeat(puzzle.order.count) { index ->
-            val angle = 2 * PI * index / puzzle.order.count
-            val point = origin.clone().add(cos(angle) * (4 + index%3), 0.0, sin(angle) * (4 + index%3))
-            val target = targets.minByOrNull { it.entity.location.distanceSquared(point) }
+        if (puzzle.order.count > 0) volleys.addLast(StarVolley(player.location.clone(), puzzle.order.count))
+        SoundApi.play(player.location, Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 0.8f, 0.7f)
+    }
+
+    /** One star per combat tick (50 ms at 20 TPS), including overlapping guidance casts. */
+    private fun tickVolley() {
+        while (volleys.isNotEmpty()) {
+            val volley = volleys.first()
+            if (volley.origin.world != player.world) { volleys.removeFirst(); continue }
+            val index = volley.emitted++
+            val angle = 2 * PI * index / volley.count
+            val point = volley.origin.clone().add(cos(angle) * (4 + index%3), 0.0, sin(angle) * (4 + index%3))
+            // Re-evaluate each shot: a target may have died or moved since the puzzle ended.
+            val target = enemies().filter { valid(it) && it.entity.location.distanceSquared(volley.origin) <= 18*18 }
+                .minByOrNull { it.entity.location.distanceSquared(point) }
             summon(point, target, weak = true)
+            SoundApi.play(volley.origin, Sound.BLOCK_NOTE_BLOCK_HAT, 0.22f, (1.3 + index%4*0.12).toFloat())
+            if (volley.emitted >= volley.count) volleys.removeFirst()
+            return
         }
-        SoundApi.play(origin, Sound.BLOCK_AMETHYST_BLOCK_RESONATE, 0.8f, 0.7f)
     }
 
     private fun display(at: Location, scale: Float): ItemDisplay = at.world.spawn(at, ItemDisplay::class.java).also {
@@ -357,7 +371,7 @@ class ConstellationRuntime(private val scope: AbilityScope) : Listener {
         return true
     }
 
-    private fun clearStars() { stars.toList().forEach { destroy(it) }; orbits.values.toList().forEach(::removeOrbit) }
+    private fun clearStars() { volleys.clear(); stars.toList().forEach { destroy(it) }; orbits.values.toList().forEach(::removeOrbit) }
     private fun clearStatuses() {
         ownedStatuses.toList().forEach { it.remove() }; ownedStatuses.clear()
         fires.values.forEach { fire ->

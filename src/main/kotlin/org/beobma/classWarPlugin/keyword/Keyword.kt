@@ -206,7 +206,7 @@ enum class Keyword(
     ),
     Settlement(
         "<#E06A38><bold>결산</bold><gray>",
-        "{keyword:Settlement}: 출혈, 화상, 광휘, 동상을 모두 제거하고 제거한 수치, 지속 시간에 비례하여 {keyword:AbnormalStatusDamage}를 입는다.",
+        "{keyword:Settlement}: 출혈, 화상, 광휘, 동상을 모두 제거하고 제거한 수치의 합만큼 {keyword:AbnormalStatusDamage}를 입는다.",
     ),
     Aftermath(
         "<#D9A12B><bold>여진</bold><gray>",
