@@ -88,8 +88,6 @@ class Constellations : GameClass(), org.beobma.classWarPlugin.gameClass.handler.
         }
     }
 
-    // 다른 영역 스킬과 달리, 땅이 존재하지 않으며 50칸 너비는 우주 배경임.
-    // 땅이 존재하지 않지만, 보이지 않는 배리어로 밟을 수 있으며, 이 떄문에 어느 각도에서나 별이 소환될 수 있음.
     private inner class DomainSkill : Skill() {
         override val definitionId = "constellations/domain"
         override val name = "<bold>「영역 전개」-「별이 빛나는 밤」"
