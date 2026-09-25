@@ -1,7 +1,7 @@
 package org.beobma.classWarPlugin.keyword
 
 enum class Keyword(
-    val string: String,
+    private val textMarkup: String,
     val description: String? = null,
     /** 간략 설명에서도 조작법·발동 조건 등 플레이에 필수적인 해설을 표시한다. */
     val showDescriptionInBrief: Boolean = false,
@@ -203,7 +203,22 @@ enum class Keyword(
     Invincibility(
         "<yellow><bold>무적</bold><gray>",
         "{keyword:Invincibility}: 어떠한 방법으로도 피해를 받지 않는다.",
+    ),
+    Settlement(
+        "<#E06A38><bold>결산</bold><gray>",
+        "{keyword:Settlement}: 출혈, 화상, 광휘, 동상을 모두 제거하고 제거한 수치, 지속 시간에 비례하여 {keyword:AbnormalStatusDamage}를 입는다.",
+    ),
+    Aftermath(
+        "<#D9A12B><bold>여진</bold><gray>",
+        "{keyword:Aftermath}: 10초간 유지되며 {keyword:Resonance} 혹은 {keyword:Aftermath}을 얻을 때마다 지속 시간이 초기화된다. 수치가 30에 도달하면 {keyword:Aftermath}을 제거하고 {keyword:Resonance}을 1 얻는다. {keyword:Resonance}이 3이면 {keyword:Aftermath}을 얻을 수 없다.",
+    ),
+    Resonance(
+        "<#A45BD4><bold>공명</bold><gray>",
+        "{keyword:Resonance}: 10초간 유지되며 {keyword:Resonance} 혹은 {keyword:Aftermath}을 얻을 때마다 지속 시간이 초기화된다. 특정 스킬로 소모되며 스킬이 강화된다. (최대 수치 3)",
     );
+
+    /** Missing resource-pack translations resolve to an empty string, including the spacing. */
+    val string: String get() = StatusIcon.markup(name) + textMarkup
 
     fun requireDescription(): String = requireNotNull(description) {
         "Keyword '$name'에 설명이 등록되지 않았습니다."
@@ -211,7 +226,7 @@ enum class Keyword(
 
     /** 명령어 검색과 탭 완성에 사용하는 서식 없는 게임 내 표시명. */
     val displayName: String
-        get() = miniMessageTag.replace(string, "")
+        get() = miniMessageTag.replace(textMarkup, "")
 
     companion object {
         private val miniMessageTag = "<[^>]+>".toRegex()

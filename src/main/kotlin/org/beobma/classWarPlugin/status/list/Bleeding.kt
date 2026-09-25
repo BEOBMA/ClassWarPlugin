@@ -30,7 +30,7 @@ class Bleeding : StatusAbnormality(), StatusOnHitHandler {
 
     override fun onAttackHit(context: DamageContext) {
         if (power <= 0) return
-        context.attacker.damage(power.toDouble(), DamageType.StatusAbnormality, casterData)
+        context.attacker.damage(power.toDouble(), DamageType.StatusAbnormality, casterData, appearance = org.beobma.classWarPlugin.damage.DamageAppearance.BLEEDING)
         AbilityTree.handlers(casterData.gameClasses, BleedingDamageHandler::class.java)
             .forEach { bound -> bound.call { it.onBleedingDamage(context.attacker, power) } }
         if (entityData.hasStatus<BleedingLock>()) return

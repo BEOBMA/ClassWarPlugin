@@ -14,7 +14,6 @@ import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.hasStatus
 import org.beobma.classWarPlugin.manager.SkillManager.getSkillId
 import org.beobma.classWarPlugin.manager.SkillManager.use
 import org.beobma.classWarPlugin.gameClass.list.Referee
-import org.beobma.classWarPlugin.gameClass.list.HideAndSeek
 import org.beobma.classWarPlugin.gameClass.list.Brave
 import org.beobma.classWarPlugin.gameClass.handler.WeaponInputHandler
 import org.beobma.classWarPlugin.gameClass.handler.SkillInputHandler
@@ -33,6 +32,7 @@ class OnPlayerInteractEvent : Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     fun onPlayerInteractEntity(event: PlayerInteractEntityEvent) {
+        if ("cw-afterglow-echo" in event.rightClicked.scoreboardTags) { event.isCancelled = true; return }
         if (org.beobma.classWarPlugin.domain.DomainManager.isLocked(event.player.uniqueId)) return
         val held = event.player.inventory.getItem(event.hand)
         if (org.beobma.classWarPlugin.growth.GrowthControls.useToken(event.player, held)) {
@@ -67,7 +67,6 @@ class OnPlayerInteractEvent : Listener {
                 event.action == Action.RIGHT_CLICK_AIR || event.action == Action.RIGHT_CLICK_BLOCK)) {
             event.isCancelled = true; return
         }
-        if (HideAndSeek.handleInteract(event)) return
         if (event.action == Action.RIGHT_CLICK_BLOCK && Referee.hasActiveTrial(event.player.uniqueId)) {
             event.isCancelled = true
             return

@@ -158,7 +158,7 @@ class CreationRuntime(private val scope: AbilityScope) {
         }
         c.age++
         val from = c.position.clone()
-        // Guaranteed hits follow the moving target and ignore terrain only inside creation space.
+        // Domain guidance follows moving targets. Chains always pass through terrain to their goal.
         val guided = c.attached?.takeIf { domain != null && it.isValid && !it.isDead && it.world == from.world }
         val goal = guided?.boundingBox?.center ?: if (c.chain) c.offset else null
         if (goal != null) {
@@ -168,8 +168,10 @@ class CreationRuntime(private val scope: AbilityScope) {
         }
         val length = c.direction.length()
         val ray = c.direction.clone().normalize()
-        val wall = if (guided == null) from.world.rayTraceBlocks(from, ray, length, FluidCollisionMode.NEVER, true) else null
+        val wall = if (!c.chain && guided == null) from.world.rayTraceBlocks(from, ray, length, FluidCollisionMode.NEVER, true) else null
         var distance = wall?.hitPosition?.distance(from.toVector()) ?: length
+        // The last chain segment ends at the selected point, including its damage sweep.
+        if (c.chain && goal != null) distance = minOf(distance, from.toVector().distance(goal))
         val hits = enemies(from.world).mapNotNull { enemy ->
             val point = CreationGeometry.contact(enemy.entity.boundingBox, from.toVector(), ray, distance, if (c.chain) 0.5 else 0.16)
             point?.let { Triple(enemy, it, it.distance(from.toVector())) }

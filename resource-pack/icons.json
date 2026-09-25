@@ -1,0 +1,101 @@
+{
+  "ResonanceMark": { "texture": "classwar:status/resonance_mark.png", "height": 9, "ascent": 8 },
+  "Settlement": { "texture": "classwar:status/settlement.png", "height": 9, "ascent": 8 },
+  "Aftermath": { "texture": "classwar:status/aftermath.png", "height": 9, "ascent": 8 },
+  "Resonance": { "texture": "classwar:status/resonance.png", "height": 9, "ascent": 8 },
+  "VariableRhythm": { "texture": "classwar:status/variablerhythm.png", "height": 9, "ascent": 8 },
+  "Writing": { "texture": "classwar:status/writing.png", "height": 9, "ascent": 8 },
+  "Caduceus": { "texture": "classwar:status/caduceus.png", "height": 9, "ascent": 8 },
+  "Directive": { "texture": "classwar:status/directive.png", "height": 9, "ascent": 8 },
+  "AgentDamageDealt": { "texture": "classwar:status/agentdamagedealt.png", "height": 9, "ascent": 8 },
+  "AgentDamageTaken": { "texture": "classwar:status/agentdamagetaken.png", "height": 9, "ascent": 8 },
+  "AgentHatchet": { "texture": "classwar:status/agenthatchet.png", "height": 9, "ascent": 8 },
+  "AgentStiletto": { "texture": "classwar:status/agentstiletto.png", "height": 9, "ascent": 8 },
+  "AgentBastard": { "texture": "classwar:status/agentbastard.png", "height": 9, "ascent": 8 },
+  "AgentRapier": { "texture": "classwar:status/agentrapier.png", "height": 9, "ascent": 8 },
+  "AgentHammer": { "texture": "classwar:status/agenthammer.png", "height": 9, "ascent": 8 },
+  "AgentGreatsword": { "texture": "classwar:status/agentgreatsword.png", "height": 9, "ascent": 8 },
+  "AgentLance": { "texture": "classwar:status/agentlance.png", "height": 9, "ascent": 8 },
+  "AgentWhip": { "texture": "classwar:status/agentwhip.png", "height": 9, "ascent": 8 },
+  "AgentScythe": { "texture": "classwar:status/agentscythe.png", "height": 9, "ascent": 8 },
+  "Arrow": { "texture": "classwar:status/arrow.png", "height": 9, "ascent": 8 },
+  "Bullet": {
+    "texture": "classwar:status/bullet.png",
+    "height": 9,
+    "ascent": 8
+  },
+  "Stealth": {
+    "texture": "classwar:status/stealth.png",
+    "height": 9,
+    "ascent": 8
+  },
+  "Burn": {
+    "texture": "classwar:status/burn.png",
+    "height": 9,
+    "ascent": 8
+  },
+  "Mana": {
+    "texture": "classwar:status/mana.png",
+    "height": 9,
+    "ascent": 8
+  },
+  "Vibration": {
+    "texture": "classwar:status/vibration.png",
+    "height": 9,
+    "ascent": 8
+  },
+  "TrueDamage": {
+    "texture": "classwar:status/truedamage.png",
+    "height": 9,
+    "ascent": 8
+  },
+  "VibrationExplosion": {
+    "texture": "classwar:status/vibrationexplosion.png",
+    "height": 9,
+    "ascent": 8
+  },
+  "Shield": {
+    "texture": "classwar:status/shield.png",
+    "height": 9,
+    "ascent": 8
+  },
+  "Bleeding": {
+    "texture": "classwar:status/bleeding.png",
+    "height": 9,
+    "ascent": 8
+  },
+  "Invalidity": { "texture": "classwar:status/invalidity.png", "height": 9, "ascent": 8 },
+  "AbnormalStatusDamage": { "texture": "classwar:status/abnormalstatusdamage.png", "height": 9, "ascent": 8 },
+  "Gravity": { "texture": "classwar:status/gravity.png", "height": 9, "ascent": 8 },
+  "Card": { "texture": "classwar:status/card.png", "height": 9, "ascent": 8 },
+  "Untargetability": { "texture": "classwar:status/untargetability.png", "height": 9, "ascent": 8 },
+  "Abyss": { "texture": "classwar:status/abyss.png", "height": 9, "ascent": 8 },
+  "Silence": { "texture": "classwar:status/silence.png", "height": 9, "ascent": 8 },
+  "Disarm": { "texture": "classwar:status/disarm.png", "height": 9, "ascent": 8 },
+  "RespiteHealth": { "texture": "classwar:status/respitehealth.png", "height": 9, "ascent": 8 },
+  "Execution": { "texture": "classwar:status/execution.png", "height": 9, "ascent": 8 },
+  "Electrocution": { "texture": "classwar:status/electrocution.png", "height": 9, "ascent": 8 },
+  "Stun": { "texture": "classwar:status/stun.png", "height": 9, "ascent": 8 },
+  "Snare": { "texture": "classwar:status/snare.png", "height": 9, "ascent": 8 },
+  "Brightness": { "texture": "classwar:status/brightness.png", "height": 9, "ascent": 8 },
+  "Radiation": { "texture": "classwar:status/radiation.png", "height": 9, "ascent": 8 },
+  "Enchantment": { "texture": "classwar:status/enchantment.png", "height": 9, "ascent": 8 },
+  "Charge": { "texture": "classwar:status/charge.png", "height": 9, "ascent": 8 },
+  "Fix": { "texture": "classwar:status/fix.png", "height": 9, "ascent": 8 },
+  "Frostbite": { "texture": "classwar:status/frostbite.png", "height": 9, "ascent": 8 },
+  "Freezing": { "texture": "classwar:status/freezing.png", "height": 9, "ascent": 8 },
+  "DimensionMarker": { "texture": "classwar:status/dimensionmarker.png", "height": 9, "ascent": 8 },
+  "Erosion": { "texture": "classwar:status/erosion.png", "height": 9, "ascent": 8 },
+  "FreikugelBullet": { "texture": "classwar:status/freikugelbullet.png", "height": 9, "ascent": 8 },
+  "AccelerationBullet": { "texture": "classwar:status/accelerationbullet.png", "height": 9, "ascent": 8 },
+  "Foresight": { "texture": "classwar:status/foresight.png", "height": 9, "ascent": 8 },
+  "Acceleration": { "texture": "classwar:status/acceleration.png", "height": 9, "ascent": 8 },
+  "Disposal": { "texture": "classwar:status/disposal.png", "height": 9, "ascent": 8 },
+  "PhotographyStack": { "texture": "classwar:status/photographystack.png", "height": 9, "ascent": 8 },
+  "Checkpoint": { "texture": "classwar:status/checkpoint.png", "height": 9, "ascent": 8 },
+  "TimePhase": { "texture": "classwar:status/timephase.png", "height": 9, "ascent": 8 },
+  "Area": { "texture": "classwar:status/area.png", "height": 9, "ascent": 8 },
+  "Distortion": { "texture": "classwar:status/distortion.png", "height": 9, "ascent": 8 },
+  "Disability": { "texture": "classwar:status/disability.png", "height": 9, "ascent": 8 },
+  "Invincibility": { "texture": "classwar:status/invincibility.png", "height": 9, "ascent": 8 }
+}

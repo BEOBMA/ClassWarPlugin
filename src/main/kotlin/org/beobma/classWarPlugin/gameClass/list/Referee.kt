@@ -229,6 +229,7 @@ class Referee : GameClass(), OnHitHandler, ConfirmedHitHandler, GameEndHandler {
                     val execution = DamageContext(playerData, defendant,
                         org.beobma.classWarPlugin.damage.DamagePath.SKILL, DamageType.True, defendant.player.health, bypassShield = true)
                     org.beobma.classWarPlugin.manager.DamageManager.recordSuccessfulDamage(execution)
+                    org.beobma.classWarPlugin.manager.DamageIndicatorManager.showExecution(defendant.player, game.settings.damageIndicatorsEnabled)
                     defendant.player.health = 0.0
                 }
             }

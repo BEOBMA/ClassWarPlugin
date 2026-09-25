@@ -30,7 +30,8 @@ class VibrationExplosion(private val repetitions: Int = 1) : StatusAbnormality()
         }
         val power = vibration.power
         repeat(repetitions.coerceIn(1, 2)) {
-            entityData.damage(power * 0.5, DamageType.StatusAbnormality, casterData)
+            entityData.damage(power * 0.5, DamageType.StatusAbnormality, casterData,
+                appearance = org.beobma.classWarPlugin.damage.DamageAppearance.VIBRATION)
         }
         vibration.remove()
         org.beobma.classWarPlugin.ability.AbilityTree.handlers(casterData.gameClasses,

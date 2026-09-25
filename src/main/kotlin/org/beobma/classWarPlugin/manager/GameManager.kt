@@ -1102,7 +1102,8 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         if (appliedDamage <= 0.0) return
         playerData.gameClasses.filterIsInstance<Grass>().forEach { it.suppressStealthFromDamage() }
         CombatManager.recordDamageTaken(playerData)
-        DamageIndicatorManager.show(player, appliedDamage, settings.damageIndicatorsEnabled)
+        DamageIndicatorManager.show(player, appliedDamage, settings.damageIndicatorsEnabled,
+            org.beobma.classWarPlugin.damage.DamageAppearance.FIXED)
         player.playHurtAnimation(0.0F)
         player.health = (player.health - appliedDamage).coerceAtLeast(0.0)
     }

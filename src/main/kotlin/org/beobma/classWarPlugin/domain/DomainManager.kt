@@ -46,9 +46,9 @@ object DomainManager {
         val player = org.bukkit.Bukkit.getPlayer(id) ?: return false
         val from = player.location
         val aimed = from.clone().add(from.direction.multiply(128.0))
-        return sessions.any { id in it.participants || it.crosses(from, aimed) }
+        return sessions.any { !it.isRestoringTerrain && (id in it.participants || it.crosses(from, aimed)) }
     }
-    fun blocksCrossing(id: UUID, from: Location, to: Location): Boolean = sessions.any {
+    fun blocksCrossing(id: UUID, from: Location, to: Location): Boolean = sessions.filterNot { it.isRestoringTerrain }.any {
         (id in it.participants && !it.contains(to)) ||
             (id !in it.participants && it.contains(to)) ||
             (id !in it.participants && it.crosses(from, to))

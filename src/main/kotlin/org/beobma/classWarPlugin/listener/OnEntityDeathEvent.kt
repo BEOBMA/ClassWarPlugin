@@ -12,6 +12,12 @@ class OnEntityDeathEvent : Listener {
     fun onEntityDeath(event: EntityDeathEvent) {
         val entity = event.entity
         if (entity is Player) return
+        if ("cw-afterglow-echo" in entity.scoreboardTags) {
+            event.drops.clear()
+            event.droppedExp = 0
+            DamageManager.consumeAttribution(entity)
+            return
+        }
 
         val attribution = DamageManager.consumeAttribution(entity)
         val creditedKiller = attribution?.attackerId ?: entity.killer?.uniqueId

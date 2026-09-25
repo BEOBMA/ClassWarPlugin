@@ -52,6 +52,10 @@ class DomainSession internal constructor(
     private var activeTicks = 0
     private var endTicks = -1
     private var closed = false
+    internal val isRestoringTerrain get() = closed || endTicks >= 0
+    private var restoreTask: BukkitTask? = null
+    private var originalBorderCenter = center.world.worldBorder.center.clone()
+    private var originalBorderSize = center.world.worldBorder.size
     internal var relocating: UUID? = null
     private var startedCombat = false
     private val effects = definition.presentation(this)
@@ -77,6 +81,8 @@ class DomainSession internal constructor(
         val border = center.world.worldBorder
         val borderSize = border.size
         val borderCenter = border.center.clone()
+        originalBorderCenter = borderCenter.clone()
+        originalBorderSize = borderSize
         border.changeSize(borderSize, 0L)
         val required = 2 * (max(abs(center.x - borderCenter.x), abs(center.z - borderCenter.z)) + definition.radius + 5)
         border.size = max(borderSize, required).coerceAtMost(border.maxSize)
@@ -314,13 +320,15 @@ class DomainSession internal constructor(
             melting.forEach { it.first.remove() }; melting.clear()
             val height = DomainShell.frontHeight(definition.radius, 1.0 - (endTicks - 20) / 20.0)
             val iterator = shell.iterator()
+            val restoreKeys = mutableListOf<Triple<Int, Int, Int>>()
             while (iterator.hasNext()) {
                 val point = iterator.next()
                 if (point.y - center.y < height) continue
                 val key = Triple(point.blockX, point.blockY, point.blockZ)
-                snapshots.restore(key)
+                restoreKeys += key
                 iterator.remove()
             }
+            restoreTerrain(restoreKeys)
         }
         if (endTicks >= 40) { finishedNormally = true; close() }
     }
@@ -330,6 +338,7 @@ class DomainSession internal constructor(
         try { player.teleport(location); player.velocity = Vector() } finally { relocating = null }
     }
     private fun enforceBoundary() {
+        if (isRestoringTerrain) return
         center.world.players.filter { it.uniqueId !in participants && contains(it.location) }.forEach { player ->
             val direction = player.location.toVector().subtract(center.toVector()).setY(0)
             if (direction.lengthSquared() < 0.01) direction.x = 1.0
@@ -350,20 +359,48 @@ class DomainSession internal constructor(
         // Cleanup stages are independent: one failed teleport or block update must not leak the border/locks.
         val cleanup = ResourceScope()
         cleanup.own { if (startedCombat) AbilityExecution.with(scope) { definition.onEnd(this) } }
-        cleanup.own { DomainManager.sessions.remove(this) }
         cleanup.own { resources.close() }
-        cleanup.own {
-            players().forEach { player ->
-                if (!player.location.block.isPassable || !player.location.clone().add(0.0, 1.0, 0.0).block.isPassable)
-                    originalPositions[player.uniqueId]?.let { relocate(player, it) }
-            }
-        }
-        snapshots.keys().forEach { key -> cleanup.own { snapshots.restore(key) } }
+        cleanup.own { restoreTerrain(snapshots.keys()) }
         melting.forEach { (display, _) -> cleanup.own { display.remove() } }
         cleanup.own { releaseIntroduction() }
         cleanup.own { task?.cancel(); ownerHandle?.forget() }
         runCatching { cleanup.close() }.onFailure {
             ClassWarPlugin.instance.logger.log(java.util.logging.Level.SEVERE, "영역 복원 중 오류", it)
+        }
+        finishRestoration()
+    }
+
+    /** Restore empty cells first; never put a solid/hazardous block inside a player's actual box. */
+    private fun restoreTerrain(keys: List<Triple<Int, Int, Int>>) {
+        val players = center.world.players.filter { !it.isDead && it.gameMode != GameMode.SPECTATOR }
+        fun occupied(state: BlockState) = DomainRestoreSafety.obstructs(state.type) && players.any {
+            it.isOnline && it.world == center.world && DomainRestoreSafety.overlaps(it.boundingBox, state.x, state.y, state.z)
+        }
+        val deferred = keys.filterNot { key -> snapshots.restoreIf(key) { !occupied(it) } }
+        if (deferred.isEmpty()) return
+        players.filter { player -> deferred.any { key ->
+            DomainRestoreSafety.overlaps(player.boundingBox, key.first, key.second, key.third)
+        } }.forEach { player ->
+            DomainRestoreSafety.findDestination(player, originalPositions[player.uniqueId],
+                originalBorderCenter, originalBorderSize, snapshots::peek)?.let { destination ->
+                relocate(player, destination)
+                player.fallDistance = 0f
+            }
+        }
+        // Recheck after teleport events: another plugin may cancel or redirect the relocation.
+        deferred.forEach { key -> snapshots.restoreIf(key) { !occupied(it) } }
+    }
+
+    private fun finishRestoration() {
+        if (snapshots.keys().isEmpty()) {
+            restoreTask?.cancel(); restoreTask = null
+            DomainManager.sessions.remove(this)
+        } else if (restoreTask == null && ClassWarPlugin.instance.isEnabled) {
+            restoreTask = Bukkit.getScheduler().runTaskTimer(ClassWarPlugin.instance, Runnable {
+                runCatching { restoreTerrain(snapshots.keys()); finishRestoration() }.onFailure {
+                    ClassWarPlugin.instance.logger.warning("영역 지형 복원 재시도 실패: ${it.message}")
+                }
+            }, 1L, 20L)
         }
     }
 }

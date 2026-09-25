@@ -85,6 +85,7 @@ class ClassWarPlugin : JavaPlugin() {
         }
         StealthVisibilityManager.showAll()
         DamageIndicatorManager.shutdown()
+        org.beobma.classWarPlugin.manager.ResonanceMarkManager.shutdown()
         AttackableObjectManager.shutdown()
         server.messenger.unregisterIncomingPluginChannel(this)
         loggerInfo("플러그인이 정상적으로 비활성화되었습니다.")
@@ -141,6 +142,7 @@ class ClassWarPlugin : JavaPlugin() {
         }
 
         server.pluginManager.registerEvents(command, this)
+        server.pluginManager.registerEvents(org.beobma.classWarPlugin.testing.StatusLaboratory, this)
         server.pluginManager.registerEvents(org.beobma.classWarPlugin.domain.DomainListener(), this)
         server.pluginManager.registerEvents(org.beobma.classWarPlugin.growth.GrowthListener(), this)
         server.pluginManager.registerEvents(OnInventoryClickEvent(), this)

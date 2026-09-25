@@ -224,6 +224,7 @@ object PlayerManager {
         damagePath: DamagePath? = null,
         armorIgnoreRatio: Double = 0.0,
         secondaryAttack: Boolean = false,
+        appearance: org.beobma.classWarPlugin.damage.DamageAppearance? = null,
     ) {
         if (damage <= 0.0) {
             return
@@ -249,7 +250,8 @@ object PlayerManager {
         if (damageResult.finalDamage <= 0.0) {
             return
         }
-        DamageIndicatorManager.show(player, damageResult.finalDamage, initGame.settings.damageIndicatorsEnabled)
+        DamageIndicatorManager.show(player, damageResult.finalDamage, initGame.settings.damageIndicatorsEnabled,
+            appearance ?: org.beobma.classWarPlugin.damage.DamageAppearance.resolve(damageType, path))
         player.playHurtAnimation(0.0f)
         if (PlayerTagManager.isTraining(player)) {
             DamageManager.notifyConfirmedHit(context)
@@ -285,10 +287,11 @@ object PlayerManager {
         damagePath: DamagePath? = null,
         armorIgnoreRatio: Double = 0.0,
         secondaryAttack: Boolean = false,
+        appearance: org.beobma.classWarPlugin.damage.DamageAppearance? = null,
     ) {
         when (this) {
             is PlayerData -> this.damage(
-                damage, damageType, damager, isInvincibilityTimeIgnore, bypassShield, damagePath, armorIgnoreRatio, secondaryAttack,
+                damage, damageType, damager, isInvincibilityTimeIgnore, bypassShield, damagePath, armorIgnoreRatio, secondaryAttack, appearance,
             )
             is DamageRedirectEntityData -> redirectDamage(
                 damage,
@@ -298,6 +301,7 @@ object PlayerManager {
                 bypassShield,
                 damagePath,
                 armorIgnoreRatio,
+                appearance,
             )
             is DummyEntityData -> {
                 if (damage <= 0.0) {
@@ -327,6 +331,8 @@ object PlayerManager {
                     return
                 }
                 val formattedDamage = String.format("%.2f", damageResult.finalDamage)
+                (entity as? LivingEntity)?.let { DamageIndicatorManager.show(it, damageResult.finalDamage, game.settings.damageIndicatorsEnabled,
+                    appearance ?: org.beobma.classWarPlugin.damage.DamageAppearance.resolve(damageType, path)) }
                 DamageManager.notifyConfirmedHit(context)
                 (entity as? LivingEntity)?.playHurtAnimation(0.0f)
                 damager.player.sendMiniMessage(
@@ -351,7 +357,8 @@ object PlayerManager {
                     context.damage, target, damageType, context.armorIgnoreRatio,
                 )
                 if (result.finalDamage <= 0.0) return
-                DamageIndicatorManager.show(target, result.finalDamage, game.settings.damageIndicatorsEnabled)
+                DamageIndicatorManager.show(target, result.finalDamage, game.settings.damageIndicatorsEnabled,
+                    appearance ?: org.beobma.classWarPlugin.damage.DamageAppearance.resolve(damageType, path))
                 target.playHurtAnimation(0.0f)
                 DamageManager.recordSuccessfulDamage(context)
                 target.health = (target.health - result.finalDamage).coerceAtLeast(0.0)

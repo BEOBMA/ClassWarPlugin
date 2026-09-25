@@ -33,6 +33,7 @@ abstract class StatusAbnormality {
     var effectSource: AbilityScope? = null
         private set
     private val owners = mutableSetOf<AbilityScope>()
+    private var applicationNotified = false
 
     /** Shared self resources remain attached until the last using class is removed. */
     fun retain(scope: AbilityScope) {
@@ -101,17 +102,28 @@ abstract class StatusAbnormality {
             power = maxPower
         }
         onPowerChanged()
+        if (amount > 0) notifyApplication()
     }
 
     /** 현재 세기를 [amount]로 교체하고 [maxPower]가 있으면 상한을 적용한다. */
     open fun updatePower(amount: Int) {
         if (applicationBlocked) return
+        val previousPower = power
         val maxPower = effectiveMaxPower()
         power = amount
         if (maxPower != null && power > maxPower) {
             power = maxPower
         }
         onPowerChanged()
+        if (amount > previousPower || !applicationNotified) notifyApplication()
+    }
+
+    private fun notifyApplication() {
+        if (power <= 0 || this !in entityData.statusAbnormalitys) return
+        applicationNotified = true
+        org.beobma.classWarPlugin.ability.AbilityTree.handlers(casterData.gameClasses,
+            org.beobma.classWarPlugin.gameClass.handler.StatusApplicationHandler::class.java)
+            .forEach { bound -> bound.call { it.onStatusApplied(entityData, this) } }
     }
 
     /** 현재 세기에서 [amount]를 빼며 결과를 `0` 이상으로 제한한다. */
@@ -188,6 +200,7 @@ abstract class StatusAbnormality {
         }
 
         refreshDurationTask()
+        if (!applicationNotified) notifyApplication()
         notifyStatusChanged()
     }
 

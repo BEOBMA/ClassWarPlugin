@@ -201,6 +201,12 @@ class Command : Listener, CommandExecutor, TabCompleter {
         }
         if (!requireOperator(sender)) return true
         return when (args.getOrNull(1)?.lowercase(Locale.ROOT)) {
+            "status" -> {
+                val player = sender as? Player
+                if (player == null) sender.sendWarningMessage("플레이어만 상태이상 실험실을 사용할 수 있습니다.")
+                else org.beobma.classWarPlugin.testing.StatusLaboratory.command(player,args.drop(2))
+                true
+            }
             "start" -> {
                 val modeTokens = args.drop(2)
                 val modifiers = mutableSetOf<MatchModifier>()
@@ -227,7 +233,7 @@ class Command : Listener, CommandExecutor, TabCompleter {
                 true
             }
             else -> {
-                sender.sendWarningMessage("사용법: /cw test <start [growth] [dual] [tail] [team] [cooperative]|stop>")
+                sender.sendWarningMessage("사용법: /cw test <start [모드]|stop|status [수치] [초]|status clear>")
                 true
             }
         }
@@ -291,6 +297,7 @@ class Command : Listener, CommandExecutor, TabCompleter {
         ) + if (sender.isOp && testCommandsEnabled()) listOf(
             "<dark_gray>/cw test start [growth] [dual] [tail] [team] [cooperative] <gray>- 제한 없이 테스트 게임을 시작합니다.",
             "<dark_gray>/cw test stop <gray>- 게임을 즉시 강제 종료합니다.",
+            "<dark_gray>/cw test status [수치] [초] <gray>- 상태이상 아이템 실험실을 엽니다. clear로 초기화합니다.",
         ) else emptyList()
         lines.forEach { sender.sendMessage(miniMessage.deserialize(it)) }
     }
@@ -331,10 +338,11 @@ class Command : Listener, CommandExecutor, TabCompleter {
                 "assign", "give", "remove", "take" -> Bukkit.getOnlinePlayers().map(Player::getName)
                 "abilities", "ability" -> if (sender.isOp) Bukkit.getOnlinePlayers().map(Player::getName) else emptyList()
                 "keyword", "keywords", "키워드" -> Keyword.describedEntries.map(Keyword::displayName)
-                "test" -> if (sender.isOp && testCommandsEnabled()) listOf("start", "stop") else emptyList()
+                "test" -> if (sender.isOp && testCommandsEnabled()) listOf("start", "stop", "status") else emptyList()
                 else -> emptyList()
             }.filter { it.startsWith(args[1], ignoreCase = true) }
             3 -> when (args[0].lowercase(Locale.ROOT)) {
+                "test" -> if(sender.isOp && testCommandsEnabled() && args[1].equals("status",true)) listOf("clear","1","10","20","100") else emptyList()
                 "assign", "give" -> abilityClassSuggestions()
                 "remove", "take" -> {
                     val target = Bukkit.getPlayerExact(args[1])

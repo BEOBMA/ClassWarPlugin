@@ -130,7 +130,8 @@ class Reverse : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
             val living = target.entity as? LivingEntity ?: return false
             val applied = amount.coerceAtMost(living.health)
             if (applied <= 0.0) return true
-            DamageIndicatorManager.show(living, applied, target.game.settings.damageIndicatorsEnabled)
+            DamageIndicatorManager.show(living, applied, target.game.settings.damageIndicatorsEnabled,
+                org.beobma.classWarPlugin.damage.DamageAppearance.REVERSAL)
             living.playHurtAnimation(0.0f)
             living.health = (living.health - applied).coerceAtLeast(0.0)
             ParticleApi.spawn(living.boundingBox.center.toLocation(living.world), Particle.DAMAGE_INDICATOR,

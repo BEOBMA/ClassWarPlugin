@@ -107,7 +107,7 @@ class OnEntityDamageEvent : Listener {
         if (finalDamage > 0.0) {
             CombatManager.recordDamageTaken(playerData)
             player.playHurtAnimation(0.0f)
-            DamageIndicatorManager.show(player, finalDamage, game.settings.damageIndicatorsEnabled)
+            DamageIndicatorManager.show(player, finalDamage, game.settings.damageIndicatorsEnabled, DamageIndicatorManager.appearanceFor(event))
             val formattedDamage = String.format("%.2f", finalDamage)
             player.sendMiniMessage("<red>받은 피해 정보 - <gray>피해량: <gold><bold>$formattedDamage</bold></gold>")
         }

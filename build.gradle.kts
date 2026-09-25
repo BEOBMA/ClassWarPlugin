@@ -6,6 +6,7 @@ plugins {
 }
 
 group = "org.beobma"
+apply(from = "gradle/status-icons.gradle.kts")
 version = "1.0.8"
 
 repositories {
@@ -32,6 +33,7 @@ kotlin {
 }
 
 tasks.shadowJar {
+    dependsOn("statusIconPack")
     relocate("kotlin", "org.beobma.classWarPlugin.libs.kotlin")
     relocate("com.google.gson", "org.beobma.classWarPlugin.libs.gson")
 }
@@ -76,7 +78,7 @@ val verifyShadowJarContents = tasks.register("verifyShadowJarContents") {
 }
 
 tasks.build {
-    dependsOn(verifyShadowJarContents)
+    dependsOn(verifyShadowJarContents, "statusIconPack")
 }
 
 tasks.processResources {

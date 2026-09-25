@@ -71,6 +71,7 @@ class Hero : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
             updateStressStatus()
             particles.spawn(player, Particle.SOUL_FIRE_FLAME, count = 70, spread = 0.8, speed = 0.15)
             sounds.play(player, Sound.ENTITY_WITHER_DEATH, volume = 0.8f, pitch = 0.55f)
+            org.beobma.classWarPlugin.manager.DamageIndicatorManager.showExecution(player, game.settings.damageIndicatorsEnabled)
             player.health = 0.0
             return true
         }

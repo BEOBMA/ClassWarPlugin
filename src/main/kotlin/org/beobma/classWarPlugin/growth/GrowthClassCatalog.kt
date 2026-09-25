@@ -23,10 +23,12 @@ object GrowthClassCatalog {
         }
         register(GrowthCombatStyle.BASIC, "agent assassin avenger berserker blacksmith brave con-artist crossbow damocles darkness dwarf error exodia feather general-person ghost grass hero high-jumper just-light knight lucky-one mercurius metronome neptune peanuts refugees roulette shy-person stalker tonic train-carriage writer")
         register(GrowthCombatStyle.HYBRID, "abyssal-veil anchor barrier bull chameleon chubby conflict duelist freikugel gambler grave-robber gun-blader hikikomori luna mathematician pacifist pioneer pluto reverse sniper solar-system spider-man terra time-maniqulator vampire venus")
-        register(GrowthCombatStyle.ABILITY, "back-room charger contractor death-note devastating-blow elementalist geometer hacker hide-and-seek ice-wizard land-wizard lightning-wizard light-wizard mars meteor parasite pat-and-matt phantom portal-gun rainbow-bridge referee thunderclap-flash tour train trapper uranus warcorrespondent warlock watchmaker weapon-master wounds-wind")
+        register(GrowthCombatStyle.ABILITY, "back-room charger contractor death-note devastating-blow elementalist geometer hacker ice-wizard land-wizard lightning-wizard light-wizard mars meteor parasite pat-and-matt phantom portal-gun rainbow-bridge referee thunderclap-flash tour train trapper uranus warcorrespondent warlock watchmaker weapon-master wounds-wind")
         register(GrowthCombatStyle.SUMMON, "astronomer fear jupiter levatain sagittarius saturnus sol swordplay terrorist")
         register(GrowthCombatStyle.ABILITY, "hunter sturmtruppe spezialeinheitsmitglied schwerekavallerie firearmsmaster")
         register(GrowthCombatStyle.ABILITY, "creator")
+        register(GrowthCombatStyle.HYBRID, "afterglow")
+        register(GrowthCombatStyle.SUMMON, "constellations")
     }
     fun style(id: String) = styles[id] ?: GrowthCombatStyle.HYBRID
 

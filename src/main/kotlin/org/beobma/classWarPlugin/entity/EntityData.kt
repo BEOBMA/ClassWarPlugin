@@ -35,5 +35,6 @@ interface DamageRedirectEntityData {
         bypassShield: Boolean,
         damagePath: DamagePath?,
         armorIgnoreRatio: Double,
+        appearance: org.beobma.classWarPlugin.damage.DamageAppearance? = null,
     )
 }

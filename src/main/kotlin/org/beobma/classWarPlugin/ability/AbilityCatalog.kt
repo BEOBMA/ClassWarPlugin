@@ -11,6 +11,8 @@ object AbilityCatalog {
     fun isDeferred(id: String): Boolean = id == "streamer"
     private val factories: Map<String, () -> GameClass> = mapOf(
         "abyssal-veil" to ::AbyssalVeil,
+        "afterglow" to ::Afterglow,
+        "constellations" to ::Constellations,
         "anchor" to ::Anchor,
         "agent" to ::Agent,
         "assassin" to ::Assassin,
@@ -49,7 +51,6 @@ object AbilityCatalog {
         "gun-blader" to ::GunBlader,
         "hacker" to ::Hacker,
         "hero" to ::Hero,
-        "hide-and-seek" to ::HideAndSeek,
         "high-jumper" to ::HighJumper,
         "hikikomori" to ::Hikikomori,
         "ice-wizard" to ::IceWizard,
@@ -139,7 +140,7 @@ object AbilityCatalog {
         "saturnus", "uranus", "neptune", "pluto",
         "crossbow", "freikugel", "warcorrespondent", "pioneer", "agent", "writer", "metronome",
         "hunter", "sturmtruppe", "spezialeinheitsmitglied", "schwerekavallerie", "firearmsmaster",
-        "creator",
+        "creator", "afterglow", "constellations",
     )
     fun create(id: String): GameClass {
         require(!isDeferred(id)) { "Deferred class: $id" }

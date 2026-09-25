@@ -93,6 +93,7 @@ class Damocles : GameClass(), GameStatusHandler {
                 particles.spawn(player, Particle.FLASH, count = 2)
                 particles.spawn(player, Particle.SWEEP_ATTACK, count = 16, spread = 0.6, speed = 0.08)
                 sounds.play(player, Sound.ENTITY_WITHER_BREAK_BLOCK, volume = 1.0f, pitch = 0.52f)
+                org.beobma.classWarPlugin.manager.DamageIndicatorManager.showExecution(player, game.settings.damageIndicatorsEnabled)
                 player.health = 0.0
                 cancel()
             }

@@ -44,6 +44,21 @@ Spigot/Bukkit 및 다른 Paper 포크에서의 동작은 보장하지 않습니�
 배포하지 마세요. 서버의 `/reload` 명령은 Bukkit 객체와 예약 작업을 불완전하게 남길 수 있으므로
 사용하지 않는 것을 권장합니다.
 
+## 상태이상 아이콘 리소스팩 (선택 사항)
+
+[최신 GitHub 릴리스](https://github.com/BEOBMA/ClassWarPlugin/releases/latest)의 `ClassWar-status-icons.zip`을
+다운로드해 클라이언트의 리소스팩으로 적용할 수 있습니다. Minecraft Java 26.2용 리소스팩이며,
+상태이상 키워드 옆에 전용 아이콘을 표시합니다. 아이템 설명과 상태 액션바뿐 아니라 출혈·화상·빙결 파쇄·
+진동 폭발·처형 등 아이콘이 등록된 특수 피해 텍스트에도 아이콘이 함께 표시됩니다.
+
+리소스팩을 적용하지 않아도 기존 상태이상 텍스트와 피해 표시는 그대로 보이며, 아이콘만 생략됩니다.
+ZIP 파일을 `.minecraft/resourcepacks`에 넣고 게임 설정의 리소스팩 메뉴에서 활성화하세요.
+리소스팩 ZIP은 저장소에서 다음 명령으로 생성합니다.
+
+```powershell
+.\gradlew.bat statusIconPack
+```
+
 ## 시작
 
 1. 운영자는 `/cw config`에서 경기 설정을 확인합니다.
@@ -196,7 +211,7 @@ JAVA_HOME=/path/to/jdk-21 ./gradlew clean build
 2. JDK 21 Gradle 런타임과 JDK 25 툴체인으로 `clean build`를 실행합니다.
 3. 모든 테스트와 `verifyShadowJarContents`가 통과했는지 확인합니다.
 4. 버전과 일치하는 태그를 생성합니다. 예: `v1.0.2`.
-5. GitHub에 정식 릴리스를 생성하고 `ClassWarPlugin-<버전>-all.jar`만 실행 파일로 첨부합니다.
+5. GitHub에 정식 릴리스를 생성하고 `ClassWarPlugin-<버전>-all.jar`와 `ClassWar-status-icons.zip`을 첨부합니다.
 6. 테스트 서버에서 신규 설치와 기존 설정을 사용한 업데이트를 각각 확인합니다.
 
 ## 라이선스

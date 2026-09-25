@@ -59,7 +59,7 @@ class Freezing : StatusAbnormality(), StatusOnHitHandler, StatusWhenHitHandler, 
     }
 
     override fun whenAttackHit(context: DamageContext) {
-        context.target.damage(context.damage / 2, DamageType.StatusAbnormality, casterData)
+        context.target.damage(context.damage / 2, DamageType.StatusAbnormality, casterData, appearance = org.beobma.classWarPlugin.damage.DamageAppearance.SHATTER)
         this.remove()
     }
 

@@ -260,6 +260,7 @@ class DeathNote : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameE
                 casterData,
                 bypassShield = true,
                 damagePath = DamagePath.SKILL,
+                appearance = org.beobma.classWarPlugin.damage.DamageAppearance.EXECUTION,
             )
             remove()
         }
