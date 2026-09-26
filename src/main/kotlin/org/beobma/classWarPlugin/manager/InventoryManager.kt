@@ -175,7 +175,7 @@ object InventoryManager {
         gameClass.skills.forEachIndexed { index, skill ->
             val slot = skillSlots.getOrNull(index) ?: return@forEachIndexed
             inventory.setItem(slot, createFullDescriptionItem(
-                viewer, skillDyeMaterial(index), skill.name, skill.description, skill.briefDescription,
+                viewer, skillItemMaterial(skill,index), skill.name, skill.description, skill.briefDescription,
                 ItemDescriptionManager.cooldownLines(skill.cooldown),
                 growthClassId = gameClass.classId,
             ))
@@ -213,7 +213,7 @@ object InventoryManager {
         gameClass.skills.forEachIndexed { index, skill ->
             val slot = slots.getOrNull(index) ?: return@forEachIndexed
             inventory.setItem(slot, createFullDescriptionItem(
-                viewer, skillDyeMaterial(dyeOffset + index), skill.name, skill.description, skill.briefDescription,
+                viewer, skillItemMaterial(skill,dyeOffset + index), skill.name, skill.description, skill.briefDescription,
                 ItemDescriptionManager.cooldownLines(skill.cooldown),
                 growthClassId = gameClass.classId,
             ))
@@ -692,7 +692,7 @@ object InventoryManager {
             val skill = gameClass.skills.getOrNull(i) ?: break
             inventory.setItem(i + 1, createFullDescriptionItem(
                 this,
-                skillDyeMaterial(i),
+                skillItemMaterial(skill,i),
                 skill.name,
                 skill.description,
                 skill.briefDescription,
@@ -789,6 +789,9 @@ object InventoryManager {
             }
         }
     }
+
+    fun skillItemMaterial(skill: org.beobma.classWarPlugin.skill.Skill, index: Int): Material =
+        skill.itemMaterial ?: skillDyeMaterial(index)
 
     fun skillDyeMaterial(index: Int): Material = when (index) {
         0 -> Material.RED_DYE

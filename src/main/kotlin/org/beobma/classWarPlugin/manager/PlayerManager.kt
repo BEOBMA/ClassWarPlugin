@@ -79,7 +79,7 @@ object PlayerManager {
                 else -> return@forEachIndexed
             }
             val name = UtilManager.applyKeywords(skill.name)
-            val type = skillDyeMaterial(index)
+            val type = skill.itemMaterial ?: skillDyeMaterial(index)
             val displayItem = ItemStack(type, 1).apply {
                 itemMeta = itemMeta.apply {
                     displayName(miniMessage.deserialize(name))

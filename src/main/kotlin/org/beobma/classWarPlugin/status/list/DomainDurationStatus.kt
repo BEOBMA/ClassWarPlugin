@@ -14,10 +14,11 @@ class DomainDurationStatus : StatusAbnormality() {
     override var power = 1
     private var label = "전개 중"
 
-    fun synchronize(introducing: Boolean, dissolving: Boolean, remainingTicks: Int): Boolean {
+    fun synchronize(introducing: Boolean, dissolving: Boolean, remainingTicks: Int, clashed: Boolean = false): Boolean {
         val next = when {
             introducing -> "전개 중"
             dissolving -> "해제 중"
+            clashed -> "충돌 · 효과 무효 ${(remainingTicks.coerceAtLeast(0).toLong() + 19) / 20}초"
             else -> "${(remainingTicks.coerceAtLeast(0).toLong() + 19) / 20}초"
         }
         if (next == label) return false

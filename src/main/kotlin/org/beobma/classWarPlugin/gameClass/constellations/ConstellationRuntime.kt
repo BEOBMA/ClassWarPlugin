@@ -56,7 +56,7 @@ class ConstellationRuntime(private val scope: AbilityScope) : Listener {
     private var clock = 0L
     private var attacks = 0
     private var domain: DomainSession? = null
-    val inDomain get() = domain != null
+    val inDomain get() = domain?.effectsEnabled == true
     private var suppressedUntil = 0L
     private var pending: Pair<UUID, () -> Unit>? = null
     private val ownedStatuses = mutableSetOf<StatusAbnormality>()
@@ -259,7 +259,7 @@ class ConstellationRuntime(private val scope: AbilityScope) : Listener {
         return Vector(cos(a)*r, y, sin(a)*r)
     }
     private fun summon(point: Location, target: EntityData?, weak: Boolean) {
-        val area = domain
+        val area = domain?.takeIf { it.effectsEnabled }
         val chosen = if (area != null) target?.takeIf { area.contains(it.entity.location) }
             ?: enemies().filter { area.contains(it.entity.location) }.minByOrNull { it.entity.location.distanceSquared(point) } else target
         if (area != null && chosen == null) return
@@ -287,7 +287,7 @@ class ConstellationRuntime(private val scope: AbilityScope) : Listener {
     private fun tickStar(star: Star) {
         if (star !in stars) return
         if ((++star.age > 160 && !inDomain) || !star.display.isValid || star.at.world != player.world) { destroy(star); return }
-        val area = domain
+        val area = domain?.takeIf { it.effectsEnabled }
         if (area != null && star.target?.let { valid(it) && area.contains(it.entity.location) } != true) {
             star.target = enemies().firstOrNull { area.contains(it.entity.location) }
             if (star.target == null) { destroy(star); return }
@@ -409,11 +409,21 @@ class ConstellationRuntime(private val scope: AbilityScope) : Listener {
         presentation={ ConstellationPresentation(it) },
         onStart={ session ->
             domain=session
-            basicSkills().forEach { CooldownManager.resetCooldown(player,it) }
-            stars.forEach(::registerStar)
-            orbits.values.forEach { orbit -> orbit.stars.forEach { (type,display) -> registerOrbit(orbit,type,display) } }
+            if (session.effectsEnabled) {
+                basicSkills().forEach { CooldownManager.resetCooldown(player,it) }
+                stars.forEach(::registerStar)
+                orbits.values.forEach { orbit -> orbit.stars.forEach { (type,display) -> registerOrbit(orbit,type,display) } }
+            }
         },
         onTick={ basicSkills().forEach { CooldownManager.resetCooldown(player,it) } },
+        onClashChanged={ _, clashed ->
+            if (clashed) { cancelChallenge(); clearStars() }
+            else {
+                basicSkills().forEach { CooldownManager.resetCooldown(player,it) }
+                stars.forEach(::registerStar)
+                orbits.values.forEach { orbit -> orbit.stars.forEach { (type,display) -> registerOrbit(orbit,type,display) } }
+            }
+        },
         onEnd={ domain=null; cancelChallenge(); clearStars(); clearStatuses(); suppressedUntil=clock+400 },
     ))
 }

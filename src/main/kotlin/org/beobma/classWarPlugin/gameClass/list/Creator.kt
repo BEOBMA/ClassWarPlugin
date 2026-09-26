@@ -96,6 +96,7 @@ class Creator : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameSta
 
     private inner class DomainSkill : Skill() {
         override val definitionId = "creator/domain-skill"
+        override val isDomainExpansion = true
         override val name = "<bold>「영역 전개」-「창조 공간」"
         override val description = listOf(
             "<gray>15초간 50칸 너비의 {keyword:Area}을 전개한다.",

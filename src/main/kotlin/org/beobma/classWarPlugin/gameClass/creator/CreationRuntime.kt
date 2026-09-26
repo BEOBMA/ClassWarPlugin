@@ -49,7 +49,7 @@ class CreationRuntime(private val scope: AbilityScope) {
     private val combo = ChainCombo()
     private val effects = CreationEffects(scope)
     private var domain: DomainSession? = null
-    val isCreationSpaceActive: Boolean get() = domain != null
+    val isCreationSpaceActive: Boolean get() = domain?.effectsEnabled == true
     private var infiniteManaDisplay: AutoCloseable? = null
     private var exhaustedUntil = 0L
     private data class Creation(val chain: Boolean, val display: Display, var position: Location,
@@ -63,7 +63,7 @@ class CreationRuntime(private val scope: AbilityScope) {
     fun start() {
         owner.getOrCreateStatus(owner) { Mana() }.updatePower(100)
         owner.addStatus(CreationStatus {
-            val state = if (domain != null) "<light_purple>창조 공간</light_purple>"
+            val state = if (isCreationSpaceActive) "<light_purple>창조 공간</light_purple>"
                 else if (game.combatTick < exhaustedUntil) "<red>권능 소진 ${(exhaustedUntil - game.combatTick + 19) / 20}s</red>" else "<gold>권능</gold>"
             "$state <gray>사슬 ${creations.count { it.chain }}/10 · 빛의 창 ${creations.count { !it.chain }}/3</gray>"
         }, owner).updatePower(1)
@@ -75,11 +75,11 @@ class CreationRuntime(private val scope: AbilityScope) {
     }
 
     fun recoverMana() {
-        owner.getOrCreateStatus(owner) { Mana() }.increasePower(if (domain != null) 100 else if (game.combatTick < exhaustedUntil) 1 else 10)
+        owner.getOrCreateStatus(owner) { Mana() }.increasePower(if (isCreationSpaceActive) 100 else if (game.combatTick < exhaustedUntil) 1 else 10)
     }
 
     private fun spend(amount: Int): Boolean {
-        if (domain != null) return true
+        if (isCreationSpaceActive) return true
         val mana = owner.getOrCreateStatus(owner) { Mana() }
         if (mana.power < amount) { player.sendMiniMessage("<red><bold>[!] 마나가 부족합니다. ($amount 필요)"); return false }
         mana.decreasePower(amount)
@@ -87,7 +87,7 @@ class CreationRuntime(private val scope: AbilityScope) {
     }
 
     private fun enemies(world: World = player.world) = Targeting.select(owner, TargetType.Enemy, world)
-    private fun guaranteed(): EntityData? = domain?.let { area ->
+    private fun guaranteed(): EntityData? = domain?.takeIf { it.effectsEnabled }?.let { area ->
         enemies().filter { area.contains(it.entity.location) }
             .minByOrNull { it.entity.location.distanceSquared(player.location) }
     }
@@ -139,7 +139,7 @@ class CreationRuntime(private val scope: AbilityScope) {
         TemporaryDisplayManager.mark(creation.display, owner.uniqueId)
         creation.display.setGravity(false)
         creation.display.teleportDuration = 1
-        if (domain != null) creation.destroyAt = game.combatTick + 20
+        if (isCreationSpaceActive) creation.destroyAt = game.combatTick + 20
         creations += creation
         owner.updateStatusActionBar()
     }
@@ -161,7 +161,7 @@ class CreationRuntime(private val scope: AbilityScope) {
         c.age++
         val from = c.position.clone()
         // Domain guidance follows moving targets. Chains always pass through terrain to their goal.
-        val guided = c.attached?.takeIf { domain != null && it.isValid && !it.isDead && it.world == from.world }
+        val guided = c.attached?.takeIf { isCreationSpaceActive && it.isValid && !it.isDead && it.world == from.world }
         val goal = guided?.boundingBox?.center ?: if (c.chain) c.offset else null
         if (goal != null) {
             val delta = goal.clone().subtract(from.toVector())
@@ -258,10 +258,17 @@ class CreationRuntime(private val scope: AbilityScope) {
         presentation = ::CreationPresentation,
         onStart = {
             domain = it
-            infiniteManaDisplay = owner.getOrCreateStatus(owner) { Mana() }.displayInfinite(scope.instanceId)
-            creations.forEach { c -> c.destroyAt = game.combatTick + 20 }; recoverMana()
+            if (it.effectsEnabled) {
+                infiniteManaDisplay = owner.getOrCreateStatus(owner) { Mana() }.displayInfinite(scope.instanceId)
+                creations.forEach { c -> c.destroyAt = game.combatTick + 20 }; recoverMana()
+            }
         },
         onEnd = { domain = null; infiniteManaDisplay?.close(); infiniteManaDisplay = null; clear(); exhaustedUntil = game.combatTick + 400; owner.updateStatusActionBar() },
+        onClashChanged = { _, clashed ->
+            infiniteManaDisplay?.close(); infiniteManaDisplay = null
+            if (clashed) clear() else infiniteManaDisplay = owner.getOrCreateStatus(owner) { Mana() }.displayInfinite(scope.instanceId)
+            owner.updateStatusActionBar()
+        },
     ))
 }
 

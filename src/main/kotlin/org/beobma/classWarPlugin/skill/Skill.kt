@@ -41,6 +41,8 @@ abstract class Skill : EffectApiAccess {
     abstract val cooldown: Int?
 
     open val isOnOffSKill: Boolean = false
+    open val isDomainExpansion: Boolean = false
+    val itemMaterial: org.bukkit.Material? get() = if (isDomainExpansion) org.bukkit.Material.END_CRYSTAL else null
     open val canUseWhileSilenced: Boolean = false
 
     protected fun growthCount(key: String, base: Int) = org.beobma.classWarPlugin.growth.GrowthScaling.count(playerData, definitionId.substringBefore('/'), key, base)

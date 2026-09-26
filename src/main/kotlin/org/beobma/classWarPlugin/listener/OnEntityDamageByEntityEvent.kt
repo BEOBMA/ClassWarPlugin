@@ -29,6 +29,14 @@ import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 
 class OnEntityDamageByEntityEvent : Listener {
+    /** Read before vanilla resets the attack ticker; reject the hit before any damage/passive hooks. */
+    @EventHandler(priority = org.bukkit.event.EventPriority.LOWEST, ignoreCancelled = true)
+    fun onPrepareAttack(event: io.papermc.paper.event.player.PrePlayerAttackEntityEvent) {
+        val game=findGameForPlayer(event.player) ?: return
+        val data=game.playerDatas.filterIsInstance<PlayerData>().firstOrNull { it.uniqueId==event.player.uniqueId } ?: return
+        if (!data.canDispatchClassHandlers()) return
+        if (!org.beobma.classWarPlugin.damage.BasicAttackReadiness.ready(event.player.attackCooldown)) event.isCancelled=true
+    }
     @EventHandler(ignoreCancelled = true)
     fun onPlayerDamage(event: EntityDamageByEntityEvent) {
         if ("cw-afterglow-echo" in event.entity.scoreboardTags) { event.isCancelled = true; return }

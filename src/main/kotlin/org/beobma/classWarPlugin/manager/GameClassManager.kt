@@ -45,6 +45,10 @@ object GameClassManager {
             if (viewer != null) ItemDescriptionManager.applyForPlayer(this, viewer, weapon.description, weapon.briefDescription,
                 growthClassId = this@toWeaponItemStack.classId)
             val effectiveClass = (this@toWeaponItemStack as? org.beobma.classWarPlugin.gameClass.list.FirearmsMaster)?.activeFirearm ?: this@toWeaponItemStack
+            if (effectiveClass.classId in setOf("gungnir", "mjolnir")) {
+                type = Material.IRON_SWORD
+                itemMeta = itemMeta.apply { itemModel = effectiveClass.weapon.material.key }
+            }
             val firearm = effectiveClass as? org.beobma.classWarPlugin.gameClass.firearm.FirearmClass
             if (firearm?.firearmProfile?.automatic == true) {
                 setData(io.papermc.paper.datacomponent.DataComponentTypes.CONSUMABLE,

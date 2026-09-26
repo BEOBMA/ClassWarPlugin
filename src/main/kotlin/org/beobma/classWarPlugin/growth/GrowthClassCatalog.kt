@@ -29,6 +29,8 @@ object GrowthClassCatalog {
         register(GrowthCombatStyle.ABILITY, "creator")
         register(GrowthCombatStyle.HYBRID, "afterglow")
         register(GrowthCombatStyle.SUMMON, "constellations")
+        register(GrowthCombatStyle.BASIC, "flashbang")
+        register(GrowthCombatStyle.HYBRID, "gungnir mjolnir")
     }
     fun style(id: String) = styles[id] ?: GrowthCombatStyle.HYBRID
 

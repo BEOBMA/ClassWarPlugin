@@ -90,6 +90,7 @@ class Constellations : GameClass(), org.beobma.classWarPlugin.gameClass.handler.
 
     private inner class DomainSkill : Skill() {
         override val definitionId = "constellations/domain"
+        override val isDomainExpansion = true
         override val name = "<bold>「영역 전개」-「별이 빛나는 밤」"
         override val description = listOf(
             "<gray>16초간 50칸 너비의 {keyword:Area}을 전개한다.",

@@ -57,7 +57,7 @@ import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
 // 밸런스 조정 상수
 private const val VAMPIRE_BAT_COOLDOWN_SECONDS = 60
-private const val VAMPIRE_BAT_MAX_DURATION_SECONDS = 30
+private const val VAMPIRE_BAT_MAX_DURATION_SECONDS = 8
 private const val VAMPIRE_BLOOD_PLAGUE_COOLDOWN_SECONDS = 120
 private const val VAMPIRE_REFLECTED_DAMAGE_MULTIPLIER = 2.0
 private const val VAMPIRE_BLOOD_PLAGUE_DURATION_SECONDS = 4
@@ -262,7 +262,7 @@ class Vampire : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameEnd
         override val definitionId = "vampire/orange-skill"
         override val name = "<bold>혈사병"
         override val description = listOf(
-            "<gray>6초간 {g:range:10}칸 내의 범위에 혈사병을 일으킨다.",
+            "<gray>최초 시전 위치를 중심으로 6초간 {g:range:10}칸 내의 범위에 혈사병을 일으킨다.",
             "<gray>지속 시간동안 범위 내의 모든 적은 {keyword:Bleeding} 수치가 감소하지 않는다.",
             "<gray>지속 시간 종료 시 한 번이라도 혈사병의 영향을 받은 모든 적의 {keyword:Bleeding}은 제거된다."
         )
@@ -270,6 +270,7 @@ class Vampire : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameEnd
 
         override fun use(): Boolean {
             val affected = mutableMapOf<UUID, EntityData>()
+            val origin = player.location.clone()
             val locks = mutableMapOf<UUID, Pair<EntityData, BleedingLock>>()
             sounds.play(player, Sound.ENTITY_WITHER_AMBIENT, volume = 0.75f, pitch = 1.4f)
             particles.spawn(player.location.clone().add(0.0, 1.0, 0.0), Particle.DUST, Particle.DustOptions(Color.MAROON, 1.7f), org.beobma.classWarPlugin.effect.ParticleOptions.spread(42, 1.2, 0.12))
@@ -281,8 +282,8 @@ class Vampire : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameEnd
                     locks.values.forEach { (_, lock) -> lock.remove() }
                     locks.clear()
                     affected.values.forEach { it.getStatus<Bleeding>()?.remove() }
-                    particles.spawn(player, Particle.SQUID_INK, count = 34, spread = 1.2, speed = 0.12)
-                    sounds.play(player, Sound.BLOCK_BREWING_STAND_BREW, volume = 0.9f, pitch = 0.55f)
+                    particles.spawn(origin, Particle.SQUID_INK, count = 34, spread = 1.2, speed = 0.12)
+                    sounds.play(origin, Sound.BLOCK_BREWING_STAND_BREW, volume = 0.9f, pitch = 0.55f)
                     cancel()
                 }
 
@@ -291,7 +292,7 @@ class Vampire : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameEnd
                         finishPlague()
                         return
                     }
-                    val inside = playerData.radius(player.location, TargetType.Enemy, 10.0, false, hitAttackableObjects = true)
+                    val inside = playerData.radius(origin, TargetType.Enemy, 10.0, false, hitAttackableObjects = true)
                     val insideIds = inside.mapTo(mutableSetOf()) { it.entity.uniqueId }
                     inside.forEach { target ->
                         val id = target.entity.uniqueId
@@ -308,8 +309,8 @@ class Vampire : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameEnd
                     locks.keys.filter { it !in insideIds }.toList().forEach { id ->
                         locks.remove(id)?.second?.remove()
                     }
-                    if (elapsedTicks % 2 == 0) drawPlagueCircle(player.location, elapsedTicks)
-                    if (elapsedTicks % 20 == 0) sounds.play(player, Sound.BLOCK_SCULK_SENSOR_CLICKING, volume = 0.35f, pitch = 0.65f)
+                    if (elapsedTicks % 2 == 0) drawPlagueCircle(origin, elapsedTicks)
+                    if (elapsedTicks % 20 == 0) sounds.play(origin, Sound.BLOCK_SCULK_SENSOR_CLICKING, volume = 0.35f, pitch = 0.65f)
                     elapsedTicks++
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 0L, 1L))

@@ -28,6 +28,8 @@ data class DomainDefinition(
     val onStart: (DomainSession) -> Unit = {},
     val onTick: (DomainSession) -> Unit = {},
     val onEnd: (DomainSession) -> Unit = {},
+    /** Release/reacquire domain-only effects without restarting its duration or applying end penalties. */
+    val onClashChanged: (DomainSession, Boolean) -> Unit = { _, _ -> },
     val presentation: (DomainSession) -> DomainPresentation = { DomainEffects(it) },
     /** Null leaves lighting unchanged; explicit LIGHT blocks are restored with the terrain. */
     val interiorLightLevel: Int? = null,
@@ -48,6 +50,7 @@ class DomainSkill(
     val domain: DomainDefinition,
     override val cooldown: Int?,
 ) : Skill() {
+    override val isDomainExpansion = true
     override val name = "영역전개: ${domain.name}"
     override val description = listOf("3초간 무방비 상태로 {keyword:Area}을 전개한다.",
         "전개 연출 동안 주변에 {keyword:Distortion}을 적용한다.")

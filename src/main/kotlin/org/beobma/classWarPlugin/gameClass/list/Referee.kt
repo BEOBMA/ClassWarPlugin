@@ -140,21 +140,24 @@ class Referee : GameClass(), OnHitHandler, ConfirmedHitHandler, GameEndHandler {
                 court?.let { current ->
                     current.close()
                     session.participants.forEach { id ->
-                        originalPositions[id]?.let { location -> Bukkit.getPlayer(id)?.let { session.relocate(it, location) } }
+                        if (!DomainManager.hasRemainingBoundary(id,session))
+                            originalPositions[id]?.let { location -> Bukkit.getPlayer(id)?.let { session.relocate(it, location) } }
                     }
                     trial = null
                     ledger.clear()
                     exhaustedUntil = game.combatTick + 400
-                    if (session.finishedNormally && current.completed && abilityScope.isActive && player.isOnline && !playerStatus.isDead && !defendant.entityStatus.isDead &&
+                    if (session.finishedNormally && !session.clashed && current.completed && abilityScope.isActive && player.isOnline && !playerStatus.isDead && !defendant.entityStatus.isDead &&
                         defendant.player.isOnline && !game.isPaused) current.punish()
                 }
             },
+            onClashChanged = { _, clashed -> court?.setClashed(clashed) },
         ))
     }
 
     private inner class Trial(val session: DomainSession, val defendant: PlayerData,
         val charge: CrimeRecord, val murders: Int) : Listener, AutoCloseable {
         private val resources = ResourceScope()
+        private var combatLocks = ResourceScope()
         private var plea: Plea? = null
         private var elapsed = 0
         var completed = false
@@ -163,40 +166,46 @@ class Referee : GameClass(), OnHitHandler, ConfirmedHitHandler, GameEndHandler {
         fun start() {
             activeTrials[defendant.uniqueId] = this@Referee
             resources.own { activeTrials.remove(defendant.uniqueId, this@Referee) }
-            // Explicit locks also cover allies; harmful status filtering must not let spectators fight.
-            game.playerDatas.filterIsInstance<PlayerData>().filter { it.uniqueId in session.participants }.forEach { data ->
-                val lock = data.entityStatus.controlLocks.acquire(Control.MOVE, Control.ATTACK, Control.SKILL)
-                resources.own { lock.close() }
-                val immunity = data.addStatus(Invincibility(), playerData)
-                resources.own { immunity.cleanupFromManager() }
-            }
-            if (defendant.uniqueId != playerData.uniqueId)
+            resources.own { combatLocks.close() }
+            setClashed(session.clashed)
+            if (session.effectsEnabled && defendant.uniqueId != playerData.uniqueId)
                 session.relocate(player, session.center.clone().add(0.0, 0.0, -3.0).apply { yaw = 0f; pitch = 0f })
-            session.relocate(defendant.player, session.center.clone().add(0.0, 0.0, 0.0).apply { yaw = 180f; pitch = 0f })
+            if (session.effectsEnabled) session.relocate(defendant.player, session.center.clone().apply { yaw = 180f; pitch = 0f })
             Bukkit.getPluginManager().registerEvents(this, ClassWarPlugin.instance)
             resources.own { HandlerList.unregisterAll(this) }
             session.players().forEach {
                 it.sendMessage(Component.text("[죄목] ${charge.type.label} / 피해자: ${charge.victimName} / 피해: ${charge.damage} / 기록 틱: ${charge.tick}"))
                 it.sendMessage(Component.text("20초 내 변론."))
             }
-            defendant.player.sendMiniMessage("<gold>아래 단어 또는 번호를 입력하여 변론하십시오.")
-            defendant.player.sendMiniMessage("<yellow>1. 인정 <gray>— 죄를 인정하여 형량을 한 단계 낮춘다.")
-            defendant.player.sendMiniMessage("<yellow>2. 정당방위 <gray>— 상대가 먼저 공격했다는 증거로 반론한다.")
-            defendant.player.sendMiniMessage("<yellow>3. 부인 <gray>— 범행을 부인한다. 위증이면 형량이 가중된다.")
+            defendant.player.sendMiniMessage("<gold>채팅으로 인정(1) / 정당방위(2) / 부인(3) 중 하나를 입력하세요.")
+        }
+
+        fun setClashed(clashed: Boolean) {
+            combatLocks.close()
+            combatLocks = ResourceScope()
+            if (clashed) { activeTrials.remove(defendant.uniqueId, this@Referee); return }
+            activeTrials[defendant.uniqueId] = this@Referee
+            // Explicit locks also cover allies; harmful status filtering must not let spectators fight.
+            game.playerDatas.filterIsInstance<PlayerData>().filter { it.uniqueId in session.participants }.forEach { data ->
+                val lock = data.entityStatus.controlLocks.acquire(Control.MOVE, Control.ATTACK, Control.SKILL)
+                combatLocks.own { lock.close() }
+                val immunity = data.addStatus(Invincibility(), playerData)
+                combatLocks.own { immunity.cleanupFromManager() }
+            }
         }
 
         @EventHandler
         fun teleport(event: org.bukkit.event.player.PlayerTeleportEvent) {
-            if (event.player.uniqueId in session.participants && session.relocating != event.player.uniqueId) event.isCancelled = true
+            if (session.effectsEnabled && event.player.uniqueId in session.participants && session.relocating != event.player.uniqueId) event.isCancelled = true
         }
 
         @EventHandler(priority = org.bukkit.event.EventPriority.HIGHEST)
         fun damage(event: org.bukkit.event.entity.EntityDamageEvent) {
-            if (event.entity.uniqueId in session.participants) event.isCancelled = true
+            if (session.effectsEnabled && event.entity.uniqueId in session.participants) event.isCancelled = true
         }
 
         fun choose(choice: Plea) {
-            if (plea != null || completed || game.isPaused) return
+            if (plea != null || completed || game.isPaused || !session.effectsEnabled) return
             plea = choice
             RefereeEffects.plea(defendant.player.location)
             defendant.player.sendMessage(Component.text("변론 완료."))
@@ -204,7 +213,8 @@ class Referee : GameClass(), OnHitHandler, ConfirmedHitHandler, GameEndHandler {
 
         fun tick() {
             RefereeEffects.trial(session, elapsed, plea != null)
-            if (++elapsed != 400) return
+            elapsed++
+            if (session.remainingCombatTicks > 1) return
             completed = true
             val verdict = CrimeLedger.verdict(charge, plea, murders)
             RefereeEffects.verdict(session, defendant.player.location, verdict)
@@ -340,6 +350,7 @@ class Referee : GameClass(), OnHitHandler, ConfirmedHitHandler, GameEndHandler {
 
     private inner class DomainSkill : Skill() {
         override val definitionId = "referee/domain-skill"
+        override val isDomainExpansion = true
         override val name = "<bold>「영역 전개」-「대천칭」"
 
         override val description = listOf(

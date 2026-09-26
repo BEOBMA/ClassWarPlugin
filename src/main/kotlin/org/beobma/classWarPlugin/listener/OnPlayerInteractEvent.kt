@@ -61,6 +61,9 @@ class OnPlayerInteractEvent : Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     fun onPlayerInteract(event: PlayerInteractEvent) {
+        // Tagged domain crystals are skill buttons, never placeable vanilla end crystals.
+        event.item?.takeIf { it.type == org.bukkit.Material.END_CRYSTAL && getSkillId(it,event.player.uniqueId) != null }
+            ?.let { event.setUseItemInHand(Event.Result.DENY); event.setUseInteractedBlock(Event.Result.DENY) }
         if (org.beobma.classWarPlugin.domain.DomainManager.isLocked(event.player.uniqueId)) return
         val held = event.hand?.let { event.player.inventory.getItem(it) }
         if (org.beobma.classWarPlugin.growth.GrowthControls.useToken(event.player, held,

@@ -12,6 +12,9 @@ object AbilityCatalog {
     private val factories: Map<String, () -> GameClass> = mapOf(
         "abyssal-veil" to ::AbyssalVeil,
         "afterglow" to ::Afterglow,
+        "flashbang" to ::Flashbang,
+        "gungnir" to ::Gungnir,
+        "mjolnir" to ::Mjolnir,
         "constellations" to ::Constellations,
         "anchor" to ::Anchor,
         "agent" to ::Agent,
@@ -141,6 +144,7 @@ object AbilityCatalog {
         "crossbow", "freikugel", "warcorrespondent", "pioneer", "agent", "writer", "metronome",
         "hunter", "sturmtruppe", "spezialeinheitsmitglied", "schwerekavallerie", "firearmsmaster",
         "creator", "afterglow", "constellations",
+        "flashbang", "gungnir", "mjolnir",
     )
     fun create(id: String): GameClass {
         require(!isDeferred(id)) { "Deferred class: $id" }

@@ -41,7 +41,7 @@ class DomainSession internal constructor(
     private val distortionLeases = mutableMapOf<UUID, ResourceScope>()
     private val originalPositions = mutableMapOf<UUID, Location>()
     private val acceptedPositions = mutableMapOf<UUID, Location>()
-    private val snapshots = DomainBlockLedger<Triple<Int, Int, Int>, BlockState> { it.update(true, false) }
+    private val snapshots = DomainBlockLedger<Triple<Int, Int, Int>, BlockState> { DomainTerrain.release(this,it) }
     private val interiorBlocks = mutableListOf<Location>()
     private val shell = mutableListOf<Location>()
     private val timeStatuses = mutableMapOf<UUID, Pair<PlayerData, DomainDurationStatus>>()
@@ -58,6 +58,31 @@ class DomainSession internal constructor(
     private var originalBorderSize = center.world.worldBorder.size
     internal var relocating: UUID? = null
     private var startedCombat = false
+    var clashed = false
+        private set
+    val effectsEnabled get() = startedCombat && !clashed && !isRestoringTerrain
+    val remainingCombatTicks get() = (definition.durationTicks-activeTicks).coerceAtLeast(0)
+    private fun notifyClash(value: Boolean) {
+        runCatching { AbilityExecution.with(scope) { definition.onClashChanged(this,value) } }.onFailure {
+            ClassWarPlugin.instance.logger.log(java.util.logging.Level.SEVERE,"영역 충돌 효과 전환 실패",it)
+        }
+    }
+    internal fun updateClash(value: Boolean) {
+        if (clashed == value) return
+        clashed = value
+        if (value) {
+            distortionLeases.values.forEach { it.close() }; distortionLeases.clear()
+            distorted.clear(); projectiles.close()
+        }
+        if (startedCombat) notifyClash(value)
+    }
+    internal fun adoptPlayers(ids: Collection<UUID>) {
+        ids.mapNotNull(Bukkit::getPlayer).filter { it.isOnline && !it.isDead && it.world == center.world }.forEach {
+            participants += it.uniqueId
+            originalPositions.putIfAbsent(it.uniqueId,it.location.clone())
+            acceptedPositions.putIfAbsent(it.uniqueId,it.location.clone())
+        }
+    }
     private val effects = definition.presentation(this)
     var finishedNormally = false
         private set
@@ -78,15 +103,10 @@ class DomainSession internal constructor(
         players().forEach { originalPositions[it.uniqueId] = it.location.clone(); acceptedPositions[it.uniqueId] = it.location.clone() }
         lock = caster.entityStatus.controlLocks.acquire(Control.MOVE, Control.ATTACK, Control.SKILL)
         resources.own { lock?.close() }
-        val border = center.world.worldBorder
-        val borderSize = border.size
-        val borderCenter = border.center.clone()
+        val (borderCenter, borderSize) = DomainManager.acquireBorder(this)
         originalBorderCenter = borderCenter.clone()
         originalBorderSize = borderSize
-        border.changeSize(borderSize, 0L)
-        val required = 2 * (max(abs(center.x - borderCenter.x), abs(center.z - borderCenter.z)) + definition.radius + 5)
-        border.size = max(borderSize, required).coerceAtMost(border.maxSize)
-        resources.own { border.center = borderCenter; border.changeSize(borderSize, 0L) }
+        resources.own { DomainManager.releaseBorder(this) }
         DomainShell.cells(definition.radius).forEach {
             shellPoints += center.block.location.add(it.x.toDouble(), it.y.toDouble(), it.z.toDouble())
         }
@@ -117,6 +137,7 @@ class DomainSession internal constructor(
     }
 
     private fun updateDistortion() {
+        if (clashed) return
         scope.game.playerDatas.filterIsInstance<PlayerData>().filter {
             it.player.isOnline && !it.entityStatus.isDead && !it.player.isDead && it.player.gameMode != GameMode.SPECTATOR && contains(it.player.location)
         }.forEach { data ->
@@ -171,18 +192,23 @@ class DomainSession internal constructor(
                 refreshTimeStatus()
                 effects.activate()
                 AbilityExecution.with(scope) { definition.onStart(this) }
+                if (clashed) notifyClash(true)
+                DomainTerrain.repaint()
             }
             return
         }
         if (scope.game.isPaused) return
+        if (activeTicks % 20 == 0) DomainTerrain.retryBlocked()
         if (endTicks >= 0) { dissolve(); return }
-        AbilityExecution.with(scope) { definition.onTick(this) }
+        if (!clashed) AbilityExecution.with(scope) { definition.onTick(this) }
         if (closed) return
-        effects.sustain(activeTicks)
+        if (!clashed) effects.sustain(activeTicks)
         if (++activeTicks >= definition.durationTicks) {
             endTicks = 0
+            notifyClash(true)
+            DomainManager.refreshClashes()
             effects.beginDissolve()
-            interiorBlocks.forEach { location ->
+            interiorBlocks.filter { !DomainManager.coveredByOther(this,it) }.forEach { location ->
                 if (!location.block.type.isAir) melting += display(location, location.block.type) to location.clone()
                 location.block.setType(Material.AIR, false)
             }
@@ -192,13 +218,16 @@ class DomainSession internal constructor(
 
     private fun refreshTimeStatus() {
         timeStatuses.values.forEach { (data, status) ->
-            if (status.synchronize(isIntroducing, endTicks >= 0, definition.durationTicks - activeTicks) && data.player.isOnline)
+            if (status.synchronize(isIntroducing, endTicks >= 0, definition.durationTicks - activeTicks, clashed) && data.player.isOnline)
                 data.updateStatusActionBar()
         }
     }
 
     /** Do not ever replace the feet/head of a living entity with a wall. Cancel safely if it cannot move. */
     private fun clearShellCell(point: Location, entities: List<LivingEntity>) {
+        if (DomainManager.sessions.any { it !== this && !it.isRestoringTerrain && it.center.world == point.world &&
+                DomainShell.isInterior(it.definition.radius,point.blockX-it.center.blockX,
+                    point.blockY-it.center.blockY,point.blockZ-it.center.blockZ) }) return
         val box = org.bukkit.util.BoundingBox(point.x, point.y, point.z, point.x + 1, point.y + 1, point.z + 1)
         entities.filter { it.isValid && !it.isDead && it.boundingBox.overlaps(box) &&
             !(it is Player && it.gameMode == GameMode.SPECTATOR) }.forEach { entity ->
@@ -256,7 +285,7 @@ class DomainSession internal constructor(
         DomainShell.interiorCells(r).forEach { cell ->
             val block = center.world.getBlockAt(center.blockX + cell.x, center.blockY + cell.y, center.blockZ + cell.z)
             // Capture even air so later ability-created blocks are also removed on restoration.
-            snapshots.capture(Triple(block.x, block.y, block.z)) { block.state }
+            snapshots.capture(Triple(block.x, block.y, block.z)) { DomainTerrain.original(block.location) }
             change(cell.x, cell.y, cell.z, Material.AIR)
         }
         // The temporary footing was already snapshotted at cast start; never replace that original.
@@ -285,17 +314,16 @@ class DomainSession internal constructor(
         for ((x, y, z) in DomainShell.interiorCells(r)) {
             val block = center.world.getBlockAt(center.blockX + x, center.blockY + y, center.blockZ + z)
             if (!DomainLighting.canFill(r, x, y, z, block.type) || block.blockData == light) continue
-            snapshots.capture(Triple(block.x, block.y, block.z)) { block.state }
-            block.setBlockData(light, false)
+            snapshots.capture(Triple(block.x, block.y, block.z)) { DomainTerrain.original(block.location) }
+            DomainTerrain.put(this,block.location,light)
         }
         // Light blocks are invisible/passable and intentionally excluded from melting block displays.
     }
 
     private fun change(x: Int, y: Int, z: Int, material: Material) {
         val block = center.clone().add(x.toDouble(), y.toDouble(), z.toDouble()).block
-        if (block.type == material) return
-        snapshots.capture(Triple(block.x, block.y, block.z)) { block.state }
-        block.setType(material, false)
+        snapshots.capture(Triple(block.x, block.y, block.z)) { DomainTerrain.original(block.location) }
+        DomainTerrain.put(this,block.location,material.createBlockData())
     }
     private fun display(location: Location, material: Material): BlockDisplay = center.world.spawn(location, BlockDisplay::class.java) {
         it.block = material.createBlockData(); it.isPersistent = false
@@ -331,16 +359,25 @@ class DomainSession internal constructor(
     }
     private fun enforceBoundary() {
         if (isRestoringTerrain) return
-        center.world.players.filter { it.uniqueId !in participants && contains(it.location) }.forEach { player ->
+        val group = DomainManager.group(this)
+        if (group.first() !== this) return
+        val members = group.flatMap { it.participants }.toSet()
+        fun inside(at: Location) = group.any { it.contains(at) }
+        center.world.players.filter { it.uniqueId !in members && inside(it.location) }.forEach { player ->
             val direction = player.location.toVector().subtract(center.toVector()).setY(0)
             if (direction.lengthSquared() < 0.01) direction.x = 1.0
-            val outside = center.clone().add(direction.normalize().multiply(definition.radius + 4.0))
+            val reach = group.maxOf { it.center.distance(center) + it.definition.radius + 4.0 }
+            val outside = center.clone().add(direction.normalize().multiply(reach))
             outside.y = center.world.getHighestBlockYAt(outside).toDouble() + 1
             outside.yaw = player.location.yaw; outside.pitch = player.location.pitch
             relocate(player, outside)
         }
-        players().forEach { player ->
-            if (!contains(player.location)) acceptedPositions[player.uniqueId]?.let { relocate(player, it) }
+        members.mapNotNull(Bukkit::getPlayer).filter { it.isOnline && !it.isDead }.forEach { player ->
+            if (!inside(player.location)) {
+                val destination = acceptedPositions[player.uniqueId]?.takeIf(::inside) ?: center
+                DomainRestoreSafety.findDestination(player,destination,center.world.worldBorder.center,
+                    center.world.worldBorder.size) { null }?.takeIf(::inside)?.let { relocate(player,it) }
+            }
             else acceptedPositions[player.uniqueId] = player.location.clone()
         }
     }
@@ -348,6 +385,8 @@ class DomainSession internal constructor(
     override fun close() {
         if (closed) return
         closed = true
+        if (startedCombat) notifyClash(true)
+        DomainManager.refreshClashes()
         // Cleanup stages are independent: one failed teleport or block update must not leak the border/locks.
         val cleanup = ResourceScope()
         cleanup.own { if (startedCombat) AbilityExecution.with(scope) { definition.onEnd(this) } }
@@ -368,7 +407,7 @@ class DomainSession internal constructor(
         fun occupied(state: BlockState) = DomainRestoreSafety.obstructs(state.type) && players.any {
             it.isOnline && it.world == center.world && DomainRestoreSafety.overlaps(it.boundingBox, state.x, state.y, state.z)
         }
-        val deferred = keys.filterNot { key -> snapshots.restoreIf(key) { !occupied(it) } }
+        val deferred = keys.filterNot { key -> snapshots.restoreIf(key) { DomainTerrain.hasOther(this,it) || !occupied(it) } }
         if (deferred.isEmpty()) return
         players.filter { player -> deferred.any { key ->
             DomainRestoreSafety.overlaps(player.boundingBox, key.first, key.second, key.third)
@@ -380,7 +419,7 @@ class DomainSession internal constructor(
             }
         }
         // Recheck after teleport events: another plugin may cancel or redirect the relocation.
-        deferred.forEach { key -> snapshots.restoreIf(key) { !occupied(it) } }
+        deferred.forEach { key -> snapshots.restoreIf(key) { DomainTerrain.hasOther(this,it) || !occupied(it) } }
     }
 
     private fun finishRestoration() {
