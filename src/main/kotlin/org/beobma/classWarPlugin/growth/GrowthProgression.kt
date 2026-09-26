@@ -47,7 +47,7 @@ data class GrowthProfile(val primary: GrowthStat, val secondary: GrowthStat,
             "elementalist", "astronomer", "geometer", "grass", "hacker", "hikikomori",
             "ice-wizard", "just-light", "jupiter", "land-wizard", "lightning-wizard", "light-wizard", "luna",
             "mathematician", "meteor", "neptune", "parasite", "pacifist", "pat-and-matt", "portal-gun", "pluto",
-            "referee", "rainbow-bridge", "saturnus", "sol", "solar-system", "terra", "time-maniqulator", "tour",
+            "rainbow-bridge", "saturnus", "sol", "solar-system", "terra", "time-maniqulator", "tour",
             "uranus", "warlock", "writer", "watchmaker", "venus")
         private val agile = setOf("hunter", "sturmtruppe", "spezialeinheitsmitglied", "schwerekavallerie", "firearmsmaster", "agent", "assassin", "chameleon", "crossbow", "charger", "duelist", "feather",
             "freikugel", "ghost", "gun-blader", "hide-and-seek", "high-jumper", "mercurius", "metronome", "phantom", "pioneer",

@@ -81,23 +81,7 @@ internal class DomainEffects(private val session: DomainSession) : DomainPresent
     }
 
     override fun reveal(subtitle: Boolean) {
-        val stay = java.time.Duration.ofMillis(session.definition.titleDurationMillis + 1000)
-        session.players().forEach { it.showTitle(net.kyori.adventure.title.Title.title(
-            net.kyori.adventure.text.Component.text("「영역전개」", net.kyori.adventure.text.format.NamedTextColor.LIGHT_PURPLE)
-                .decorate(net.kyori.adventure.text.format.TextDecoration.BOLD),
-            net.kyori.adventure.text.Component.text(if (subtitle) "「${session.definition.name}」" else "",
-                net.kyori.adventure.text.format.NamedTextColor.GOLD),
-            net.kyori.adventure.title.Title.Times.times(java.time.Duration.ZERO, stay, java.time.Duration.ZERO))) }
-        if (subtitle) {
-            sound(Sound.BLOCK_AMETHYST_BLOCK_CHIME, 0.8f, 1.25f)
-            sound(Sound.BLOCK_NOTE_BLOCK_BELL, 0.6f, 0.75f)
-            dust(DomainEffectGeometry.meridians(radius, 0.0), gold)
-        } else {
-            sound(Sound.BLOCK_END_PORTAL_SPAWN, 0.5f, 0.75f)
-            sound(Sound.ENTITY_GENERIC_EXPLODE, 0.4f, 0.55f)
-            burst(center.clone().add(0.0, 1.3, 0.0), Particle.SOUL_FIRE_FLAME, 48, 2.0, 0.025)
-            dust(DomainEffectGeometry.ring(radius, 0.2, count = 96), ice)
-        }
+        // Domain activation has no title reveal; its formation effects are handled separately.
     }
 
     override fun activate() {

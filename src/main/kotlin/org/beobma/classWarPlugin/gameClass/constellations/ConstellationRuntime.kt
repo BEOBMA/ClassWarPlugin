@@ -65,7 +65,7 @@ class ConstellationRuntime(private val scope: AbilityScope) : Listener {
     private var challenge: Challenge? = null
     private val puzzleKey get() = NamespacedKey(ClassWarPlugin.instance, "constellation-puzzle")
     private data class Star(val display: ItemDisplay, var at: Location, var velocity: Vector,
-        var target: EntityData?, val guidance: Double, var age: Int = 0,
+        var target: EntityData?, val guidance: Double, var age: Int = 0, var missed: Boolean = false,
         var registration: AttackableObjectManager.Registration? = null)
     private data class Orbit(val target: EntityData, var until: Long, val stars: MutableMap<Class<*>, ItemDisplay> = linkedMapOf(),
         val registrations: MutableMap<Class<*>, AttackableObjectManager.Registration> = linkedMapOf(),
@@ -221,6 +221,19 @@ class ConstellationRuntime(private val scope: AbilityScope) : Listener {
             val index = volley.emitted++
             val angle = 2 * PI * index / volley.count
             val point = volley.origin.clone().add(cos(angle) * (4 + index%3), 0.0, sin(angle) * (4 + index%3))
+            if (!inDomain && index % 4 == 0) {
+                val sky = volley.origin.clone().apply { y = minOf(y+14.0, world.maxHeight-1.0) }
+                repeat(48) { step ->
+                    val a = step*2*PI/48
+                    ParticleApi.spawn(sky.clone().add(cos(a)*6,0.0,sin(a)*6),Particle.END_ROD)
+                }
+                repeat(6) { arm ->
+                    val a = arm*PI/3
+                    val b = a+2*PI/3
+                    ParticleApi.line(sky.clone().add(cos(a)*6,0.0,sin(a)*6),
+                        sky.clone().add(cos(b)*6,0.0,sin(b)*6),Particle.ENCHANT,spacing=0.7)
+                }
+            }
             // Re-evaluate each shot: a target may have died or moved since the puzzle ended.
             val target = enemies().filter { valid(it) && it.entity.location.distanceSquared(volley.origin) <= 18*18 }
                 .minByOrNull { it.entity.location.distanceSquared(point) }
@@ -249,13 +262,15 @@ class ConstellationRuntime(private val scope: AbilityScope) : Listener {
             ?: enemies().filter { area.contains(it.entity.location) }.minByOrNull { it.entity.location.distanceSquared(point) } else target
         if (area != null && chosen == null) return
         val from = if (area != null) area.center.clone().add(randomDirection().multiply(20.0))
-            else point.clone().add(Random.nextDouble(-4.0,4.0), 14.0, Random.nextDouble(-4.0,4.0)).apply {
+            else point.clone().add(if (weak) 0.0 else Random.nextDouble(-4.0,4.0), 14.0,
+                if (weak) 0.0 else Random.nextDouble(-4.0,4.0)).apply {
                 y = minOf(y, world.maxHeight - 1.0)
             }
         val goal = chosen?.entity?.boundingBox?.center ?: point.toVector()
         val delta = goal.subtract(from.toVector())
-        val velocity = if (delta.lengthSquared() < 1e-8) Vector(0.0,-0.7,0.0) else delta.normalize().multiply(0.7)
-        val star = Star(display(from,0.55f), from, velocity, chosen, if (weak) 0.035 else 0.13)
+        val velocity = if (area == null || delta.lengthSquared() < 1e-8) Vector(0.0,-1.0,0.0)
+            else delta.normalize()
+        val star = Star(display(from,0.55f), from, velocity, chosen, if (weak) 0.018 else 0.055)
         stars += star
         if (area != null) registerStar(star)
         ParticleApi.spawn(from, Particle.FIREWORK, 3,0.15,0.01)
@@ -278,16 +293,20 @@ class ConstellationRuntime(private val scope: AbilityScope) : Listener {
         val target = star.target?.takeIf(::valid)
         if (target != null) {
             val desired = target.entity.boundingBox.center.subtract(star.at.toVector())
-            if (desired.lengthSquared() > 1e-8) {
-                val bend = if (area != null) 1.0 else star.guidance
-                star.velocity = star.velocity.multiply(1-bend).add(desired.normalize().multiply(bend))
-            }
+            // Once an exterior star has passed its target, it continues forward without reacquisition.
+            if (area == null && desired.dot(star.velocity) <= 0) star.missed = true
+            if (area != null || !star.missed)
+                star.velocity = StarSteering.turn(star.velocity, desired, if (area != null) 0.16 else star.guidance)
         }
         if (star.velocity.lengthSquared() < 1e-8) star.velocity = Vector(0.0,-1.0,0.0)
         val direction = star.velocity.clone().normalize()
-        val length = if (area != null && target != null)
-            minOf(star.at.toVector().distance(target.entity.boundingBox.center), maxOf(1.25, target.entity.velocity.length()+0.35))
-            else minOf(1.25, 0.7 + star.age*0.012)
+        val length = if (area != null && target != null) {
+            val offset = target.entity.boundingBox.center.subtract(star.at.toVector())
+            val alignment = if (offset.lengthSquared() > 1e-8) direction.dot(offset.clone().normalize()) else 1.0
+            // Brake through wide return turns; speed up once aligned, preventing endless tight orbits.
+            val speed = if (alignment < 0.95) 0.35 else maxOf(1.25, target.entity.velocity.length()+0.35)
+            minOf(offset.length().coerceAtLeast(0.05), speed)
+        } else minOf(1.25, 0.7 + star.age*0.012)
         val wall = if (area == null) star.at.world.rayTraceBlocks(star.at,direction,length)?.hitPosition else null
         val distance = wall?.distance(star.at.toVector()) ?: length
         val hit = enemies().mapNotNull { enemy ->

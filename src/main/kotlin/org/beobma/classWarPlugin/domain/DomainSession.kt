@@ -164,12 +164,8 @@ class DomainSession internal constructor(
                 transformInterior()
                 transformed = true
                 timeline.beginTitle(System.nanoTime())
-                showTitle(false)
-                // Always give the title an observable frame, even after a long server stall.
-                return
             }
-            if (transformed && !subtitle && timeline.subtitleVisible(now)) { subtitle = true; showTitle(true); return }
-            if (transformed && subtitle && timeline.fightStarted(now) && !scope.game.isPaused) {
+            if (transformed && !scope.game.isPaused) {
                 releaseIntroduction()
                 startedCombat = true
                 refreshTimeStatus()
@@ -223,10 +219,6 @@ class DomainSession internal constructor(
             if (entity is Player) relocate(entity, destination) else check(entity.teleport(destination))
             check(!entity.boundingBox.overlaps(box)) { "장막 가장자리 엔티티 이동이 취소되었습니다." }
         }
-    }
-
-    private fun showTitle(withSubtitle: Boolean) {
-        effects.reveal(withSubtitle)
     }
 
     private fun releaseIntroduction() {

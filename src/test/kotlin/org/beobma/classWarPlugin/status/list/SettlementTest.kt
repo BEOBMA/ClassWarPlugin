@@ -4,6 +4,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class SettlementTest {
+    @Test fun `settlement total is capped at eight`() {
+        assertEquals(0.0, Settlement.cappedDamage(0.0))
+        assertEquals(5.0, Settlement.cappedDamage(5.0))
+        assertEquals(8.0, Settlement.cappedDamage(8.0))
+        assertEquals(8.0, Settlement.cappedDamage(100.0))
+    }
     @Test fun `damage sums removed power only`() {
         assertEquals(10.0, listOf(2, 3, 5).sumOf { Settlement.contribution(it) })
         assertEquals(0.0, Settlement.contribution(-1))

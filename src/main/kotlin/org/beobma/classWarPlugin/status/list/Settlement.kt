@@ -12,8 +12,8 @@ class Settlement : StatusAbnormality() {
     override val name get() = Keyword.Settlement.string
     override val description get() = listOf(
         Keyword.Settlement.requireDescription(),
-        "<gray>피해량: 제거한 상태이상 수치의 합. 남은 지속 시간은 반영하지 않는다.",
-        "<gray>실제 연소만 있는 화상은 수치 1로 계산하며, 발동 후 결산은 사라진다.",
+        "<gray>피해량은 제거한 상태이상 수치의 합이며 최대 8이다. 남은 지속 시간은 반영하지 않는다.",
+        "<gray>실제 불에 타고 있으면 화상과 중복하지 않고 둘 중 큰 수치로 계산한다. 발동 후 결산은 사라진다.",
     )
     override val canRemove = true
     override val showPower = false
@@ -35,12 +35,13 @@ class Settlement : StatusAbnormality() {
         remove()
         consumed.forEach { it.remove() }
         if (living != null) living.fireTicks = 0
-        val total = statusDamage + burnPower
+        val total = cappedDamage(statusDamage + burnPower)
         if (total > 0.0) entityData.damage(total, DamageType.StatusAbnormality, casterData,
             appearance = DamageAppearance.SETTLEMENT)
     }
 
     companion object {
+        internal fun cappedDamage(total: Double): Double = total.coerceIn(0.0, 8.0)
         internal fun contribution(power: Int): Double = power.coerceAtLeast(0).toDouble()
         internal fun burnContribution(fireTicks: Int, power: Int): Double =
             maxOf(if (fireTicks > 0) 1.0 else 0.0, contribution(power))
