@@ -139,7 +139,7 @@ class DeathNote : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameE
 
         val target = livingEnemies().find { it.uniqueId == targetId }
         if (target == null) {
-            player.sendMiniMessage("<red><bold>[기명 실패]</bold> <gray>대상이 더 이상 유효하지 않습니다.")
+            player.sendMiniMessage("<red><bold>[!] 대상이 더 이상 유효하지 않습니다.")
             sounds.play(player, Sound.BLOCK_NOTE_BLOCK_BASS, volume = 0.9f, pitch = 0.48f)
             return
         }

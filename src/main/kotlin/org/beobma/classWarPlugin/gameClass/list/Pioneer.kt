@@ -374,7 +374,7 @@ class Pioneer : GameClass(), GameStatusHandler, ConfirmedHitHandler, WhenHitHand
         override fun isUseSuccess(): Boolean {
             if (game.combatTick < nextAction) return false
             if (!state.canSpendForesight(PIONEER_FORESIGHT_COST)) {
-                player.sendMiniMessage("<red>예지안이 부족합니다. (필요: $PIONEER_FORESIGHT_COST, 보유: ${state.foresight})")
+                player.sendMiniMessage("<red><bold>[!] 예지안이 부족합니다. (필요: $PIONEER_FORESIGHT_COST, 보유: ${state.foresight})")
                 return false
             }
             return true

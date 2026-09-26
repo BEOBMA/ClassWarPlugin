@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.gameClass.afterglow
 
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.ability.*
 import org.beobma.classWarPlugin.damage.*
@@ -187,7 +189,7 @@ class AfterglowRuntime(private val scope: AbilityScope) {
             val box = echo.mannequin.boundingBox.clone().expand(0.15)
             box.rayTrace(eye.toVector(), ray, wall)?.let { echo to it.hitPosition.distance(eye.toVector()) }
         }.minByOrNull { it.second }?.first
-        if (selected == null) { player.sendMessage("§c12칸 내의 분신을 바라보아야 한다."); return false }
+        if (selected == null) { player.sendMiniMessage("<red><bold>[!] 12칸 내의 분신을 바라봐야 합니다."); return false }
         val from = player.location.clone()
         val to = selected.at.clone().apply { yaw = from.yaw; pitch = from.pitch }
         val box = player.boundingBox.clone().shift(to.toVector().subtract(from.toVector()))
@@ -198,7 +200,7 @@ class AfterglowRuntime(private val scope: AbilityScope) {
         for (x in floor(box.minX).toInt()..floor(box.maxX-1e-6).toInt())
             for (y in floor(box.minY).toInt()..floor(box.maxY-1e-6).toInt())
                 for (z in floor(box.minZ).toInt()..floor(box.maxZ-1e-6).toInt())
-                    if (!to.world.getBlockAt(x,y,z).isPassable) { player.sendMessage("§c분신의 위치가 막혀 있다."); return false }
+                    if (!to.world.getBlockAt(x,y,z).isPassable) { player.sendMiniMessage("<red><bold>[!] 분신의 위치가 막혀 있습니다."); return false }
         if (!player.teleport(to)) return false
         player.fallDistance = 0f
         move(selected, from)

@@ -106,7 +106,7 @@ class Referee : GameClass(), OnHitHandler, ConfirmedHitHandler, GameEndHandler {
             defendant.player.location.y < center.y - 1.0) return false
         val charge = CrimeLedger.trialCharge(ledger.heaviest(defendant.uniqueId), training, defendant.uniqueId, game.combatTick)
         if (charge == null || trial != null || activeTrials.containsKey(defendant.uniqueId)) {
-            player.sendMiniMessage("<red>기록된 죄가 있는 재판 가능한 플레이어를 바라보세요.")
+            player.sendMiniMessage("<red><bold>[!] 기록된 죄가 있는 재판 가능한 플레이어를 바라봐야 합니다.")
             RefereeEffects.rejected(player)
             return false
         }

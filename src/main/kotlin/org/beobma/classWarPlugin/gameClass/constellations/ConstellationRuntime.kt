@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.gameClass.constellations
 
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.ability.*
 import org.beobma.classWarPlugin.damage.*
@@ -384,7 +386,7 @@ class ConstellationRuntime(private val scope: AbilityScope) : Listener {
         val target = owner.shotLaserGetEntityData(10.0,TargetType.Enemy,false)
         val orbit = target?.let { orbits[it.entity.uniqueId] }
         if (orbit == null || orbit.stars.size != 4 || orbit.ringStarted != null) {
-            player.sendMessage("§c10칸 내에서 별 4개가 공전 중인 적을 바라보아야 한다."); return false
+            player.sendMiniMessage("<red><bold>[!] 10칸 내에서 별 4개가 공전 중인 적을 바라봐야 합니다."); return false
         }
         orbit.ringStarted = clock; orbit.until = maxOf(orbit.until, clock+61)
         SoundApi.play(target.entity,Sound.BLOCK_BEACON_ACTIVATE,0.5f,1.3f)

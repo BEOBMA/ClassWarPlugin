@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.gameClass.creator
 
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
+
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.ability.*
 import org.beobma.classWarPlugin.damage.DamagePath
@@ -79,7 +81,7 @@ class CreationRuntime(private val scope: AbilityScope) {
     private fun spend(amount: Int): Boolean {
         if (domain != null) return true
         val mana = owner.getOrCreateStatus(owner) { Mana() }
-        if (mana.power < amount) { player.sendMessage("§c마나가 부족하다. ($amount 필요)"); return false }
+        if (mana.power < amount) { player.sendMiniMessage("<red><bold>[!] 마나가 부족합니다. ($amount 필요)"); return false }
         mana.decreasePower(amount)
         return true
     }
@@ -95,7 +97,7 @@ class CreationRuntime(private val scope: AbilityScope) {
         val ground = target?.entity?.boundingBox?.center?.toLocation(player.world)
             ?: player.world.rayTraceBlocks(player.eyeLocation, player.eyeLocation.direction, 20.0,
                 FluidCollisionMode.NEVER, true)?.hitPosition?.toLocation(player.world)
-        if (ground == null) { player.sendMessage("§c20칸 내의 블록을 바라보아야 한다."); return false }
+        if (ground == null) { player.sendMiniMessage("<red><bold>[!] 20칸 내의 블록을 바라봐야 합니다."); return false }
         if (!spend(10)) return false
         val height = (player.world.maxHeight - 1.0 - ground.y).coerceIn(0.1, 24.0)
         val tilt = if (kotlin.random.Random.nextDouble() < 0.6) kotlin.random.Random.nextDouble(0.12, 0.28) else 0.0
@@ -200,7 +202,7 @@ class CreationRuntime(private val scope: AbilityScope) {
     }
 
     fun destroyAll(): Boolean {
-        if (creations.isEmpty()) { player.sendMessage("§c파괴할 창조물이 없다."); return false }
+        if (creations.isEmpty()) { player.sendMiniMessage("<red><bold>[!] 파괴할 창조물이 없습니다."); return false }
         if (!spend(50)) return false
         creations.toList().forEach(::destroy)
         return true

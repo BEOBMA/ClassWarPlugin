@@ -19,6 +19,6 @@ class OnPlayerItemHeldEvent : Listener {
             .firstOrNull { it.uniqueId == event.player.uniqueId } ?: return
         if (game.canPerform(data.uniqueId, CooperativeAction.CHANGE_HOTBAR)) return
         event.isCancelled = true
-        event.player.sendActionBar(miniMessage.deserialize("<red>공동 역할상 핫바를 바꿀 수 없습니다."))
+        event.player.sendActionBar(miniMessage.deserialize("<red><bold>[!] 공동 역할상 핫바를 바꿀 수 없습니다."))
     }
 }

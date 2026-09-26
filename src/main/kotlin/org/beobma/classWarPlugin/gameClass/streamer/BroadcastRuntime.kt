@@ -1,5 +1,7 @@
 package org.beobma.classWarPlugin.gameClass.streamer
 
+import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
+
 import net.kyori.adventure.text.Component
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.ability.*
@@ -149,10 +151,10 @@ class BroadcastRuntime(private val scope: AbilityScope) : Listener {
             owner.entityStatus.isDead || !owner.entityStatus.canSkillUse) return
         if (e.click != ClickType.LEFT || owner.statusAbnormalitys.any { it is BroadcastEscrow }) return
         val product = products.getOrNull(e.rawSlot) ?: return
-        if (cheese < product.price) { player.sendMessage("§c치즈가 부족하다."); return }
+        if (cheese < product.price) { player.sendMiniMessage("<red><bold>[!] 치즈가 부족합니다."); return }
         // Require one empty storage slot, then give directly: never deduct for an overflow purchase.
         val slot = player.inventory.firstEmpty()
-        if (slot !in 0..35) { player.sendMessage("§c인벤토리에 빈 공간이 필요하다."); return }
+        if (slot !in 0..35) { player.sendMiniMessage("<red><bold>[!] 인벤토리에 빈 공간이 필요합니다."); return }
         cheese -= product.price
         player.inventory.setItem(slot, item(product)); render()
         SoundApi.play(player.location, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, volume = 0.5f, pitch = 1.2f)
