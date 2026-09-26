@@ -5,6 +5,12 @@ import kotlin.math.*
 
 /** Bounded angular steering, including a stable turn when the target is directly behind. */
 internal object StarSteering {
+    const val GUIDANCE_TURN = 0.014
+
+    /** Exterior guidance loses correction near impact, leaving a sprinting target an escape window. */
+    fun exteriorTurn(base: Double, distance: Double): Double =
+        if (base == GUIDANCE_TURN && distance <= 4.0) 0.0035 else base
+
     fun turn(heading: Vector, destination: Vector, limit: Double): Vector {
         val forward = heading.clone().normalize()
         if (destination.lengthSquared() < 1e-10) return forward

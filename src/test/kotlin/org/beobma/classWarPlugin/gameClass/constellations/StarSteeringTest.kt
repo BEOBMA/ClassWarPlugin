@@ -5,6 +5,12 @@ import kotlin.math.acos
 import kotlin.test.*
 
 class StarSteeringTest {
+    @Test fun `guidance loses tracking strength near impact without changing passive stars`() {
+        assertEquals(0.014, StarSteering.exteriorTurn(StarSteering.GUIDANCE_TURN, 10.0))
+        assertEquals(0.0035, StarSteering.exteriorTurn(StarSteering.GUIDANCE_TURN, 4.0))
+        assertEquals(0.0035, StarSteering.exteriorTurn(StarSteering.GUIDANCE_TURN, 1.0))
+        assertEquals(0.055, StarSteering.exteriorTurn(0.055, 1.0))
+    }
     @Test fun `homing turns gradually and retains unit length`() {
         val start = Vector(0.0,-1.0,0.0)
         val result = StarSteering.turn(start,Vector(10.0,0.0,0.0),0.018)

@@ -270,7 +270,7 @@ class ConstellationRuntime(private val scope: AbilityScope) : Listener {
         val delta = goal.subtract(from.toVector())
         val velocity = if (area == null || delta.lengthSquared() < 1e-8) Vector(0.0,-1.0,0.0)
             else delta.normalize()
-        val star = Star(display(from,0.55f), from, velocity, chosen, if (weak) 0.018 else 0.055)
+        val star = Star(display(from,0.55f), from, velocity, chosen, if (weak) StarSteering.GUIDANCE_TURN else 0.055)
         stars += star
         if (area != null) registerStar(star)
         ParticleApi.spawn(from, Particle.FIREWORK, 3,0.15,0.01)
@@ -296,7 +296,8 @@ class ConstellationRuntime(private val scope: AbilityScope) : Listener {
             // Once an exterior star has passed its target, it continues forward without reacquisition.
             if (area == null && desired.dot(star.velocity) <= 0) star.missed = true
             if (area != null || !star.missed)
-                star.velocity = StarSteering.turn(star.velocity, desired, if (area != null) 0.16 else star.guidance)
+                star.velocity = StarSteering.turn(star.velocity, desired,
+                    if (area != null) 0.16 else StarSteering.exteriorTurn(star.guidance, desired.length()))
         }
         if (star.velocity.lengthSquared() < 1e-8) star.velocity = Vector(0.0,-1.0,0.0)
         val direction = star.velocity.clone().normalize()
