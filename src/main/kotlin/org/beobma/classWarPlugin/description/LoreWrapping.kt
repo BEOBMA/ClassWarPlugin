@@ -32,7 +32,18 @@ internal object LoreWrapping {
         var pending = mutableListOf<Glyph>()
         fun emit(part: List<Glyph>) {
             val line = Component.text().decoration(TextDecoration.ITALIC, false)
-            part.forEach { line.append(Component.text(it.text).style(it.style)) }
+            // Keep full styled words together, including names used by the icon renderer.
+            var style: Style? = null
+            val text = StringBuilder()
+            fun flush() {
+                if (text.isNotEmpty()) line.append(Component.text(text.toString()).style(requireNotNull(style)))
+                text.clear()
+            }
+            part.forEach {
+                if (style != it.style) { flush(); style = it.style }
+                text.append(it.text)
+            }
+            flush()
             result += line.build()
         }
         for (glyph in glyphs) {
