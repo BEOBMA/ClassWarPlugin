@@ -16,7 +16,6 @@ import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.game.DamageMultiplierType
 import org.beobma.classWarPlugin.game.GamePhase
 import org.beobma.classWarPlugin.game.MatchMode
-import org.beobma.classWarPlugin.game.CooperativeRole
 import org.beobma.classWarPlugin.game.PlayerSnapshot
 import org.beobma.classWarPlugin.game.damageMultiplier
 import org.beobma.classWarPlugin.gameClass.GameClass
@@ -210,14 +209,8 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
             playerData.assignGameClasses(assignedClasses)
             classSelectionHistory.record(player.uniqueId, assignedClasses.map { it.classId })
             val teamNumber = (teamOf(player.uniqueId) ?: 0) + 1
-            val role = cooperativeRoleOf(player.uniqueId)
             val assignment = buildString {
                 if (mode.usesTeamRules) append("<aqua>팀 $teamNumber")
-                if (role != null) {
-                    val groupNumber = (cooperativeGroups[player.uniqueId] ?: 0) + 1
-                    append(" <dark_gray>|</dark_gray> <aqua>공동 조 $groupNumber")
-                    append(" <dark_gray>|</dark_gray> <yellow>${role.displayName}")
-                }
             }
             if (assignment.isNotBlank()) {
                 player.sendMessage(miniMessage.deserialize("<gray>[편성] $assignment"))
@@ -315,40 +308,16 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         .filter(ClassBalanceManager::isEnabled)
         .filterNot { !mode.allowsParasite && it is Parasite }
 
-    /** 셔플된 참가자를 팀과 공동 조에 배치하고 공동 역할을 확정한다. */
+    /** 셔플된 참가자를 전투 팀에 배치한다. */
     private fun Game.initializeMatchGroups(participants: List<PlayerData>) {
         combatTeams.clear()
-        cooperativeGroups.clear()
-        cooperativeRoles.clear()
         val shuffled = participants.shuffled()
         val teamSize = when {
             mode.usesTeamRules -> settings.teamPlayersPerTeam
-            mode.usesCooperativeRules -> settings.cooperativePlayersPerGroup
             else -> 1
         }
         shuffled.chunked(teamSize).forEachIndexed { teamId, members ->
             members.forEach { combatTeams[it.uniqueId] = teamId }
-        }
-        if (!mode.usesCooperativeRules) return
-
-        var groupId = 0
-        shuffled.chunked(teamSize).forEach { teamMembers ->
-            teamMembers.chunked(settings.cooperativePlayersPerGroup).forEach { groupMembers ->
-                val configured = if (settings.cooperativeRandomRoles) {
-                    listOf(CooperativeRole.MOVEMENT_COMBAT, CooperativeRole.HOTBAR_SKILLS)
-                } else {
-                    settings.cooperativeFixedRoles.ifEmpty {
-                        listOf(CooperativeRole.MOVEMENT_COMBAT, CooperativeRole.HOTBAR_SKILLS)
-                    }
-                }
-                val roles = List(groupMembers.size) { configured[it % configured.size] }
-                    .let { if (settings.cooperativeRandomRoles) it.shuffled() else it }
-                groupMembers.zip(roles).forEach { (member, role) ->
-                    cooperativeGroups[member.uniqueId] = groupId
-                    cooperativeRoles[member.uniqueId] = role
-                }
-                groupId++
-            }
         }
     }
 
@@ -1924,8 +1893,6 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         tailTargets.clear()
         tailTargetTeams.clear()
         combatTeams.clear()
-        cooperativeGroups.clear()
-        cooperativeRoles.clear()
         availableClasses.clear()
         refreshesRemaining.clear()
         classSelectionHistory.clear()

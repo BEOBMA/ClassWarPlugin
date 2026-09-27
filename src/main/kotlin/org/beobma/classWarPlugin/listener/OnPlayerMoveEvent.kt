@@ -16,7 +16,6 @@ import org.bukkit.event.player.PlayerTeleportEvent
 import org.beobma.classWarPlugin.domain.DomainManager
 import org.bukkit.Particle
 import org.bukkit.Sound
-import org.beobma.classWarPlugin.game.CooperativeAction
 
 class OnPlayerMoveEvent : Listener {
 
@@ -34,7 +33,7 @@ class OnPlayerMoveEvent : Listener {
         if (event is PlayerTeleportEvent) return
         val game = Info.game ?: trainingInstance.find { game -> game.playerDatas.any { playerData -> playerData.entity == player } } ?: return
         val playerData = game.playerDatas.find { playerData -> playerData.entity == player } as? PlayerData ?: return
-        if (!playerData.entityStatus.canMove || !game.canPerform(playerData.uniqueId, CooperativeAction.MOVE)) {
+        if (!playerData.entityStatus.canMove) {
             val from = event.from
             val to = event.to
             if (from.x != to.x || from.y != to.y || from.z != to.z) {

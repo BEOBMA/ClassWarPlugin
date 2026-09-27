@@ -26,7 +26,6 @@ import org.bukkit.event.block.Action
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.event.player.PlayerInteractEntityEvent
 import org.bukkit.inventory.EquipmentSlot
-import org.beobma.classWarPlugin.game.CooperativeAction
 
 class OnPlayerInteractEvent : Listener {
 
@@ -42,10 +41,6 @@ class OnPlayerInteractEvent : Listener {
         val data = findGameForPlayer(event.player)?.playerDatas?.filterIsInstance<PlayerData>()
             ?.firstOrNull { it.player == event.player } ?: return
         if (!data.canDispatchClassHandlers()) return
-        if (!data.initGame.canPerform(data.uniqueId, CooperativeAction.BASIC_ATTACK)) {
-            event.isCancelled = true
-            return
-        }
         if (Brave.handlePullInteract(event.player, event.rightClicked)) { event.isCancelled = true; return }
         val item = event.player.inventory.itemInMainHand
         if (item.type.isAir || getSkillId(item, event.player.uniqueId) != null) return
@@ -90,10 +85,9 @@ class OnPlayerInteractEvent : Listener {
         val playerData = currentGame.playerDatas.filterIsInstance<PlayerData>()
             .find { it.player.uniqueId == player.uniqueId } ?: return
         if (!playerData.canDispatchClassHandlers()) return
-        val canBasicAttack = currentGame.canPerform(playerData.uniqueId, CooperativeAction.BASIC_ATTACK)
-        if (canBasicAttack && Brave.handlePullInteract(event)) return
+        if (Brave.handlePullInteract(event)) return
         if (isLeftClick && playerData.entityStatus.canAttack && !playerData.hasStatus<Disarm>() &&
-            canBasicAttack && AttackableObjectManager.hitBasicAttack(player)
+            AttackableObjectManager.hitBasicAttack(player)
         ) {
             event.isCancelled = true
             return
@@ -102,10 +96,6 @@ class OnPlayerInteractEvent : Listener {
         val taggedClassId = getWeaponClassId(clickedItem)
         val skillId = getSkillId(clickedItem, player.uniqueId)
         if (skillId == null) {
-            if (!canBasicAttack) {
-                event.isCancelled = true
-                return
-            }
             val hasValidWeaponTag = taggedClassId != null &&
                 AbilityTree.nodes(playerData.gameClasses, activeOnly = true).any { (it.classId == taggedClassId || it.javaClass.name == taggedClassId) }
             AbilityTree.nodes(playerData.gameClasses, activeOnly = true)

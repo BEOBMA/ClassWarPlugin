@@ -5,7 +5,6 @@ import org.beobma.classWarPlugin.ability.AbilityExecution
 
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
-import org.beobma.classWarPlugin.game.CooperativeAction
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.list.Parasite
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
@@ -61,7 +60,6 @@ object DamageManager {
         val targetStatus = context.target.entityStatus
         val canDamage = when {
             context.path.isBasicAttack ->
-                context.attacker.game.canPerform(context.attacker.uniqueId, CooperativeAction.BASIC_ATTACK) &&
                     attackerStatus.canAttack && !context.attacker.hasStatus<Disarm>() && targetStatus.isAttackable
             context.path == DamagePath.SKILL -> attackerStatus.canSkillUse && targetStatus.isSkillTargeting
             else -> targetStatus.isSkillTargeting

@@ -27,32 +27,21 @@ class MatchModeTest {
     fun `toggles compose and serialize without dedicated detail modes`() {
         val mode = MatchMode.CLASSIC
             .toggled(MatchModifier.TEAM)
-            .toggled(MatchModifier.COOPERATIVE)
             .toggled(MatchModifier.DUAL)
             .toggled(MatchModifier.TAIL_TAG)
 
         assertEquals(2, mode.assignedClassCount)
         assertTrue(mode.usesTeamRules)
-        assertTrue(mode.usesCooperativeRules)
         assertTrue(mode.usesTailTagRules)
         assertEquals(mode, MatchMode.deserialize(mode.serialize()))
     }
 
     @Test
-    fun `team and cooperative counts must divide exactly and nest`() {
+    fun `team counts must divide exactly`() {
         val team = MatchMode(setOf(MatchModifier.TEAM))
         assertNull(team.validate(GameConfiguration(startingItems = emptyList(), teamPlayersPerTeam = 2), 4))
         assertNotNull(team.validate(GameConfiguration(startingItems = emptyList(), teamPlayersPerTeam = 3), 4))
 
-        val combined = MatchMode(setOf(MatchModifier.TEAM, MatchModifier.COOPERATIVE))
-        assertNull(combined.validate(
-            GameConfiguration(startingItems = emptyList(), teamPlayersPerTeam = 4, cooperativePlayersPerGroup = 2),
-            8,
-        ))
-        assertNotNull(combined.validate(
-            GameConfiguration(startingItems = emptyList(), teamPlayersPerTeam = 3, cooperativePlayersPerGroup = 2),
-            6,
-        ))
     }
 
     @Test
@@ -77,28 +66,9 @@ class MatchModeTest {
     }
 
     @Test
-    fun `cooperative roles split controls`() {
-        assertTrue(CooperativeRole.MOVEMENT_COMBAT.canMove)
-        assertTrue(CooperativeRole.MOVEMENT_COMBAT.canBasicAttack)
-        assertFalse(CooperativeRole.MOVEMENT_COMBAT.canUseSkills)
-        assertFalse(CooperativeRole.HOTBAR_SKILLS.canMove)
-        assertTrue(CooperativeRole.HOTBAR_SKILLS.canChangeHotbar)
-        assertTrue(CooperativeRole.HOTBAR_SKILLS.canUseSkills)
-
-        val mover = UUID.randomUUID()
-        val skillUser = UUID.randomUUID()
-        val game = Game(
-            mutableListOf(),
-            settings = GameConfiguration(startingItems = emptyList()),
-            mode = MatchMode(setOf(MatchModifier.COOPERATIVE)),
-            phase = GamePhase.RUNNING,
-            tickSource = { 0L },
-        )
-        game.cooperativeRoles[mover] = CooperativeRole.MOVEMENT_COMBAT
-        game.cooperativeRoles[skillUser] = CooperativeRole.HOTBAR_SKILLS
-        assertTrue(game.canPerform(mover, CooperativeAction.MOVE))
-        assertFalse(game.canPerform(mover, CooperativeAction.USE_SKILL))
-        assertFalse(game.canPerform(skillUser, CooperativeAction.BASIC_ATTACK))
-        assertTrue(game.canPerform(skillUser, CooperativeAction.CHANGE_HOTBAR))
+    fun `removed mode cannot be selected or deserialized`() {
+        assertEquals(setOf("DUAL", "TAIL_TAG", "TEAM"), MatchModifier.entries.map { it.name }.toSet())
+        assertNull(MatchMode.deserialize("COOPERATIVE"))
+        assertNull(MatchMode.deserialize("TEAM,COOPERATIVE"))
     }
 }

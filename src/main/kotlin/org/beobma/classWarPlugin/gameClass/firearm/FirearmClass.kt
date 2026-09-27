@@ -4,7 +4,6 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.ability.*
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
-import org.beobma.classWarPlugin.game.CooperativeAction
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.handler.*
 import org.beobma.classWarPlugin.manager.GameClassManager.getWeaponClassId
@@ -54,7 +53,7 @@ abstract class FirearmClass(val firearmProfile: FirearmProfile) : GameClass(), G
     private fun canFire() = abilityScope.started && !abilityScope.isClosed && !abilityScope.suspended &&
         abilityScope.isActive && !game.isPaused && !playerStatus.isDead && playerStatus.canAttack &&
         playerStatus.canSkillUse && !playerData.hasStatus<Disarm>() &&
-        game.canPerform(playerData.uniqueId, CooperativeAction.BASIC_ATTACK) && isHoldingGun()
+        isHoldingGun()
 
     override fun onBattleStart() {
         magazine = FirearmMagazine(firearmProfile)

@@ -36,7 +36,7 @@ import java.util.Locale
 
 class Command : Listener, CommandExecutor, TabCompleter {
     private val miniMessage = MiniMessage.miniMessage()
-    private val testModeOptions = listOf("growth", "dual", "tail", "team", "cooperative")
+    private val testModeOptions = listOf("growth", "dual", "tail", "team")
 
     override fun onCommand(sender: CommandSender, cmd: Command, label: String, args: Array<String>): Boolean {
         if (!cmd.name.equals("classwar", ignoreCase = true)) return false
@@ -246,7 +246,6 @@ class Command : Listener, CommandExecutor, TabCompleter {
         "dual" -> MatchModifier.DUAL
         "tail", "tail-tag" -> MatchModifier.TAIL_TAG
         "team" -> MatchModifier.TEAM
-        "cooperative", "coop" -> MatchModifier.COOPERATIVE
         else -> null
     }
 
@@ -295,7 +294,7 @@ class Command : Listener, CommandExecutor, TabCompleter {
             "<yellow>/cw reload <gray>- 설정 파일을 다시 불러옵니다.",
             "<yellow>/cw update <gray>- GitHub 최신 배포를 즉시 확인합니다.",
         ) + if (sender.isOp && testCommandsEnabled()) listOf(
-            "<dark_gray>/cw test start [growth] [dual] [tail] [team] [cooperative] <gray>- 제한 없이 테스트 게임을 시작합니다.",
+            "<dark_gray>/cw test start [growth] [dual] [tail] [team] <gray>- 제한 없이 테스트 게임을 시작합니다.",
             "<dark_gray>/cw test stop <gray>- 게임을 즉시 강제 종료합니다.",
             "<dark_gray>/cw test status [수치] [초] <gray>- 상태이상 아이템 실험실을 엽니다. clear로 초기화합니다.",
         ) else emptyList()
@@ -322,7 +321,7 @@ class Command : Listener, CommandExecutor, TabCompleter {
         if (args.firstOrNull()?.equals("growth", true) == true) {
             val options = when (args.size) {
                 2 -> listOf("stats", "items", "regions") + if (sender.isOp) listOf("start", "config", "nextphase", "spawnmobs", "xp", "give") else emptyList()
-                3 -> if (args[1] in listOf("xp", "give")) Bukkit.getOnlinePlayers().map { it.name } else listOf("dual", "team", "tail-tag", "cooperative")
+                3 -> if (args[1] in listOf("xp", "give")) Bukkit.getOnlinePlayers().map { it.name } else listOf("dual", "team", "tail-tag")
                 4 -> if (args[1] == "give") org.beobma.classWarPlugin.growth.GrowthItems.all.map { it.id } else emptyList()
                 else -> emptyList()
             }

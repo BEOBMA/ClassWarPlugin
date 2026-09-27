@@ -97,9 +97,6 @@ private object GameConfigPath {
     const val PLAYER_LIVES = "combat.player-lives"
     const val ELIMINATION_REWARDS_ENABLED = "combat.elimination-rewards.enabled"
     const val TEAM_PLAYERS_PER_TEAM = "modes.team.players-per-team"
-    const val COOPERATIVE_PLAYERS_PER_GROUP = "modes.cooperative.players-per-group"
-    const val COOPERATIVE_RANDOM_ROLES = "modes.cooperative.random-role-assignment"
-    const val COOPERATIVE_FIXED_ROLES = "modes.cooperative.fixed-roles"
     const val CENTER_X = "map.center-x"
     const val CENTER_Z = "map.center-z"
     const val SCATTER_MINIMUM_RADIUS = "scatter.minimum-radius"
@@ -187,12 +184,6 @@ data class GameConfiguration(
     val playerLives: Int = 1,
     val eliminationRewardsEnabled: Boolean = false,
     val teamPlayersPerTeam: Int = 2,
-    val cooperativePlayersPerGroup: Int = 2,
-    val cooperativeRandomRoles: Boolean = true,
-    val cooperativeFixedRoles: List<CooperativeRole> = listOf(
-        CooperativeRole.MOVEMENT_COMBAT,
-        CooperativeRole.HOTBAR_SKILLS,
-    ),
     val damageMultipliers: Map<DamageMultiplierType, Double> = defaultDamageMultipliers,
     val rankWeights: Map<Rank, Int> = defaultRankWeights,
     val centerX: Double = 704.5,
@@ -300,17 +291,6 @@ object GameSettings {
                 GameConfigPath.TEAM_PLAYERS_PER_TEAM,
                 defaults.teamPlayersPerTeam,
             ),
-            cooperativePlayersPerGroup = config.getInt(
-                GameConfigPath.COOPERATIVE_PLAYERS_PER_GROUP,
-                defaults.cooperativePlayersPerGroup,
-            ),
-            cooperativeRandomRoles = config.getBoolean(
-                GameConfigPath.COOPERATIVE_RANDOM_ROLES,
-                defaults.cooperativeRandomRoles,
-            ),
-            cooperativeFixedRoles = config.getStringList(GameConfigPath.COOPERATIVE_FIXED_ROLES)
-                .mapNotNull(CooperativeRole::fromConfig)
-                .ifEmpty { defaults.cooperativeFixedRoles },
             damageMultipliers = DamageMultiplierType.entries.associateWith { type ->
                 config.getDouble(
                     GameConfigPath.damageMultiplier(type),
@@ -539,8 +519,6 @@ object GameSettings {
             countdownSeconds = countdownSeconds.coerceIn(GameConfigLimit.COUNTDOWN_SECONDS),
             playerLives = playerLives.coerceAtLeast(0),
             teamPlayersPerTeam = teamPlayersPerTeam.coerceAtLeast(2),
-            cooperativePlayersPerGroup = cooperativePlayersPerGroup.coerceAtLeast(2),
-            cooperativeFixedRoles = cooperativeFixedRoles.ifEmpty { defaults.cooperativeFixedRoles },
             cooldownFlowMultiplier = oneDecimal(
                 cooldownFlowMultiplier.finiteOr(defaults.cooldownFlowMultiplier).coerceIn(
                     GameConfigLimit.MINIMUM_COOLDOWN_FLOW_MULTIPLIER,
@@ -626,9 +604,6 @@ object GameSettings {
         put(GameConfigPath.PLAYER_LIVES, playerLives)
         put(GameConfigPath.ELIMINATION_REWARDS_ENABLED, eliminationRewardsEnabled)
         put(GameConfigPath.TEAM_PLAYERS_PER_TEAM, teamPlayersPerTeam)
-        put(GameConfigPath.COOPERATIVE_PLAYERS_PER_GROUP, cooperativePlayersPerGroup)
-        put(GameConfigPath.COOPERATIVE_RANDOM_ROLES, cooperativeRandomRoles)
-        put(GameConfigPath.COOPERATIVE_FIXED_ROLES, cooperativeFixedRoles.map { it.configName })
         DamageMultiplierType.entries.forEach { type ->
             put(GameConfigPath.damageMultiplier(type), oneDecimal(damageMultipliers.getValue(type)))
         }

@@ -68,7 +68,9 @@ object ItemDescriptionManager {
             else "<green><bold>핵심 효과</bold>"
         ))
         add(renderLoreLine("<dark_gray>────────────"))
-        addAll(formatEffectLines(lines).map(::renderLoreLine))
+        addAll(formatEffectLines(lines).flatMap {
+            org.beobma.classWarPlugin.description.LoreWrapping.wrap(renderLoreLine(it))
+        })
 
         val keywordExplanations = when (mode) {
             DescriptionViewMode.DETAILED -> Keyword.explanationsFor(keywordSource)
@@ -80,7 +82,9 @@ object ItemDescriptionManager {
                 if (mode == DescriptionViewMode.DETAILED) "<aqua><bold>용어 설명</bold>"
                 else "<aqua><bold>필수 용어</bold>"
             ))
-            addAll(keywordExplanations.map { renderLoreLine("<dark_gray>• </dark_gray>$it") })
+            addAll(keywordExplanations.flatMap {
+                org.beobma.classWarPlugin.description.LoreWrapping.wrap(renderLoreLine("<dark_gray>• </dark_gray>$it"))
+            })
         }
         if (alwaysVisibleLines.isNotEmpty()) {
             if (isNotEmpty()) add(renderLoreLine(""))
