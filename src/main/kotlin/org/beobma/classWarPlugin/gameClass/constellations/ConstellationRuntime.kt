@@ -237,7 +237,8 @@ class ConstellationRuntime(private val scope: AbilityScope) : Listener {
                 }
             }
             // Re-evaluate each shot: a target may have died or moved since the puzzle ended.
-            val target = enemies().filter { valid(it) && it.entity.location.distanceSquared(volley.origin) <= 18*18 }
+            val range = org.beobma.classWarPlugin.manager.ClassBalanceManager.scaleRange(owner,18.0)
+            val target = enemies().filter { valid(it) && org.beobma.classWarPlugin.gameClass.creator.CreationGeometry.inRadius(it.entity.boundingBox,volley.origin.toVector(),range) }
                 .minByOrNull { it.entity.location.distanceSquared(point) }
             summon(point, target, weak = true)
             SoundApi.play(volley.origin, Sound.BLOCK_NOTE_BLOCK_HAT, 0.22f, (1.3 + index%4*0.12).toFloat())

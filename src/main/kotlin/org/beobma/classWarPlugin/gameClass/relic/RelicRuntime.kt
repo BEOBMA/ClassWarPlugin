@@ -76,8 +76,9 @@ class RelicRuntime(private val scope: AbilityScope) {
         val ray = from.toVector().subtract(player.location.toVector()).setY(0.0)
         if (ray.lengthSquared()<1e-8) ray.copy(player.eyeLocation.direction)
         ray.normalize()
-        bolt(from,from.clone().add(ray.clone().multiply(12.0)))
-        enemies().filter { it !== target && CreationGeometry.contact(it.entity.boundingBox,from.toVector(),ray,12.0,0.8)!=null }.forEach(::shock)
+        val range=org.beobma.classWarPlugin.manager.ClassBalanceManager.scaleRange(owner,12.0)
+        bolt(from,from.clone().add(ray.clone().multiply(range)))
+        enemies().filter { it !== target && CreationGeometry.contact(it.entity.boundingBox,from.toVector(),ray,range,0.8)!=null }.forEach(::shock)
     }
     fun throwSpear(): Boolean {
         if (spear != null || saved != null) return false
@@ -180,6 +181,7 @@ class RelicRuntime(private val scope: AbilityScope) {
         val rays=MutableList(5) { bases[it].clone() }
         val points=MutableList(5) { origin.clone() }
         val struck=mutableSetOf<UUID>()
+        val step=org.beobma.classWarPlugin.manager.ClassBalanceManager.scaleRange(owner,1.5)
         SoundApi.play(origin,Sound.ENTITY_LIGHTNING_BOLT_THUNDER,0.45f,1.4f)
         origin.world.spawnParticle(Particle.ELECTRIC_SPARK,origin,45,0.8,0.2,0.8,0.12)
         origin.world.spawnParticle(Particle.END_ROD,origin,12,0.5,0.15,0.5,0.06)
@@ -190,7 +192,7 @@ class RelicRuntime(private val scope: AbilityScope) {
                     if(rays[i].lengthSquared()<1e-8) return@forEach
                     val from=points[i]
                     rays[i]=bases[i].clone().rotateAroundY(kotlin.math.sin(frame*0.65+i*1.7)*0.3+Random.nextDouble(-0.08,0.08))
-                    val to=ground(from.clone().add(rays[i].clone().multiply(1.5)))
+                    val to=ground(from.clone().add(rays[i].clone().multiply(step)))
                     if(to==null || kotlin.math.abs(to.y-from.y)>1.25) { rays[i]=Vector(); return@forEach }
                     val delta=to.toVector().subtract(from.toVector())
                     val length=delta.length()

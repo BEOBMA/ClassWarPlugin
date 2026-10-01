@@ -95,7 +95,7 @@ class CreationRuntime(private val scope: AbilityScope) {
     fun chain(): Boolean {
         val target = guaranteed()
         val ground = target?.entity?.boundingBox?.center?.toLocation(player.world)
-            ?: player.world.rayTraceBlocks(player.eyeLocation, player.eyeLocation.direction, 20.0,
+            ?: player.world.rayTraceBlocks(player.eyeLocation, player.eyeLocation.direction, org.beobma.classWarPlugin.manager.ClassBalanceManager.scaleRange(owner, 20.0),
                 FluidCollisionMode.NEVER, true)?.hitPosition?.toLocation(player.world)
         if (ground == null) { player.sendMiniMessage("<red><bold>[!] 20칸 내의 블록을 바라봐야 합니다."); return false }
         if (!spend(10)) return false
@@ -210,7 +210,7 @@ class CreationRuntime(private val scope: AbilityScope) {
 
     private fun destroy(c: Creation) {
         val point = c.position.toVector()
-        val radius = if (c.chain) 2.0 else 3.0
+        val radius = org.beobma.classWarPlugin.manager.ClassBalanceManager.scaleRange(owner, if (c.chain) 2.0 else 3.0)
         enemies(c.position.world).filter { enemy ->
             CreationGeometry.inRadius(enemy.entity.boundingBox, point, radius)
         }.forEach { target ->

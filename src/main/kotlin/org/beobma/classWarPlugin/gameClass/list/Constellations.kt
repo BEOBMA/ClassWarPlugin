@@ -75,7 +75,7 @@ class Constellations : GameClass(), org.beobma.classWarPlugin.gameClass.handler.
         override val description = listOf(
             "<gray>공전 패시브로 인해 4개의 별이 공전 중인 적에게만 사용할 수 있다.",
             "",
-            "<gray>10칸 내의 바라보는 적에게 공전 중인 모든 별을 회전시킨다.",
+            "<gray>{g:range:10}칸 내의 바라보는 적에게 공전 중인 모든 별을 회전시킨다.",
             "<gray>3초간 회전 속도가 점차 증가하다, 이후 고리를 이루며 모여들고, 적에게 {keyword:Settlement}을 적용한다.",
             "<gray>이후 해당 적에게 공전 중인 모든 별은 소멸한다."
         )

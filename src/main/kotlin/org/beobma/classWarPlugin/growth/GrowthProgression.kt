@@ -43,13 +43,13 @@ data class GrowthProfile(val primary: GrowthStat, val secondary: GrowthStat,
             GrowthAxis.SHIELD to GrowthEffectRule(GrowthStat.STRENGTH, 0.8, 1.0),
             GrowthAxis.PHYSICAL_POWER to GrowthEffectRule(GrowthStat.STRENGTH, 0.6, 1.0),
         )
-        private val intellect = setOf("abyssal-veil", "barrier", "back-room", "contractor", "death-note", "darkness",
+        private val intellect = setOf("creator", "constellations", "abyssal-veil", "barrier", "back-room", "contractor", "death-note", "darkness",
             "elementalist", "astronomer", "geometer", "grass", "hacker", "hikikomori",
             "ice-wizard", "just-light", "jupiter", "land-wizard", "lightning-wizard", "light-wizard", "luna",
             "mathematician", "meteor", "neptune", "parasite", "pacifist", "pat-and-matt", "portal-gun", "pluto",
             "rainbow-bridge", "saturnus", "sol", "solar-system", "terra", "time-maniqulator", "tour",
             "uranus", "warlock", "writer", "watchmaker", "venus")
-        private val agile = setOf("hunter", "sturmtruppe", "spezialeinheitsmitglied", "schwerekavallerie", "firearmsmaster", "agent", "assassin", "chameleon", "crossbow", "charger", "duelist", "feather",
+        private val agile = setOf("afterglow", "hunter", "sturmtruppe", "spezialeinheitsmitglied", "schwerekavallerie", "firearmsmaster", "agent", "assassin", "chameleon", "crossbow", "charger", "duelist", "feather",
             "freikugel", "ghost", "gun-blader", "hide-and-seek", "high-jumper", "mercurius", "metronome", "phantom", "pioneer",
             "refugees", "sagittarius", "sniper", "shy-person", "spider-man", "stalker", "swordplay", "trapper",
             "thunderclap-flash", "vampire", "warcorrespondent", "wounds-wind")
@@ -57,6 +57,7 @@ data class GrowthProfile(val primary: GrowthStat, val secondary: GrowthStat,
             "lucky-one", "roulette", "tonic")
         fun forClass(id: String): GrowthProfile {
           val base = when (id) {
+            "mjolnir" -> GrowthProfile(GrowthStat.STRENGTH, GrowthStat.INTELLIGENCE)
             "pacifist" -> GrowthProfile(GrowthStat.STRENGTH, GrowthStat.AGILITY,
                 effects = defaultEffects + (GrowthAxis.KNOCKBACK to GrowthEffectRule(GrowthStat.STRENGTH, 0.8, 0.5)))
             in intellect -> GrowthProfile(GrowthStat.INTELLIGENCE, GrowthStat.AGILITY)

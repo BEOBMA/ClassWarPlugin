@@ -166,7 +166,7 @@ enum class Keyword(
     ),
     Acceleration(
         "<yellow><bold>가속</bold><gray>",
-        "{keyword:Acceleration}: 최대 5. 중첩당 이동 속도와 공격 속도가 {g:speed-bonus:4}% 증가한다. 같은 적 적중으로 유지하며 6초마다 최대 1중첩을 얻는다. 다른 적을 공격하거나 같은 적에게 4초간 피해를 주지 않으면 초기화된다.",
+        "{keyword:Acceleration}: 최대 5. 중첩당 이동 속도와 공격 속도가 {g:speed-bonus:4}% 증가한다. 같은 적 적중으로 유지하며 1초마다 최대 1중첩을 얻는다. 다른 적을 공격하거나 같은 적에게 10초간 피해를 주지 않으면 초기화된다.",
         showDescriptionInBrief = true,
     ),
     Disposal(

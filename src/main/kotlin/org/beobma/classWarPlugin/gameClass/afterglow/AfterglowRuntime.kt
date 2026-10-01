@@ -60,7 +60,7 @@ class AfterglowRuntime(private val scope: AbilityScope) {
     }
 
     private fun enemies(at: Location, radius: Double) = Targeting.select(owner, TargetType.Enemy, at.world)
-        .filter { CreationGeometry.inRadius(it.entity.boundingBox, at.toVector(), radius) }
+        .filter { CreationGeometry.inRadius(it.entity.boundingBox, at.toVector(), org.beobma.classWarPlugin.manager.ClassBalanceManager.scaleRange(owner, radius)) }
 
     private fun create(baseDamage: Double) {
         if (echoes.size >= 5) remove(echoes.first())
@@ -184,7 +184,8 @@ class AfterglowRuntime(private val scope: AbilityScope) {
     fun swap(): Boolean {
         val eye = player.eyeLocation
         val ray = eye.direction
-        val wall = eye.world.rayTraceBlocks(eye, ray, 12.0)?.hitPosition?.distance(eye.toVector()) ?: 12.0
+        val range = org.beobma.classWarPlugin.manager.ClassBalanceManager.scaleRange(owner, 12.0)
+        val wall = eye.world.rayTraceBlocks(eye, ray, range)?.hitPosition?.distance(eye.toVector()) ?: range
         val selected = echoes.filter { it.at.world == eye.world }.mapNotNull { echo ->
             val box = echo.mannequin.boundingBox.clone().expand(0.15)
             box.rayTrace(eye.toVector(), ray, wall)?.let { echo to it.hitPosition.distance(eye.toVector()) }

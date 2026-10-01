@@ -40,13 +40,13 @@ class Creator : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameSta
         override val description = listOf(
             "{keyword:Mana}를 10 소모하여 발동한다.",
             "<gray>창조:",
-            "<gray> 20칸 내의 바라보는 블럭에 사슬을 내려 꽂는다.",
-            "<gray> 사슬의 너비는 1칸이며, 적중한 모든 적에게 2의 피해를 입힌다.",
+            "<gray> {g:range:20}칸 내의 바라보는 블럭에 사슬을 내려 꽂는다.",
+            "<gray> 사슬의 너비는 1칸이며, 적중한 모든 적에게 {g:damage:2}의 피해를 입힌다.",
             "<gray> 창조된 사슬은 그 자리에 남으며, 최대 10개까지 존재할 수 있다.",
             "",
             "<gray>파괴:",
-            "<gray> 사슬로부터 2칸 내에 있는 모든 적의 4초간 이동 속도를 20% 감소시킨다.",
-            "<gray> 위 효과가 5초 안에 5번 적용되면 대신 사슬에 묶여 2초간 {keyword:Snare} 상태가 된다."
+            "<gray> 사슬로부터 {g:range:2}칸 내에 있는 모든 적의 {g:duration:4}초간 이동 속도를 {g:speed:20}% 감소시킨다.",
+            "<gray> 위 효과가 5초 안에 5번 적용되면 대신 사슬에 묶여 {g:duration:2}초간 {keyword:Snare} 상태가 된다."
         )
         override val cooldown = CREATOR_CHAIN_COOLDOWN_SECONDS
 
@@ -66,11 +66,11 @@ class Creator : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameSta
             "",
             "<gray>창조:",
             "<gray> 바라보는 방향으로 빛의 창을 소환하여 날린다.",
-            "<gray> 빛의 창은 매우 빠르게 날아가며, 적중한 적에게 5의 피해를 입힌다.",
+            "<gray> 빛의 창은 매우 빠르게 날아가며, 적중한 적에게 {g:damage:5}의 피해를 입힌다.",
             "<gray> 빛의 창은 적중된 위치 혹은 플레이어에게 박힌 상태로 남으며, 최대 3개까지 존재할 수 있다.",
             "",
             "<gray>파괴:",
-            "<gray> 빛의 창이 폭발하여 3칸 이내의 적에게 2의 피해를 입힌다."
+            "<gray> 빛의 창이 폭발하여 {g:range:3}칸 이내의 적에게 {g:damage:2}의 피해를 입힌다."
         )
         override val cooldown = CREATOR_SPEAR_COOLDOWN_SECONDS
 
@@ -104,7 +104,7 @@ class Creator : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameSta
             "{keyword:Area}에서 자신의 {keyword:Mana}는 무한대가 되며",
             "<gray>자신의 모든 창조 스킬은 반드시 적에게 적중한다.",
             "<gray>창조물은 파괴 스킬 없이도 1초 후 자동으로 파괴된다.",
-            "<gray>사슬 창조의 재사용 대기시간은 0.1초, 적중 피해는 0.2가 된다.",
+            "<gray>사슬 창조의 재사용 대기시간은 0.1초, 적중 피해는 {g:damage:0.2}가 된다.",
             "",
             "<gray>영역 종료 후, 자신이 창조한 모든 창조물이 제거된다.",
             "<gray>또한 20초간 {keyword:Mana} 회복 속도가 대폭 감소한다."

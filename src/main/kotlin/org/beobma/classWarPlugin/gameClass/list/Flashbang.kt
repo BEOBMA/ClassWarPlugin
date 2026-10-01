@@ -34,10 +34,11 @@ class Flashbang : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameS
                     .mapNotNull { it.entity as? org.bukkit.entity.Player }.forEach { enemy ->
                         if(clock<(cooldowns[enemy.uniqueId] ?: 0)) return@forEach
                         val eye=enemy.eyeLocation
-                        val hit=player.boundingBox.clone().expand(0.15).rayTrace(eye.toVector(),eye.direction,24.0) ?: return@forEach
+                        val range=org.beobma.classWarPlugin.manager.ClassBalanceManager.scaleRange(playerData,24.0)
+                        val hit=player.boundingBox.clone().expand(0.15).rayTrace(eye.toVector(),eye.direction,range) ?: return@forEach
                         val distance=hit.hitPosition.distance(eye.toVector())
                         if(distance>0.01 && eye.world.rayTraceBlocks(eye,eye.direction,distance)!=null) return@forEach
-                        cooldowns[enemy.uniqueId]=clock+600
+                        cooldowns[enemy.uniqueId]=clock+org.beobma.classWarPlugin.growth.GrowthScaling.cooldown(playerData,600,classId)
                         val display=enemy.world.spawn(eye.clone().add(eye.direction.multiply(0.8)),org.bukkit.entity.TextDisplay::class.java) {
                             it.isVisibleByDefault=false; it.isPersistent=false
                             it.text(net.kyori.adventure.text.Component.text("████████",net.kyori.adventure.text.format.NamedTextColor.WHITE))
@@ -47,7 +48,7 @@ class Flashbang : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameS
                             it.transformation=it.transformation.apply { scale.set(20f); translation.y=-2f }
                         }
                         enemy.showEntity(org.beobma.classWarPlugin.ClassWarPlugin.instance,display)
-                        flashes[enemy.uniqueId]=display to (clock+60)
+                        flashes[enemy.uniqueId]=display to (clock+growthDuration(60))
                         enemy.playSound(enemy.location,org.bukkit.Sound.BLOCK_BEACON_ACTIVATE,0.5f,2f)
                         enemy.spawnParticle(org.bukkit.Particle.END_ROD,eye,3,0.15,0.15,0.15,0.0)
                     }
@@ -70,7 +71,7 @@ class Flashbang : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameS
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>24칸 내에서 장애물 없이 자신을 바라본 적의 시야를 3초간 밝은 빛으로 가린다. (대상 당 재사용 대기 시간 30초)"
+            "<gray>{g:range:24}칸 내에서 장애물 없이 자신을 바라본 적의 시야를 {g:time:3}초간 밝은 빛으로 가린다. (대상 당 재사용 대기 시간 {g:reload:30}초)"
         )
     }
 }

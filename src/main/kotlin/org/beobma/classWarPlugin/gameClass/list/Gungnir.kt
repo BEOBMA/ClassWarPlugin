@@ -56,12 +56,12 @@ class Gungnir : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameSta
         override val name = "<gray>궁니르"
         override val description = listOf(
             "<gray>기본 공격 시 피해량이 50% 감소한다.",
-            "<gray>대신 기본 공격 적중 시 10초간 {keyword:Vibration}을 1 부여한다.",
+            "<gray>대신 기본 공격 적중 시 {g:duration:10}초간 {keyword:Vibration}을 {g:physical-power:1} 부여한다.",
             "",
             "<gray>우클릭 시 바라보는 방향으로 궁니르를 던진다.",
             "<gray>투척 후 ${org.beobma.classWarPlugin.gameClass.relic.SpearThrowCooldown.SECONDS}초간 다시 투척할 수 없으며, 회수해도 대기 시간은 유지된다.",
-            "<gray>투척된 궁니르는 적중 시 6의 피해를 입히고, {keyword:Vibration}을 3 부여한다.",
-            "<gray>투척 시작 위치에서 4칸 이내의 대상에게 적중하면 투척 피해가 3으로 감소한다.",
+            "<gray>투척된 궁니르는 적중 시 {g:damage:6}의 피해를 입히고, {keyword:Vibration}을 {g:physical-power:3} 부여한다.",
+            "<gray>투척 시작 위치에서 4칸 이내의 대상에게 적중하면 투척 피해가 {g:damage:3}으로 감소한다.",
             "<gray>던진 즉시 궁니르는 인벤토리에서 사라진다.",
             "",
             "<dark_gray>궁니르가 적이나 블록에 적중하면 해당 위치에 박힌다.",
@@ -77,11 +77,11 @@ class Gungnir : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameSta
         override val description = listOf(
             "<gray>인벤토리에 궁니르가 없을 때에만 사용할 수 있다.",
             "",
-            "<gray>궁니르가 자신에게 되돌아오며 경로에 있는 모든 적에게 3의 피해를 입힌다.",
+            "<gray>궁니르가 자신에게 되돌아오며 경로에 있는 모든 적에게 {g:damage:3}의 피해를 입힌다.",
             "<gray>처음 적중한 적에게는 10초간 {keyword:VibrationExplosion}을 적용한다.",
             "",
-            "<gray>만약 궁니르가 적에게 박혀있었다면 해당 적에게는 5의 피해를 입히고",
-            "<gray>{keyword:Bleeding}을 4 부여한다.",
+            "<gray>만약 궁니르가 적에게 박혀있었다면 해당 적에게는 {g:damage:5}의 피해를 입히고",
+            "<gray>{keyword:Bleeding}을 {g:physical-power:4} 부여한다.",
             "",
             "<dark_gray>이 스킬은 궁니르가 날아가는 도중에도 사용할 수 있다."
         )

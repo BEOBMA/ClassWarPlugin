@@ -37,25 +37,25 @@ class PioneerStateTest {
         assertFailsWith<IllegalArgumentException> { state.spendForesight(-5) }
         assertEquals(2, state.foresight)
     }
-    @Test fun `continuous hits maintain stacks across the six second gain interval`() {
+    @Test fun `continuous hits gain at most one stack per second`() {
         val state = PioneerState()
         val target = UUID.randomUUID()
         state.hit(target, 0)
-        for (tick in 20L..100L step 20) state.hit(target, tick)
+        for (tick in 1L..19L) state.hit(target, tick)
         assertEquals(1, state.acceleration)
-        state.hit(target, 120)
+        state.hit(target, 20)
         assertEquals(2, state.acceleration)
-        for (tick in 140L..800L step 20) state.hit(target, tick)
+        for (tick in 40L..800L step 20) state.hit(target, tick)
         assertEquals(5, state.acceleration)
     }
-    @Test fun `four seconds without hitting or a different target resets accumulated acceleration`() {
+    @Test fun `ten seconds without hitting or a different target resets accumulated acceleration`() {
         val state = PioneerState()
         val target = UUID.randomUUID()
-        for (tick in 0L..240L step 20) state.hit(target, tick)
+        for (tick in 0L..40L step 20) state.hit(target, tick)
         assertEquals(3, state.acceleration)
-        state.expire(319)
+        state.expire(239)
         assertEquals(3, state.acceleration)
-        state.expire(320)
+        state.expire(240)
         assertEquals(0, state.acceleration)
         state.hit(target, 320)
         assertEquals(1, state.acceleration)
