@@ -73,19 +73,40 @@ object ItemDescriptionManager {
         val keywordExplanations = when (mode) {
             DescriptionViewMode.DETAILED -> Keyword.explanationsFor(keywordSource)
             DescriptionViewMode.BRIEF -> Keyword.briefExplanationsFor(keywordSource)
-        }.map { GrowthDescription.render(it, growthContext) }.filterNot(lines::contains)
+        }.filterNot(lines::contains).map { explanation ->
+            val keyword = Keyword.describedEntries.firstOrNull { it.description == explanation }
+            val titled = if (keyword != null && !explanation.trimStart().startsWith("{keyword:"))
+                "{keyword:${keyword.name}}: $explanation" else explanation
+            GrowthDescription.render(titled, growthContext)
+        }
         if (keywordExplanations.isNotEmpty()) {
             if (isNotEmpty()) add(renderLoreLine(""))
             add(renderLoreLine(
                 if (mode == DescriptionViewMode.DETAILED) "<aqua><bold>용어 설명</bold>"
                 else "<aqua><bold>필수 용어</bold>"
             ))
-            addAll(keywordExplanations.map { renderLoreLine("<dark_gray>• </dark_gray>$it") })
+            keywordExplanations.forEachIndexed { index, explanation ->
+                if (index > 0) add(renderLoreLine(""))
+                addAll(renderKeywordExplanation(explanation))
+            }
         }
         if (alwaysVisibleLines.isNotEmpty()) {
             if (isNotEmpty()) add(renderLoreLine(""))
             add(renderLoreLine("<yellow><bold>사용 정보</bold>"))
             addAll(alwaysVisibleLines.map(::renderLoreLine))
+        }
+    }
+
+    /** Separate the keyword heading from its indented body without touching ordinary lore. */
+    internal fun renderKeywordExplanation(explanation: String): List<net.kyori.adventure.text.Component> {
+        val prefix = Regex("^\\s*(\\{keyword:[A-Za-z]+}):\\s*").find(explanation)
+        val fallback = if (prefix == null) Keyword.describedEntries.firstOrNull { it.description == explanation } else null
+        val heading = prefix?.groupValues?.get(1) ?: fallback?.let { "{keyword:${it.name}}" }
+        val body = if (prefix != null) explanation.substring(prefix.range.last + 1) else explanation
+        return buildList {
+            if (heading != null) add(renderLoreLine("<dark_gray>◆ </dark_gray>$heading"))
+            org.beobma.classWarPlugin.description.LoreWrapping.wrap(renderLoreLine("<gray>$body"), 300)
+                .forEach { line -> add(renderLoreLine("  ").append(line)) }
         }
     }
 

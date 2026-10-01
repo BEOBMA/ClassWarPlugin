@@ -175,7 +175,7 @@ object InventoryManager {
         gameClass.skills.forEachIndexed { index, skill ->
             val slot = skillSlots.getOrNull(index) ?: return@forEachIndexed
             inventory.setItem(slot, createFullDescriptionItem(
-                viewer, skillDyeMaterial(index), skill.name, skill.description, skill.briefDescription,
+                viewer, skillItemMaterial(skill,index), skill.name, skill.description, skill.briefDescription,
                 ItemDescriptionManager.cooldownLines(skill.cooldown),
                 growthClassId = gameClass.classId,
             ))
@@ -213,7 +213,7 @@ object InventoryManager {
         gameClass.skills.forEachIndexed { index, skill ->
             val slot = slots.getOrNull(index) ?: return@forEachIndexed
             inventory.setItem(slot, createFullDescriptionItem(
-                viewer, skillDyeMaterial(dyeOffset + index), skill.name, skill.description, skill.briefDescription,
+                viewer, skillItemMaterial(skill,dyeOffset + index), skill.name, skill.description, skill.briefDescription,
                 ItemDescriptionManager.cooldownLines(skill.cooldown),
                 growthClassId = gameClass.classId,
             ))
@@ -628,7 +628,6 @@ object InventoryManager {
             listOf("<gray>지역·사냥·스탯·장비로 성장합니다.", "<red>${org.beobma.classWarPlugin.growth.GrowthSettings.WARNING}")))
         inventory.setItem(12, createModeToggleItem(Material.RECOVERY_COMPASS, MatchModifier.TAIL_TAG, selected))
         inventory.setItem(14, createModeToggleItem(Material.SHIELD, MatchModifier.TEAM, selected))
-        inventory.setItem(16, createModeToggleItem(Material.CHAINMAIL_CHESTPLATE, MatchModifier.COOPERATIVE, selected))
         inventory.setItem(22, createMatchModeItem(Material.LIME_CONCRETE, selected))
         listOf(
             PlayerFlag.OPEN_GAME_MODE_INVENTORY,
@@ -692,7 +691,7 @@ object InventoryManager {
             val skill = gameClass.skills.getOrNull(i) ?: break
             inventory.setItem(i + 1, createFullDescriptionItem(
                 this,
-                skillDyeMaterial(i),
+                skillItemMaterial(skill,i),
                 skill.name,
                 skill.description,
                 skill.briefDescription,
@@ -789,6 +788,9 @@ object InventoryManager {
             }
         }
     }
+
+    fun skillItemMaterial(skill: org.beobma.classWarPlugin.skill.Skill, index: Int): Material =
+        skill.itemMaterial ?: skillDyeMaterial(index)
 
     fun skillDyeMaterial(index: Int): Material = when (index) {
         0 -> Material.RED_DYE

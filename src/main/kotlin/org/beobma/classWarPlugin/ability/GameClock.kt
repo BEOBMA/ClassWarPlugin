@@ -18,13 +18,15 @@ class GameClock(private val ticks: () -> Long) {
 
 /** The same timer is used for scheduled effects and deterministic tests. */
 class EffectTimer(delay: Long, private val period: Long?) {
-    private var remaining = delay.coerceAtLeast(1L)
+    private var remaining = delay.coerceAtLeast(1L).toDouble()
     var complete = false
         private set
-    fun advance(suspended: Boolean): Boolean {
+    fun advance(suspended: Boolean, timeScale: Double = 1.0): Boolean {
         if (complete || suspended) return false
-        if (--remaining > 0L) return false
-        if (period == null) complete = true else remaining = period.coerceAtLeast(1L)
+        require(timeScale.isFinite() && timeScale in 0.0..1.0)
+        remaining -= timeScale
+        if (remaining > 0.0000001) return false
+        if (period == null) complete = true else remaining = period.coerceAtLeast(1L).toDouble()
         return true
     }
 }

@@ -371,6 +371,7 @@ private class PhantomBodyData(
         bypassShield: Boolean,
         damagePath: DamagePath?,
         armorIgnoreRatio: Double,
+        appearance: org.beobma.classWarPlugin.damage.DamageAppearance?,
     ) {
         ownerData.damage(
             damage,
@@ -380,6 +381,7 @@ private class PhantomBodyData(
             bypassShield,
             damagePath,
             armorIgnoreRatio,
+            appearance = appearance,
         )
     }
 }

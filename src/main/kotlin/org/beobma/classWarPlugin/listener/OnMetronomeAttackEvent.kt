@@ -4,7 +4,6 @@ import io.papermc.paper.event.player.PrePlayerAttackEntityEvent
 import org.beobma.classWarPlugin.ability.AbilityTree
 import org.beobma.classWarPlugin.ability.AbilityExecution
 import org.beobma.classWarPlugin.entity.player.PlayerData
-import org.beobma.classWarPlugin.game.CooperativeAction
 import org.beobma.classWarPlugin.gameClass.list.Metronome
 import org.beobma.classWarPlugin.manager.GameManager.findGameForPlayer
 import org.beobma.classWarPlugin.manager.GameManager.canDispatchClassHandlers
@@ -24,7 +23,7 @@ class OnMetronomeAttackEvent : Listener {
         val data = findGameForPlayer(player)?.playerDatas?.filterIsInstance<PlayerData>()
             ?.firstOrNull { it.uniqueId == player.uniqueId } ?: return emptyList()
         if (!data.canDispatchClassHandlers() || data.game.isPaused || !data.entityStatus.canAttack ||
-            data.hasStatus<Disarm>() || !data.game.canPerform(data.uniqueId, CooperativeAction.BASIC_ATTACK)) return emptyList()
+            data.hasStatus<Disarm>()) return emptyList()
         return AbilityTree.nodes(data.gameClasses, activeOnly = true).filterIsInstance<Metronome>()
             .filter { it.abilityScope.started && !it.abilityScope.isClosed && !it.abilityScope.suspended }
     }

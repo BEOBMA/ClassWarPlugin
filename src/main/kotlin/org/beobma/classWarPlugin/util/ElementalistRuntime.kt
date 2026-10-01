@@ -443,7 +443,7 @@ internal class ElementalistRuntime(private val playerData: PlayerData) : EffectA
         val removed = removable.randomOrNull()
         removed?.remove()
         if (removed == null) {
-            player.sendMiniMessage("<aqua><bold>[감응]</bold> <gray>제거할 수 있는 부정적인 상태가 없습니다.")
+            player.sendMiniMessage("<red><bold>[!] 제거할 수 있는 부정적인 상태가 없습니다.")
         }
         particles.spawn(player, Particle.SPLASH, count = 85, spread = 1.0, speed = 0.2)
         particles.spawn(player, Particle.FALLING_WATER, count = 46, spread = 0.8, speed = 0.12)

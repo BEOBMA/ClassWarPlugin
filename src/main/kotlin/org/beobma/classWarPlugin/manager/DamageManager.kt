@@ -5,7 +5,6 @@ import org.beobma.classWarPlugin.ability.AbilityExecution
 
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
-import org.beobma.classWarPlugin.game.CooperativeAction
 import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.gameClass.list.Parasite
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
@@ -45,6 +44,7 @@ object DamageManager {
      */
     fun process(context: DamageContext): Boolean {
         if (context.damage <= 0.0 || context.attacker.game.isPaused) return false
+        if (org.beobma.classWarPlugin.gameClass.list.Referee.blocksDamage(context.attacker.uniqueId, context.target.entity.uniqueId)) return false
         if (AbilityExecution.current?.isClosed == true && context.path != DamagePath.STATUS_EFFECT) return false
         if (AbilityTree.nodes(context.attacker.gameClasses, activeOnly = true).filterIsInstance<Parasite>().any { it.isParasitizing() }) return false
         if ((context.target as? PlayerData)?.findGameClass(Parasite::class.java)?.let { listOf(it) }
@@ -60,7 +60,6 @@ object DamageManager {
         val targetStatus = context.target.entityStatus
         val canDamage = when {
             context.path.isBasicAttack ->
-                context.attacker.game.canPerform(context.attacker.uniqueId, CooperativeAction.BASIC_ATTACK) &&
                     attackerStatus.canAttack && !context.attacker.hasStatus<Disarm>() && targetStatus.isAttackable
             context.path == DamagePath.SKILL -> attackerStatus.canSkillUse && targetStatus.isSkillTargeting
             else -> targetStatus.isSkillTargeting

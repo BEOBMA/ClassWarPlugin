@@ -56,7 +56,7 @@ class Parasite : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
             .randomOrNull()
         val selectedHost = host
         if (selectedHost == null) {
-            player.sendMiniMessage("<red><bold>[기생]</bold> <gray>기생할 생존 플레이어가 없습니다.")
+            player.sendMiniMessage("<red><bold>[!] 기생할 생존 플레이어가 없습니다.")
             return
         }
         applyParasiteStealth()

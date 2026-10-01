@@ -172,7 +172,10 @@ class Exodia : GameClass(), GameStatusHandler {
         sounds.play(player, Sound.UI_TOAST_CHALLENGE_COMPLETE, volume = 1.0f, pitch = 0.65f)
         game.playerDatas.filterIsInstance<PlayerData>()
             .filter { it != playerData && !it.entityStatus.isDead }
-            .forEach { it.player.health = 0.0 }
+            .forEach {
+                org.beobma.classWarPlugin.manager.DamageIndicatorManager.showExecution(it.player, game.settings.damageIndicatorsEnabled)
+                it.player.health = 0.0
+            }
     }
 
     private class Passive : BasePassive() {

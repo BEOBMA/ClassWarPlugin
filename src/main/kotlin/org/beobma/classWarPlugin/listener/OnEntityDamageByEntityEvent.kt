@@ -18,7 +18,6 @@ import org.beobma.classWarPlugin.gameClass.list.Vampire
 import org.beobma.classWarPlugin.gameClass.list.Phantom
 import org.beobma.classWarPlugin.gameClass.list.Referee
 import org.beobma.classWarPlugin.gameClass.list.Chameleon
-import org.beobma.classWarPlugin.gameClass.list.HideAndSeek
 import org.beobma.classWarPlugin.gameClass.list.Uranus
 import org.beobma.classWarPlugin.gameClass.list.Neptune
 import org.beobma.classWarPlugin.gameClass.list.PlanetPowerRegistry
@@ -30,10 +29,18 @@ import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 
 class OnEntityDamageByEntityEvent : Listener {
+    /** Read before vanilla resets the attack ticker; reject the hit before any damage/passive hooks. */
+    @EventHandler(priority = org.bukkit.event.EventPriority.LOWEST, ignoreCancelled = true)
+    fun onPrepareAttack(event: io.papermc.paper.event.player.PrePlayerAttackEntityEvent) {
+        val game=findGameForPlayer(event.player) ?: return
+        val data=game.playerDatas.filterIsInstance<PlayerData>().firstOrNull { it.uniqueId==event.player.uniqueId } ?: return
+        if (!data.canDispatchClassHandlers()) return
+        if (!org.beobma.classWarPlugin.damage.BasicAttackReadiness.ready(event.player.attackCooldown)) event.isCancelled=true
+    }
     @EventHandler(ignoreCancelled = true)
     fun onPlayerDamage(event: EntityDamageByEntityEvent) {
+        if ("cw-afterglow-echo" in event.entity.scoreboardTags) { event.isCancelled = true; return }
         if (Phantom.handleBodyDamage(event)) return
-        if (HideAndSeek.handleDamage(event)) return
         if (Chameleon.handleDisguiseDamage(event)) return
         if (Vampire.handleBatDamage(event)) return
         val directDamager = event.damager
@@ -116,7 +123,7 @@ class OnEntityDamageByEntityEvent : Listener {
             DamageManager.notifyConfirmedHit(context)
             event.isCancelled = true
             targetEntity.playHurtAnimation(0.0f)
-            DamageIndicatorManager.show(targetEntity, context.damage, attackerGame.settings.damageIndicatorsEnabled)
+            DamageIndicatorManager.show(targetEntity, context.damage, attackerGame.settings.damageIndicatorsEnabled, DamageIndicatorManager.appearanceFor(event))
             val formattedDamage = String.format("%.2f", context.damage)
             attacker.sendMiniMessage(
                 "<gray>피해 경로: ${path.displayName} <gray>피해량: <gold><bold>$formattedDamage</bold></gold>"
@@ -127,7 +134,7 @@ class OnEntityDamageByEntityEvent : Listener {
         event.damage = context.damage
         org.beobma.classWarPlugin.damage.VanillaArmorIgnore.apply(event, targetEntity, context.armorIgnoreRatio)
         if (targetPlayer == null) {
-            DamageIndicatorManager.show(targetEntity, event.finalDamage, attackerGame.settings.damageIndicatorsEnabled)
+            DamageIndicatorManager.show(targetEntity, event.finalDamage, attackerGame.settings.damageIndicatorsEnabled, DamageIndicatorManager.appearanceFor(event))
         }
         DamageManager.recordSuccessfulDamage(context)
         if (targetPlayer != null) Referee.recordDamage(context, event.finalDamage)

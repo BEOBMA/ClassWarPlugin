@@ -216,6 +216,9 @@ class Pioneer : GameClass(), GameStatusHandler, ConfirmedHitHandler, WhenHitHand
     private fun explode(target: EntityData, times: Int = 1) {
         target.addStatus(VibrationExplosion(times), playerData).applyStatus(duration = 1, powerDelta = 1)
     }
+    override fun retainedVibrationPower(target: EntityData, power: Int): Int =
+        if (target.hasStatus<Burn>() || target.entity.fireTicks > 0) power / 2 else 0
+
     override fun onVibrationExplosion(target: EntityData) {
         val impact = target.entity.boundingBox.center.toLocation(target.entity.world)
         CombatVisuals.pulse(abilityScope, impact, Vector(0.0, 1.0, 0.0), 1.65, CombatVisuals.CYAN)
@@ -223,10 +226,7 @@ class Pioneer : GameClass(), GameStatusHandler, ConfirmedHitHandler, WhenHitHand
         particles.circle(target.entity.location.add(0.0, 0.6, 0.0), Particle.ELECTRIC_SPARK, 1.0, 28)
         particles.spawn(target.entity, Particle.CRIT, count = 16, spread = 0.45, speed = 0.1)
         sounds.play(target.entity, Sound.BLOCK_AMETHYST_BLOCK_BREAK, volume = 0.65f, pitch = 0.7f)
-        target.getStatus<Burn>()?.let { burn ->
-            val duration = burn.duration ?: 0
-            burn.remove(); target.entity.fireTicks = 0
-            target.damage(duration.toDouble(), DamageType.StatusAbnormality, playerData)
+        if (target.hasStatus<Burn>() || target.entity.fireTicks > 0) {
             particles.spawn(target.entity, Particle.FLAME, count = 20, spread = 0.4, speed = 0.07)
             particles.spawn(target.entity, Particle.SMOKE, count = 8, spread = 0.3)
             CombatVisuals.pulse(abilityScope, impact, Vector(0.0, 1.0, 0.0), 2.0, CombatVisuals.GOLD)
@@ -374,7 +374,7 @@ class Pioneer : GameClass(), GameStatusHandler, ConfirmedHitHandler, WhenHitHand
         override fun isUseSuccess(): Boolean {
             if (game.combatTick < nextAction) return false
             if (!state.canSpendForesight(PIONEER_FORESIGHT_COST)) {
-                player.sendMiniMessage("<red>예지안이 부족합니다. (필요: $PIONEER_FORESIGHT_COST, 보유: ${state.foresight})")
+                player.sendMiniMessage("<red><bold>[!] 예지안이 부족합니다. (필요: $PIONEER_FORESIGHT_COST, 보유: ${state.foresight})")
                 return false
             }
             return true
@@ -451,8 +451,8 @@ class Pioneer : GameClass(), GameStatusHandler, ConfirmedHitHandler, WhenHitHand
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>같은 적에게 피해를 입힐 때마다 {keyword:Acceleration} 스택을 1 얻는다. (최대 스택 5, 6초마다 최대 1만 얻을 수 있음)",
-            "<gray>다른 적에게 피해를 입히면 스택이 초기화되며, 4초간 같은 적에게 피해를 입히지 못하면 소멸한다.",
+            "<gray>같은 적에게 피해를 입힐 때마다 {keyword:Acceleration} 스택을 1 얻는다. (최대 스택 5, 1초마다 최대 1만 얻을 수 있음)",
+            "<gray>다른 적에게 피해를 입히면 스택이 초기화되며, 10초간 같은 적에게 피해를 입히지 못하면 소멸한다.",
             "",
             "<gray>{keyword:Acceleration} 스택 1당 이동 속도와 공격 속도가 {g:speed-bonus:4}%씩 증가한다.",
             "<gray>{keyword:Acceleration} 스택이 5라면 스킬 사용 후 발생하는 딜레이가 감소한다."
@@ -465,7 +465,7 @@ class Pioneer : GameClass(), GameStatusHandler, ConfirmedHitHandler, WhenHitHand
             "<gray>패시브",
             "",
             "<gray>적에게 {keyword:VibrationExplosion}을 적용할 때",
-            "<gray>대상이 {keyword:Burn} 상태라면 {keyword:Burn} 상태를 해제하고 지속시간에 비례한 {keyword:AbnormalStatusDamage}를 입힌다."
+            "<gray>대상이 {keyword:Burn} 상태라면 {keyword:Burn} 상태를 해제하는 대신 대상의 {keyword:Vibration} 수치가 감소할 때 50%만 감소한다.",
         )
     }
 }

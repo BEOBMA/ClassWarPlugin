@@ -2,7 +2,7 @@ package org.beobma.classWarPlugin.gameClass.pioneer
 
 import java.util.UUID
 
-/** Combat ticks only. Hits maintain acceleration; at most one stack is awarded per six seconds. */
+/** Combat ticks only. Hits maintain acceleration; at most one stack is awarded per second. */
 internal class PioneerState {
     var foresight = 30
     var bullets = 0
@@ -31,13 +31,13 @@ internal class PioneerState {
         expire(tick)
         if (target != id) { acceleration = 0; target = id; lastGain = Long.MIN_VALUE / 2 }
         lastHit = tick
-        if (tick - lastGain >= 120) { acceleration = (acceleration + 1).coerceAtMost(5); lastGain = tick }
+        if (tick - lastGain >= 20) { acceleration = (acceleration + 1).coerceAtMost(5); lastGain = tick }
     }
     fun expire(tick: Long) {
-        if (tick - lastHit >= 80) { acceleration = 0; target = null }
+        if (tick - lastHit >= 200) { acceleration = 0; target = null }
     }
     fun accelerationRemainingTicks(tick: Long): Long =
-        if (acceleration > 0) (80 - (tick - lastHit)).coerceIn(0, 80) else 0
+        if (acceleration > 0) (200 - (tick - lastHit)).coerceIn(0, 200) else 0
 
     fun chainRemainingTicks(tick: Long): Long =
         if (chainStage > 0) (chainExpires - tick).coerceIn(0, 200) else 0

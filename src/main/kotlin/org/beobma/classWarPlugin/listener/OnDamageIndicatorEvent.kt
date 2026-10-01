@@ -18,6 +18,6 @@ class OnDamageIndicatorEvent : Listener {
         val playerData = currentGame.playerDatas.filterIsInstance<PlayerData>()
             .find { it.uniqueId == player.uniqueId } ?: return
         if (playerData.entityStatus.isDead) return
-        DamageIndicatorManager.show(player, event.finalDamage, currentGame.settings.damageIndicatorsEnabled)
+        DamageIndicatorManager.show(player, event.finalDamage, currentGame.settings.damageIndicatorsEnabled, DamageIndicatorManager.appearanceFor(event))
     }
 }

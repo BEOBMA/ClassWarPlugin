@@ -75,6 +75,7 @@ data class GrowthSettings(
                 config.getDouble("$root.$key", default).takeIf { it.isFinite() }?.coerceIn(min, max) ?: default
             val max = int("regions.maximum", 16, 2..32)
             val profiles = config.getConfigurationSection("growth.classes")?.getKeys(false).orEmpty().mapNotNull { id ->
+                if (org.beobma.classWarPlugin.ability.AbilityCatalog.isDeferred(id)) return@mapNotNull null
                 val p = config.getConfigurationSection("growth.classes.$id") ?: return@mapNotNull null
                 id to GrowthProfile.read(p, GrowthProfile.forClass(id))
             }.toMap()

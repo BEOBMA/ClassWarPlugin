@@ -5,26 +5,6 @@ enum class MatchModifier(val displayName: String, val description: String) {
     DUAL("듀얼", "플레이어마다 서로 다른 클래스 두 개를 사용합니다."),
     TAIL_TAG("꼬리잡기", "지정된 상대 팀만 공격할 수 있습니다."),
     TEAM("팀", "설정된 인원으로 팀을 만들고 아군 공격을 차단합니다."),
-    COOPERATIVE("공동", "한 조가 이동·공격과 핫바·스킬 조작을 나눠 맡습니다."),
-}
-
-/** 공동 모드에서 한 참가자에게 허용되는 조작 묶음이다. */
-enum class CooperativeRole(
-    val configName: String,
-    val displayName: String,
-    val canMove: Boolean,
-    val canBasicAttack: Boolean,
-    val canChangeHotbar: Boolean,
-    val canUseSkills: Boolean,
-) {
-    MOVEMENT_COMBAT("movement-combat", "이동·기본 공격", true, true, false, false),
-    HOTBAR_SKILLS("hotbar-skills", "핫바·스킬", false, false, true, true);
-
-    companion object {
-        fun fromConfig(value: String): CooperativeRole? = entries.firstOrNull {
-            it.configName.equals(value, ignoreCase = true) || it.name.equals(value, ignoreCase = true)
-        }
-    }
 }
 
 /** 선택된 토글들의 불변 조합이다. */
@@ -35,8 +15,7 @@ data class MatchMode(val modifiers: Set<MatchModifier> = emptySet(), val primary
     val assignedClassCount: Int get() = if (MatchModifier.DUAL in modifiers) 2 else 1
     val usesTailTagRules: Boolean get() = MatchModifier.TAIL_TAG in modifiers
     val usesTeamRules: Boolean get() = MatchModifier.TEAM in modifiers
-    val usesCooperativeRules: Boolean get() = MatchModifier.COOPERATIVE in modifiers
-    val hasAllies: Boolean get() = usesTeamRules || usesCooperativeRules
+    val hasAllies: Boolean get() = usesTeamRules
     val allowsParasite: Boolean get() = !usesTailTagRules
     val displayName: String
         get() = (if (isGrowth) "<green><bold>성장</bold></green>" + if (modifiers.isEmpty()) "" else " + " else "") +
@@ -64,20 +43,6 @@ data class MatchMode(val modifiers: Set<MatchModifier> = emptySet(), val primary
                 return "참가자 ${playerCount}명이 팀당 ${settings.teamPlayersPerTeam}명으로 딱 맞게 나뉘지 않습니다."
             }
             if (playerCount / settings.teamPlayersPerTeam < 2) return "팀이 두 개 이상 만들어져야 합니다."
-        }
-        if (usesCooperativeRules) {
-            if (settings.cooperativePlayersPerGroup < 2) return "공동 조 인원은 2명 이상이어야 합니다."
-            if (playerCount % settings.cooperativePlayersPerGroup != 0) {
-                return "참가자 ${playerCount}명이 공동 조당 ${settings.cooperativePlayersPerGroup}명으로 딱 맞게 나뉘지 않습니다."
-            }
-            if (!usesTeamRules && playerCount / settings.cooperativePlayersPerGroup < 2) {
-                return "공동 조가 두 개 이상 만들어져야 합니다."
-            }
-        }
-        if (usesTeamRules && usesCooperativeRules &&
-            settings.teamPlayersPerTeam % settings.cooperativePlayersPerGroup != 0
-        ) {
-            return "팀+공동 모드는 팀 인원(${settings.teamPlayersPerTeam})이 공동 조 인원(${settings.cooperativePlayersPerGroup})으로 나누어져야 합니다."
         }
         return null
     }

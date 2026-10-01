@@ -347,6 +347,7 @@ class Agent : GameClass(), GameStatusHandler, OnHitHandler, WhenHitHandler, Conf
                 val living = target.entity as? LivingEntity ?: return
                 val max = living.getAttribute(Attribute.MAX_HEALTH)?.value ?: return
                 if (living.isValid && !living.isDead && living.health < max * .1) {
+                    org.beobma.classWarPlugin.manager.DamageIndicatorManager.showExecution(living, game.settings.damageIndicatorsEnabled)
                     if (living is org.bukkit.entity.Player && PlayerTagManager.isTraining(living)) {
                         living.sendMiniMessage("<dark_red>☤ 처형을 판정한다. 연습 모드에서는 사망하지 않는다.")
                     } else {

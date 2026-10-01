@@ -37,7 +37,13 @@ private const val GUN_BLADER_VIBRATION_DURATION_SECONDS = 10
 private const val GUN_BLADER_BREAKTHROUGH_VIBRATION_POWER = 3
 private const val GUN_BLADER_VIBRATION_POWER = 1
 
-class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUseHandler {
+class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUseHandler,
+    org.beobma.classWarPlugin.gameClass.firearm.BorrowableFirearm {
+    override var reloadDisabled = false
+    override var onMagazineEmpty: (() -> Unit)? = null
+    override val ammunition get() = bulletStatus().power
+    override val reloadSkillIds = emptySet<String>()
+    private fun notifyEmpty() { if (ammunition == 0) onMagazineEmpty?.invoke() }
     override val classId = "gun-blader"
     override val name = "<gray>총검사"
     override val rank = Rank.A
@@ -55,9 +61,10 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
 
     private var basicHits = 0
     private var idleSeconds = 0
+    private var ownedBullets: BulletStatus? = null
 
     private fun bulletStatus(): BulletStatus =
-        playerData.getOrCreateStatus(playerData) { BulletStatus() }.apply {
+        (ownedBullets ?: BulletStatus().also { playerData.addStatus(it, playerData); ownedBullets = it }).apply {
             maxPower = growthCount("bullets", 4)
             if (power > maxPower!!) updatePower(maxPower!!)
         }
@@ -74,7 +81,7 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
     override fun onBattleStart() { bulletStatus().updatePower(growthCount("bullets", 4)); idleSeconds = 0 }
     override fun onGameTimePasses() {
         bulletStatus() // Reconcile a reduced equipment-derived capacity even while fighting.
-        if (++idleSeconds >= org.beobma.classWarPlugin.growth.GrowthScaling.cooldown(playerData, 20, classId))
+        if (!reloadDisabled && ++idleSeconds >= org.beobma.classWarPlugin.growth.GrowthScaling.cooldown(playerData, 20, classId))
             bulletStatus().updatePower(growthCount("bullets", 4))
     }
     override fun onSkillUse(event: PlayerSkillUseEvent) { idleSeconds = 0 }
@@ -93,6 +100,7 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
             it.damage(GUN_BLADER_BASIC_DAMAGE, DamageType.Normal, playerData)
             it.addStatus(VibrationExplosion(), playerData).applyStatus(duration = 1, powerDelta = 1)
         }
+        notifyEmpty()
     }
 
     private class Weapon : BaseWeapon() {
@@ -100,7 +108,7 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
         override val description = listOf(
             "<gray>기본 공격 적중 시 {g:duration:10}초간 {keyword:Vibration}을 {g:physical-power:1} 부여한다.",
             "",
-            "<gray>우클릭하면 {keyword:Bullet}을 1발 소모하여 바라보는 방향으로 사격한다.",
+            "<gray>우클릭하면 {keyword:Bullet}을 1 소모하여 바라보는 방향으로 사격한다.",
             "<gray>사격은 적중한 적에게 {g:damage:2}의 피해를 입히고 {keyword:VibrationExplosion}을 적용한다."
         )
         override val material = Material.IRON_SWORD
@@ -133,6 +141,7 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
                 particles.spawn(it.entity, Particle.SWEEP_ATTACK, count = 2, spread = 0.2)
             }
             sounds.play(player, Sound.ENTITY_PLAYER_ATTACK_SWEEP, pitch = 0.8f)
+            notifyEmpty()
             return true
         }
     }
@@ -162,6 +171,7 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
             }
             particles.line(player.eyeLocation, target.entity.location.add(0.0, target.entity.height / 2, 0.0), Particle.ELECTRIC_SPARK, 0.2)
             sounds.play(player, Sound.ENTITY_GENERIC_EXPLODE, volume = 1.3f, pitch = 1.7f)
+            notifyEmpty()
             return true
         }
 
@@ -188,7 +198,7 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
                 duration = GUN_BLADER_VIBRATION_DURATION_SECONDS,
                 powerDelta = GUN_BLADER_VIBRATION_POWER,
             )
-            if (++basicHits >= 3) {
+            if (!reloadDisabled && ++basicHits >= 3) {
                 basicHits = 0
                 bulletStatus().increasePower(1)
                 sounds.playTo(player, Sound.BLOCK_IRON_TRAPDOOR_OPEN, pitch = 1.8f)

@@ -39,7 +39,12 @@ private const val SNIPER_CLOSE_RANGE_BLOCKS = 5.0
 private const val SNIPER_CLOSE_SLOW_PERCENT = 20
 private const val SNIPER_LONG_SLOW_PERCENT = 5
 
-class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
+class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler,
+    org.beobma.classWarPlugin.gameClass.firearm.BorrowableFirearm {
+    override var reloadDisabled = false
+    override var onMagazineEmpty: (() -> Unit)? = null
+    override val ammunition get() = if (loaded) 1 else 0
+    override val reloadSkillIds = setOf("sniper/red-skill")
     override val classId = "sniper"
     override val name = "<gray>저격수"
     override val rank = Rank.B
@@ -64,9 +69,10 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
     private var loaded = true
     private var aiming = false
     private var reloading = false
+    private var ownedAmmo: SniperAmmoStatus? = null
 
     private fun ammoStatus(): SniperAmmoStatus =
-        playerData.getOrCreateStatus(playerData) { SniperAmmoStatus() }
+        ownedAmmo ?: SniperAmmoStatus().also { playerData.addStatus(it, playerData); ownedAmmo = it }
 
     override fun onBattleStart() {
         loaded = true
@@ -165,14 +171,16 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
         particles.spawn(muzzle, Particle.FLAME, count = 7, spread = 0.1, speed = 0.04)
         particles.spawn(muzzle, Particle.CLOUD, count = 9, spread = 0.18, speed = 0.08)
         sounds.playTo(player, Sound.ENTITY_IRON_GOLEM_ATTACK, volume = 0.55f, pitch = 0.65f)
+        onMagazineEmpty?.invoke()
     }
 
     private fun reload() {
-        if (loaded || reloading) {
+        if (reloadDisabled || reloading) {
             player.sendMiniMessage("<red><bold>[!] 이미 탄환이 장전되어 있습니다.")
             return
         }
         reloading = true
+        loaded = false
         ammoStatus().setReloading(2)
         aiming = false
         setSpeed(0.6)
@@ -206,11 +214,11 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
         override val name = "<gray>저격총"
         override val description = listOf(
             "<gray>우클릭 시 조준한다.",
-            "<gray>탄환이 장전되어 있을 때에만 사용할 수 있다.",
+            "<gray>{keyword:Bullet}이 장전되어 있을 때에만 사용할 수 있다.",
             "<gray>양손들기 키를 누를 시 사용한다.",
             "<gray>조준하지 않고 발사할 수도 있지만 탄도가 무작위로 어긋난다.",
             "",
-            "<gray>사용 시 장전된 탄환을 소모하여 바라보는 방향으로 사격한다.",
+            "<gray>사용 시 {keyword:Bullet}을 1 소모하여 바라보는 방향으로 사격한다.",
             "<gray>적중한 적은 {g:ranged:7}의 피해를 입는다.",
             "",
             "<dark_gray>이 스킬은 기본 공격으로 간주한다."
@@ -222,7 +230,8 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
         override val definitionId = "sniper/red-skill"
         override val name = "<gray><bold>재장전"
         override val description = listOf(
-            "<gray>사용 시 {g:reload:2}초 동안 저격총을 재장전한다.",
+            "<gray>모든 {keyword:Bullet}을 버린다.",
+            "<gray>{g:reload:2}초 동안 재장전하여 {keyword:Bullet}을 1 얻는다. (최대 1)",
             "<gray>재장전하는 동안 <gold><bold>이동 속도가 {g:speed:40}% 감소</bold><gold>한다."
         )
         override val cooldown = SNIPER_RELOAD_COOLDOWN_SECONDS
@@ -232,7 +241,7 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler {
             return true
         }
 
-        override fun isUseSuccess(): Boolean = !reloading && !loaded
+        override fun isUseSuccess(): Boolean = !reloadDisabled && !reloading
     }
 
     private class Passive : BasePassive(), OnHitHandler {

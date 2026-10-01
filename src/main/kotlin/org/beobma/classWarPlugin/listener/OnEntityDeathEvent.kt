@@ -1,6 +1,5 @@
 package org.beobma.classWarPlugin.listener
 
-import org.beobma.classWarPlugin.gameClass.list.AreaDevelopment
 import org.beobma.classWarPlugin.gameClass.list.Levatain
 import org.beobma.classWarPlugin.manager.DamageManager
 import org.bukkit.entity.Player
@@ -13,6 +12,12 @@ class OnEntityDeathEvent : Listener {
     fun onEntityDeath(event: EntityDeathEvent) {
         val entity = event.entity
         if (entity is Player) return
+        if ("cw-afterglow-echo" in entity.scoreboardTags) {
+            event.drops.clear()
+            event.droppedExp = 0
+            DamageManager.consumeAttribution(entity)
+            return
+        }
 
         val attribution = DamageManager.consumeAttribution(entity)
         val creditedKiller = attribution?.attackerId ?: entity.killer?.uniqueId
@@ -23,8 +28,6 @@ class OnEntityDeathEvent : Listener {
             }
         }
         val killerId = creditedKiller ?: return
-        val deathCenter = entity.boundingBox.center.toLocation(entity.world)
-        AreaDevelopment.handleEntityDeath(entity.uniqueId, deathCenter, killerId)
         Levatain.handleKill(killerId)
     }
 }

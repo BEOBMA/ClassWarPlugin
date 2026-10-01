@@ -6,7 +6,6 @@ import org.beobma.classWarPlugin.event.PlayerSkillUseEvent
 import org.beobma.classWarPlugin.gameClass.handler.OnSkillUseHandler
 import org.beobma.classWarPlugin.gameClass.handler.OtherSkillUseHandler
 import org.beobma.classWarPlugin.entity.player.PlayerData
-import org.beobma.classWarPlugin.gameClass.list.Referee
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 
@@ -37,6 +36,5 @@ class OnPlayerSkillUseEvent : Listener {
                 AbilityTree.handlers(observer.gameClasses, OtherSkillUseHandler::class.java)
                     .forEach { bound -> bound.call { it.onOtherPlayerSkillUse(event) } }
             }
-        Referee.recordSkillUse(playerData)
     }
 }

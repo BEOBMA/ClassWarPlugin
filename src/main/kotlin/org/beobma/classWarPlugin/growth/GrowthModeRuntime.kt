@@ -190,7 +190,7 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
         game.tasks.add(object : BukkitRunnable() {
             override fun run() {
                 if (closed || game.phase != GamePhase.RUNNING) { cancel(); return }
-                if (game.isPaused || MapTransferBorderManager.isExpanded(world)) {
+                if (game.isPaused || org.beobma.classWarPlugin.domain.DomainManager.isExpanded(world) || MapTransferBorderManager.isExpanded(world)) {
                     mobs.values.forEach { it.data.entity.setAI(false) }; return
                 }
                 tick()
@@ -324,7 +324,7 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
             if (entity is Zombie) entity.isBaby = false
             entity.getAttribute(Attribute.MAX_HEALTH)?.baseValue = 20.0 + level * 5
             entity.health = entity.getAttribute(Attribute.MAX_HEALTH)?.value ?: 20.0
-            entity.getAttribute(Attribute.ATTACK_DAMAGE)?.baseValue = 2.0 + level * 0.4
+            entity.getAttribute(Attribute.ATTACK_DAMAGE)?.baseValue = GrowthWildlifeDamage.baseDamage(level)
             entity.getAttribute(Attribute.MOVEMENT_SPEED)?.baseValue = 0.20
             entity.equipment?.setHelmet(org.bukkit.inventory.ItemStack(Material.CHAINMAIL_HELMET))
             entity.customName(mini.deserialize("<yellow>Lv.$level <white>${if (entity is Monster) "지역 몬스터" else "야생 동물"}"))

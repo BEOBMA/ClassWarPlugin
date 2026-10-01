@@ -45,6 +45,8 @@ class Frostbite : StatusAbnormality() {
 
     override fun onRemoveStatusAbnormality() {
         isOn = false
+        moveSpeedDecrease?.remove()
+        moveSpeedDecrease = null
         super.onRemoveStatusAbnormality()
     }
 }

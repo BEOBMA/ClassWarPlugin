@@ -29,12 +29,17 @@ class VibrationExplosion(private val repetitions: Int = 1) : StatusAbnormality()
             return
         }
         val power = vibration.power
+        val handlers = org.beobma.classWarPlugin.ability.AbilityTree.handlers(casterData.gameClasses,
+            org.beobma.classWarPlugin.gameClass.handler.VibrationExplosionHandler::class.java)
+        val retained = handlers.maxOfOrNull { bound ->
+            bound.call { it.retainedVibrationPower(entityData, power) }
+        }?.coerceIn(0, power) ?: 0
         repeat(repetitions.coerceIn(1, 2)) {
-            entityData.damage(power * 0.5, DamageType.StatusAbnormality, casterData)
+            entityData.damage(power * 0.5, DamageType.StatusAbnormality, casterData,
+                appearance = org.beobma.classWarPlugin.damage.DamageAppearance.VIBRATION)
         }
-        vibration.remove()
-        org.beobma.classWarPlugin.ability.AbilityTree.handlers(casterData.gameClasses,
-            org.beobma.classWarPlugin.gameClass.handler.VibrationExplosionHandler::class.java).forEach { bound ->
+        if (retained == 0) vibration.remove() else vibration.decreasePower(power - retained)
+        handlers.forEach { bound ->
             bound.call { it.onVibrationExplosion(entityData) }
         }
         this.remove()

@@ -1,6 +1,7 @@
 package org.beobma.classWarPlugin
 
 import org.beobma.classWarPlugin.listener.OnMetronomeAttackEvent
+import org.beobma.classWarPlugin.listener.OnFirearmInputEvent
 
 import org.beobma.classWarPlugin.command.Command
 import org.beobma.classWarPlugin.info.Info
@@ -26,7 +27,6 @@ import org.beobma.classWarPlugin.listener.OnAsyncChatEvent
 import org.beobma.classWarPlugin.listener.OnProjectileHitEvent
 import org.beobma.classWarPlugin.listener.OnEntityShootBowEvent
 import org.beobma.classWarPlugin.listener.OnBattleMapEvent
-import org.beobma.classWarPlugin.listener.OnPlayerItemHeldEvent
 import org.beobma.classWarPlugin.game.GameSettings
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager
 import org.beobma.classWarPlugin.manager.DamageIndicatorManager
@@ -76,6 +76,7 @@ class ClassWarPlugin : JavaPlugin() {
 
     override fun onDisable() {
         statusActionBarTask?.cancel()
+        org.beobma.classWarPlugin.domain.DomainManager.shutdown()
         releaseUpdater.stop()
         GameManager.run {
             Info.game?.stop()
@@ -83,6 +84,7 @@ class ClassWarPlugin : JavaPlugin() {
         }
         StealthVisibilityManager.showAll()
         DamageIndicatorManager.shutdown()
+        org.beobma.classWarPlugin.manager.ResonanceMarkManager.shutdown()
         AttackableObjectManager.shutdown()
         server.messenger.unregisterIncomingPluginChannel(this)
         loggerInfo("플러그인이 정상적으로 비활성화되었습니다.")
@@ -139,12 +141,15 @@ class ClassWarPlugin : JavaPlugin() {
         }
 
         server.pluginManager.registerEvents(command, this)
+        server.pluginManager.registerEvents(org.beobma.classWarPlugin.testing.StatusLaboratory, this)
+        server.pluginManager.registerEvents(org.beobma.classWarPlugin.domain.DomainListener(), this)
         server.pluginManager.registerEvents(org.beobma.classWarPlugin.growth.GrowthListener(), this)
         server.pluginManager.registerEvents(OnInventoryClickEvent(), this)
         server.pluginManager.registerEvents(OnInventoryCloseEvent(), this)
         server.pluginManager.registerEvents(OnPlayerDeathEvent(), this)
         server.pluginManager.registerEvents(OnEntityDamageByEntityEvent(), this)
         server.pluginManager.registerEvents(OnMetronomeAttackEvent(), this)
+        server.pluginManager.registerEvents(OnFirearmInputEvent(), this)
         server.pluginManager.registerEvents(OnEntityDamageEvent(), this)
         server.pluginManager.registerEvents(OnEntityRegainHealthEvent(), this)
         server.pluginManager.registerEvents(OnEntityDeathEvent(), this)
@@ -161,7 +166,6 @@ class ClassWarPlugin : JavaPlugin() {
         server.pluginManager.registerEvents(OnProjectileHitEvent(), this)
         server.pluginManager.registerEvents(OnEntityShootBowEvent(), this)
         server.pluginManager.registerEvents(OnBattleMapEvent(), this)
-        server.pluginManager.registerEvents(OnPlayerItemHeldEvent(), this)
     }
 
     private fun startStatusActionBarTask() {

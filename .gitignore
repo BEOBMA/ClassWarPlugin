@@ -1,6 +1,9 @@
 # User-specific stuff
 .idea/
 
+# Local documentation (not published to GitHub)
+docs/
+
 *.iml
 *.ipr
 *.iws

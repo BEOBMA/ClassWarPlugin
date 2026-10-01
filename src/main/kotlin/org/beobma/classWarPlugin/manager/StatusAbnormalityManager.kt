@@ -246,8 +246,26 @@ object StatusAbnormalityManager {
 
     private fun buildStatusActionBarMessage(statuses: List<StatusAbnormality>): String {
         if (statuses.isEmpty()) return ""
-        fun List<StatusAbnormality>.line(): String = filter { it.showInActionBar }.sortedBy { it.name }
-            .joinToString(" <dark_gray> | </dark_gray> ") { it.actionBarText() }
+        fun List<StatusAbnormality>.line(): String {
+            val visible = filter { it.showInActionBar }
+            val resources = visible.filterIsInstance<ResonanceResource>().filter { it.power > 0 }
+            val entries = visible.filterNot { it is ResonanceResource }
+                .map { it.name to it.actionBarText() }.toMutableList()
+            if (resources.isNotEmpty()) {
+                val resonance = resources.filterIsInstance<Resonance>().maxOfOrNull { it.power } ?: 0
+                val aftermath = resources.filterIsInstance<Aftermath>().maxOfOrNull { it.power } ?: 0
+                val remaining = resources.mapNotNull { it.duration }.minOrNull()
+                val timeColor = if (remaining != null && remaining <= 3) "#FF927D" else "gray"
+                val time = remaining?.let { "${it}s" } ?: "∞"
+                val icon = org.beobma.classWarPlugin.keyword.StatusIcon.markup("ResonanceMark")
+                val text = "$icon<dark_gray>【</dark_gray>" +
+                    "<#A45BD4><bold>공명 $resonance</bold></#A45BD4><dark_gray>/3 · </dark_gray>" +
+                    "<#EBB844>여진 $aftermath</#EBB844><dark_gray>/30 · </dark_gray>" +
+                    "<$timeColor>$time</$timeColor><dark_gray>】</dark_gray>"
+                entries += "공명" to text
+            }
+            return entries.sortedBy { it.first }.joinToString(" <dark_gray> | </dark_gray> ") { it.second }
+        }
 
         val mechanics = statuses.filter { it.isClassMechanic }.line()
         val abnormalities = statuses.filterNot { it.isClassMechanic }.line()

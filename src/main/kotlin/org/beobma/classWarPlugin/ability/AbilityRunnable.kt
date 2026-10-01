@@ -36,7 +36,8 @@ abstract class AbilityRunnable(
             }
             val suspended = policy != TickPolicy.SESSION && (scope.game.isPaused ||
                 (policy == TickPolicy.COMBAT && (!scope.isActive || scope.suspended || !scope.playerData.player.isOnline)))
-            if (!timer.advance(suspended)) return@Runnable
+            if (!timer.advance(suspended, if (policy == TickPolicy.SESSION) 1.0 else
+                    org.beobma.classWarPlugin.domain.DomainManager.timeScale(scope.playerData.uniqueId))) return@Runnable
             try {
                 AbilityExecution.with(scope) { run() }
             } catch (error: Throwable) {

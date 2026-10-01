@@ -7,11 +7,17 @@ import org.beobma.classWarPlugin.gameClass.list.dummy.Dummy
 
 /** Stable IDs are the persistence contract; constructor names remain an implementation detail. */
 object AbilityCatalog {
+    /** Parked implementations cannot be restored by configuration or direct factory requests. */
+    fun isDeferred(id: String): Boolean = id == "streamer" || id == "referee"
     private val factories: Map<String, () -> GameClass> = mapOf(
         "abyssal-veil" to ::AbyssalVeil,
+        "afterglow" to ::Afterglow,
+        "flashbang" to ::Flashbang,
+        "gungnir" to ::Gungnir,
+        "mjolnir" to ::Mjolnir,
+        "constellations" to ::Constellations,
         "anchor" to ::Anchor,
         "agent" to ::Agent,
-        "area-development" to ::AreaDevelopment,
         "assassin" to ::Assassin,
         "astronomer" to ::Astronomer,
         "avenger" to ::Avenger,
@@ -48,7 +54,6 @@ object AbilityCatalog {
         "gun-blader" to ::GunBlader,
         "hacker" to ::Hacker,
         "hero" to ::Hero,
-        "hide-and-seek" to ::HideAndSeek,
         "high-jumper" to ::HighJumper,
         "hikikomori" to ::Hikikomori,
         "ice-wizard" to ::IceWizard,
@@ -109,6 +114,13 @@ object AbilityCatalog {
         "pioneer" to ::Pioneer,
         "writer" to ::Writer,
         "metronome" to ::Metronome,
+        "hunter" to ::Hunter,
+        "sturmtruppe" to ::Sturmtruppe,
+        "spezialeinheitsmitglied" to ::Spezialeinheitsmitglied,
+        "schwerekavallerie" to ::SchwereKavallerie,
+        "firearmsmaster" to ::FirearmsMaster,
+        "creator" to ::Creator,
+        "streamer" to ::Streamer,
     )
     private val enabledIds = listOf(
         "berserker", "sniper", "meteor", "time-maniqulator", "land-wizard",
@@ -117,7 +129,7 @@ object AbilityCatalog {
         "ice-wizard", "gun-blader", "watchmaker", "barrier", "darkness",
         "feather", "general-person", "grave-robber", "hacker", "spider-man",
         "trapper", "mathematician", "portal-gun", "tour", "pacifist",
-        "roulette", "area-development", "parasite", "chubby", "vampire",
+        "roulette", "parasite", "chubby", "vampire",
         "contractor", "levatain", "weapon-master", "death-note", "swordplay",
         "anchor", "avenger", "bull", "con-artist", "conflict",
         "damocles", "devastating-blow", "error", "exodia", "ghost",
@@ -130,8 +142,14 @@ object AbilityCatalog {
         "mercurius", "venus", "terra", "mars", "jupiter",
         "saturnus", "uranus", "neptune", "pluto",
         "crossbow", "freikugel", "warcorrespondent", "pioneer", "agent", "writer", "metronome",
+        "hunter", "sturmtruppe", "spezialeinheitsmitglied", "schwerekavallerie", "firearmsmaster",
+        "creator", "afterglow", "constellations",
+        "flashbang", "gungnir", "mjolnir",
     )
-    fun create(id: String): GameClass = requireNotNull(factories[id]) { "Unknown class ID: $id" }.invoke()
+    fun create(id: String): GameClass {
+        require(!isDeferred(id)) { "Deferred class: $id" }
+        return requireNotNull(factories[id]) { "Unknown class ID: $id" }.invoke()
+    }
     internal fun enabledClassIds(): List<String> = enabledIds.toList()
     fun enabledClasses(): List<GameClass> = enabledIds.map(::create)
 }

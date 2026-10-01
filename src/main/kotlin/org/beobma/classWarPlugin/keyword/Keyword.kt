@@ -1,7 +1,7 @@
 package org.beobma.classWarPlugin.keyword
 
 enum class Keyword(
-    val string: String,
+    private val textMarkup: String,
     val description: String? = null,
     /** 간략 설명에서도 조작법·발동 조건 등 플레이에 필수적인 해설을 표시한다. */
     val showDescriptionInBrief: Boolean = false,
@@ -166,7 +166,7 @@ enum class Keyword(
     ),
     Acceleration(
         "<yellow><bold>가속</bold><gray>",
-        "{keyword:Acceleration}: 최대 5. 중첩당 이동 속도와 공격 속도가 {g:speed-bonus:4}% 증가한다. 같은 적 적중으로 유지하며 6초마다 최대 1중첩을 얻는다. 다른 적을 공격하거나 같은 적에게 4초간 피해를 주지 않으면 초기화된다.",
+        "{keyword:Acceleration}: 최대 5. 중첩당 이동 속도와 공격 속도가 {g:speed-bonus:4}% 증가한다. 같은 적 적중으로 유지하며 1초마다 최대 1중첩을 얻는다. 다른 적을 공격하거나 같은 적에게 10초간 피해를 주지 않으면 초기화된다.",
         showDescriptionInBrief = true,
     ),
     Disposal(
@@ -188,10 +188,37 @@ enum class Keyword(
         "<yellow><bold>시간대</bold><gray>",
         "{keyword:TimePhase}: 시계공의 현재 시간대이며 남은 시간이 끝나면 다음 시간대로 변경된다.",
     ),
+    Area(
+        "<gold><bold>영역</bold><gray>",
+        "{keyword:Area}: 내부와 외부를 차단하며, 내부의 모든 플레이어에게 특정 규칙을 강제로 적용한다.",
+    ),
+    Distortion(
+        "<gold><bold>왜곡</bold><gray>",
+        "{keyword:Distortion}: 시간이 느려져 움직이는 속도, 화면을 돌리는 속도 등. 모든 행동에 최대 속도 제한이 생긴다.",
+    ),
+    Disability(
+        "<gold><bold>불구화</bold><gray>",
+        "{keyword:Disability}: 화면을 돌리는 것을 제외한 모든 행동을 할 수 없다.",
+    ),
     Invincibility(
         "<yellow><bold>무적</bold><gray>",
         "{keyword:Invincibility}: 어떠한 방법으로도 피해를 받지 않는다.",
+    ),
+    Settlement(
+        "<#E06A38><bold>결산</bold><gray>",
+        "{keyword:Settlement}: 출혈, 화상, 광휘, 동상을 제거하고 각 상태이상의 수치 합만큼 {keyword:AbnormalStatusDamage}를 입힌다. (최대 8)",
+    ),
+    Aftermath(
+        "<#D9A12B><bold>여진</bold><gray>",
+        "{keyword:Aftermath}: 10초간 유지되며 {keyword:Resonance} 혹은 {keyword:Aftermath}을 얻을 때마다 지속 시간이 초기화된다. 수치가 30에 도달하면 {keyword:Aftermath}을 제거하고 {keyword:Resonance}을 1 얻는다. {keyword:Resonance}이 3이면 {keyword:Aftermath}을 얻을 수 없다.",
+    ),
+    Resonance(
+        "<#A45BD4><bold>공명</bold><gray>",
+        "{keyword:Resonance}: 10초간 유지되며 {keyword:Resonance} 혹은 {keyword:Aftermath}을 얻을 때마다 지속 시간이 초기화된다. 특정 스킬로 소모되며 스킬이 강화된다. (최대 수치 3)",
     );
+
+    /** Missing resource-pack translations resolve to an empty string, including the spacing. */
+    val string: String get() = StatusIcon.markup(name) + textMarkup
 
     fun requireDescription(): String = requireNotNull(description) {
         "Keyword '$name'에 설명이 등록되지 않았습니다."
@@ -199,7 +226,7 @@ enum class Keyword(
 
     /** 명령어 검색과 탭 완성에 사용하는 서식 없는 게임 내 표시명. */
     val displayName: String
-        get() = miniMessageTag.replace(string, "")
+        get() = miniMessageTag.replace(textMarkup, "")
 
     companion object {
         private val miniMessageTag = "<[^>]+>".toRegex()

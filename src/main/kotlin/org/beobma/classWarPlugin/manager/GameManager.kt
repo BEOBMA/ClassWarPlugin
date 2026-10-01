@@ -16,7 +16,6 @@ import org.beobma.classWarPlugin.game.Game
 import org.beobma.classWarPlugin.game.DamageMultiplierType
 import org.beobma.classWarPlugin.game.GamePhase
 import org.beobma.classWarPlugin.game.MatchMode
-import org.beobma.classWarPlugin.game.CooperativeRole
 import org.beobma.classWarPlugin.game.PlayerSnapshot
 import org.beobma.classWarPlugin.game.damageMultiplier
 import org.beobma.classWarPlugin.gameClass.GameClass
@@ -116,7 +115,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
     }
 
     // 이 목록에 등록된 클래스만 실제 배정, 클래스 목록 및 훈련 선택에 노출된다.
-    // 심판자, 숨바꼭질, 공포, 백룸은 비활성화 대상으로 의도적으로 등록하지 않는다.
+    // 숨바꼭질, 공포, 백룸은 비활성화 대상으로 의도적으로 등록하지 않는다.
 
     private val miniMessageTagPattern = Regex("<[^>]+>")
 
@@ -210,14 +209,8 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
             playerData.assignGameClasses(assignedClasses)
             classSelectionHistory.record(player.uniqueId, assignedClasses.map { it.classId })
             val teamNumber = (teamOf(player.uniqueId) ?: 0) + 1
-            val role = cooperativeRoleOf(player.uniqueId)
             val assignment = buildString {
                 if (mode.usesTeamRules) append("<aqua>팀 $teamNumber")
-                if (role != null) {
-                    val groupNumber = (cooperativeGroups[player.uniqueId] ?: 0) + 1
-                    append(" <dark_gray>|</dark_gray> <aqua>공동 조 $groupNumber")
-                    append(" <dark_gray>|</dark_gray> <yellow>${role.displayName}")
-                }
             }
             if (assignment.isNotBlank()) {
                 player.sendMessage(miniMessage.deserialize("<gray>[편성] $assignment"))
@@ -315,40 +308,16 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         .filter(ClassBalanceManager::isEnabled)
         .filterNot { !mode.allowsParasite && it is Parasite }
 
-    /** 셔플된 참가자를 팀과 공동 조에 배치하고 공동 역할을 확정한다. */
+    /** 셔플된 참가자를 전투 팀에 배치한다. */
     private fun Game.initializeMatchGroups(participants: List<PlayerData>) {
         combatTeams.clear()
-        cooperativeGroups.clear()
-        cooperativeRoles.clear()
         val shuffled = participants.shuffled()
         val teamSize = when {
             mode.usesTeamRules -> settings.teamPlayersPerTeam
-            mode.usesCooperativeRules -> settings.cooperativePlayersPerGroup
             else -> 1
         }
         shuffled.chunked(teamSize).forEachIndexed { teamId, members ->
             members.forEach { combatTeams[it.uniqueId] = teamId }
-        }
-        if (!mode.usesCooperativeRules) return
-
-        var groupId = 0
-        shuffled.chunked(teamSize).forEach { teamMembers ->
-            teamMembers.chunked(settings.cooperativePlayersPerGroup).forEach { groupMembers ->
-                val configured = if (settings.cooperativeRandomRoles) {
-                    listOf(CooperativeRole.MOVEMENT_COMBAT, CooperativeRole.HOTBAR_SKILLS)
-                } else {
-                    settings.cooperativeFixedRoles.ifEmpty {
-                        listOf(CooperativeRole.MOVEMENT_COMBAT, CooperativeRole.HOTBAR_SKILLS)
-                    }
-                }
-                val roles = List(groupMembers.size) { configured[it % configured.size] }
-                    .let { if (settings.cooperativeRandomRoles) it.shuffled() else it }
-                groupMembers.zip(roles).forEach { (member, role) ->
-                    cooperativeGroups[member.uniqueId] = groupId
-                    cooperativeRoles[member.uniqueId] = role
-                }
-                groupId++
-            }
         }
     }
 
@@ -780,7 +749,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
                     return
                 }
 
-                if (isPaused || MapTransferBorderManager.isExpanded(gameWorld)) {
+                if (isPaused || org.beobma.classWarPlugin.domain.DomainManager.isExpanded(gameWorld) || MapTransferBorderManager.isExpanded(gameWorld)) {
                     if (!borderPaused && shrinking) border.changeSize(border.size, 0L)
                     borderPaused = true
                     return
@@ -930,7 +899,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
                     cancel()
                     return
                 }
-                if (isPaused || MapTransferBorderManager.isExpanded(world)) return
+                if (isPaused || org.beobma.classWarPlugin.domain.DomainManager.isExpanded(world) || MapTransferBorderManager.isExpanded(world)) return
 
                 val progress = if (totalTicks == 0L) {
                     1.0
@@ -1102,7 +1071,8 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         if (appliedDamage <= 0.0) return
         playerData.gameClasses.filterIsInstance<Grass>().forEach { it.suppressStealthFromDamage() }
         CombatManager.recordDamageTaken(playerData)
-        DamageIndicatorManager.show(player, appliedDamage, settings.damageIndicatorsEnabled)
+        DamageIndicatorManager.show(player, appliedDamage, settings.damageIndicatorsEnabled,
+            org.beobma.classWarPlugin.damage.DamageAppearance.FIXED)
         player.playHurtAnimation(0.0F)
         player.health = (player.health - appliedDamage).coerceAtLeast(0.0)
     }
@@ -1651,7 +1621,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         Mathematician.clearSessions(listOf(player.uniqueId))
         Vampire.clearForms(listOf(player.uniqueId))
         PortalGun.clearForPlayers(listOf(player.uniqueId))
-        AreaDevelopment.clearDomains(listOf(player.uniqueId))
+        org.beobma.classWarPlugin.domain.DomainManager.clearDomains(listOf(player.uniqueId))
         if (!currentGame.disconnectedPlayers.add(player.uniqueId)) return
         AbilityTree.suspend(playerData.gameClasses.filter { it.isInjectedFor(playerData) })
 
@@ -1872,7 +1842,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         Referee.clearSessions(participantIds)
         Vampire.clearForms(participantIds)
         PortalGun.clearForPlayers(participantIds)
-        AreaDevelopment.clearDomains(participantIds)
+        org.beobma.classWarPlugin.domain.DomainManager.clearDomains(participantIds)
         DamageManager.clearAttributions(participantIds)
         CombatManager.clear(participantIds)
         clearDamageInvincibility(participantIds)
@@ -1923,8 +1893,6 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         tailTargets.clear()
         tailTargetTeams.clear()
         combatTeams.clear()
-        cooperativeGroups.clear()
-        cooperativeRoles.clear()
         availableClasses.clear()
         refreshesRemaining.clear()
         classSelectionHistory.clear()
@@ -2152,7 +2120,7 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         Referee.clearSessions(listOf(uniqueId))
         Vampire.clearForms(listOf(uniqueId))
         PortalGun.clearForPlayers(listOf(uniqueId))
-        AreaDevelopment.clearDomains(listOf(uniqueId))
+        org.beobma.classWarPlugin.domain.DomainManager.clearDomains(listOf(uniqueId))
         trainingGame.tasks.toList().forEach { it.cancel() }
         TemporaryDisplayManager.clear(world, uniqueId)
         trainingGame.playerDatas.forEach { entityData ->

@@ -142,6 +142,7 @@ object AttackableObjectManager {
      * 블록이나 다른 생명체가 먼저 있으면 오브젝트가 공격을 가로채지 않는다.
      */
     fun hitBasicAttack(player: Player, maximumDistance: Double = 3.25): Boolean {
+        if (!org.beobma.classWarPlugin.damage.BasicAttackReadiness.ready(player.attackCooldown)) return false
         val start = player.eyeLocation
         val direction = start.direction.clone()
         if (direction.lengthSquared() < 1.0E-9) return false
