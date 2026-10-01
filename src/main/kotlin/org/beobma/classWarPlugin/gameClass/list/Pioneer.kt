@@ -469,9 +469,8 @@ class Pioneer : GameClass(), GameStatusHandler, ConfirmedHitHandler, WhenHitHand
             "<gray>패시브",
             "",
             "<gray>적에게 {keyword:VibrationExplosion}을 적용할 때",
-            "<gray>대상이 {keyword:Burn} 상태라면 화상을 제거하고 불을 끈다.",
-            "<gray>그 대가로 이번 {keyword:VibrationExplosion}은 대상의 {keyword:Vibration}을 모두 제거하지 않고 수치의 50%를 남긴다.",
-            "<dark_gray>남기는 수치의 소수점은 버린다. 연속 폭발은 모두 적용한 후 한 번만 감소한다.",
+            "<gray>대상이 {keyword:Burn} 상태라면 화상을 제거한다.",
+            "<gray>대신, 이번 {keyword:VibrationExplosion}은 대상의 {keyword:Vibration}을 모두 제거하지 않고 수치의 50%만 감소한다."
         )
     }
 }
