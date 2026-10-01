@@ -227,6 +227,10 @@ class Pioneer : GameClass(), GameStatusHandler, ConfirmedHitHandler, WhenHitHand
         particles.spawn(target.entity, Particle.CRIT, count = 16, spread = 0.45, speed = 0.1)
         sounds.play(target.entity, Sound.BLOCK_AMETHYST_BLOCK_BREAK, volume = 0.65f, pitch = 0.7f)
         if (target.hasStatus<Burn>() || target.entity.fireTicks > 0) {
+            // Retention was calculated before the explosion. Consume every burn source
+            // and vanilla fire now, so a later explosion cannot reuse the same burn.
+            target.statusAbnormalitys.filterIsInstance<Burn>().toList().forEach { it.remove() }
+            target.entity.fireTicks = 0
             particles.spawn(target.entity, Particle.FLAME, count = 20, spread = 0.4, speed = 0.07)
             particles.spawn(target.entity, Particle.SMOKE, count = 8, spread = 0.3)
             CombatVisuals.pulse(abilityScope, impact, Vector(0.0, 1.0, 0.0), 2.0, CombatVisuals.GOLD)
@@ -465,7 +469,9 @@ class Pioneer : GameClass(), GameStatusHandler, ConfirmedHitHandler, WhenHitHand
             "<gray>패시브",
             "",
             "<gray>적에게 {keyword:VibrationExplosion}을 적용할 때",
-            "<gray>대상이 {keyword:Burn} 상태라면 {keyword:Burn} 상태를 해제하는 대신 대상의 {keyword:Vibration} 수치가 감소할 때 50%만 감소한다.",
+            "<gray>대상이 {keyword:Burn} 상태라면 화상을 제거하고 불을 끈다.",
+            "<gray>그 대가로 이번 {keyword:VibrationExplosion}은 대상의 {keyword:Vibration}을 모두 제거하지 않고 수치의 50%를 남긴다.",
+            "<dark_gray>남기는 수치의 소수점은 버린다. 연속 폭발은 모두 적용한 후 한 번만 감소한다.",
         )
     }
 }
