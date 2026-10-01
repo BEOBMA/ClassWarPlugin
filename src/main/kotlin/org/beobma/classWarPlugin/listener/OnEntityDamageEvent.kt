@@ -79,6 +79,16 @@ class OnEntityDamageEvent : Listener {
             }
             event.damage *= multiplier
         }
+        // Apply after environmental class effects and config multipliers, before indicators.
+        // Includes arrows and other attacks attributed to a match-owned wild creature.
+        val wildlife = event.damageSource.causingEntity
+            ?: (event as? EntityDamageByEntityEvent)?.let { hit ->
+                (hit.damager as? Projectile)?.shooter as? org.bukkit.entity.Entity ?: hit.damager
+            }
+        if (handlerGame?.mode?.isGrowth == true && wildlife != null &&
+            handlerGame.growth?.mobs?.containsKey(wildlife.uniqueId) == true) {
+            event.damage = org.beobma.classWarPlugin.growth.GrowthWildlifeDamage.limit(event.damage)
+        }
         if (!PlayerTagManager.isTraining(player)) {
             if (handlerData != null && event.finalDamage > 0.0) {
                 CombatManager.recordDamageTaken(handlerData)
