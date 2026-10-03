@@ -7,7 +7,7 @@ plugins {
 
 group = "org.beobma"
 apply(from = "gradle/status-icons.gradle.kts")
-version = "1.0.8"
+version = "1.0.9"
 
 repositories {
     mavenCentral()
