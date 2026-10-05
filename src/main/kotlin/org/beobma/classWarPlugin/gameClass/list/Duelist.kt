@@ -118,11 +118,11 @@ class Duelist : GameClass() {
         override val description = listOf(
             "<gray>{g:range:10}칸 내의 바라보는 적에게 15초간 결투를 선포한다.",
             "",
-            "<gray>자신과 적은 서로의 공격으로 받는 피해가 30% 증가하고,",
-            "<gray>다른 대상에게 받는 피해는 30% 감소한다.",
+            "<gray>자신과 적은 서로의 공격으로 <gold><bold>받는 피해가 30% 증가</bold><gray>하고,",
+            "<gray>다른 대상에게 <gold><bold>받는 피해는 30% 감소</bold><gray>한다.",
             "",
             "<gray>결투 상대에게 팡트를 3번 연속 적중시키면 추가로 {g:damage:6}의 피해를 입힌다.",
-            "<gray>결투 중, 팡트를 적중시키는데 성공하면 재사용 대기 시간이 2초 감소한다."
+            "<gray>결투 중, 팡트를 적중시키는데 성공하면 팡트의 재사용 대기 시간이 2초 감소한다."
         )
         override val cooldown = DUELIST_EN_GARDE_COOLDOWN_SECONDS
 

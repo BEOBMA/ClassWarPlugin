@@ -250,7 +250,7 @@ class Assassin : GameClass(), EnvironmentalDamageHandler, StatusPlayerMoveHandle
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>기본 공격 적중 시, 대상이 자신을 바라보고 있지 않았다면 피해량이 {g:attack-bonus:2} 증가한다."
+            "<gray>기본 공격 적중 시, 대상이 자신을 바라보고 있지 않았다면 <gold><bold>피해량이 {g:attack-bonus:2} 증가</bold><gray>한다."
         )
 
         override fun onAttackHit(context: DamageContext) {

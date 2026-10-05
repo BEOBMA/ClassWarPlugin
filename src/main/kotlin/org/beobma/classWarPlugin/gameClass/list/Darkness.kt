@@ -41,7 +41,7 @@ class Darkness : GameClass(), EnvironmentalDamageHandler {
     private var artificialDarknessUntilTick = 0L
 
     private fun isInDarkness(): Boolean =
-        game.combatTick < artificialDarknessUntilTick || player.eyeLocation.block.lightFromBlocks.toInt() == 0
+        game.combatTick < artificialDarknessUntilTick || player.eyeLocation.block.lightLevel.toInt() == 0
 
     override fun onEnvironmentalDamage(event: EntityDamageEvent) {
         if (!playerData.entityStatus.isAttackable || event.damage <= 0.0) return
@@ -88,6 +88,7 @@ class Darkness : GameClass(), EnvironmentalDamageHandler {
         }
     }
 
+    // 빛이 없는 곳의 조건을 말 그대로 마인크래프트 시스템 상 빛이 없는 곳으로 수정 (현재는 낮이더라도 발광석 등 조명이 없으면 투명 상태가 되는 문제가 있음
     private inner class Passive : BasePassive(), GameStatusHandler, OnHitHandler, WhenHitHandler {
         override val name = "<bold>어둠"
         override val description = listOf(
@@ -95,7 +96,7 @@ class Darkness : GameClass(), EnvironmentalDamageHandler {
             "",
             "<gray>빛이 없는 곳에서 {keyword:Stealth} 상태가 되며 기본 공격 피해가 {g:attack-bonus:2} 증가한다.",
             "<gray>기본 공격을 하거나 피해를 받으면 3초 동안 {keyword:Stealth} 상태가 해제된다.",
-            "<gray>{keyword:Stealth} 상태가 아닐 때 받는 피해가 50% 증가한다."
+            "<gray>{keyword:Stealth} 상태가 아닐 때 <gold><bold>받는 피해가 50% 증가</bold><gray>한다."
         )
 
         private var grantedStealth: Stealth? = null

@@ -52,7 +52,7 @@ class Jupiter : PlanetClass(), GameStatusHandler {
                 val current = player.location
                 val moved = current.world == lastLocation.world && current.distanceSquared(lastLocation) >= 0.09
                 if (moved && tick % 2 == 0) {
-                    clouds.addLast(GasCloud(player.boundingBox.center.toLocation(player.world), now + 50L))
+                    clouds.addLast(GasCloud(player.boundingBox.center.toLocation(player.world), now + 30L))
                     while (clouds.size > 16) clouds.removeFirst()
                     lastLocation = current.clone()
                 }
@@ -76,7 +76,7 @@ class Jupiter : PlanetClass(), GameStatusHandler {
                     val previousDamageTick = lastDamageTick[target.entity.uniqueId]
                     if (previousDamageTick != null && now - previousDamageTick < 20L) return@forEach
                     lastDamageTick[target.entity.uniqueId] = now
-                    target.damage(2.0, DamageType.StatusAbnormality, playerData, true, damagePath = DamagePath.STATUS_EFFECT)
+                    target.damage(1.0, DamageType.StatusAbnormality, playerData, true, damagePath = DamagePath.STATUS_EFFECT)
                     particles.spawn(target.entity, Particle.CLOUD, count = 12, spread = 0.45, speed = 0.04)
                     sounds.play(target.entity, Sound.BLOCK_FIRE_EXTINGUISH, volume = 0.3f, pitch = 0.65f)
                 }
@@ -93,8 +93,8 @@ class Jupiter : PlanetClass(), GameStatusHandler {
         override val name = "<bold>목성"
         override val description = listOf(
             "<gray>패시브", "",
-            "<gray>이동 시 자신의 위치에 2.5초간 지속되는 수소를 내뿜는다.",
-            "<gray>수소에 닿은 적에게 초당 {g:damage:2}의 피해를 입힌다."
+            "<gray>이동 시 자신의 위치에 1.5초간 지속되는 수소를 내뿜는다.",
+            "<gray>수소에 닿은 적에게 초당 {g:damage:1}의 피해를 입힌다."
         )
     }
 }

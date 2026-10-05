@@ -46,6 +46,7 @@ class Trapper : GameClass() {
             "",
             "<dark_gray>선은 최대 10개까지 만들 수 있으며, 최대치를 초과한 경우 오래된 선을 제거하고 만든다.",
             "<dark_gray>선을 만들 때 기준점 사이의 거리가 10칸을 초과하거나 장애물로 막힌 경우 실패한다.",
+            "<dark_gray>웅크린 상태에서 사용하면 기준점을 제거한다.",
         )
         override val cooldown = 0
 
@@ -62,11 +63,14 @@ class Trapper : GameClass() {
 
         private var firstAnchor: Location? = null
         private var selectedAnchor: Location? by requestValue { null }
+        private var clearAnchor: Boolean by requestValue { false }
         private val lines: ArrayDeque<TrapLine> = ArrayDeque()
         private var scannerTask: BukkitTask? = null
         private var visualTick = 0
 
         override fun isUseSuccess(): Boolean {
+            clearAnchor = player.isSneaking
+            if (clearAnchor) return true
             val anchorRange = ClassBalanceManager.scaleRange(playerData, TRAPPER_ANCHOR_RANGE)
             val trace = player.world.rayTraceBlocks(
                 player.eyeLocation,
@@ -101,6 +105,11 @@ class Trapper : GameClass() {
         }
 
         override fun use(): Boolean {
+            if (clearAnchor) {
+                firstAnchor = null
+                selectedAnchor = null
+                return true
+            }
             val anchor = selectedAnchor ?: return false
             selectedAnchor = null
             ensureScanner()

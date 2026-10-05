@@ -42,14 +42,13 @@ class Sol : PlanetClass(), GameStatusHandler {
                         count = if (day) 10 else 6, spread = 0.72, speed = 0.025)
                 }
                 playerData.radius(player.location, TargetType.Enemy, 5.0, false, hitAttackableObjects = true).forEach { target ->
-                    target.getOrCreateStatus(playerData) { Burn() }
-                        .applyStatus(duration = duration, powerSet = 1)
                     val now = game.combatTick
                     val lastSoundTick = lastIgniteSound[target.entity.uniqueId]
-                    if (lastSoundTick == null || now - lastSoundTick >= 20L) {
-                        lastIgniteSound[target.entity.uniqueId] = now
-                        sounds.play(target.entity, Sound.ITEM_FIRECHARGE_USE, volume = 0.32f, pitch = if (day) 1.35f else 1.6f)
-                    }
+                    if (lastSoundTick != null && now - lastSoundTick < 120L) return@forEach
+                    target.getOrCreateStatus(playerData) { Burn() }
+                        .applyStatus(duration = duration, powerSet = 1)
+                    lastIgniteSound[target.entity.uniqueId] = now
+                    sounds.play(target.entity, Sound.ITEM_FIRECHARGE_USE, volume = 0.32f, pitch = if (day) 1.35f else 1.6f)
                 }
                 tick++
             }
@@ -63,7 +62,8 @@ class Sol : PlanetClass(), GameStatusHandler {
         override val description = listOf(
             "<gray>패시브", "",
             "<gray>자신 주위 5칸 이내에 접근한 적을 {g:duration:1}초간 {keyword:Burn} 상태로 만든다.",
-            "<gray>낮에는 효과가 강화되어 대신 {g:duration:2}초간 {keyword:Burn} 상태로 만든다."
+            "<gray>낮에는 효과가 강화되어 대신 {g:duration:2}초간 {keyword:Burn} 상태로 만든다.",
+            "<gray>이 효과는 대상 당 6초의 재사용 대기 시간을 가진다."
         )
     }
 }

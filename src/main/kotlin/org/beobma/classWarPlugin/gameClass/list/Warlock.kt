@@ -53,7 +53,7 @@ class Warlock : GameClass() {
             "",
             "<gray>{g:range:8}칸 내의 바라보는 적에게 {g:duration-floor:8}초간 역병의 낙인을 새긴다.",
             "",
-            "<gray>역병의 낙인이 새겨진 적은 워락에게 받는 피해가 10% 증가하고",
+            "<gray>역병의 낙인이 새겨진 적은 워락에게 <gold><bold>받는 피해가 10% 증가</bold><gray>하고",
             "<gray>자신과 주변 {g:range:3}칸 이내의 적은 매초 {g:status-damage:1}의 피해를 입는다.",
         )
         override val cooldown = WARLOCK_MARK_COOLDOWN_SECONDS
@@ -100,7 +100,7 @@ class Warlock : GameClass() {
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>역병의 낙인이 새겨진 적에게 피해를 입히면 입힌 피해의 {g:healing:50}% 만큼 체력을 회복한다."
+            "<gray>역병의 낙인이 새겨진 적에게 피해를 입히면 <green><bold>입힌 피해의 {g:healing:50}% 만큼 체력을 회복</bold><gray>한다."
         )
 
         override fun onHit(context: DamageContext) {

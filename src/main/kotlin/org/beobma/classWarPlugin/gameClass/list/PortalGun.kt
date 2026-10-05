@@ -7,6 +7,9 @@ import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.SkillInputHandler
 import org.beobma.classWarPlugin.manager.ClassBalanceManager
+import org.beobma.classWarPlugin.manager.SkillManager.getTargetCandidates
+import org.beobma.classWarPlugin.entity.player.PlayerData
+import org.beobma.classWarPlugin.util.HitboxUtil
 import org.beobma.classWarPlugin.manager.TemporaryDisplayManager
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
 import org.beobma.classWarPlugin.skill.Skill
@@ -96,10 +99,13 @@ class PortalGun : GameClass(), SkillInputHandler, org.beobma.classWarPlugin.game
         override val name = "<bold>포탈건 발사"
         override val description = listOf(
             "<gray>좌클릭 시 파란색 포탈을 발사한다.",
-            "<gray>우클릭 시 노란색 포탈을 발사한다.", "",
+            "<gray>우클릭 시 노란색 포탈을 발사한다.",
+            "",
             "<gray>두 포탈이 모두 설치되면 서로 연결된다.",
-            "<gray>수직 포탈 반복 통과 시 기본 {g:feature/momentum:0.075} + 연속 횟수당 {g:feature/momentum:0.022}칸/틱만큼 가속한다. (최대 증가량 {g:feature/momentum:0.42})",
-            "<gray>이 스킬의 재사용 대기 시간은 포탈이 연결된 후에 적용된다."
+            "<gray>이 스킬의 재사용 대기 시간은 포탈이 연결된 후에 적용된다.",
+            "",
+            "<gray>적 주변 5칸 이내 위치에는 포탈을 설치할 수 없다.",
+            "<dark_gray>포탈 통과 시 운동량 증가량: {g:feature/momentum:1}배"
         )
         override val cooldown = PORTAL_GUN_FIRE_COOLDOWN_SECONDS
 
@@ -111,6 +117,17 @@ class PortalGun : GameClass(), SkillInputHandler, org.beobma.classWarPlugin.game
         private val entityCooldowns = mutableMapOf<UUID, Long>()
         private val previousEntityCenters = mutableMapOf<UUID, Vector>()
         private val portalMomentumByEntity = mutableMapOf<UUID, PortalMomentum>()
+
+        private fun canPlace(placement: Placement): Boolean {
+            val center = placement.location.clone().add(placement.face.direction.multiply(0.09))
+            val blocked = playerData.getTargetCandidates().any { target ->
+                target != playerData && !target.entityStatus.isDead && target.entity.world == center.world &&
+                    (target !is PlayerData || playerData.isEnemyOf(target)) &&
+                    HitboxUtil.intersectsSphere(target.entity.boundingBox, center.toVector(), 5.0)
+            }
+            if (blocked) player.sendMiniMessage("<red><bold>[!] 적 주변 5칸 이내에는 포탈을 설치할 수 없습니다.")
+            return !blocked
+        }
 
         override fun isUseSuccess(): Boolean {
             val portalRange = ClassBalanceManager.scaleRange(playerData, 45.0)
@@ -128,12 +145,13 @@ class PortalGun : GameClass(), SkillInputHandler, org.beobma.classWarPlugin.game
                 return false
             }
             pendingPlacement = Placement(position.toLocation(player.world), face)
-            return true
+            return canPlace(pendingPlacement!!)
         }
 
         override fun use(): Boolean {
             val placement = pendingPlacement ?: return false
             pendingPlacement = null
+            if (!canPlace(placement)) return false
             val portal = createPortal(placement, nextColor)
             when (nextColor) {
                 PortalColor.BLUE -> {

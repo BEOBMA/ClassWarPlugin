@@ -38,7 +38,7 @@ class Mercurius : PlanetClass(), GameStatusHandler {
                 }
                 val status = speedStatus?.takeIf { it in playerData.statusAbnormalitys }
                     ?: playerData.getOrCreateStatus(playerData) { MercurySpeedStatus() }.also { speedStatus = it }
-                status.applyStatus(duration = 2, powerSet = 10)
+                status.applyStatus(duration = 2, powerSet = 20)
                 if (tick++ % 5 == 0) {
                     particles.spawn(player.location.clone().add(0.0, 0.15, 0.0), Particle.ELECTRIC_SPARK, count = 4, spread = 0.32, speed = 0.025)
                 }
@@ -52,7 +52,7 @@ class Mercurius : PlanetClass(), GameStatusHandler {
         override val name = "<bold>수성"
         override val description = listOf(
             "<gray>패시브", "",
-            "<gray>이동 속도가 {g:speed:10}% 증가한다.",
+            "<gold><bold>이동 속도가 {g:speed:20}% 증가</bold><gray>한다.",
             "<gray>이동 속도 감소 효과를 받지 않는다."
         )
     }

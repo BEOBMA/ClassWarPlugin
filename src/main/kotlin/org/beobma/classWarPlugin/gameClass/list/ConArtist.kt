@@ -42,21 +42,21 @@ class ConArtist : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
         fakingDeath = true
         player.health = 1.0
         val stealth = (playerData.addStatus(Stealth(), playerData) as Stealth).also {
-            it.applyStatus(duration = 20, powerSet = 1)
+            it.applyStatus(duration = 6, powerSet = 1)
         }
         playerData.trackTask(object : BukkitRunnable(abilityScope) {
             override fun run() {
                 if (stealth.power > 0) stealth.remove()
                 fakingDeath = false
             }
-        }.runTaskLater(ClassWarPlugin.instance, 400L))
+        }.runTaskLater(ClassWarPlugin.instance, (stealth.duration ?: 6) * 20L))
         return true
     }
 
     private inner class Passive : BasePassive(), WhenHitHandler {
         override val name = "<bold>가짜 죽음"
         override val description = listOf(
-            "<gray>패시브", "", "<gray>게임당 1회, 사망 시 사망을 {keyword:Invalidity}로 하고, 사망한 것처럼 위장하며 {g:duration:20}초간 {keyword:Stealth} 상태가 된다."
+            "<gray>패시브", "", "<gray>게임당 1회, 사망 시 사망을 {keyword:Invalidity}로 하고, 사망한 것처럼 위장하며 {g:duration:6}초간 {keyword:Stealth} 상태가 된다."
         )
         override fun whenHit(context: DamageContext) {
             if (player.health - context.damage <= 0.0 && fakeDeath()) context.isCancelled = true

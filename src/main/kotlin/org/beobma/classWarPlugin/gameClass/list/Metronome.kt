@@ -220,7 +220,7 @@ class Metronome : GameClass(), GameStatusHandler, WeaponInputHandler {
     }
 
     private class Passive : BasePassive() {
-        override val name = org.beobma.classWarPlugin.keyword.Keyword.VariableRhythm.string
+        override val name = "가변박자"
         override val description = listOf(
             "<gray>패시브",
             "",
@@ -229,13 +229,10 @@ class Metronome : GameClass(), GameStatusHandler, WeaponInputHandler {
             "<gray>게임 시작 후 일정한 박자로 소리가 들린다.",
             "<gray>박자에 맞춰 기본 공격을 하지 않으면 기본 공격의 피해량은 0으로 고정된다.",
             "",
-            "<gray>처음에는 1초마다 박자가 들리며, 음악이 시작되면 그 음악의 BPM에 맞춰 박자도 빨라진다.",
-            "<gray>들리는 박자를 2·4분할하고, 72 BPM 이하에서는 8분할하여 공격할 수 있다.",
-            "<gray>박자를 틀리지 않고 연속으로 맞출 때마다 박자는 점차 음악으로 변한다.",
-            "<gray>음악의 종류와 템포는 박자를 쪼개는 양에 비례하여 달라진다.",
-            "<gray>더 오래, 더 빨리 정확한 박자를 유지할 때마다 기본 공격 피해량이 점차 증가한다.",
-            "<gray>피해 증가는 최대 150%이며 엇박 또는 2초 넘게 공격하지 않으면 초기화된다.",
-            "<gray>직접 작곡한 24곡이 60~180 BPM의 12개 템포로 점차 전개된다."
+            "<gray>들리는 박자를 분할하여 공격할 수도 있다.",
+            "<gray>박자를 틀리지 않고 연속으로 맞출 때마다 박자는 점차 빨라진다.",
+            "<gray>더 오래, 더 빨리 정확한 박자를 유지할 때마다 <gold><bold>기본 공격 피해량이 점차 증가</bold><gray>한다.",
+            "<gray>피해 증가는 최대 150%이며 엇박 또는 2초 넘게 공격하지 않으면 초기화된다."
         )
     }
 }

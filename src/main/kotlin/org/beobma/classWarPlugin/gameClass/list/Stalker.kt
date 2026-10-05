@@ -7,6 +7,8 @@ import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
 import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
+import org.beobma.classWarPlugin.gameClass.handler.PlayerKillHandler
+import java.util.UUID
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
 import org.beobma.classWarPlugin.manager.TemporaryDisplayManager
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
@@ -24,7 +26,7 @@ import org.joml.Quaternionf
 import org.joml.Vector3f
 import kotlin.math.min
 
-class Stalker : GameClass(), GameStatusHandler {
+class Stalker : GameClass(), GameStatusHandler, PlayerKillHandler {
     override val classId = "stalker"
     override val name = "<gray>스토커"
     override val rank = Rank.B
@@ -35,11 +37,17 @@ class Stalker : GameClass(), GameStatusHandler {
     private val trails = mutableListOf<Trail>()
     private var target: PlayerData? = null
     private var absorbedTrails = 0
+    private var targetKilled = false
+
+    override fun onPlayerKill(victimId: UUID) {
+        if (victimId == target?.uniqueId) targetKilled = true
+    }
 
     override fun onBattleStart() {
         trails.forEach { it.display.remove() }
         trails.clear()
         absorbedTrails = 0
+        targetKilled = false
         target = game.playerDatas.filterIsInstance<PlayerData>()
             .filter { it != playerData && !it.entityStatus.isDead }
             .randomOrNull()
@@ -118,14 +126,20 @@ class Stalker : GameClass(), GameStatusHandler {
     private inner class Passive : BasePassive(), OnHitHandler {
         override val name = "<bold>스토킹"
         override val description = listOf(
-            "<gray>패시브", "", "<gray>게임 시작 시 무작위 플레이어를 스토킹 대상으로 지정한다.",
+            "<gray>패시브",
+            "",
+            "<gray>게임 시작 시 무작위 플레이어를 스토킹 대상으로 지정한다.",
             "<gray>자신은 스토킹 대상에게 가는 경로가 입자를 볼 수 있다.",
             "<gray>스토킹 대상은 이동 시 흔적을 남기며, 흔적은 10초간 유지된다.",
-            "<gray>흔적에 닿으면 흔적을 흡수하고 흡수한 흔적 양에 비례하여 스토킹 대상에게 가하는 피해가 증가한다."
+            "<gray>흔적에 닿으면 흔적을 흡수하고 흡수한 흔적 양에 비례하여 스토킹 대상에게 <gold><bold>가하는 피해가 증가</bold><gray>한다.",
+            "",
+            "<gray>스토킹 대상을 처치한 후, 증가한 피해량 증가량의 절반 만큼 다른 플레이어에게 <gold><bold>가하는 피해가 증가</bold><gray>한다."
         )
         override fun onHit(context: DamageContext) {
-            if (context.target.entity.uniqueId != target?.uniqueId) return
-            context.addDamageDealtMultiplier(1.0 + absorbedTrails.coerceAtMost(30) * 0.04)
+            val isTarget = context.target.entity.uniqueId == target?.uniqueId
+            val retainedBonus = targetKilled && !isTarget && context.target is PlayerData
+            if (!isTarget && !retainedBonus) return
+            context.addDamageDealtMultiplier(1.0 + absorbedTrails.coerceAtMost(30) * if (retainedBonus) 0.02 else 0.04)
         }
     }
 }

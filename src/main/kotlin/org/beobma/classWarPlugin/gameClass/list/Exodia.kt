@@ -183,7 +183,7 @@ class Exodia : GameClass(), GameStatusHandler {
         override val description = listOf(
             "<gray>패시브", "", "<gray>게임 시작 시, 월드보더 내부 무작위 위치에 왼쪽 팔, 오른쪽 팔, 왼쪽 다리, 오른쪽 다리, 몸통이 떨어진다.",
             "<gray>부위의 {g:feature/pickup:1.35}칸 이내에 접근하면 수집한다.",
-            "<gray>모두 모으면 자신을 제외한 모든 적은 {keyword:Execution}시킨다."
+            "<gray>모두 모으면 자신을 제외한 모든 적을 {keyword:Execution}시킨다."
         )
     }
 

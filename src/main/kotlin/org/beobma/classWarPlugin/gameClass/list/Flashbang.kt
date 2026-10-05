@@ -71,7 +71,8 @@ class Flashbang : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameS
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>{g:range:24}칸 내에서 장애물 없이 자신을 바라본 적의 시야를 {g:time:3}초간 밝은 빛으로 가린다. (대상 당 재사용 대기 시간 {g:reload:30}초)"
+            "<gray>{g:range:24}칸 내에서 장애물 없이 자신을 바라본 적의 시야를 {g:time:3}초간 밝은 빛으로 가린다.",
+            "<gray>이 효과는 대상 당 {g:reload:30}초의 재사용 대기 시간을 가진다."
         )
     }
 }

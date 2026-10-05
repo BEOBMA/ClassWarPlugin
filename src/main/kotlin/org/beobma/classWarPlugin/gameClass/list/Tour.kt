@@ -33,10 +33,13 @@ class Tour : GameClass() {
         override val definitionId = "tour/red-skill"
         override val name = "<bold>순회공연 시작!"
         override val description = listOf(
-            "<gray>{g:range:6}칸 내의 바라보는 적이 순회공연을 하게 만든다.", "",
+            "<gray>{g:range:6}칸 내의 바라보는 적이 순회공연을 하게 만든다.",
+            "",
             "<gray>순회공연 중인 플레이어는 3초마다 순서대로 생존한 모든 플레이어의 위치로 즉시 이동된다.",
-            "<gray>순회공연이 종료되면 원래 위치로 돌아온다.", "",
-            "<dark_gray>생존한 플레이어가 8명 이하라면 8번 이동할 때까지 반복된다."
+            "<gray>순회공연이 종료되면 원래 위치로 돌아온다.",
+            "",
+            "<dark_gray>생존한 플레이어가 8명 이하라면 8번 이동할 때까지 반복된다.",
+            "<dark_gray>웅크린 상태에서 사용하면 해당 플레이어가 자신의 위치로는 이동되지 않는다."
         )
         override val cooldown = TOUR_START_COOLDOWN_SECONDS
 
@@ -53,8 +56,9 @@ class Tour : GameClass() {
             val target = selectedTarget ?: return false
             selectedTarget = null
             val originalLocation = target.player.location.clone()
+            val excludeCaster = player.isSneaking
             val performers = game.playerDatas.filterIsInstance<PlayerData>()
-                .filter { !it.entityStatus.isDead && it.player.isOnline }
+                .filter { !it.entityStatus.isDead && it.player.isOnline && (!excludeCaster || it != playerData) }
             if (performers.isEmpty()) return false
             val totalVisits = if (performers.size <= TOUR_MIN_VISITS) TOUR_MIN_VISITS else performers.size
 
@@ -102,7 +106,7 @@ class Tour : GameClass() {
                         return
                     }
                     val alive = game.playerDatas.filterIsInstance<PlayerData>()
-                        .filter { !it.entityStatus.isDead && it.player.isOnline && it.player.world == target.player.world }
+                        .filter { !it.entityStatus.isDead && it.player.isOnline && it.player.world == target.player.world && (!excludeCaster || it != playerData) }
                     if (alive.isEmpty()) {
                         returnHome()
                         cancel()

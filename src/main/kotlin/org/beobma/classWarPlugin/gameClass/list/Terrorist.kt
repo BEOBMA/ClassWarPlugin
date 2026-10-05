@@ -51,10 +51,11 @@ class Terrorist : GameClass(), PlayerDeathHandler, GameEndHandler {
     private var bombTask: BukkitTask? = null
 
     override fun onPlayerDeath() {
-        val origin = player.location.clone().add(0.0, 0.35, 0.0)
+        val origin = player.location.clone().add(0.0, 1.0, 0.0)
         val bombCount = growthCount("bombs", 30)
         val bombs = MutableList(bombCount) { index ->
             val angle = index * (2.0 * PI / bombCount) + Random.nextDouble(-0.12, 0.12)
+            val horizontalSpeed = Random.nextDouble(0.35, 0.8)
             val display = player.world.spawn(origin, BlockDisplay::class.java).apply {
                 block = Material.TNT.createBlockData()
                 billboard = Display.Billboard.FIXED
@@ -68,7 +69,7 @@ class Terrorist : GameClass(), PlayerDeathHandler, GameEndHandler {
             VisualBomb(
                 display,
                 origin.clone(),
-                Vector(cos(angle) * Random.nextDouble(0.22, 0.68), Random.nextDouble(0.25, 0.72), sin(angle) * Random.nextDouble(0.22, 0.68)),
+                Vector(cos(angle) * horizontalSpeed, Random.nextDouble(0.25, 0.72), sin(angle) * horizontalSpeed),
                 index * 0.21f,
             )
         }
@@ -84,6 +85,12 @@ class Terrorist : GameClass(), PlayerDeathHandler, GameEndHandler {
                         if (!bomb.display.isValid) return@forEach
                         val next = bomb.location.clone().add(bomb.velocity)
                         if (next.block.type.isSolid) {
+                            // Ground contact must not freeze the horizontal scatter.
+                            val horizontal = bomb.location.clone().add(bomb.velocity.x, 0.0, bomb.velocity.z)
+                            if (!horizontal.block.type.isSolid) {
+                                bomb.location.x = horizontal.x
+                                bomb.location.z = horizontal.z
+                            }
                             bomb.velocity.x *= 0.62
                             bomb.velocity.z *= 0.62
                             bomb.velocity.y = kotlin.math.abs(bomb.velocity.y) * 0.32
@@ -133,6 +140,7 @@ class Terrorist : GameClass(), PlayerDeathHandler, GameEndHandler {
         return Transformation(Vector3f(transformedCenter).negate(), rotation, scale, Quaternionf())
     }
 
+    // 폭탄이 자신의 위치에 딱 소환되는게 아니라, 자기 위치에서 폭탄 30개가 사방으로 퍼져나가 터지도록 수정.
     private class Passive : BasePassive() {
         override val name = "<bold>테러"
         override val description = listOf(

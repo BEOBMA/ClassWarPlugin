@@ -49,7 +49,7 @@ class HighJumper : GameClass(), GameStatusHandler, MovementInputHandler, Environ
                 }
                 if (player.isSneaking && player.isActuallyGrounded()) {
                     chargeTicks = (chargeTicks + 2).coerceAtMost(200)
-                    if (chargeTicks >= 60 && chargeTicks % 10 == 0) {
+                    if (chargeTicks % 10 == 0) {
                         particles.spawn(player.location.clone().add(0.0, 0.1, 0.0), Particle.CLOUD, count = 6, spread = 0.45, speed = 0.025)
                         if (chargeTicks % 20 == 0) sounds.play(player, Sound.BLOCK_NOTE_BLOCK_HAT, volume = 0.35f, pitch = 0.8f + chargeTicks / 250f)
                     }
@@ -63,8 +63,8 @@ class HighJumper : GameClass(), GameStatusHandler, MovementInputHandler, Environ
 
     override fun onPlayerInput(event: PlayerInputEvent) {
         val jump = event.input.isJump
-        if (jump && !lastJumpInput && player.isSneaking && player.isActuallyGrounded() && chargeTicks >= 60) {
-            val normalizedCharge = ((chargeTicks - 60) / 140.0).coerceIn(0.0, 1.0)
+        if (jump && !lastJumpInput && player.isSneaking && player.isActuallyGrounded() && chargeTicks > 0) {
+            val normalizedCharge = (chargeTicks / 200.0).coerceIn(0.0, 1.0)
             val horizontal = player.eyeLocation.direction.setY(0.0).let {
                 if (it.lengthSquared() > 1.0E-6) it.normalize().multiply(0.28 + normalizedCharge * 0.18) else Vector()
             }
@@ -92,9 +92,13 @@ class HighJumper : GameClass(), GameStatusHandler, MovementInputHandler, Environ
     private class Passive : BasePassive() {
         override val name = "<bold>도약"
         override val description = listOf(
-            "<gray>패시브", "", "<gray>웅크린 상태를 3초 이상 지속하면 힘을 모은다.",
-            "<gray>힘을 모은 뒤 웅크린 상태에서 점프하면 모은 힘에 비례하여 높이 점프한다. (상승 속도 {g:feature/jump:1.05}~{g:feature/jump:2}칸/틱)",
-            "<gray>점프한 후 처음 착지할 때의 낙하 피해는 0이 된다."
+            "<gray>패시브",
+            "",
+            "<gray>웅크린 상태를 지속하는 동안 힘을 모은다.",
+            "<gray>힘을 모은 뒤 웅크린 상태에서 점프하면 모은 힘에 비례하여 높이 점프한다.",
+            "<gray>점프한 후 처음 착지할 때의 낙하 피해는 0이 된다.",
+            "",
+            "<dark_gray>상승 속도 {g:feature/jump:1.05}~{g:feature/jump:2}칸/틱"
         )
     }
 }

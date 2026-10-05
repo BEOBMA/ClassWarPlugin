@@ -3,6 +3,12 @@ package org.beobma.classWarPlugin.gameClass.list
 import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
+import org.beobma.classWarPlugin.damage.DamageContext
+import org.beobma.classWarPlugin.gameClass.handler.ConfirmedHitHandler
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
+import org.beobma.classWarPlugin.status.list.Electrocution
+import java.util.UUID
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
@@ -21,7 +27,14 @@ private const val LIGHTNING_WIZARD_CUMULONIMBUS_COOLDOWN_SECONDS = 8
 private const val LIGHTNING_WIZARD_OVERLOAD_COOLDOWN_SECONDS = 50
 private const val LIGHTNING_WIZARD_LIGHTNING_DAMAGE = 4.0
 
-class LightningWizard : GameClass() {
+class LightningWizard : GameClass(), ConfirmedHitHandler {
+    private var pendingLightningTarget: UUID? = null
+
+    override fun onConfirmedHit(context: DamageContext) {
+        if (pendingLightningTarget != context.target.entity.uniqueId) return
+        pendingLightningTarget = null
+        context.target.getOrCreateStatus(playerData) { Electrocution() }.applyStatus(powerDelta = 1)
+    }
     private val markers: MutableList<Marker> = mutableListOf()
     override val classId = "lightning-wizard"
     override val name = "<gray>뇌운술사"
@@ -82,11 +95,16 @@ class LightningWizard : GameClass() {
         )
         playerData.radius(location, org.beobma.classWarPlugin.util.TargetType.Enemy, 3.0, false)
             .forEach {
-                it.damage(
-                    LIGHTNING_WIZARD_LIGHTNING_DAMAGE,
-                    org.beobma.classWarPlugin.util.DamageType.Normal,
-                    playerData,
-                )
+                pendingLightningTarget = it.entity.uniqueId
+                try {
+                    it.damage(
+                        LIGHTNING_WIZARD_LIGHTNING_DAMAGE,
+                        org.beobma.classWarPlugin.util.DamageType.Normal,
+                        playerData,
+                    )
+                } finally {
+                    pendingLightningTarget = null
+                }
             }
         particles.spawn(location, Particle.ELECTRIC_SPARK, count = 30, spread = 1.4, speed = 0.12)
     }
@@ -165,7 +183,8 @@ class LightningWizard : GameClass() {
         override val name = "<bold>낙뢰"
         override val description = listOf(
             "<gray>적란운은 5초마다 주변에 낙뢰를 발생시킨다.",
-            "<gray>낙뢰는 주변 {g:range:3}칸 이내의 모든 적에게 {g:damage:4}의 피해를 입힌다."
+            "<gray>낙뢰는 주변 {g:range:3}칸 이내의 모든 적에게 {g:damage:4}의 피해를 입힌다.",
+            "<gray>낙뢰에 적중한 적에게 {keyword:Electrocution}을 부여한다."
         )
     }
 }

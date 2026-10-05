@@ -43,8 +43,8 @@ class Pluto : PlanetClass(), OnHitHandler, GameEndHandler {
         override fun matchesId(candidate: String): Boolean = super.matchesId(candidate) || (solarCopy && candidate == "${javaClass.name}:solar")
         override val name = "<bold>명왕성"
         override val description = listOf(
-            "<gray>{g:time:15}초간 자신의 크기가 95% 감소한다.",
-            "<gray>지속 시간동안 가하는 피해가 50% 감소한다."
+            "<gray>{g:time:15}초간 <gold><bold>자신의 크기가 95% 감소</bold><gray>한다.",
+            "<gray>지속 시간동안 <gold><bold>가하는 피해가 50% 감소</bold><gray>한다."
         )
         override val cooldown = PLUTO_SKILL_COOLDOWN_SECONDS
 

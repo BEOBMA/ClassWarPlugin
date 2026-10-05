@@ -5,6 +5,9 @@ import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.WhenHitHandler
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.getOrCreateStatus
+import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.applyStatus
+import org.beobma.classWarPlugin.status.list.Burn
 import org.beobma.classWarPlugin.manager.SkillManager.radius
 import org.beobma.classWarPlugin.manager.SkillManager.shotLaserGetBlock
 import org.beobma.classWarPlugin.manager.UtilManager.sendMiniMessage
@@ -158,11 +161,11 @@ class Meteor : GameClass() {
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>기본 공격 피격 시 공격자를 {g:duration:2}초간 {keyword:Burn} 상태로 만든다."
+            "<gray>기본 공격 피격 시 공격자를 {g:duration:1}초간 {keyword:Burn} 상태로 만든다."
         )
 
         override fun whenAttackHit(context: DamageContext) {
-            context.attacker.player.fireTicks += 40
+            context.attacker.getOrCreateStatus(playerData) { Burn() }.applyStatus(duration = 1, powerSet = 1)
         }
     }
 }

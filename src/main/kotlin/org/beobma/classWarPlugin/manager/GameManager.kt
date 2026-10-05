@@ -1609,6 +1609,9 @@ private const val BORDER_BOSS_BAR_UPDATE_INTERVAL_TICKS = 10L
         if (phase != GamePhase.RUNNING) return
         if (activePlayers().none { it.uniqueId == creditedKillerId }) return
         playerKillCounts[creditedKillerId] = (playerKillCounts[creditedKillerId] ?: 0) + 1
+        val killer = findParticipant(creditedKillerId) ?: return
+        AbilityTree.handlers(killer.gameClasses, org.beobma.classWarPlugin.gameClass.handler.PlayerKillHandler::class.java)
+            .forEach { bound -> bound.call { it.onPlayerKill(victimId) } }
     }
 
     /** 참가자 연결 해제를 기록하고 5분 뒤에도 미복귀 시 탈락시키는 작업을 예약한다. */

@@ -4,6 +4,8 @@ import org.beobma.classWarPlugin.ClassWarPlugin
 import org.beobma.classWarPlugin.gameClass.GameClass
 import org.beobma.classWarPlugin.gameClass.Rank
 import org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler
+import org.beobma.classWarPlugin.gameClass.handler.OnHitHandler
+import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.manager.PlayerManager.damage
 import org.beobma.classWarPlugin.manager.PlayerManager.heal
 import org.beobma.classWarPlugin.manager.StatusAbnormalityManager.addStatus
@@ -39,7 +41,7 @@ private const val WATCHMAKER_NOON_DAMAGE = 8.0
 private const val WATCHMAKER_SHIELD_DURATION_SECONDS = 5
 private const val WATCHMAKER_SHIELD_POWER = 4
 
-class Watchmaker : GameClass(), GameStatusHandler {
+class Watchmaker : GameClass(), GameStatusHandler, OnHitHandler {
     override val classId = "watchmaker"
     override val name = "<gray>시계공"
     override val rank = Rank.B
@@ -57,6 +59,19 @@ class Watchmaker : GameClass(), GameStatusHandler {
     private var phase = Phase.DAWN
     private var elapsed = 0
 
+    private fun enterPhase() {
+        when (phase) {
+            Phase.DAWN -> playerData.getOrCreateStatus(playerData) { Shield() }
+                .applyStatus(duration = 12, powerDelta = 4)
+            Phase.NOON -> Unit
+            Phase.MIDNIGHT -> playerData.heal(4.0, DamageType.Normal, playerData)
+        }
+    }
+
+    override fun onHit(context: DamageContext) {
+        if (phase == Phase.NOON) context.addDamageDealtMultiplier(1.2)
+    }
+
     private fun updatePhaseStatus() {
         playerData.getOrCreateStatus(playerData) { TimePhaseStatus() }
             .updatePhase(phase.label, 12 - elapsed)
@@ -65,6 +80,7 @@ class Watchmaker : GameClass(), GameStatusHandler {
     override fun onBattleStart() {
         phase = Phase.DAWN
         elapsed = 0
+        enterPhase()
         updatePhaseStatus()
     }
     override fun onGameTimePasses() {
@@ -72,6 +88,7 @@ class Watchmaker : GameClass(), GameStatusHandler {
         if (elapsed >= 12) {
             elapsed = 0
             phase = Phase.entries[(phase.ordinal + 1) % Phase.entries.size]
+            enterPhase()
             sounds.playTo(player, Sound.BLOCK_NOTE_BLOCK_BELL, pitch = 0.8f + phase.ordinal * 0.35f)
         }
         updatePhaseStatus()
@@ -178,7 +195,12 @@ class Watchmaker : GameClass(), GameStatusHandler {
             "<gray>패시브",
             "",
             "<gray>게임 시작 시 여명 {keyword:TimePhase}에 진입한다.",
-            "<gray>12초마다 여명, 정오, 자정 순서로 {keyword:TimePhase}가 변경된다."
+            "<gray>12초마다 여명, 정오, 자정 순서로 {keyword:TimePhase}가 변경된다.",
+            "",
+            "{keyword:TimePhase}에 진입할 때, {keyword:TimePhase}에 따라 아래의 효과가 적용된다.",
+            "<gray>여명 - {g:duration:12}초간 <aqua><bold>{g:shield:4}의 피해를 막는 {keyword:Shield}을 얻는다.",
+            "<gray>정오 - <gold><bold>가하는 피해가 20% 증가</bold><gray>한다.",
+            "<gray>자정 - <green><bold>체력을 {g:healing:4} 회복</bold><gray>한다."
         )
     }
 }

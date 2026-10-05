@@ -20,9 +20,9 @@ import org.bukkit.Sound
 import org.bukkit.event.entity.EntityDamageEvent
 import kotlin.random.Random
 
-private const val LUCKY_DODGE_CHANCE = 0.25
-private const val LUCKY_FALL_SAVE_CHANCE = 0.35
-private const val LUCKY_ATTACK_PROC_CHANCE = 0.35
+private const val LUCKY_DODGE_CHANCE = 0.1
+private const val LUCKY_FALL_SAVE_CHANCE = 0.1
+private const val LUCKY_ATTACK_PROC_CHANCE = 0.1
 
 class LuckyOne : GameClass(), EnvironmentalDamageHandler, OnHitHandler, WhenHitHandler {
     override val classId = "lucky-one"
@@ -35,7 +35,7 @@ class LuckyOne : GameClass(), EnvironmentalDamageHandler, OnHitHandler, WhenHitH
     override fun onEnvironmentalDamage(event: EntityDamageEvent) {
         if (event.cause != EntityDamageEvent.DamageCause.FALL || Random.nextDouble() >= org.beobma.classWarPlugin.growth.GrowthScaling.chance(playerData, LUCKY_FALL_SAVE_CHANCE)) return
         event.isCancelled = true
-        player.sendMiniMessage("<gold><bold>[행운] <white>낙법에 성공했다.")
+        player.sendMiniMessage("<bold><white>낙법에 성공했다.")
         particles.spawn(player.location, Particle.CLOUD, count = 18, spread = 0.55, speed = 0.08)
         sounds.play(player, Sound.ENTITY_PLAYER_SMALL_FALL, volume = 0.75f, pitch = 1.65f)
     }
@@ -44,8 +44,8 @@ class LuckyOne : GameClass(), EnvironmentalDamageHandler, OnHitHandler, WhenHitH
         if (context.attacker == playerData || Random.nextDouble() >= org.beobma.classWarPlugin.growth.GrowthScaling.chance(playerData, LUCKY_DODGE_CHANCE)) return
         context.isCancelled = true
         val message = if (Random.nextBoolean()) "적의 공격을 회피했다." else "적의 공격이 빗나갔다."
-        player.sendMiniMessage("<gold><bold>[행운] <white>$message")
-        context.attacker.player.sendMiniMessage("<yellow>[!] ${player.name}님이 공격을 피했습니다.")
+        player.sendMiniMessage("<bold><white>$message")
+        context.attacker.player.sendMiniMessage("<yellow>적이 공격을 피했다.")
         particles.spawn(player, Particle.POOF, count = 18, spread = 0.55, speed = 0.08)
         sounds.play(player, Sound.ENTITY_ENDERMAN_TELEPORT, volume = 0.45f, pitch = 1.8f)
     }
@@ -76,8 +76,8 @@ class LuckyOne : GameClass(), EnvironmentalDamageHandler, OnHitHandler, WhenHitH
     }
 
     private fun notifyTarget(target: PlayerData?, message: String) {
-        player.sendMiniMessage("<gold><bold>[행운] <white>$message")
-        target?.player?.sendMiniMessage("<red><bold>[불운] <white>$message")
+        player.sendMiniMessage("<bold><white>$message")
+        target?.player?.sendMiniMessage("<bold><white>$message")
     }
 
     private class Passive : BasePassive() {

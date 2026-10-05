@@ -138,7 +138,8 @@ class Peanuts : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
         override val description = listOf(
             "<gray>패시브", "",
             "<gray>다른 플레이어의 시야 범위에 있지 않을 때",
-            "<gray>가하는 피해는 적의 최대 체력의 25%에 해당하는 피해를 입힌다. (대상 당 재사용 대기 시간 20초)"
+            "<gray>가하는 피해는 <gold><bold>적의 최대 체력의 25%에 해당하는 피해</bold><gray>를 입힌다.",
+            "<gray>이 효과는 대상 당 20초의 재사용 대기 시간을 가진다."
         )
     }
 }
