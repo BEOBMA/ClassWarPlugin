@@ -29,7 +29,7 @@ enum class Keyword(
     Invalidity("<dark_gray><bold>무효</bold><gray>"),
     Stealth(
         "<light_purple><bold>은신</bold><gray>",
-        "{keyword:Stealth}: 살아있는 적 플레이어에게 자신의 모습과 장비가 보이지 않으며 대상 지정 스킬의 대상이 되지 않는다.",
+        "ㅂ: 살아있는 적 플레이어에게 자신의 모습과 장비가 보이지 않으며 대상 지정 스킬의 대상이 되지 않는다.",
     ),
     Mana("<blue><bold>마나</bold><gray>"),
     Burn(
@@ -85,7 +85,7 @@ enum class Keyword(
     ),
     RespiteHealth(
         "<dark_red><bold>유예체력</bold><gray>",
-        "{keyword:RespiteHealth}: 일반적인 체력으로 간주되나, 어떤 경로로든 소멸되면 사망한다.",
+        "{keyword:RespiteHealth}: 일반적인 체력으로 간주되나, 최대 체력으로 간주되지 않으며 피해를 입었을 때 회복할 수 없는 체력이다.",
         showDescriptionInBrief = true,
     ),
     Execution(
