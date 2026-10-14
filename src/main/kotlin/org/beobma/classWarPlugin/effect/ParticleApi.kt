@@ -29,7 +29,7 @@ data class ParticleOptions(
 }
 
 /** 클래스 스킬의 파티클 출력을 담당하는 API. */
-object ParticleApi {
+object  ParticleApi {
     fun spawn(
         location: Location,
         particle: Particle,
