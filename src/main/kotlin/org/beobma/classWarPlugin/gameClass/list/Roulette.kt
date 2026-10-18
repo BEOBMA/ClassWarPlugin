@@ -39,6 +39,7 @@ class Roulette : GameClass() {
         )
 
         override fun onHit(context: DamageContext) {
+            if (!context.attackEffectsAllowed) return
             val jackpot = Random.nextDouble() < org.beobma.classWarPlugin.growth.GrowthScaling.chance(playerData, ROULETTE_JACKPOT_CHANCE)
             val multiplier = when {
                 jackpot -> ROULETTE_JACKPOT_DAMAGE_MULTIPLIER

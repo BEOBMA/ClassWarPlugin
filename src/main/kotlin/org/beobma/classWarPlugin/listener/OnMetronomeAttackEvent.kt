@@ -30,6 +30,7 @@ class OnMetronomeAttackEvent : Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     fun onAttack(event: PrePlayerAttackEntityEvent) {
+        if (!org.beobma.classWarPlugin.damage.BasicAttackReadiness.ready(event.player.attackCooldown)) return
         val target = event.attacked as? LivingEntity ?: return
         val abilities = classes(event.player)
         if (abilities.isEmpty()) return

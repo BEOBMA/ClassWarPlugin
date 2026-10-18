@@ -40,8 +40,11 @@ class Pacifist : GameClass() {
             "<gray>밀치는 효과로 적을 월드보더 밖으로 밀쳐내면 해당 적은 탈락한다."
         )
 
-        override fun onAttackHit(context: DamageContext) {
+        override fun onAttackDamage(context: DamageContext) {
             context.capDamage(PACIFIST_ATTACK_DAMAGE)
+        }
+
+        override fun onAttackHit(context: DamageContext) {
             val target = context.target.entity
             val attackerCenter = player.boundingBox.center
             val targetCenter = target.boundingBox.center

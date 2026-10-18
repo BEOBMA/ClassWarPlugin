@@ -105,7 +105,7 @@ class RelicRuntime(private val scope: AbilityScope) {
     fun recall(): Boolean {
         if (saved == null || returning) { player.sendMiniMessage("<red><bold>[!] 회수할 궁니르가 없습니다."); return false }
         attached?.takeIf(::valid)?.let { target -> hit(target,5.0) {
-            target.getOrCreateStatus(owner) { Bleeding() }.apply { increasePower(4); updateDuration(10) }
+            target.getOrCreateStatus(owner) { Bleeding() }.apply { increasePower(4); updateDuration(5) }
         } }
         attached=null; returning=true; flying=false; returnedHits.clear(); exploded=false
         SoundApi.play(player.location,Sound.ITEM_TRIDENT_RETURN,0.7f,1.1f)

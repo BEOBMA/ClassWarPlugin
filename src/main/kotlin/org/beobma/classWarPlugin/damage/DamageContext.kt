@@ -27,6 +27,8 @@ class DamageContext(
     var armorIgnoreRatio: Double = 0.0,
     val weaponClassId: String? = null,
     val secondaryAttack: Boolean = false,
+    /** False preserves damage/defences but suppresses attacker on-hit procs for an uncharged melee strike. */
+    val attackEffectsAllowed: Boolean = AttackEffectContext.allowed(attacker.uniqueId, path),
 ) {
     val originalDamage: Double = ClassBalanceManager.scaleDamage(attacker, path, baseDamage, weaponClassId) *
         attacker.initGame.settings.damageMultiplier(path)

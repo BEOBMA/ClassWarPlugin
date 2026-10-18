@@ -27,10 +27,15 @@ object GrowthClassCatalog {
         register(GrowthCombatStyle.SUMMON, "astronomer fear jupiter levatain sagittarius saturnus sol swordplay terrorist")
         register(GrowthCombatStyle.ABILITY, "hunter sturmtruppe spezialeinheitsmitglied schwerekavallerie firearmsmaster")
         register(GrowthCombatStyle.ABILITY, "creator")
+        register(GrowthCombatStyle.ABILITY, "bomb-maniac")
         register(GrowthCombatStyle.HYBRID, "afterglow")
         register(GrowthCombatStyle.SUMMON, "constellations")
         register(GrowthCombatStyle.BASIC, "flashbang")
         register(GrowthCombatStyle.HYBRID, "gungnir mjolnir")
+        register(GrowthCombatStyle.HYBRID, "artist")
+        register(GrowthCombatStyle.HYBRID, "snake-sword")
+        register(GrowthCombatStyle.ABILITY, "cartoonist")
+        register(GrowthCombatStyle.BASIC, "intrusion")
     }
     fun style(id: String) = styles[id] ?: GrowthCombatStyle.HYBRID
 

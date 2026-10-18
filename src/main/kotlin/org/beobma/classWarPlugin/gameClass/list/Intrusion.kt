@@ -7,7 +7,69 @@ import org.bukkit.Material
 import org.beobma.classWarPlugin.gameClass.Weapon as BaseWeapon
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
-class Intrusion : GameClass() {
+class Intrusion : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameStatusHandler,
+    org.beobma.classWarPlugin.gameClass.handler.PlayerKillHandler,
+    org.beobma.classWarPlugin.gameClass.handler.ConfirmedHitHandler {
+    data class Mark(val target: org.beobma.classWarPlugin.entity.player.PlayerData, val highlighted: Boolean)
+    private var healReady = 0L
+    private val highlighted = mutableMapOf<java.util.UUID, Long>()
+
+    fun mapMarks(): List<Mark> = game.playerDatas.filterIsInstance<org.beobma.classWarPlugin.entity.player.PlayerData>()
+        .filter { it.player.isOnline && !it.entityStatus.isDead && playerData.isEnemyOf(it) &&
+            org.beobma.classWarPlugin.manager.CombatManager.blocksNaturalRegeneration(it.player) }
+        .map { Mark(it, lowHealth(it)) }
+
+    private fun lowHealth(target: org.beobma.classWarPlugin.entity.player.PlayerData): Boolean =
+        target.player.health < (target.player.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH)?.value ?: 20.0) * 0.4
+
+    override fun onBattleStart() {
+        healReady = 0L
+        highlighted.clear()
+        org.beobma.classWarPlugin.manager.BattleMapManager.giveTo(playerData, allowTraining = true)
+        val speed = playerData.attributeEffects.multiply(abilityScope, org.bukkit.attribute.Attribute.MOVEMENT_SPEED, 1.0)
+        var previous = player.location.clone()
+        playerData.trackTask(object : org.beobma.classWarPlugin.ability.AbilityRunnable(abilityScope) {
+            override fun run() {
+                val current = player.location
+                val movement = if (previous.world == current.world) current.toVector().subtract(previous.toVector()).setY(0.0)
+                    else org.bukkit.util.Vector()
+                val marks = mapMarks().filter { it.highlighted }
+                val alive = game.playerDatas.filterIsInstance<org.beobma.classWarPlugin.entity.player.PlayerData>()
+                    .filter { !it.entityStatus.isDead }.map { it.uniqueId }.toSet()
+                val markedIds = marks.map { it.target.uniqueId }.toSet()
+                highlighted.keys.removeAll { it in alive && it !in markedIds }
+                marks.forEach { highlighted[it.target.uniqueId] = game.combatTick }
+                highlighted.entries.removeIf { game.combatTick - it.value > 20 }
+                val rushing = movement.lengthSquared() > 0.0001 && marks.any {
+                    val destination = it.target.player.location
+                    if (destination.world != current.world) false else {
+                        val toward = destination.toVector().subtract(current.toVector()).setY(0.0)
+                        toward.lengthSquared() > 0.01 && movement.clone().normalize().dot(toward.normalize()) > 0.5
+                    }
+                }
+                speed.setMultiplier(if (rushing) 1.5 else 1.0)
+                if (rushing) particles.spawn(current, org.bukkit.Particle.CLOUD, count = 3, spread = 0.15, speed = 0.01)
+                previous = current.clone()
+            }
+        }.runTaskTimer(org.beobma.classWarPlugin.ClassWarPlugin.instance, 1L, 2L))
+    }
+    override fun onGameTimePasses() = Unit
+    override fun onConfirmedHit(context: org.beobma.classWarPlugin.damage.DamageContext) {
+        val target = context.target as? org.beobma.classWarPlugin.entity.player.PlayerData ?: return
+        if (playerData.isEnemyOf(target) && lowHealth(target) &&
+            org.beobma.classWarPlugin.manager.CombatManager.blocksNaturalRegeneration(target.player))
+            highlighted[target.uniqueId] = game.combatTick
+        else highlighted.remove(target.uniqueId)
+    }
+    override fun onPlayerKill(victimId: java.util.UUID) {
+        val markedAt = highlighted.remove(victimId) ?: return
+        if (game.combatTick - markedAt > 20 || game.combatTick < healReady) return
+        healReady = game.combatTick + 1000
+        val maximum = player.getAttribute(org.bukkit.attribute.Attribute.MAX_HEALTH)?.value ?: 20.0
+        with(org.beobma.classWarPlugin.manager.PlayerManager) { playerData.heal(maximum * 0.3, org.beobma.classWarPlugin.util.DamageType.Normal, playerData) }
+        particles.spawn(player, org.bukkit.Particle.HEART, count = 12, spread = 0.6, speed = 0.02)
+        sounds.play(player, org.bukkit.Sound.ENTITY_PLAYER_LEVELUP, volume = 0.65f, pitch = 1.6f)
+    }
     override val classId = "intrusion"
     override val name = "<gray>난입"
     override val rank = Rank.B

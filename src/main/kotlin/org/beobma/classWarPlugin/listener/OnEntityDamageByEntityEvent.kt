@@ -19,8 +19,6 @@ import org.beobma.classWarPlugin.gameClass.list.Phantom
 import org.beobma.classWarPlugin.gameClass.list.Referee
 import org.beobma.classWarPlugin.gameClass.list.Chameleon
 import org.beobma.classWarPlugin.gameClass.list.Uranus
-import org.beobma.classWarPlugin.gameClass.list.Neptune
-import org.beobma.classWarPlugin.gameClass.list.PlanetPowerRegistry
 import org.bukkit.entity.Player
 import org.bukkit.entity.LivingEntity
 import org.bukkit.entity.Projectile
@@ -29,17 +27,30 @@ import org.bukkit.event.Listener
 import org.bukkit.event.entity.EntityDamageByEntityEvent
 
 class OnEntityDamageByEntityEvent : Listener {
-    /** Read before vanilla resets the attack ticker; reject the hit before any damage/passive hooks. */
+    /** Capture before vanilla resets the ticker. An early swing still deals vanilla charge-scaled damage. */
     @EventHandler(priority = org.bukkit.event.EventPriority.LOWEST, ignoreCancelled = true)
     fun onPrepareAttack(event: io.papermc.paper.event.player.PrePlayerAttackEntityEvent) {
         val game=findGameForPlayer(event.player) ?: return
         val data=game.playerDatas.filterIsInstance<PlayerData>().firstOrNull { it.uniqueId==event.player.uniqueId } ?: return
         if (!data.canDispatchClassHandlers()) return
-        if (!org.beobma.classWarPlugin.damage.BasicAttackReadiness.ready(event.player.attackCooldown)) event.isCancelled=true
+        org.beobma.classWarPlugin.damage.BasicAttackReadiness.record(event.player.uniqueId, org.bukkit.Bukkit.getCurrentTick(), event.player.attackCooldown)
+    }
+    @EventHandler
+    fun onQuit(event: org.bukkit.event.player.PlayerQuitEvent) {
+        org.beobma.classWarPlugin.damage.BasicAttackReadiness.clear(event.player.uniqueId)
     }
     @EventHandler(ignoreCancelled = true)
     fun onPlayerDamage(event: EntityDamageByEntityEvent) {
-        if ("cw-afterglow-echo" in event.entity.scoreboardTags) { event.isCancelled = true; return }
+        val direct = event.damager as? Player
+        if (direct == null) handlePlayerDamage(event)
+        else org.beobma.classWarPlugin.damage.AttackEffectContext.with(direct.uniqueId,
+            org.beobma.classWarPlugin.damage.BasicAttackReadiness.effectsAllowed(direct.uniqueId, org.bukkit.Bukkit.getCurrentTick())) {
+            handlePlayerDamage(event)
+        }
+    }
+
+    private fun handlePlayerDamage(event: EntityDamageByEntityEvent) {
+        if ("cw-afterglow-echo" in event.entity.scoreboardTags || "cw-cartoon-frame" in event.entity.scoreboardTags) { event.isCancelled = true; return }
         if (Phantom.handleBodyDamage(event)) return
         if (Chameleon.handleDisguiseDamage(event)) return
         if (Vampire.handleBatDamage(event)) return
@@ -72,9 +83,8 @@ class OnEntityDamageByEntityEvent : Listener {
             event.isCancelled = true
             return
         }
-        val neptuneBasicAttack = directDamager is Player &&
-            PlanetPowerRegistry.hasPower(attackerData, Neptune::class.java)
-        if (event.damage < 1.0 && !neptuneBasicAttack) {
+        // Early vanilla melee hits can legitimately deal less than one point of damage.
+        if (event.damage <= 0.0 || (event.damage < 1.0 && directDamager !is Player)) {
             event.isCancelled = true
             return
         }

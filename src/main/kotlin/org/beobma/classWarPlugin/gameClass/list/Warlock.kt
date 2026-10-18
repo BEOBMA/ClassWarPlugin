@@ -106,6 +106,7 @@ class Warlock : GameClass() {
         override fun onHit(context: DamageContext) {
             if ((markedUntil[context.target.entity.uniqueId] ?: 0L) <= game.combatTick) return
             context.addDamageDealtMultiplier(WARLOCK_MARK_DAMAGE_MULTIPLIER)
+            if (!context.attackEffectsAllowed) return
             playerData.heal(context.damage * WARLOCK_HEAL_RATIO, DamageType.Normal, playerData)
             particles.spawn(player, Particle.HEART, count = 2, spread = 0.25)
         }

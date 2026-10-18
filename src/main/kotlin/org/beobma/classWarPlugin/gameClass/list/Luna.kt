@@ -177,7 +177,7 @@ private class LunarAttackPowerStatus : StatusAbnormality(), StatusOnHitHandler {
     override var maxPower: Int? = null
     override var duration: Int? = null
 
-    override fun onAttackHit(context: DamageContext) {
+    override fun onAttackDamage(context: DamageContext) {
         context.addDamageDealtMultiplier(1.0 + power / 100.0)
     }
 }

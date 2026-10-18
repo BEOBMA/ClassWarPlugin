@@ -47,7 +47,7 @@ class WoundsWind : GameClass(), OnHitHandler, WeaponInputHandler {
         player.resetCooldown()
     }
 
-    override fun onAttackHit(context: DamageContext) {
+    override fun onAttackDamage(context: DamageContext) {
         if (context.path != DamagePath.BASIC_ATTACK) return
         context.isCancelled = true
     }

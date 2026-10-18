@@ -313,6 +313,7 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
         override fun onHit(context: DamageContext) {
             if (!active || returning || context.target == playerData) return
             context.isCancelled = true
+            if (!context.attackEffectsAllowed) return
             val mark = context.target.getOrCreateStatus(playerData) { PhantomSlashMarkStatus() }
             mark.increasePower(1)
             marks[context.target] = mark

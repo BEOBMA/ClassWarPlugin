@@ -12,7 +12,7 @@ class OnEntityDeathEvent : Listener {
     fun onEntityDeath(event: EntityDeathEvent) {
         val entity = event.entity
         if (entity is Player) return
-        if ("cw-afterglow-echo" in entity.scoreboardTags) {
+        if ("cw-afterglow-echo" in entity.scoreboardTags || "cw-cartoon-frame" in entity.scoreboardTags) {
             event.drops.clear()
             event.droppedExp = 0
             DamageManager.consumeAttribution(entity)

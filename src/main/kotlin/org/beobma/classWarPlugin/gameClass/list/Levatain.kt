@@ -270,6 +270,7 @@ class Levatain : GameClass(), GameStatusHandler {
         )
 
         override fun onHit(context: DamageContext) {
+            if (!context.attackEffectsAllowed) return
             addRelease(5)
         }
 

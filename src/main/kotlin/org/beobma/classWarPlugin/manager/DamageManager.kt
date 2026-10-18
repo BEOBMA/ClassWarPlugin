@@ -65,8 +65,14 @@ object DamageManager {
             else -> targetStatus.isSkillTargeting
         }
         if (!canDamage) return false
+        // Store the unmodified attack before hit passives, shield consumption, damage or attribution.
+        if (org.beobma.classWarPlugin.gameClass.art.CartoonRuntime.deferAttack(context)) {
+            context.isCancelled = true
+            return false
+        }
 
         for (bound in AbilityTree.handlers(context.attacker.gameClasses, org.beobma.classWarPlugin.gameClass.list.Metronome::class.java)) {
+            if (!context.attackEffectsAllowed) continue
             if (!bound.call { it.allowDamage(context) }) {
                 context.capDamage(0.0)
                 context.isCancelled = true
@@ -103,7 +109,9 @@ object DamageManager {
 
     fun notifyConfirmedHit(context: DamageContext) {
         if (context.isCancelled || context.damage <= 0.0) return
-        AbilityTree.handlers(context.attacker.gameClasses, org.beobma.classWarPlugin.gameClass.handler.ConfirmedHitHandler::class.java)
+        org.beobma.classWarPlugin.gameClass.art.ArtistRuntime.onDamage(context)
+        org.beobma.classWarPlugin.gameClass.art.CartoonRuntime.recordAttack(context)
+        if (context.attackEffectsAllowed) AbilityTree.handlers(context.attacker.gameClasses, org.beobma.classWarPlugin.gameClass.handler.ConfirmedHitHandler::class.java)
             .forEach { bound -> bound.call { it.onConfirmedHit(context) } }
         (context.target as? PlayerData)?.let { target ->
             AbilityTree.handlers(target.gameClasses, org.beobma.classWarPlugin.gameClass.handler.ConfirmedHitHandler::class.java)
@@ -140,7 +148,10 @@ object DamageManager {
 
         if (context.path.isBasicAttack) {
             context.attacker.statusAbnormalitys.filterIsInstance<StatusOnHitHandler>()
-                .forEach { (it as org.beobma.classWarPlugin.status.StatusAbnormality).fromSource { it.onAttackHit(context) } }
+                .forEach { (it as org.beobma.classWarPlugin.status.StatusAbnormality).fromSource {
+                    it.onAttackDamage(context)
+                    if (context.attackEffectsAllowed) it.onAttackHit(context)
+                } }
             context.target.statusAbnormalitys.filterIsInstance<StatusWhenHitHandler>()
                 .forEach { (it as org.beobma.classWarPlugin.status.StatusAbnormality).fromSource { it.whenAttackHit(context) } }
         }
@@ -149,7 +160,10 @@ object DamageManager {
     private fun OnHitHandler.dispatchOnHit(context: DamageContext) {
         onHit(context)
         when (context.path) {
-            DamagePath.BASIC_ATTACK, DamagePath.RANGED_ATTACK -> onAttackHit(context)
+            DamagePath.BASIC_ATTACK, DamagePath.RANGED_ATTACK -> {
+                onAttackDamage(context)
+                if (context.attackEffectsAllowed) onAttackHit(context)
+            }
             DamagePath.SKILL -> onSkillAttackHit(context)
             DamagePath.STATUS_EFFECT -> onStatusEffectAttackHit(context)
         }

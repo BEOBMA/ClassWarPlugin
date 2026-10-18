@@ -20,7 +20,8 @@ object Targeting {
         val game = source.game
         val known = game.playerDatas.mapTo(HashSet()) { it.entity.uniqueId }
         source.player.world.livingEntities.forEach { entity ->
-            if (entity !is Player && entity.isValid && !entity.isDead && "cw-afterglow-echo" !in entity.scoreboardTags && known.add(entity.uniqueId)) {
+            if (entity !is Player && entity.isValid && !entity.isDead && "cw-afterglow-echo" !in entity.scoreboardTags &&
+                "cw-cartoon-frame" !in entity.scoreboardTags && known.add(entity.uniqueId)) {
                 game.playerDatas.add(if (entity.isMannequin()) DummyEntityData(entity, game) else MobEntityData(entity, game))
             }
         }
@@ -30,6 +31,7 @@ object Targeting {
         source.game.playerDatas.filter { candidate ->
             val entity = candidate.entity
             entity is LivingEntity && entity.world == world && entity.isValid && !entity.isDead && "cw-afterglow-echo" !in entity.scoreboardTags &&
+                "cw-cartoon-frame" !in entity.scoreboardTags &&
                 (entity !is Player || entity.isOnline) && !candidate.entityStatus.isDead &&
                 candidate.entityStatus.isSkillTargeting
         }.distinctBy { it.entity.uniqueId }

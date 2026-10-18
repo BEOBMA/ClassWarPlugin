@@ -76,7 +76,6 @@ class Brave : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler
         collectedVariants.clear()
         activeBraves[player.uniqueId] = this
         spawnSwordSites()
-        player.sendMiniMessage("<gold><bold>[선택 받은 검]</bold> <gray>다섯 전설검이 월드보더 곳곳에서 당신을 기다립니다.")
         sounds.playTo(player, Sound.BLOCK_BEACON_ACTIVATE, volume = 0.55f, pitch = 1.45f)
     }
 
@@ -284,15 +283,10 @@ class Brave : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandler
         particles.spawn(center, Particle.END_ROD, count = 40, spread = 0.7, speed = 0.12)
         sounds.play(center, Sound.ITEM_TRIDENT_THUNDER, volume = 0.75f, pitch = 1.35f)
         sounds.play(center, Sound.UI_TOAST_CHALLENGE_COMPLETE, volume = 0.9f, pitch = 1.1f)
-        player.sendMiniMessage(
-            "<gold><bold>[선택 받은 검]</bold> <white>${variant.label}</white><gray>을(를) 획득했습니다. " +
-                "<dark_gray>[${collectedVariants.size}/${SwordVariant.entries.size}]",
-        )
         if (swordSites.isEmpty()) {
             swordVisualTask?.cancel()
             swordVisualTask = null
             activeBraves.remove(player.uniqueId, this)
-            player.sendMiniMessage("<gold><bold>모든 전설검을 획득했습니다!</bold>")
         }
     }
 

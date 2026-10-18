@@ -4,6 +4,8 @@ import org.beobma.classWarPlugin.damage.DamageContext
 
 /** 공격자가 가한 커스텀 피해의 경로별 처리기다. */
 interface OnHitHandler {
+    /** Always-on basic damage rules (weapon restrictions/caps); runs even on an uncharged strike. */
+    fun onAttackDamage(context: DamageContext) {}
     /** 모든 피해 경로에 공통으로 먼저 호출된다. */
     fun onHit(context: DamageContext) {}
 

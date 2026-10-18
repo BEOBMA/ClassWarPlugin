@@ -8,8 +8,14 @@ import org.beobma.classWarPlugin.gameClass.list.dummy.Dummy
 /** Stable IDs are the persistence contract; constructor names remain an implementation detail. */
 object AbilityCatalog {
     /** Parked implementations cannot be restored by configuration or direct factory requests. */
-    fun isDeferred(id: String): Boolean = id == "streamer" || id == "referee"
+    fun isDeferred(id: String): Boolean = id == "streamer" || id == "referee" || id == "kaleidoskop"
     private val factories: Map<String, () -> GameClass> = mapOf(
+        "bomb-maniac" to ::BombManiac,
+        "kaleidoskop" to ::Kaleidoskop,
+        "artist" to ::Artist,
+        "cartoonist" to ::Cartoonist,
+        "intrusion" to ::Intrusion,
+        "snake-sword" to ::SnakeSword,
         "abyssal-veil" to ::AbyssalVeil,
         "afterglow" to ::Afterglow,
         "flashbang" to ::Flashbang,
@@ -123,6 +129,8 @@ object AbilityCatalog {
         "streamer" to ::Streamer,
     )
     private val enabledIds = listOf(
+        "bomb-maniac",
+        "artist", "cartoonist", "intrusion", "snake-sword",
         "berserker", "sniper", "meteor", "time-maniqulator", "land-wizard",
         "gambler", "knight", "lightning-wizard", "light-wizard", "abyssal-veil",
         "warlock", "geometer", "duelist", "astronomer", "assassin",

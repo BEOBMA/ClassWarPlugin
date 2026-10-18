@@ -20,6 +20,7 @@ import org.beobma.classWarPlugin.util.HitboxUtil
 import org.beobma.classWarPlugin.util.TargetType.*
 import org.bukkit.Bukkit
 import org.bukkit.Location
+import org.bukkit.Material
 import org.bukkit.NamespacedKey
 import org.bukkit.block.Block
 import org.bukkit.entity.LivingEntity
@@ -44,9 +45,11 @@ object SkillManager {
         }
     }
 
-    /** [ownerId]가 소유한 스킬 아이템인 경우에만 기록된 스킬 ID를 반환한다. */
+    /** [ownerId]가 소유한 스킬 아이템인 경우에만 ID를 반환한다. 빈손/메타 없는 아이템은 제외한다. */
     fun getSkillId(item: ItemStack, ownerId: UUID): String? {
-        val container = item.itemMeta.persistentDataContainer
+        if (item.type == Material.AIR) return null
+        val meta = item.itemMeta ?: return null
+        val container = meta.persistentDataContainer
         if (container.get(skillOwnerKey, PersistentDataType.STRING) != ownerId.toString()) return null
         return container.get(skillIdKey, PersistentDataType.STRING)
     }
@@ -63,6 +66,7 @@ object SkillManager {
 
     private fun EntityData.useValidated(skill: Skill, clickedItem: ItemStack, delayed: Boolean): Boolean {
         val playerData = this as? PlayerData ?: return false
+        if (org.beobma.classWarPlugin.gameClass.art.CartoonRuntime.isLocked(playerData.uniqueId)) return false
         if (skill.abilityScope.playerData !== playerData || skill.abilityScope.isClosed ||
             skill.abilityScope.suspended || entityStatus.isDead || game.isPaused) return false
         if (!entityStatus.canSkillUse) {
@@ -77,7 +81,8 @@ object SkillManager {
             playerData.player.sendMiniMessage("<red><bold>[!] 침묵 상태에서는 스킬을 사용할 수 없습니다.")
             return false
         }
-        if (CooldownManager.hasCooldown(playerData.player, skill)) {
+        if (CooldownManager.hasCooldown(playerData.player, skill) ||
+            org.beobma.classWarPlugin.gameClass.art.CartoonRuntime.hasReservedCooldown(playerData, skill)) {
             playerData.player.sendMiniMessage("<red><bold>[!] 재사용 대기 중입니다.")
             return false
         }
@@ -104,7 +109,14 @@ object SkillManager {
         }
 
         val context = SkillContext(playerData, skill, clickedItem, baseCooldownTicks)
+        if (org.beobma.classWarPlugin.gameClass.art.CartoonRuntime.isDeferring(playerData.uniqueId) &&
+            skill.ownerClass.classId != "cartoonist") {
+            // Validate in a real request context, but do not execute, publish use events or commit passives yet.
+            if (!skill.request(context, validateOnly = true) { true }) return false
+            return org.beobma.classWarPlugin.gameClass.art.CartoonRuntime.deferSkill(playerData, skill, clickedItem, context.cooldownTicks)
+        }
         val playerSkillUseEvent = PlayerSkillUseEvent(context)
+        val castOrigin = playerData.player.location.clone()
         val success = skill.request(context) {
             Bukkit.getServer().pluginManager.callEvent(playerSkillUseEvent)
             !playerSkillUseEvent.isCancelled
@@ -114,6 +126,7 @@ object SkillManager {
             CooldownManager.setCooldown(playerData.player, skill, clickedItem, context.cooldownTicks)
         }
         context.commit()
+        org.beobma.classWarPlugin.gameClass.art.CartoonRuntime.recordSkill(playerData, skill, clickedItem, castOrigin)
         playerData.game.growth?.onSkill(playerData)
 
         return true

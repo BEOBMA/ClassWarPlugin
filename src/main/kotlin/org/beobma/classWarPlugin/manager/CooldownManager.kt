@@ -23,6 +23,15 @@ object CooldownManager {
 
     private val cooldowns: MutableMap<CooldownKey, CooldownEntry> = mutableMapOf()
 
+    /** Remaining ticks are already balanced; restoration must not apply growth a second time. */
+    fun restoreRemaining(player: Player, skill: Skill, ticks: Int, material: Material) {
+        val key = CooldownKey(player.uniqueId, skill.id)
+        val clock = { skill.abilityScope.game.combatTick }
+        if (ticks <= 0) cooldowns.remove(key)
+        else cooldowns[key] = CooldownEntry(clock() + ticks, material, clock)
+        refreshMaterialCooldown(player, material)
+    }
+
     /** [skill]의 재사용 대기시간이 한 틱 이상 남아 있는지 반환한다. */
     fun hasCooldown(player: Player, skill: Skill): Boolean = remainingTicks(player, skill) > 0
 

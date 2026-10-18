@@ -26,7 +26,7 @@ class Enchantment : StatusAbnormality(), StatusOnHitHandler, StatusPlayerMoveHan
     override var duration: Int? = null
     private var pullTask: BukkitTask? = null
 
-    override fun onAttackHit(context: DamageContext) {
+    override fun onAttackDamage(context: DamageContext) {
         context.isCancelled = true
     }
 

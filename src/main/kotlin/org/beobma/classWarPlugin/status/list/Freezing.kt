@@ -54,7 +54,7 @@ class Freezing : StatusAbnormality(), StatusOnHitHandler, StatusWhenHitHandler, 
         super.onPowerChanged()
     }
 
-    override fun onAttackHit(context: DamageContext) {
+    override fun onAttackDamage(context: DamageContext) {
         context.isCancelled = true
     }
 

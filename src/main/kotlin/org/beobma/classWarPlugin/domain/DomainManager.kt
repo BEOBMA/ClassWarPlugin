@@ -97,9 +97,11 @@ object DomainManager {
         return true
     }
     fun isExpanded(world: World) = sessions.any { it.center.world == world }
-    fun isDistorted(id: UUID) = sessions.any { it.isIntroducing && id in it.distorted }
+    fun isDistorted(id: UUID) = sessions.any { it.isIntroducing && id in it.distorted } ||
+        org.beobma.classWarPlugin.gameClass.art.CartoonRuntime.isDistorted(id)
     fun timeScale(id: UUID) = if (isDistorted(id)) 0.05 else 1.0
-    fun isLocked(id: UUID) = sessions.any { it.isIntroducing && it.caster.uniqueId == id }
+    fun isLocked(id: UUID) = sessions.any { it.isIntroducing && it.caster.uniqueId == id } ||
+        org.beobma.classWarPlugin.gameClass.art.CartoonRuntime.isLocked(id)
     fun blocksMovementSkill(id: UUID): Boolean {
         val player = org.bukkit.Bukkit.getPlayer(id) ?: return false
         val from = player.location

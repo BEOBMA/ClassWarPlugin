@@ -413,7 +413,7 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
             healthFraction(context.attacker.player), healthFraction(target))
         if (a.has(GrowthEffect.EXECUTE) && target.health < (target.getAttribute(Attribute.MAX_HEALTH)?.value ?: 20.0) * 0.3)
             context.addDamageDealtMultiplier(1.15)
-        if (context.path.isBasicAttack && !context.secondaryAttack && a.has(GrowthEffect.SPELLBLADE) &&
+        if (context.attackEffectsAllowed && context.path.isBasicAttack && !context.secondaryAttack && a.has(GrowthEffect.SPELLBLADE) &&
             (spellReady[context.attacker.uniqueId] ?: -1) >= game.combatTick && a.trigger("spellblade", game.combatTick, 6)) {
             spellReady.remove(context.attacker.uniqueId); context.addDamageDealtMultiplier(1.25)
         }
@@ -423,7 +423,7 @@ class GrowthModeRuntime(val game: Game, val world: World) : AutoCloseable {
     }
     fun afterDamage(context: DamageContext) {
         val a = players[context.attacker.uniqueId]
-        if (a?.has(GrowthEffect.LIFESTEAL) == true && a.trigger("lifesteal", game.combatTick, 1)) heal(context.attacker, (context.damage * 0.06).coerceAtMost(2.0))
+        if (context.attackEffectsAllowed && a?.has(GrowthEffect.LIFESTEAL) == true && a.trigger("lifesteal", game.combatTick, 1)) heal(context.attacker, (context.damage * 0.06).coerceAtMost(2.0))
         val target = context.target as? PlayerData ?: return
         val t = players[target.uniqueId] ?: return
         if (t.has(GrowthEffect.SECOND_WIND)) afterHitRecovery(target)

@@ -90,6 +90,30 @@ private open class ProbeClass(
 }
 
 class AbilityRuntimeTest {
+    @Test fun `recording validation prepares and discards targets without executing a skill`() {
+        val ability = ProbeClass()
+        val data = participant().also { it.gameClasses += ability }
+        AbilityTree.bind(data.gameClasses, data)
+        val validation = SkillContext(data, ability.skill, TestItem(), 20)
+        assertTrue(ability.skill.request(validation, validateOnly = true) { true })
+        assertEquals(0, ability.skill.calls)
+        assertTrue(validation.preparedValues.isEmpty())
+        ability.skill.requestedTarget = "playback target"
+        val playback = SkillContext(data, ability.skill, TestItem(), 20)
+        assertTrue(ability.skill.request(playback) { true })
+        assertEquals(1, ability.skill.calls)
+        assertEquals("playback target", ability.skill.usedTarget)
+    }
+
+    @Test fun `failed recording authorization never executes or keeps prepared state`() {
+        val ability = ProbeClass()
+        val data = participant().also { it.gameClasses += ability }
+        AbilityTree.bind(data.gameClasses, data)
+        val context = SkillContext(data, ability.skill, TestItem(), 20)
+        assertFalse(ability.skill.request(context, validateOnly = true) { false })
+        assertEquals(0, ability.skill.calls)
+        assertTrue(context.preparedValues.isEmpty())
+    }
     @Test fun `nested stolen abilities bind to actual owner and dispatch exactly once`() {
         val leaf = ProbeClass("leaf")
         val root = ProbeClass("root", listOf(leaf))

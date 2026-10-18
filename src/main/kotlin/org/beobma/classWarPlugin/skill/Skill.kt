@@ -66,7 +66,7 @@ abstract class Skill : EffectApiAccess {
         this.game = playerData.initGame
     }
 
-    internal fun request(context: SkillContext, authorize: () -> Boolean): Boolean {
+    internal fun request(context: SkillContext, validateOnly: Boolean = false, authorize: () -> Boolean): Boolean {
         val previous = activeContext
         if (previous != null) return false
         activeContext = context
@@ -74,7 +74,7 @@ abstract class Skill : EffectApiAccess {
             return AbilityExecution.with(abilityScope) {
                 abilityScope.isActive && isUseSuccess() && authorize() && abilityScope.isActive &&
                     !playerStatus.isDead && !game.isPaused &&
-                    org.beobma.classWarPlugin.ability.AbilityForecast.cast(playerData) { use() }
+                    (validateOnly || org.beobma.classWarPlugin.ability.AbilityForecast.cast(playerData) { use() })
             }
         } finally {
             context.preparedValues.clear()

@@ -57,6 +57,9 @@ data class GrowthProfile(val primary: GrowthStat, val secondary: GrowthStat,
             "lucky-one", "roulette", "tonic")
         fun forClass(id: String): GrowthProfile {
           val base = when (id) {
+            "artist", "cartoonist", "bomb-maniac", "kaleidoskop" -> GrowthProfile(GrowthStat.INTELLIGENCE, GrowthStat.AGILITY)
+            "intrusion" -> GrowthProfile(GrowthStat.AGILITY, GrowthStat.STRENGTH)
+            "snake-sword" -> GrowthProfile(GrowthStat.STRENGTH, GrowthStat.AGILITY)
             "mjolnir" -> GrowthProfile(GrowthStat.STRENGTH, GrowthStat.INTELLIGENCE)
             "pacifist" -> GrowthProfile(GrowthStat.STRENGTH, GrowthStat.AGILITY,
                 effects = defaultEffects + (GrowthAxis.KNOCKBACK to GrowthEffectRule(GrowthStat.STRENGTH, 0.8, 0.5)))

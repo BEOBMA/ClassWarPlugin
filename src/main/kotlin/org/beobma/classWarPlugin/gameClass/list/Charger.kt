@@ -226,8 +226,7 @@ class Charger : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
             "<gray>패시브",
             "",
             "{keyword:Charge} 최대치가 무한이 된다.",
-            "<gray>웅크린 상태가 아닐 때, {keyword:Charge}은 즉시 소멸한다.",
-            "<gray>웅크린 상태에서 움직이거나 점프하면 {keyword:Charge}은 즉시 소멸한다.",
+            "<gray>웅크린 상태가 아닐 때, {keyword:Charge}은 즉시 소멸한다."
         )
     }
 }

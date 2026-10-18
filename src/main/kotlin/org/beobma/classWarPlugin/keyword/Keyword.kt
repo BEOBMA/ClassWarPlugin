@@ -29,7 +29,7 @@ enum class Keyword(
     Invalidity("<dark_gray><bold>무효</bold><gray>"),
     Stealth(
         "<light_purple><bold>은신</bold><gray>",
-        "ㅂ: 살아있는 적 플레이어에게 자신의 모습과 장비가 보이지 않으며 대상 지정 스킬의 대상이 되지 않는다.",
+        "{keyword:Stealth}: 살아있는 적 플레이어에게 자신의 모습과 장비가 보이지 않으며 대상 지정 스킬의 대상이 되지 않는다.",
     ),
     Mana("<blue><bold>마나</bold><gray>"),
     Burn(

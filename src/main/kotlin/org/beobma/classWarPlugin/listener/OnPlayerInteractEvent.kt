@@ -31,7 +31,8 @@ class OnPlayerInteractEvent : Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     fun onPlayerInteractEntity(event: PlayerInteractEntityEvent) {
-        if ("cw-afterglow-echo" in event.rightClicked.scoreboardTags) { event.isCancelled = true; return }
+        if ("cw-afterglow-echo" in event.rightClicked.scoreboardTags || "cw-cartoon-frame" in event.rightClicked.scoreboardTags ||
+            org.beobma.classWarPlugin.gameClass.art.ArtistRuntime.isPainting(event.player.uniqueId)) { event.isCancelled = true; return }
         if (org.beobma.classWarPlugin.domain.DomainManager.isLocked(event.player.uniqueId)) return
         val held = event.player.inventory.getItem(event.hand)
         if (org.beobma.classWarPlugin.growth.GrowthControls.useToken(event.player, held)) {
@@ -56,6 +57,7 @@ class OnPlayerInteractEvent : Listener {
 
     @EventHandler(priority = EventPriority.HIGH)
     fun onPlayerInteract(event: PlayerInteractEvent) {
+        if (org.beobma.classWarPlugin.gameClass.art.ArtistRuntime.isPainting(event.player.uniqueId)) { event.isCancelled = true; return }
         // Tagged domain crystals are skill buttons, never placeable vanilla end crystals.
         event.item?.takeIf { it.type == org.bukkit.Material.END_CRYSTAL && getSkillId(it,event.player.uniqueId) != null }
             ?.let { event.setUseItemInHand(Event.Result.DENY); event.setUseInteractedBlock(Event.Result.DENY) }
@@ -87,6 +89,7 @@ class OnPlayerInteractEvent : Listener {
         if (!playerData.canDispatchClassHandlers()) return
         if (Brave.handlePullInteract(event)) return
         if (isLeftClick && playerData.entityStatus.canAttack && !playerData.hasStatus<Disarm>() &&
+            getWeaponClassId(clickedItem) != "snake-sword" &&
             AttackableObjectManager.hitBasicAttack(player)
         ) {
             event.isCancelled = true

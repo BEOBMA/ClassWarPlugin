@@ -119,8 +119,11 @@ class Darkness : GameClass(), EnvironmentalDamageHandler {
             }
         }
 
-        override fun onAttackHit(context: DamageContext) {
+        override fun onAttackDamage(context: DamageContext) {
             suppressStealth()
+        }
+
+        override fun onAttackHit(context: DamageContext) {
             if (!isInDarkness()) return
             context.addBaseDamage(DARKNESS_BONUS_ATTACK_DAMAGE)
             particles.spawn(context.target.entity, Particle.SQUID_INK, count = 6, spread = 0.25)

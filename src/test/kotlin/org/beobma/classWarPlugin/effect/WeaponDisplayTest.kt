@@ -10,6 +10,29 @@ import java.lang.reflect.Proxy
 import kotlin.test.*
 
 class WeaponDisplayTest {
+    @Test fun `horizontal extension keeps the blade tip aligned and the broad face upward`() {
+        var transform: Transformation? = null
+        val display = Proxy.newProxyInstance(ItemDisplay::class.java.classLoader, arrayOf(ItemDisplay::class.java)) { _, method, args ->
+            if (method.name == "setTransformation") transform = args!![0] as Transformation
+            null
+        } as ItemDisplay
+        for (direction in listOf(Vector(1, 0, 0), Vector(0, 0, -1), Vector(-1, 0, 1),
+            Vector(0.6, 0.3, -0.8), Vector(0, 1, 0), Vector(0, -1, 0))) {
+            DisplayOrientationUtil.alignSwordBladeHorizontally(display, direction, 0.8f)
+            val rotation = assertNotNull(transform).leftRotation
+            val tip = Vector3f(-1f, 1f, 0f).normalize().rotate(rotation)
+            val face = Vector3f(0f, 0f, -1f).rotate(rotation)
+            val expected = direction.clone().normalize()
+            assertEquals(expected.x, tip.x.toDouble(), 1e-5)
+            assertEquals(expected.y, tip.y.toDouble(), 1e-5)
+            assertEquals(expected.z, tip.z.toDouble(), 1e-5)
+            assertEquals(0f, face.dot(tip), 1e-5f)
+            assertTrue(face.x.isFinite() && face.y.isFinite() && face.z.isFinite())
+            if (expected.y == 0.0) assertEquals(1f, face.y, 1e-5f)
+            else if (kotlin.math.abs(expected.y) < 0.95) assertTrue(face.y > 0f)
+        }
+    }
+
     @Test fun `blade points along flight or into ground without inherited yaw pitch`() {
         var transform: Transformation? = null
         var billboard: Display.Billboard? = null

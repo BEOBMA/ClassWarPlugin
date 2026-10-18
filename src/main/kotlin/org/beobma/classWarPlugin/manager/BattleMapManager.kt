@@ -32,9 +32,10 @@ object BattleMapManager {
         get() = NamespacedKey(ClassWarPlugin.instance, "battle-map")
 
     /** 산개 또는 전투 중인 참가자의 보조 손에 현재 경기 지도를 지급한다. */
-    fun giveTo(playerData: PlayerData) {
+    fun giveTo(playerData: PlayerData, allowTraining: Boolean = false) {
         val game = playerData.initGame
-        if (game.phase != GamePhase.SCATTERING && game.phase != GamePhase.RUNNING) return
+        if (game.phase != GamePhase.SCATTERING && game.phase != GamePhase.RUNNING &&
+            !(allowTraining && PlayerTagManager.isTraining(playerData.player))) return
 
         val player = playerData.player
         val mapView = game.battleMapView ?: createMap(game).also { game.battleMapView = it }
@@ -256,6 +257,16 @@ object BattleMapManager {
                 }
             }
             canvas.cursors = cursors
+            viewerData?.let { org.beobma.classWarPlugin.ability.AbilityTree.nodes(it.gameClasses, activeOnly = true) }
+                ?.filterIsInstance<org.beobma.classWarPlugin.gameClass.list.Intrusion>()
+                ?.flatMap { it.mapMarks() }?.distinctBy { it.target.uniqueId }
+                ?.filter { it.target.player.world == mapView.world }?.forEach { mark ->
+                    val at = mark.target.player.location
+                    val x = ((at.x - mapView.centerX) * 2 / blocksPerPixel).roundToInt().coerceIn(-128, 127).toByte()
+                    val z = ((at.z - mapView.centerZ) * 2 / blocksPerPixel).roundToInt().coerceIn(-128, 127).toByte()
+                    cursors.addCursor(MapCursor(x, z, 0, if (mark.highlighted) MapCursor.Type.RED_X else MapCursor.Type.TARGET_POINT,
+                        true, Component.text(if (mark.highlighted) "난입 기회: ${mark.target.player.name}" else "교전: ${mark.target.player.name}")))
+                }
             val reporter = viewerData
                 ?.let { org.beobma.classWarPlugin.ability.AbilityTree.nodes(it.gameClasses, activeOnly = true) }
                 ?.filterIsInstance<org.beobma.classWarPlugin.gameClass.list.WarCorrespondent>().orEmpty()

@@ -51,6 +51,7 @@ class LuckyOne : GameClass(), EnvironmentalDamageHandler, OnHitHandler, WhenHitH
     }
 
     override fun onHit(context: DamageContext) {
+        if (!context.attackEffectsAllowed) return
         if (Random.nextDouble() >= org.beobma.classWarPlugin.growth.GrowthScaling.chance(playerData, LUCKY_ATTACK_PROC_CHANCE)) return
         when (Random.nextInt(3)) {
             0 -> {

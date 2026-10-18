@@ -44,6 +44,7 @@ class Peanuts : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
         .any(::canSeeMe)
 
     override fun onHit(context: org.beobma.classWarPlugin.damage.DamageContext) {
+        if (!context.attackEffectsAllowed) return
         if (context.isCancelled || context.damageType.isFixed || context.secondaryAttack ||
             !org.beobma.classWarPlugin.ability.Targeting.isEnemy(playerData, context.target) || isWatchedNow()) return
         val victim = context.target.entity as? org.bukkit.entity.LivingEntity ?: return

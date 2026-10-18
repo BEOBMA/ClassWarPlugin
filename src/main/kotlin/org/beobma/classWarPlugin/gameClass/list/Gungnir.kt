@@ -18,7 +18,7 @@ class Gungnir : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameSta
     private lateinit var runtime: org.beobma.classWarPlugin.gameClass.relic.RelicRuntime
     override fun onBattleStart() { runtime=org.beobma.classWarPlugin.gameClass.relic.RelicRuntime(abilityScope); runtime.start() }
     override fun onGameTimePasses() = Unit
-    override fun onAttackHit(context: org.beobma.classWarPlugin.damage.DamageContext) {
+    override fun onAttackDamage(context: org.beobma.classWarPlugin.damage.DamageContext) {
         if(!context.secondaryAttack) context.addDamageDealtMultiplier(0.5)
     }
     override fun onConfirmedHit(context: org.beobma.classWarPlugin.damage.DamageContext) {
@@ -78,10 +78,10 @@ class Gungnir : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameSta
             "<gray>인벤토리에 궁니르가 없을 때에만 사용할 수 있다.",
             "",
             "<gray>궁니르가 자신에게 되돌아오며 경로에 있는 모든 적에게 {g:damage:3}의 피해를 입힌다.",
-            "<gray>처음 적중한 적에게는 10초간 {keyword:VibrationExplosion}을 적용한다.",
+            "<gray>처음 적중한 적에게는 {keyword:VibrationExplosion}을 적용한다.",
             "",
             "<gray>만약 궁니르가 적에게 박혀있었다면 해당 적에게는 {g:damage:5}의 피해를 입히고",
-            "<gray>{keyword:Bleeding}을 {g:physical-power:4} 부여한다.",
+            "<gray>5초간 {keyword:Bleeding}을 {g:physical-power:4} 부여한다.",
             "",
             "<dark_gray>이 스킬은 궁니르가 날아가는 도중에도 사용할 수 있다."
         )
