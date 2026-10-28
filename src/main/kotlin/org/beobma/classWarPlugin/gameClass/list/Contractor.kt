@@ -217,7 +217,7 @@ class Contractor : GameClass(), GameStatusHandler, ConfirmedHitHandler, WeaponIn
         override val definitionId = "contractor/red-skill"
         override val name = "<bold>찌르기"
         override val description = listOf(
-            "<gray>바라보는 방향으로 잛게 칼을 찔러 적에게 {g:damage:3}의 피해를 입힌다.",
+            "<gray>바라보는 방향으로 칼을 찔러 적에게 {g:damage:3}의 피해를 입힌다.",
             "<gray>적중 시 재사용 대기 시간이 3초 감소하며, 다음 찌르기가 강화된다.",
             "",
             "<gray>강화된 찌르기 발동 시 사거리가 소폭 증가하고",
