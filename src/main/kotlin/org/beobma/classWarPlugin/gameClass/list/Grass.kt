@@ -39,7 +39,7 @@ class Grass : GameClass(), GameStatusHandler, OnHitHandler, WhenHitHandler, Envi
     override val rank = Rank.C
     override val classItemMaterial = Material.SHORT_GRASS
     override var skills: List<Skill> = emptyList()
-    override var passives: List<BasePassive> = listOf(Passive(), PassiveTwo())
+    override var passives: List<BasePassive> = listOf(Passive())
     private var plantStealth: Stealth? = null
     private var stealthSuppressedUntilTick = 0L
     private var suppressionTask: BukkitTask? = null
@@ -160,13 +160,6 @@ class Grass : GameClass(), GameStatusHandler, OnHitHandler, WhenHitHandler, Envi
         override val description = listOf(
             "<gray>패시브", "", "<gray>꽃, 풀 종류인 어떤 블럭에든 닿아있다면 자신은 {keyword:Stealth} 상태가 된다.",
             "<gray>피해를 주거나 받으면 3초간 {keyword:Stealth} 상태가 될 수 없다."
-        )
-    }
-    private class PassiveTwo : BasePassive() {
-        override val name = "<bold>가시"
-        override val description = listOf(
-            "<gray>패시브", "", "<gray>그냥 풀의 효과가 발동 중일 때",
-            "<gray>자신 주위 4칸 이내에 있는 적은 매 초마다 {g:status-damage:1}의 피해를 입는다."
         )
     }
 }

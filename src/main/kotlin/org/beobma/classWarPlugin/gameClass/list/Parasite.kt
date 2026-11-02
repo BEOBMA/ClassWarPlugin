@@ -61,7 +61,7 @@ class Parasite : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
         }
         applyParasiteStealth()
         startFollowingHost()
-        player.sendMiniMessage("<dark_red><bold>[기생]</bold> <gray>${selectedHost.player.name}님의 몸에 기생했습니다.")
+        player.sendMiniMessage("<bold><gray>${selectedHost.player.name}님의 몸에 기생했습니다.")
     }
 
     override fun onGameTimePasses() {
@@ -197,22 +197,18 @@ class Parasite : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
             }
             particles.spawn(player, Particle.INFESTED, count = 30, spread = 0.65, speed = 0.12)
             sounds.play(player, Sound.ENTITY_ZOMBIE_BREAK_WOODEN_DOOR, volume = 0.75f, pitch = 1.45f)
-            player.sendMiniMessage(
-                if (automatic) "<dark_red><bold>[자동 부화]</bold> <gray>부화 조건을 만족하여 숙주에게서 나왔습니다."
-                else "<dark_red><bold>[부화]</bold> <gray>숙주에게서 나왔습니다."
-            )
         }
     }
 
     private inner class Passive : BasePassive(), WhenHitHandler {
         override val name = "<bold>기생"
         override val description = listOf(
-            "<gray>패시브", "",
+            "<gray>패시브",
+            "",
             "<gray>게임 시작 시 생존한 무작위 플레이어 한 명에게 기생한다.",
-            "<gray>기생 중 숙주의 뒤를 3인칭 시점처럼 따라다닌다.",
-            "<gray>벽에 끼이거나 다른 플레이어에게 공격받아도 피해를 받지 않으며,",
-            "<gray>피해를 입힐 수 없고 {keyword:Stealth} 상태가 된다.",
-            "<gray>아래 조건 중 하나라도 만족하면 부화가 자동으로 사용된다.",
+            "<gray>기생한 동안 {keyword:Disability}, {keyword:Invincibility}, {keyword:Stealth} 상태가 된다.",
+            "",
+            "<gray>아래 조건 중 하나라도 만족하면 부화 스킬을 자동으로 사용한다.",
             "<gray>  - 기생한 플레이어가 사망한 경우",
             "<gray>  - 생존한 플레이어가 기생한 플레이어와 자신 뿐인 경우"
         )

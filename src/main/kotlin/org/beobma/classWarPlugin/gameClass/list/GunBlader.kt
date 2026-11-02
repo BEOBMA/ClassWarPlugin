@@ -29,10 +29,8 @@ import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
 // 밸런스 조정 상수
 private const val GUN_BLADER_BREAKTHROUGH_COOLDOWN_SECONDS = 12
-private const val GUN_BLADER_FULL_BURST_COOLDOWN_SECONDS = 55
 private const val GUN_BLADER_BASIC_DAMAGE = 2.0
 private const val GUN_BLADER_BREAKTHROUGH_DAMAGE = 4.0
-private const val GUN_BLADER_FULL_BURST_DAMAGE = 2.0
 private const val GUN_BLADER_VIBRATION_DURATION_SECONDS = 10
 private const val GUN_BLADER_BREAKTHROUGH_VIBRATION_POWER = 3
 private const val GUN_BLADER_VIBRATION_POWER = 1
@@ -51,8 +49,7 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
     override val weapon: BaseWeapon = Weapon()
 
     override var skills: List<Skill> = listOf(
-        RedSkill(),
-        OrangeSkill()
+        RedSkill()
     )
 
     override var passives: List<BasePassive> = listOf(
@@ -108,8 +105,9 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
         override val description = listOf(
             "<gray>기본 공격 적중 시 {g:duration:10}초간 {keyword:Vibration}을 {g:physical-power:1} 부여한다.",
             "",
-            "<gray>우클릭하면 {keyword:Bullet}을 1 소모하여 바라보는 방향으로 사격한다.",
-            "<gray>사격은 적중한 적에게 {g:damage:2}의 피해를 입히고 {keyword:VibrationExplosion}을 적용한다."
+            "<gray>우클릭하면 {keyword:Bullet}을 1 소모하여 바라보는 방향으로 참격을 가한다.",
+            "<gray>적중한 모든 적에게 (기본 공격 피해 + {g:damage:2})의 피해를 입히고 {g:duration:10}초간 {keyword:Vibration}을 {g:physical-power:2} 부여한다.",
+            "<gray>마지막 {keyword:Bullet}이었다면 추가로 {keyword:VibrationExplosion}을 적용한다."
         )
         override val material = Material.IRON_SWORD
     }
@@ -146,50 +144,13 @@ class GunBlader : GameClass(), WeaponInputHandler, GameStatusHandler, OnSkillUse
         }
     }
 
-    private inner class OrangeSkill : Skill() {
-        override val definitionId = "gun-blader/orange-skill"
-        override val name = "<bold>전탄 격발"
-        override val description = listOf(
-            "<gray>{g:range:16}칸 내의 바라보는 적을 조준하고 장전된 {keyword:Bullet}을 모두 소모하여 사격한다.",
-            "<gray>{keyword:Bullet}마다 {g:damage:2}의 피해를 입히고, {g:duration:10}초간 {keyword:Vibration}을 {g:physical-power:1} 부여한다.",
-            "<gray>마지막 {keyword:Bullet}이 적중하면 {keyword:VibrationExplosion}을 적용한다."
-        )
-        override val cooldown = GUN_BLADER_FULL_BURST_COOLDOWN_SECONDS
-
-        override fun use(): Boolean {
-            val target = playerData.shotLaserGetEntityData(16.0, TargetType.Enemy, false) ?: return false
-            val bullets = bulletStatus()
-            val shots = bullets.power
-            bullets.updatePower(0); idleSeconds = 0
-            repeat(shots) { index ->
-                target.damage(GUN_BLADER_FULL_BURST_DAMAGE, DamageType.Normal, playerData)
-                target.getOrCreateStatus(playerData) { Vibration() }.applyStatus(
-                    duration = GUN_BLADER_VIBRATION_DURATION_SECONDS,
-                    powerDelta = GUN_BLADER_VIBRATION_POWER,
-                )
-                if (index == shots - 1) target.addStatus(VibrationExplosion(), playerData).applyStatus(duration = 1, powerDelta = 1)
-            }
-            particles.line(player.eyeLocation, target.entity.location.add(0.0, target.entity.height / 2, 0.0), Particle.ELECTRIC_SPARK, 0.2)
-            sounds.play(player, Sound.ENTITY_GENERIC_EXPLODE, volume = 1.3f, pitch = 1.7f)
-            notifyEmpty()
-            return true
-        }
-
-        override fun isUseSuccess(): Boolean {
-            if (bulletStatus().power <= 0) { player.sendMiniMessage("<red><bold>[!] 탄환이 없습니다."); return false }
-            if (playerData.shotLaserGetEntityData(16.0, TargetType.Enemy, false) != null) return true
-            player.sendMiniMessage("<red><bold>[!] 바라보는 적이 없습니다.")
-            return false
-        }
-    }
-
     private inner class Passive : BasePassive(), OnHitHandler {
         override val name = "<bold>총검술"
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>기본 공격 3회 적중 시 {keyword:Bullet}을 1 얻는다. ({keyword:Bullet}은 최대 {g:feature/bullets:4}발 얻을 수 있다.)",
-            "<gray>{g:reload-seconds:20}초간 기본 공격, 스킬을 사용하지 않으면 최대 {g:feature/bullets:4}발까지 장전한다."
+            "<gray>기본 공격 적중 시 {keyword:Bullet}을 1 얻는다. ({keyword:Bullet}은 최대 {g:feature/bullets:12}발 얻을 수 있다.)",
+            "<gray>{g:reload-seconds:20}초간 기본 공격, 스킬을 사용하지 않으면 최대 {g:feature/bullets:12}발까지 장전한다."
         )
 
         override fun onAttackHit(context: DamageContext) {

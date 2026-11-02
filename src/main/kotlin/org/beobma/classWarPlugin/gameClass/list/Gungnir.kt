@@ -35,7 +35,6 @@ class Gungnir : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameSta
         if(canThrow()) runtime.throwSpear()
     }
     private fun canThrow() = ::runtime.isInitialized && !game.isPaused && playerStatus.canSkillUse &&
-        !playerData.hasStatus<org.beobma.classWarPlugin.status.list.Silence>() &&
         !playerData.hasStatus<org.beobma.classWarPlugin.status.list.Disarm>() &&
         !playerData.hasStatus<org.beobma.classWarPlugin.status.list.Stun>()
     override val classId = "gungnir"
@@ -50,8 +49,6 @@ class Gungnir : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameSta
     override var passives: List<BasePassive> = listOf(
     )
 
-    // 생긴 형태만 삼지창 텍스쳐를 사용.
-    // 실제 성능은 철 검
     private class Weapon : BaseWeapon() {
         override val name = "<gray>궁니르"
         override val description = listOf(
@@ -80,7 +77,7 @@ class Gungnir : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameSta
             "<gray>궁니르가 자신에게 되돌아오며 경로에 있는 모든 적에게 {g:damage:3}의 피해를 입힌다.",
             "<gray>처음 적중한 적에게는 {keyword:VibrationExplosion}을 적용한다.",
             "",
-            "<gray>만약 궁니르가 적에게 박혀있었다면 해당 적에게는 {g:damage:5}의 피해를 입히고",
+            "<gray>만약 궁니르가 적에게 박혀있었다면 해당 적에게는 대신 {g:damage:5}의 피해를 입히고",
             "<gray>5초간 {keyword:Bleeding}을 {g:physical-power:4} 부여한다.",
             "",
             "<dark_gray>이 스킬은 궁니르가 날아가는 도중에도 사용할 수 있다."

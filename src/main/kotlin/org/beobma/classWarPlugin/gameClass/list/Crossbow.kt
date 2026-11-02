@@ -114,7 +114,9 @@ class Crossbow : GameClass(), GameStatusHandler, OnHitHandler, ConfirmedHitHandl
         override val name = "<gray>석궁"
         override val description = listOf(
             "<gray>공격 적중 시 적중한 적 뒤쪽 지면에 박힌 볼트를 남긴다. (최대 {g:feature/bolts:3}개)",
-            "<gray>박힌 볼트는 다른 스킬로 활용할 수 있으며, 4초가 지나면 제거된다.",
+            "<gray>지면에 적중했다면 적중한 곳에 박힌 볼트를 남긴다.",
+            "",
+            "<gray>박힌 볼트는 다른 스킬로 활용할 수 있으며, 6초가 지나면 제거된다.",
             "<gray>클래식 모드에서는 석궁의 최대 피해량이 4로 제한된다."
         )
         override val material = Material.CROSSBOW
@@ -125,7 +127,7 @@ class Crossbow : GameClass(), GameStatusHandler, OnHitHandler, ConfirmedHitHandl
         override val name = "<bold>회수"
         override val description = listOf(
             "<gray>모든 박힌 볼트를 자신의 위치로 끌어와 회수한다.",
-            "<gray>끌어당겨지는 박힌 볼트에 닿은 적은 {g:damage:1}의 {keyword:TrueDamage}를 입는다.",
+            "<gray>끌어당겨지는 박힌 볼트에 닿은 적은 {g:damage:2}의 {keyword:TrueDamage}를 입는다.",
             "<gray>박힌 볼트가 하나 이상의 적에게 적중했다면 석궁이 즉시 재장전된다."
         )
         override val cooldown = CROSSBOW_RED_SKILL_COOLDOWN_SECONDS

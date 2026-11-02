@@ -306,7 +306,9 @@ class Phantom : GameClass(), GameEndHandler, PlayerDeathHandler {
     private inner class SlashPassive : BasePassive(), OnHitHandler {
         override val name = "<bold>넌 이미 베여있다"
         override val description = listOf(
-            "<gray>패시브", "", "<gray>이탈 스킬 사용 중, 적에게 피해를 입히면 피해량이 0으로 고정된다.",
+            "<gray>패시브",
+            "",
+            "<gray>이탈 스킬 사용 중, 기본 공격 재사용 대기 시간이 사라지며 적에게 피해를 입히면 피해량이 0으로 고정된다.",
             "<gray>대신 피해를 입힐 때마다 검흔을 1 부여한다.",
             "<gray>이탈 스킬 종료 후 몸으로 돌아온 뒤, 검흔을 베어 수치당 {g:damage:0.1}의 고정 피해를 입힌다."
         )

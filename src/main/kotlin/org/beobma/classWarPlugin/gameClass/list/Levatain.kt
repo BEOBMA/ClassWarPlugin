@@ -66,7 +66,6 @@ class Levatain : GameClass(), GameStatusHandler {
         belowQuarterTriggered = false
         releaseStatus().updateState(stage = 0, release = 0)
         updateWeaponItem()
-        player.sendMiniMessage("<gold><bold>[레바테인]</bold> <gray>봉인된 검의 해방도가 초기화되었습니다.")
     }
 
     override fun onGameTimePasses() {
@@ -125,9 +124,6 @@ class Levatain : GameClass(), GameStatusHandler {
             sounds.play(center, Sound.BLOCK_ENCHANTMENT_TABLE_USE, volume = 1.0f, pitch = 0.8f + sealStage * 0.25f)
             sounds.play(center, Sound.ITEM_ARMOR_EQUIP_IRON, volume = 0.9f, pitch = 0.75f + sealStage * 0.15f)
         }
-        player.sendMiniMessage(
-            "<gold><bold>[봉인 해제]</bold> <gray>검이 <white>${weapon.name}<gray>(으)로 변화했습니다."
-        )
     }
 
     private fun playSealReleaseAnimation(stage: Int, color: Color) {
@@ -244,13 +240,11 @@ class Levatain : GameClass(), GameStatusHandler {
         if (!belowHalfTriggered && ratio <= LEVATAIN_HEALTH_RELEASE_THRESHOLD) {
             belowHalfTriggered = true
             addRelease(30)
-            player.sendMiniMessage("<gold><bold>[해방도]</bold> <gray>체력이 처음으로 50% 이하가 되어 <yellow>+30</yellow>")
             sounds.play(player, Sound.ENTITY_PLAYER_HURT, volume = 0.65f, pitch = 0.72f)
         }
         if (!belowQuarterTriggered && ratio <= 0.25) {
             belowQuarterTriggered = true
             addRelease(60)
-            player.sendMiniMessage("<gold><bold>[해방도]</bold> <gray>체력이 처음으로 25% 이하가 되어 <yellow>+60</yellow>")
             sounds.play(player, Sound.ENTITY_WITHER_HURT, volume = 0.6f, pitch = 0.88f)
         }
     }

@@ -60,9 +60,11 @@ class Sol : PlanetClass(), GameStatusHandler {
     private class Passive : BasePassive() {
         override val name = "<bold>태양"
         override val description = listOf(
-            "<gray>패시브", "",
+            "<gray>패시브",
+            "",
             "<gray>자신 주위 5칸 이내에 접근한 적을 {g:duration:1}초간 {keyword:Burn} 상태로 만든다.",
             "<gray>낮에는 효과가 강화되어 대신 {g:duration:2}초간 {keyword:Burn} 상태로 만든다.",
+            "",
             "<gray>이 효과는 대상 당 6초의 재사용 대기 시간을 가진다."
         )
     }

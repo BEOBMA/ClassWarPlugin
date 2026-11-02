@@ -349,12 +349,6 @@ class Contractor : GameClass(), GameStatusHandler, ConfirmedHitHandler, WeaponIn
         }
     }
 
-    //        †
-    //
-    //    †   나   †
-    //
-    //        †
-    // 위와 같은 형태
     private inner class GreenSkill : Skill() {
         override val definitionId = "contractor/green-skill"
         override val name = "<bold>장부 정리"

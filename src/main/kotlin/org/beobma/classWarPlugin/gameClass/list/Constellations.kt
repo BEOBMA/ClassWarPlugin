@@ -46,7 +46,7 @@ class Constellations : GameClass(), org.beobma.classWarPlugin.gameClass.handler.
         override val definitionId = "constellations/guidance"
         override val name = "<bold>별의 인도"
         override val description = listOf(
-            "<gray>자신은 최대 5초간 {keyword:Disarm}, {keyword:Silence} 상태가 되며 받는 피해가 50% 감소된다.",
+            "<gray>자신은 최대 5초간 {keyword:Disarm}, {keyword:Silence} 상태가 되며 <gold><bold>받는 피해가 50% 감소</bold><gray>한다.",
             "",
             "<gray>스킬 사용 시 6줄 인벤토리가 열리고, 8개의 별 아이템이 무작위 위치에 생성된다.",
             "<gray>별 아이템의 순서는 아이템의 개수로 식별할 수 있다.",

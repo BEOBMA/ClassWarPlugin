@@ -92,7 +92,7 @@ class Trapper : GameClass() {
             val first = firstAnchor
             if (first != null) {
                 if (first.world != candidate.world || first.distanceSquared(candidate) > 100.0) {
-                    player.sendMiniMessage("<red><bold>[!] 두 기준점 사이의 거리는 10칸을 초과할 수 없습니다.")
+                    player.sendMiniMessage("<red><bold>[!] 두 기준점 사이의 거리가 최대 거리를 초과했습니다.")
                     return false
                 }
                 if (isPathBlocked(first, candidate)) {

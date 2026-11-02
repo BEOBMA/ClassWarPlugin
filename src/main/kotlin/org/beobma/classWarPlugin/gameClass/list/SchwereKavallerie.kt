@@ -22,15 +22,13 @@ class SchwereKavallerie : org.beobma.classWarPlugin.gameClass.firearm.FirearmCla
 
     override var passives: List<BasePassive> = listOf()
 
-    // 반동 자체는 약하나, 쭉 누르고 있으면 어느정도 쎔
-    // 연사 속도가 매우 빠르며, 탄환이 퍼지는 것 또한 꽤 강함.
     private class Weapon : BaseWeapon() {
         override val name = "<gray>미니건"
         override val description = listOf(
             "<gray>우클릭을 누르거나 누르고 있으면 바라보는 방향으로 사격한다.",
             "<gray>매 사격마다 {keyword:Bullet}을 1 소모한다.",
             "",
-            "<gray>사격 시 탄환을 발사하여 적중한 적에게 {g:damage:0.1}의 피해를 입힌다.",
+            "<gray>사격 시 탄환을 발사하여 적중한 적에게 {g:damage:0.6}의 피해를 입힌다.",
             "<gray>미니건을 들고 있는 동안 <gold><bold>이동 속도가 {g:speed:80}% 감소</bold><gold>하고 점프할 수 없다.",
         )
         override val material = Material.NETHERITE_HORSE_ARMOR

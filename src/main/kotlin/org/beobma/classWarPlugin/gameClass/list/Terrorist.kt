@@ -140,7 +140,6 @@ class Terrorist : GameClass(), PlayerDeathHandler, GameEndHandler {
         return Transformation(Vector3f(transformedCenter).negate(), rotation, scale, Quaternionf())
     }
 
-    // 폭탄이 자신의 위치에 딱 소환되는게 아니라, 자기 위치에서 폭탄 30개가 사방으로 퍼져나가 터지도록 수정.
     private class Passive : BasePassive() {
         override val name = "<bold>테러"
         override val description = listOf(

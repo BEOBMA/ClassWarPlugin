@@ -27,7 +27,7 @@ class Spezialeinheitsmitglied : org.beobma.classWarPlugin.gameClass.firearm.Fire
             "<gray>우클릭을 누르거나 누르고 있으면 바라보는 방향으로 사격한다.",
             "<gray>매 사격마다 {keyword:Bullet}을 1 소모한다.",
             "",
-            "<gray>사격 시 탄환을 발사하여 적중한 적에게 {g:damage:0.2}의 피해를 입힌다."
+            "<gray>사격 시 탄환을 발사하여 적중한 적에게 {g:damage:1}의 피해를 입힌다."
         )
         override val material = Material.IRON_HORSE_ARMOR
     }

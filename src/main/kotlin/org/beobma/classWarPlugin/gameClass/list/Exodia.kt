@@ -165,7 +165,7 @@ class Exodia : GameClass(), GameStatusHandler {
         playerData.getOrCreateStatus(playerData) { ExodiaPartStatus() }.updatePower(collected)
         particles.spawn(player, Particle.TOTEM_OF_UNDYING, count = 42, spread = 0.65, speed = 0.13)
         sounds.play(player, Sound.ENTITY_ITEM_PICKUP, volume = 0.9f, pitch = 0.8f + collected * 0.12f)
-        player.sendMessage(net.kyori.adventure.text.Component.text("[엑조디아] ${part.label}을(를) 획득했습니다. ($collected/5)"))
+        player.sendMessage(net.kyori.adventure.text.Component.text("${part.label}을(를) 획득했습니다. ($collected/5)"))
         if (collected < 5) return
         particles.spawn(player, Particle.FLASH, count = 3)
         particles.spawn(player, Particle.TOTEM_OF_UNDYING, count = 180, spread = 1.5, speed = 0.25)

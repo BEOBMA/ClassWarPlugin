@@ -104,7 +104,7 @@ class Creator : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameSta
             "{keyword:Area}에서 자신의 {keyword:Mana}는 무한대가 되며",
             "<gray>자신의 모든 창조 스킬은 반드시 적에게 적중한다.",
             "<gray>창조물은 파괴 스킬 없이도 1초 후 자동으로 파괴된다.",
-            "<gray>사슬 창조의 재사용 대기시간은 0.1초, 적중 피해는 {g:damage:0.2}가 된다.",
+            "<gray>사슬 창조의 재사용 대기시간은 0.1초, 적중 피해는 {g:damage:1}까지 감소한다.",
             "",
             "<gray>영역 종료 후, 자신이 창조한 모든 창조물이 제거된다.",
             "<gray>또한 20초간 {keyword:Mana} 회복 속도가 대폭 감소한다."

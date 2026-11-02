@@ -505,9 +505,7 @@ class Agent : GameClass(), GameStatusHandler, OnHitHandler, WhenHitHandler, Conf
             "<gray>VII: 적의 뒤에서 공격한다.",
             "<gray>VIII: 달리는 중에 기본 공격을 적중시킨다.",
             "<gray>IX: 도약 강타로 적에게 피해를 입힌다.",
-            "<gray>X: 제한 시간 없이 모든 적을 처치한다.",
-            "<gray>III·IX를 받을 때는 손도끼로 변형된다. 그 외 지령의 제한 시간은 20초다.",
-            "<gray>적이 1명만 남았다면 지령 II는 보상·불이익 없이 건너뛴다."
+            "<gray>X: 제한 시간 없이 모든 적을 처치한다."
         )
     }
 }

@@ -82,7 +82,7 @@ class Writer : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandle
         if (sessions[playerData.uniqueId] !== session || session.serial != promptSerial ||
             abilityScope.isClosed || !abilityScope.isActive || abilityScope.suspended || !player.isOnline || playerStatus.isDead) return
         if (game.isPaused) {
-            player.sendMessage(Component.text("일시 정지 중에는 채점하지 않는다.", NamedTextColor.GRAY))
+            player.sendMessage(Component.text("일시 정지 중에는 작동하지 않음.", NamedTextColor.GRAY))
             return
         }
         val current = work ?: return
@@ -91,12 +91,12 @@ class Writer : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandle
         line++
         val finished = line >= current.lines.size
         if (correct) {
-            player.sendMessage(Component.text("성공 · 기본 공격 +0.1 / 받는 피해 -1%", NamedTextColor.GREEN))
+            player.sendMessage(Component.text("성공", NamedTextColor.GREEN))
             particles.spawn(player.eyeLocation.clone().add(0.0, 0.35, 0.0), Particle.ENCHANT, count = if (finished) 18 else 6, spread = 0.25)
             sounds.playTo(player, Sound.ITEM_BOOK_PAGE_TURN, volume = 0.65f, pitch = 1.2f)
             sounds.playTo(player, Sound.BLOCK_NOTE_BLOCK_CHIME, volume = 0.35f, pitch = if (finished) 1.8f else 1.3f)
         } else {
-            player.sendMessage(Component.text("오타 · 기본 공격 -0.2 / 받는 피해 +2%.", NamedTextColor.RED))
+            player.sendMessage(Component.text("오타", NamedTextColor.RED))
             showDifference(TypingDifference.compare(expected, input))
             particles.spawn(player.eyeLocation, Particle.SMOKE, count = 4, spread = 0.12)
             sounds.playTo(player, Sound.BLOCK_NOTE_BLOCK_BASS, volume = 0.4f, pitch = 0.65f)
@@ -119,7 +119,7 @@ class Writer : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandle
             return component
         }
         player.sendMessage(highlighted("입력: ", difference.input, difference.inputCorrect))
-        player.sendMessage(highlighted("정답: ", difference.expected, difference.expectedCorrect))
+        player.sendMessage(highlighted("원문: ", difference.expected, difference.expectedCorrect))
     }
 
     override fun onAttackHit(context: DamageContext) {
@@ -159,7 +159,8 @@ class Writer : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandle
             "<gray>글과 동일하게 채팅을 쳐 한 줄을 완성할 때마다",
             "<gray>자신의 <gold><bold>기본 공격 피해가 {g:writer-reward:0.1} 증가</bold><gray>하고 <gold><bold>받는 피해가 1% 감소</bold><gray>한다.",
             "<gray>원래 글과 다르게 작성한 경우 대신 <gold><bold>기본 공격 피해가 {g:basic:0.2} 감소</bold><gray>하고 <gold><bold>받는 피해가 2% 증가</bold><gray>한다.",
-            "<gray>공백과 문장 부호도 일치해야 하며 오답 시 다음 줄로 넘어간다."
+            "",
+            "<dark_gray>이 효과에 의한 받는 피해는 최대 50%까지만 감소할 수 있다."
         )
     }
 }

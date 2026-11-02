@@ -35,8 +35,10 @@ class Ghost : GameClass(), GameStatusHandler {
     private inner class Passive : BasePassive(), OnHitHandler {
         override val name = "<bold>유령화"
         override val description = listOf(
-            "<gray>패시브", "", "<gray>최대 체력이 1로 고정된다.",
-            "<gray>기본 공격 적중 시 적 최대 체력의 {g:damage:50}%에 해당하는 {keyword:TrueDamage}를 입힌다."
+            "<gray>패시브",
+            "",
+            "<gray>최대 체력이 1로 고정된다.",
+            "<gray>기본 공격 적중 시 적 최대 체력의 {g:damage:45}%에 해당하는 {keyword:TrueDamage}를 입힌다. (대상 당 재사용 대기 시간 3초)"
         )
 
         override fun onAttackHit(context: DamageContext) {

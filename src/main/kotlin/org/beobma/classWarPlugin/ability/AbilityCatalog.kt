@@ -11,7 +11,6 @@ object AbilityCatalog {
     fun isDeferred(id: String): Boolean = id == "streamer" || id == "referee" || id == "kaleidoskop"
     private val factories: Map<String, () -> GameClass> = mapOf(
         "bomb-maniac" to ::BombManiac,
-        "kaleidoskop" to ::Kaleidoskop,
         "artist" to ::Artist,
         "cartoonist" to ::Cartoonist,
         "intrusion" to ::Intrusion,
@@ -64,7 +63,6 @@ object AbilityCatalog {
         "hikikomori" to ::Hikikomori,
         "ice-wizard" to ::IceWizard,
         "jupiter" to ::Jupiter,
-        "just-light" to ::JustLight,
         "knight" to ::Knight,
         "land-wizard" to ::LandWizard,
         "levatain" to ::Levatain,
@@ -85,13 +83,9 @@ object AbilityCatalog {
         "pluto" to ::Pluto,
         "portal-gun" to ::PortalGun,
         "rainbow-bridge" to ::RainbowBridge,
-        "referee" to ::Referee,
         "refugees" to ::Refugees,
-        "reverse" to ::Reverse,
-        "roulette" to ::Roulette,
         "sagittarius" to ::Sagittarius,
         "saturnus" to ::Saturnus,
-        "shy-person" to ::ShyPerson,
         "sniper" to ::Sniper,
         "sol" to ::Sol,
         "solar-system" to ::SolarSystem,
@@ -126,7 +120,6 @@ object AbilityCatalog {
         "schwerekavallerie" to ::SchwereKavallerie,
         "firearmsmaster" to ::FirearmsMaster,
         "creator" to ::Creator,
-        "streamer" to ::Streamer,
     )
     private val enabledIds = listOf(
         "bomb-maniac",

@@ -151,7 +151,7 @@ class DeathNote : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameE
         activeMarks[player.uniqueId] = mark
 
         player.sendMiniMessage(
-            "<dark_red><bold>[기명 완료]</bold> <white>${target.player.name}<gray>님의 이름을 기록했습니다. " +
+            "<white>${target.player.name}<gray>님의 이름을 기록했습니다. " +
                 "<dark_red>죽음의 조건: <white>${mark.requiredActionName}"
         )
         ParticleApi.spawn(target.player, Particle.SQUID_INK, count = 45, spread = 0.72, speed = 0.08)
@@ -252,7 +252,7 @@ class DeathNote : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameE
             SoundApi.play(target.player, Sound.ENTITY_WARDEN_HEARTBEAT, volume = 1.5f, pitch = 0.45f)
             SoundApi.play(target.player, Sound.ENTITY_WITHER_DEATH, volume = 0.65f, pitch = 0.55f)
             casterData.player.takeIf(Player::isOnline)?.sendMiniMessage(
-                "<dark_red><bold>[데스노트]</bold> <white>${target.player.name}<gray>님의 죽음이 완성되었습니다."
+                "<white>${target.player.name}<gray>님의 죽음이 완성되었습니다."
             )
             target.damage(
                 target.player.health + 2048.0,

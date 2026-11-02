@@ -370,10 +370,11 @@ class Swordplay : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.game
         override val name = "<bold>인피니트"
         override val description = listOf(
             "<gray>{g:time:20}초간 무수한 검이 창조되는 공간을 만든다.",
-            "<gray>{g:feature/infinite-swords:18}자루의 다이아몬드 검이 구형 궤도로 자신 주위를 공전하며 주위의 적을 공격한다.",
-            "<gray>타격한 검은 대상을 꿰뚫는 ∞ 궤도로 가속하며 계속 공격한다.",
+            "<gray>{g:feature/infinite-swords:18}자루의 검이 자신 주위를 공전하며 주위의 적을 공격한다.",
             "<gray>적은 인피니트로 소환된 검에 9번 피격될 때마다 {g:damage:1}의 피해를 입는다.",
             "<gray>인피니트로 소환된 검은 블로섬 스킬의 영향을 받지 않는다.",
+            "",
+            "<gray>적에게 기본 공격으로 피해를 입힌지 3초가 지나면 검은 적이 근접해도 타격하지 않는다.",
         )
         override val cooldown = SWORDPLAY_INFINITE_COOLDOWN_SECONDS
 
@@ -808,9 +809,9 @@ class Swordplay : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.game
             "<gray>패시브",
             "",
             "<gray>자신 주위를 날아다니는 검을 {g:feature/passive-swords:3}자루 생성한다.",
-            "<gray>검은 사선의 구형 궤도로 공전하며, 자신 주위 6칸 내에 적이 접근하면 가속하여 공격한다.",
+            "<gray>자신 주위 6칸 내에 적이 접근하면 공격한다.",
             "<gray>적은 어검술로 소환된 검에 3번 피격될 때마다 {g:damage:1}의 피해를 입는다.",
-            "<gray>타격한 검은 대상을 꿰뚫고 돌아오는 ∞ 궤도로 가속하며 계속 타격한다.",
+            "",
             "<gray>적에게 기본 공격으로 피해를 입힌지 3초가 지나면 검은 적이 근접해도 타격하지 않는다.",
         )
     }

@@ -100,7 +100,7 @@ class Warlock : GameClass() {
         override val description = listOf(
             "<gray>패시브",
             "",
-            "<gray>역병의 낙인이 새겨진 적에게 피해를 입히면 <green><bold>입힌 피해의 {g:healing:50}% 만큼 체력을 회복</bold><gray>한다."
+            "<gray>역병의 낙인이 새겨진 적에게 피해를 입히면 <green><bold>입힌 피해 만큼 체력을 회복</bold><gray>한다."
         )
 
         override fun onHit(context: DamageContext) {

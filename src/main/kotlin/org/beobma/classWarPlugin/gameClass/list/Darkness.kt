@@ -88,7 +88,6 @@ class Darkness : GameClass(), EnvironmentalDamageHandler {
         }
     }
 
-    // 빛이 없는 곳의 조건을 말 그대로 마인크래프트 시스템 상 빛이 없는 곳으로 수정 (현재는 낮이더라도 발광석 등 조명이 없으면 투명 상태가 되는 문제가 있음
     private inner class Passive : BasePassive(), GameStatusHandler, OnHitHandler, WhenHitHandler {
         override val name = "<bold>어둠"
         override val description = listOf(

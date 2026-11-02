@@ -209,7 +209,7 @@ class Sniper : GameClass(), WeaponInputHandler, GameStatusHandler,
         }.runTaskTimer(ClassWarPlugin.instance, 1L, 1L))
     }
 
-    // 저격총 반동(매우 강함) 추가
+
     private class Weapon : BaseWeapon() {
         override val name = "<gray>저격총"
         override val description = listOf(

@@ -54,7 +54,7 @@ class Berserker : GameClass() {
         override val description: List<String>
             get() = listOf(
                 "<gray>{g:duration:8}초간 이동 속도와 공격 속도가 {g:speed:50}% 증가한다.",
-                "<gray>라그나로크가 {g:time:8}초간 지속되는 동안 체력이 1 미만으로 감소하지 않는다.",
+                "<gray>라그나로크가 지속되는 동안 체력이 1 미만으로 감소하지 않는다.",
             )
         override val cooldown: Int
             get() = BERSERKER_RAGNAROK_COOLDOWN_SECONDS

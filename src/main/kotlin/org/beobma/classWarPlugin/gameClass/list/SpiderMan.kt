@@ -83,7 +83,6 @@ class SpiderMan : GameClass(), GameStatusHandler, GameEndHandler, MovementInputH
             "<gray>웅크리면 거미줄을 놓으며 현재 이동 방향과 속도를 유지한 채 날아간다.",
             "",
             "<gray>거미줄이 플레이어에게 닿으면 해당 플레이어에게 날아가며 이 스킬의 충전은 0이 된다.",
-            "<gray>침묵 또는 속박 상태가 되거나, 거미줄이 적의 기본 공격, 스킬 또는 투사체에 맞으면 연결이 끊어진다.",
             "",
             "<dark_gray>이 스킬을 사용하는 중에는 재사용 대기 시간이 감소하지 않는다."
         )

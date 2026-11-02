@@ -86,8 +86,9 @@ class Vampire : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameEnd
         override val definitionId = "vampire/red-skill"
         override val name = "<bold>박쥐화"
         override val description = listOf(
-            "<gray>자신은 박쥐로 변신하여 날아다닐 수 있게 된다.",
-            "<gray>박쥐화는 최대 {g:time:${VAMPIRE_BAT_MAX_DURATION_SECONDS}}초간 유지되며, 다시 사용하면 즉시 해제된다.",
+            "<gray>{g:time:${VAMPIRE_BAT_MAX_DURATION_SECONDS}}초간 박쥐로 변신한다.",
+            "",
+            "<gray>박쥐 상태에서는 날아다닐 수 있으며, 이 스킬을 다시 사용하여 즉시 해제할 수도 있다.",
             "<gray>박쥐가 피해를 입으면 해당 피해의 2배 만큼 자신이 피해를 입는다.",
             "<gray>박쥐가 사망한 경우 이 스킬의 재사용 대기 시간이 2배로 증가하고 변신이 해제된다.", "",
             "<dark_gray>박쥐로 변신한 상태에서는 {keyword:Silence} 상태가 되며, 기본 공격을 사용할 수 없다.",
@@ -143,7 +144,6 @@ class Vampire : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameEnd
         particles.spawn(player, Particle.SMOKE, count = 34, spread = 0.6, speed = 0.12)
         particles.spawn(player, Particle.SOUL, count = 16, spread = 0.45, speed = 0.08)
         sounds.play(player, Sound.ENTITY_BAT_TAKEOFF, volume = 1.0f, pitch = 0.65f)
-        player.sendMiniMessage("<dark_red><bold>[박쥐화]</bold> <gray>비행 상태가 되었습니다. 스킬을 다시 사용하면 해제합니다.")
 
         batTask = playerData.trackTask(object : BukkitRunnable(abilityScope) {
             private var ticks = 0
@@ -161,9 +161,6 @@ class Vampire : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameEnd
                     return
                 }
                 if (ticks >= duration) {
-                    player.sendMiniMessage(
-                        "<dark_red><bold>[박쥐화]</bold> <gray>최대 지속시간이 끝나 변신이 해제되었습니다."
-                    )
                     endTransformation(batDied = false)
                     cancel()
                     return
@@ -210,9 +207,6 @@ class Vampire : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameEnd
                 skillItem,
                 batSkill.cooldown * 20 * cooldownMultiplier,
             )
-            if (batDied) {
-                player.sendMiniMessage("<red><bold>[박쥐 사망]</bold> <gray>박쥐화 재사용 대기 시간이 2배로 적용됩니다.")
-            }
         }
     }
 
@@ -263,7 +257,7 @@ class Vampire : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameEnd
         override val name = "<bold>혈사병"
         override val description = listOf(
             "<gray>최초 시전 위치를 중심으로 6초간 {g:range:10}칸 내의 범위에 혈사병을 일으킨다.",
-            "<gray>지속 시간동안 범위 내의 모든 적은 {keyword:Bleeding} 수치가 감소하지 않는다.",
+            "<gray>지속 시간동안 범위 내의 모든 적의 {keyword:Bleeding} 수치는 감소하지 않는다.",
             "<gray>지속 시간 종료 시 한 번이라도 혈사병의 영향을 받은 모든 적의 {keyword:Bleeding}은 제거된다."
         )
         override val cooldown = VAMPIRE_BLOOD_PLAGUE_COOLDOWN_SECONDS

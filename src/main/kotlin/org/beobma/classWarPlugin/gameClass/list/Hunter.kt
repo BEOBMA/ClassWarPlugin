@@ -22,9 +22,6 @@ class Hunter : org.beobma.classWarPlugin.gameClass.firearm.FirearmClass(org.beob
 
     override var passives: List<BasePassive> = listOf()
 
-    // 사격하면 자연스럽게 반동이 생기며, 반동은 실제 산탄총처럼 상당히 강함
-    // 8발의 탄환을 맞추려면 진짜 코앞에 있어야 함.
-    // 탄환은 실제 산탄총처럼 퍼져 나가며 무작위성이 어느정도 존재함
     private class Weapon : BaseWeapon() {
         override val name = "<gray>산탄총"
         override val description = listOf(

@@ -22,14 +22,14 @@ class Sturmtruppe : org.beobma.classWarPlugin.gameClass.firearm.FirearmClass(org
 
     override var passives: List<BasePassive> = listOf()
 
-    // 반동이 꽤 강함, 다른 FPS 게임처럼 자연스러운 반동을 만들어야함
+
     private class Weapon : BaseWeapon() {
         override val name = "<gray>돌격소총"
         override val description = listOf(
             "<gray>우클릭을 누르거나 누르고 있으면 바라보는 방향으로 사격한다.",
             "<gray>매 사격마다 {keyword:Bullet}을 1 소모한다.",
             "",
-            "<gray>사격 시 탄환을 발사하여 적중한 적에게 {g:damage:0.2}의 피해를 입힌다."
+            "<gray>사격 시 탄환을 발사하여 적중한 적에게 {g:damage:1}의 피해를 입힌다."
         )
         override val material = Material.IRON_HORSE_ARMOR
     }

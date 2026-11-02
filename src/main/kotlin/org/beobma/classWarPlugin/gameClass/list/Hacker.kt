@@ -71,9 +71,10 @@ class Hacker : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.gameCla
         override val definitionId = "hacker/red-skill"
         override val name = "<bold>해킹"
         override val description = listOf(
-            "<gray>채팅창에 출력된 한 줄의 코드를 제한시간 안에 똑같이 입력한다.",
-            "<gray>성공할 때마다 다음 코드는 4자씩 길어진다. 단계별 제한시간은 {g:feature/code-time:35}/{g:feature/code-time:34}/{g:feature/code-time:33}초다.",
+            "<gray>채팅창에 출력된 한 줄의 코드를 제한시간 안에 똑같이 입력해야 한다.",
+            "<gray>성공할 때마다 다음 코드는 더 길어진다.",
             "",
+            "<gray>성공 시 단계에 따라 아래 효과를 얻는다.",
             "<gray>모든 단계: 자신을 제외한 생존자를 {g:duration:10}초간 {keyword:Radiation}시키고 {keyword:Snare}한다.",
             "<gray>2단계: 생존자에게 영구적인 시스템 손상 디버프를 적용한다.",
             "<gray>  - 가하는 피해 20% 감소, 받는 피해 20% 증가",
@@ -216,9 +217,6 @@ class Hacker : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.gameCla
                 target.addStatus(Radiation(), playerData)
                     .applyStatus(duration = HACKER_SNARE_DURATION_SECONDS, powerSet = 1)
                 if (target.player.isOnline) {
-                    target.player.sendMiniMessage(
-                        "<red><bold>[시스템 침입]</bold> <gray>해커에 의해 10초간 위치가 노출되고 속박됩니다."
-                    )
                     particles.spawn(
                         target.player.location.clone().add(0.0, 1.0, 0.0),
                         Particle.DUST,
@@ -237,7 +235,7 @@ class Hacker : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.gameCla
                     .applyStatus(powerSet = 1)
                 if (target.player.isOnline) {
                     target.player.sendMiniMessage(
-                        "<dark_purple><bold>[시스템 손상]</bold> <gray>가하는 피해가 20% 감소하고 받는 피해가 20% 증가합니다."
+                        "<gray>해커에 의해 가하는 피해가 20% 감소하고 받는 피해가 20% 증가합니다."
                     )
                     particles.spawn(target.player, Particle.WITCH, count = 55, spread = 0.8, speed = 0.13)
                     sounds.play(target.player, Sound.ENTITY_ELDER_GUARDIAN_CURSE, volume = 0.55f, pitch = 1.45f)
@@ -249,7 +247,7 @@ class Hacker : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.gameCla
             playerData.getOrCreateStatus(playerData) { HackerRootAccessStatus() }
                 .applyStatus(powerSet = 1)
             player.sendMiniMessage(
-                "<gold><bold>[ROOT ACCESS]</bold> <gray>가하는 피해가 50% 증가하고 받는 피해가 30% 감소합니다."
+                "<gray>가하는 피해가 50% 증가하고 받는 피해가 30% 감소합니다."
             )
             particles.spawn(player, Particle.TOTEM_OF_UNDYING, count = 95, spread = 1.0, speed = 0.2)
             particles.spawn(player, Particle.END_ROD, count = 60, spread = 0.85, speed = 0.13)

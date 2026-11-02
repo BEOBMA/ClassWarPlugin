@@ -34,10 +34,11 @@ class Pacifist : GameClass() {
     private inner class Passive : BasePassive(), OnHitHandler {
         override val name = "<bold>평화"
         override val description = listOf(
-            "<gray>패시브", "",
+            "<gray>패시브",
+            "",
             "<gray>기본 공격으로 가하는 피해가 0이 된다.",
-            "<gray>기본 공격 적중 시 적을 수평 {g:knockback:2.15}, 수직 {g:knockback:0.62}의 속도로 밀친다.",
-            "<gray>밀치는 효과로 적을 월드보더 밖으로 밀쳐내면 해당 적은 탈락한다."
+            "<gray>기본 공격 적중 시 적을 밀친다.",
+            "<gray>밀치는 효과로 적을 월드보더 밖으로 밀쳐내면 해당 적은 {keyword:Execution}된다"
         )
 
         override fun onAttackDamage(context: DamageContext) {

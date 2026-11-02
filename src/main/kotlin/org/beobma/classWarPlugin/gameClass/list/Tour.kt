@@ -39,7 +39,7 @@ class Tour : GameClass() {
             "<gray>순회공연이 종료되면 원래 위치로 돌아온다.",
             "",
             "<dark_gray>생존한 플레이어가 8명 이하라면 8번 이동할 때까지 반복된다.",
-            "<dark_gray>웅크린 상태에서 사용하면 해당 플레이어가 자신의 위치로는 이동되지 않는다."
+            "<dark_gray>웅크린 상태에서 사용하면 해당 플레이어가 자신의 위치로는 이동되지 않게 할 수도 있다."
         )
         override val cooldown = TOUR_START_COOLDOWN_SECONDS
 
@@ -66,7 +66,7 @@ class Tour : GameClass() {
                 .filter { it.player.isOnline }
                 .forEach { viewer ->
                     viewer.player.sendMiniMessage(
-                        "<light_purple><bold>[순회공연]</bold> <white>${target.player.name}<gray>님이 순회공연을 시작합니다!"
+                        "<bold><white>${target.player.name}<gray>님이 순회공연을 시작합니다!"
                     )
                     sounds.playTo(viewer.player, Sound.ITEM_GOAT_HORN_SOUND_0, volume = 0.65f, pitch = 1.15f)
                 }
@@ -100,7 +100,6 @@ class Tour : GameClass() {
                     }
                     if (visits >= totalVisits) {
                         returnHome()
-                        target.player.sendMiniMessage("<light_purple><bold>[순회공연]</bold> <gray>공연이 종료되어 원래 위치로 돌아왔습니다.")
                         sounds.play(target.player, Sound.ENTITY_FIREWORK_ROCKET_BLAST, volume = 0.9f, pitch = 1.3f)
                         cancel()
                         return
@@ -114,9 +113,6 @@ class Tour : GameClass() {
                     }
                     val host = alive[visits % alive.size]
                     teleportWithShow(host.player.location.clone().add(0.0, 0.15, 0.0))
-                    target.player.sendMiniMessage(
-                        "<light_purple><bold>[공연 ${visits + 1}/$totalVisits]</bold> <gray>${host.player.name}님의 위치입니다."
-                    )
                     visits++
                 }
             }.runTaskTimer(ClassWarPlugin.instance, 0L, TOUR_VISIT_INTERVAL_TICKS))

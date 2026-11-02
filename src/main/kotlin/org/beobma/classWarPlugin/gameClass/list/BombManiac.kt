@@ -31,7 +31,6 @@ class BombManiac : GameClass(), org.beobma.classWarPlugin.gameClass.handler.Game
         override val name = "<bold>폭탄 투척"
         override val description = listOf(
             "{keyword:Charge}을 10 소모하여 발동한다.",
-            "<gray>웅크리는 동안 매 틱 충전을 1 얻으며, 최대 100까지 저장한다.",
             "",
             "<gray>바라보는 방향으로 폭탄을 투척한다.",
             "<gray>폭탄은 지면에 남으며, 최대 5개까지 존재할 수 있다."
@@ -50,7 +49,7 @@ class BombManiac : GameClass(), org.beobma.classWarPlugin.gameClass.handler.Game
         override val description = listOf(
             "{keyword:Charge}을 (현재 존재하는 폭탄의 수 x 10) 소모하여 발동한다.",
             "",
-            "<gray>현재 존재하는 모든 폭탄을 0.25초 후 기폭하여 각 폭탄의 {g:range:3}칸 내 적에게 (기폭 시 선택한 폭탄의 수)의 피해를 입힌다.",
+            "<gray>현재 존재하는 모든 폭탄을 0.25초 후 기폭하여 각 폭탄의 {g:range:3}칸 내 적에게 (기폭한 폭탄의 수)의 피해를 입힌다.",
             "<gray>여러 폭탄에 적중당한 적은 최초 피해 이후 피해량이 2로 고정된다."
         )
         override val cooldown = BOMB_DETONATE_COOLDOWN_SECONDS

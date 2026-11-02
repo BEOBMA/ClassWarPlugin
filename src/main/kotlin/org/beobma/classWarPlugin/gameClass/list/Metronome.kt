@@ -61,7 +61,6 @@ class Metronome : GameClass(), GameStatusHandler, WeaponInputHandler {
         previewEnabled = PlayerTagManager.isTraining(player)
         if (isPreviewing()) {
             transport.selectPreviewStage(1)
-            player.sendMiniMessage("<aqua>[메트로놈] 음악 미리듣기: ${MetronomeScore.count}곡을 자동으로 재생한다. 검을 들고 F: 다음 곡 / 웅크리기 + F: 미리듣기 켜기·끄기")
         }
         installAttackSpeed()
         abilityScope.resources.own { stopMusic() }
@@ -111,13 +110,11 @@ class Metronome : GameClass(), GameStatusHandler, WeaponInputHandler {
         transport.reset()
         if (previewEnabled) {
             transport.selectPreviewStage(if (player.isSneaking) 1 else nextStage)
-            player.sendMiniMessage("<aqua>[메트로놈] 미리듣기: ${transport.score?.title} (${transport.score?.bpm} BPM)")
         } else {
             rhythm.reset()
             clockTick = 0L
             attemptTick = Long.MIN_VALUE
             feedback = ""
-            player.sendMiniMessage("<gray>[메트로놈] 미리듣기를 종료하고 일반 박자 연습을 시작한다.")
         }
         playFrame()
         updateDisplay()
@@ -128,14 +125,13 @@ class Metronome : GameClass(), GameStatusHandler, WeaponInputHandler {
         speedLease = playerData.attributeEffects.multiply(abilityScope, Attribute.ATTACK_SPEED, 256.0, maximum = 1024.0)
     }
 
-    /** Called once from the attack packet, before vanilla damage/invulnerability processing. */
     internal fun attempt(targetId: UUID?): Boolean {
-        if (attemptTick == clockTick) return false // duplicate packets cannot earn stacks or damage
+        if (attemptTick == clockTick) return false
         attemptTick = clockTick
         attemptedTarget = targetId
         consumedDamage = false
         accepted = rhythm.attack(clockTick, timing)
-        feedback = if (accepted) "<green>정박</green>" else "<red>엇박 · 피해 0</red>"
+        feedback = if (accepted) "<green>정박</green>" else "<red>엇박</red>"
         feedbackUntil = clockTick + 10L
         if (!accepted) {
             if (!isPreviewing()) {

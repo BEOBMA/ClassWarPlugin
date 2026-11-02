@@ -52,7 +52,7 @@ class TrainCarriage : GameClass(), GameStatusHandler, WhenHitHandler, GameEndHan
         override val description = listOf(
             "<gray>패시브", "",
             "<gray>자신의 위치가 모든 플레이어의 지도에 드러나며, 영구적인 {keyword:Radiation} 상태가 된다.",
-            "<gray>받는 피해가 20% 감소한다."
+            "<gray>자신이 받는 피해가 20% 감소한다."
         )
     }
 }

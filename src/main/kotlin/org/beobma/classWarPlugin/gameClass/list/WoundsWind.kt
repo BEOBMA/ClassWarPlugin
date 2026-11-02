@@ -91,14 +91,16 @@ class WoundsWind : GameClass(), OnHitHandler, WeaponInputHandler {
         override val material = Material.IRON_SWORD
         override val description = listOf(
             "<gray>우클릭하면 바라보는 방향으로 적을 관통하는 검기를 날린다.",
-            "<gray>검기 발사 후 기본 공격 재사용 대기 시간이 적용된다."
+            "<gray>검기 발사 후 기본 공격 재사용 대기 시간이 적용된다.",
+            "",
+            "<dark_gray>이 공격은 스킬 공격으로 간주된다.",
         )
     }
 
     private class Passive : BasePassive() {
         override val name = "<bold>검기"
         override val description = listOf(
-            "<gray>패시브", "", "<gray>기본 공격으로 피해를 입힐 수 없다.",
+            "<gray>패시브", "", "<gray>기본 공격으로 가하는 최종 피해가 0으로 고정된다.",
             "<gray>검을 우클릭하면 검기가 날아가 적중한 모든 적에게 {g:damage:2}의 피해를 입힌다."
         )
     }

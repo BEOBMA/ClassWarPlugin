@@ -100,7 +100,7 @@ class Watchmaker : GameClass(), GameStatusHandler, OnHitHandler {
         override val description = listOf(
             "<gray>현재 위치에 6초 동안 시계침을 배치하고 회전시킨다.",
             "<gray>시계침은 2초에 걸쳐 한 바퀴 회전하며",
-            "<gray>각 적마다 한 번만 현재 {keyword:TimePhase}의 효과를 적용한다.",
+            "<gray>적중한 적에게 스킬 당 1회, 현재 {keyword:TimePhase}의 효과를 적용한다.",
             "",
             "<gray>여명 - {g:damage:4}의 피해를 입히고 자신은 {g:duration:5}초간 <aqua><bold>{g:shield:4}의 피해를 막는 {keyword:Shield}을 얻는다.",
             "<gray>정오 - {g:damage:8}의 피해를 입힌다.",

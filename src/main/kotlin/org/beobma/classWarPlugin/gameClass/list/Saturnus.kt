@@ -129,11 +129,12 @@ class Saturnus : PlanetClass(), GameStatusHandler, GameEndHandler {
     private class Passive : BasePassive() {
         override val name = "<bold>토성"
         override val description = listOf(
-            "<gray>패시브", "",
+            "<gray>패시브",
+            "",
             "<gray>자신 주위 반지름 5칸 크기로 원형 고리가 생긴다.",
             "<gray>원형 고리에 바위가 {g:feature/rocks:7}개 생성되며, 자신 주위를 일정한 간격으로 공전한다.",
             "<gray>바위에 닿은 적에게 {g:damage:2}의 피해를 입히고, 바위는 파괴된다.",
-            "<gray>바위는 10초 후 재생된다."
+            "<gray>파괴된 바위는 10초 후 재생된다."
         )
     }
 }

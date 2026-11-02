@@ -42,7 +42,6 @@ class Artist : GameClass(), org.beobma.classWarPlugin.gameClass.handler.GameStat
             "",
             "<gray>하늘 높은 곳으로 올라가 아래를 바라보는 방향으로 시점이 고정된다.",
             "<gray>행동 불가 상태에서도 WASD 키로 고정된 화면 기준 상하좌우로 이동할 수 있다.",
-            "<gray>마우스를 움직여도 시점이나 위치는 변경되지 않는다.",
             "",
             "<gray>스킬 지속 중 자신 아래 3x3 범위 내에 있는 모든 적에게 초당 {g:damage:2}의 피해를 입힌다.",
             "<gray>또한 자신 아래 3x3 범위 내에 있는 공기에 드러난 모든 블럭을 15초간 색체 블럭으로 만든다.",

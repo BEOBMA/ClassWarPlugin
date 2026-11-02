@@ -58,7 +58,7 @@ class Avenger : GameClass(), GameStatusHandler, EnvironmentalDamageHandler {
         playerData.addStatus(MoveSpeedIncrease(), playerData).applyStatus(duration = 8, powerSet = 50)
         playerData.addStatus(AttackSpeedIncrease(), playerData).applyStatus(duration = 8, powerSet = 50)
         val duration = growthDuration(8)
-        player.sendMiniMessage("<dark_red><bold>[복수]</bold> <gray>${duration}초 안에 자신을 쓰러뜨린 적에게 복수하십시오.")
+        player.sendMiniMessage("<gray>${duration}초 안에 자신을 쓰러뜨린 적에게 복수하십시오.")
         particles.spawn(player, Particle.TOTEM_OF_UNDYING, count = 75, spread = 0.85, speed = 0.18)
         sounds.play(player, Sound.ITEM_TOTEM_USE, volume = 0.9f, pitch = 0.72f)
         playerData.trackTask(object : BukkitRunnable(abilityScope) {

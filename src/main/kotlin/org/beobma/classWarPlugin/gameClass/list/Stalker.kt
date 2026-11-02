@@ -129,10 +129,10 @@ class Stalker : GameClass(), GameStatusHandler, PlayerKillHandler {
             "<gray>패시브",
             "",
             "<gray>게임 시작 시 무작위 플레이어를 스토킹 대상으로 지정한다.",
+            "",
             "<gray>자신은 스토킹 대상에게 가는 경로가 입자를 볼 수 있다.",
             "<gray>스토킹 대상은 이동 시 흔적을 남기며, 흔적은 10초간 유지된다.",
             "<gray>흔적에 닿으면 흔적을 흡수하고 흡수한 흔적 양에 비례하여 스토킹 대상에게 <gold><bold>가하는 피해가 증가</bold><gray>한다.",
-            "",
             "<gray>스토킹 대상을 처치한 후, 증가한 피해량 증가량의 절반 만큼 다른 플레이어에게 <gold><bold>가하는 피해가 증가</bold><gray>한다."
         )
         override fun onHit(context: DamageContext) {

@@ -103,11 +103,18 @@ class Damocles : GameClass(), GameStatusHandler {
     private inner class Passive : BasePassive(), OnHitHandler, WhenHitHandler {
         override val name = "<bold>시한부"
         override val description = listOf(
-            "<gray>패시브", "", "<gray>게임 시작 시 머리 위에 거대한 검이 매달린다.",
-            "<gray>검이 존재하는 동안 아래의 효과를 모두 얻는다.", "",
-            "<gray>  - 가하는 피해 50% 증가", "<gray>  - 받는 피해 50% 감소", "",
+            "<gray>패시브",
+            "",
+            "<gray>게임 시작 시 머리 위에 거대한 검이 매달린다.",
+            "<gray>검이 존재하는 동안 아래의 효과를 모두 얻는다.",
+            "<gray>  - 가하는 피해 50% 증가",
+            "<gray>  - 받는 피해 50% 감소",
+            "<gray>  - 다른 무작위 클래스 하나의 능력과 패시브를 모두 얻음. (최소 S등급 이상)",
+            "",
             "<gray>대신 처음 피해를 받은 순간부터 매 5틱마다 자신이 {keyword:Execution}당할 확률이 생긴다.",
-            "<gray>확률은 아래와 같다.", "<gray>  - 기본 확률 {g:risk:0.02}%", "<gray>  - 이후 피해를 받을 때마다 {g:risk:0.05}%씩 확률 증가."
+            "<gray>확률은 아래와 같다.",
+            "<gray>  - 기본 확률 {g:risk:0.02}%",
+            "<gray>  - 이후 피해를 받을 때마다 {g:risk:0.05}%씩 확률 증가."
         )
         override fun onHit(context: DamageContext) {
             if (sword?.isValid == true) context.addDamageDealtMultiplier(1.5)

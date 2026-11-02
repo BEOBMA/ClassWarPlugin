@@ -69,7 +69,6 @@ class Astronomer : GameClass(), GameStatusHandler {
         mana.increasePower(5)
     }
 
-    // 끌어당겨질 때, 중앙에 고정되는 수준이 아니라 달리기와 같이 이동 속도가 좀 더 높으면 느리더라도 빠져나올 수 있는 수준으로 수정
     private class RedSkill : Skill() {
         override val definitionId = "astronomer/red-skill"
         override val name = "<bold>별의 죽음"

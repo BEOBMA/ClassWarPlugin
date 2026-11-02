@@ -115,15 +115,15 @@ class Luna : PlanetClass(), GameStatusHandler {
         when (Random.nextInt(3)) {
             0 -> {
                 attackPower += amount
-                player.sendMiniMessage("<white><bold>달빛:</bold> <gray>공격력이 ${amount}% 상승했습니다.")
+                player.sendMiniMessage("<gray>공격력이 ${amount}% 상승했다.")
             }
             1 -> {
                 attackSpeedPower += amount
-                player.sendMiniMessage("<white><bold>달빛:</bold> <gray>공격 속도가 ${amount}% 상승했습니다.")
+                player.sendMiniMessage("<gray>공격 속도가 ${amount}% 상승했다.")
             }
             else -> {
                 moveSpeedPower += amount
-                player.sendMiniMessage("<white><bold>달빛:</bold> <gray>이동 속도가 ${amount}% 상승했습니다.")
+                player.sendMiniMessage("<gray>이동 속도가 ${amount}% 상승했다.")
             }
         }
         restoreAppliedStats()
@@ -160,7 +160,8 @@ class Luna : PlanetClass(), GameStatusHandler {
     private class Passive : BasePassive() {
         override val name = "<bold>달"
         override val description = listOf(
-            "<gray>패시브", "",
+            "<gray>패시브",
+            "",
             "<gray>자신 주변에 지속적으로 빛이 비춰진다.",
             "<gray>비춰진 빛에 닿으면 공격력, 공격 속도, 이동 속도 중 무작위 스탯이 상승한다.",
             "<gray>밤에는 효과가 강화되어 스탯 상승폭이 증가한다."

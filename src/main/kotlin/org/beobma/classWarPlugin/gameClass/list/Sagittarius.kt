@@ -122,7 +122,7 @@ class Sagittarius : GameClass() {
         override val name = "<bold>궁수"
         override val description = listOf(
             "<gray>패시브", "", "<gray>화살 적중 시 빛으로 이루어진 화살 {g:feature/arrows:2}개를 더 발사한다.",
-            "<gray>이 효과로 발사된 화살은 적중 시 {g:damage:4}의 피해를 입힌다."
+            "<gray>이 효과로 발사된 화살은 적중 시 {g:damage:2}의 피해를 입힌다."
         )
     }
 

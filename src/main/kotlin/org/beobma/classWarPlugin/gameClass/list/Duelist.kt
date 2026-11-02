@@ -75,7 +75,7 @@ class Duelist : GameClass() {
         override val name = "<bold>팡트"
         override val description = listOf(
             "<gray>바라보는 방향으로 짧게 도약한다.",
-            "<gray>이후 {g:range:2}칸 내의 가장 가까운 적에게 {g:damage:2}의 피해를 입힌다.",
+            "<gray>이후 {g:range:4}칸 내의 가장 가까운 적에게 {g:damage:2}의 피해를 입힌다.",
             "",
             "<dark_gray>결투 상대를 우선으로 공격한다."
         )

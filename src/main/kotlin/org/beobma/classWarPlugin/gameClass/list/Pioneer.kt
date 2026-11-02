@@ -402,7 +402,7 @@ class Pioneer : GameClass(), GameStatusHandler, ConfirmedHitHandler, WhenHitHand
         override val definitionId = "pioneer/yellow-skill"
         override val name = Keyword.Disposal.string
         override val description = listOf(
-            "<gray>{keyword:Disposal}은 5번까지 사용할 수 있다.",
+            "<gray>이 스킬은 5번까지 재사용할 수 있다.",
             "",
             "<gray>1번째 사용 시 바라보는 방향으로 짧게 돌진하며 적을 베어 {g:damage:2}의 피해를 입힌다.",
             "<gray>적중 시 {g:duration:2}초간 {keyword:Burn} 상태로 만들고 {g:duration:10}초간 {keyword:Vibration}을 {g:physical-power:2} 부여한다.",

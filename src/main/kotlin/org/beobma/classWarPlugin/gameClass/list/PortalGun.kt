@@ -104,8 +104,7 @@ class PortalGun : GameClass(), SkillInputHandler, org.beobma.classWarPlugin.game
             "<gray>두 포탈이 모두 설치되면 서로 연결된다.",
             "<gray>이 스킬의 재사용 대기 시간은 포탈이 연결된 후에 적용된다.",
             "",
-            "<gray>적 주변 5칸 이내 위치에는 포탈을 설치할 수 없다.",
-            "<dark_gray>포탈 통과 시 운동량 증가량: {g:feature/momentum:1}배"
+            "<gray>적 주변 5칸 이내 위치에는 포탈을 설치할 수 없다."
         )
         override val cooldown = PORTAL_GUN_FIRE_COOLDOWN_SECONDS
 

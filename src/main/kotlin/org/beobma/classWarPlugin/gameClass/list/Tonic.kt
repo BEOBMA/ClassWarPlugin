@@ -46,7 +46,7 @@ class Tonic : GameClass(), GameStatusHandler {
             damageDealtMultiplier = 1.0 + uses * 0.05
             playerData.getOrCreateStatus(playerData) { TonicStackStatus() }.updatePower(uses)
             if (uses >= 5) applyHiddenDebuff()
-            player.sendMiniMessage("<green><bold>[보약]</bold> <gray>가하는 피해가 증가했습니다.")
+            player.sendMiniMessage("<gray>힘이 세진 것 같다.")
             particles.spawn(player, Particle.HAPPY_VILLAGER, count = 24, spread = 0.55, speed = 0.08)
             particles.spawn(player, Particle.EFFECT, count = 12, spread = 0.4, speed = 0.05)
             sounds.play(player, Sound.ENTITY_GENERIC_DRINK, volume = 0.85f, pitch = 0.82f)

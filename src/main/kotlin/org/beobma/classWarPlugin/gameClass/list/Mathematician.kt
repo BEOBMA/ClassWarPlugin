@@ -48,9 +48,6 @@ class Mathematician : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.
         secondsUntilProblem = 30
         clearSessions(listOf(player.uniqueId))
         stackStatus().updatePower(0)
-        player.sendMiniMessage(
-            "<aqua><bold>[수학자]</bold> <gray>문제 난이도: <yellow>1/$MAX_DIFFICULTY</yellow> · 첫 문제까지 30초"
-        )
     }
 
     override fun onGameTimePasses() {
@@ -69,7 +66,7 @@ class Mathematician : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.
         if (next == difficulty) return false
         difficulty = next
         player.sendMiniMessage(
-            "<aqua><bold>[수학자]</bold> <gray>문제 난이도가 " +
+            "<gray>문제 난이도가 " +
                 "<yellow>$difficulty/$MAX_DIFFICULTY</yellow>(으)로 변경되었습니다."
         )
         particles.spawn(player, Particle.ENCHANT, count = 24, spread = 0.55, speed = 0.1)
@@ -101,7 +98,7 @@ class Mathematician : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.
     private fun acceptInput(session: MathProblem, input: String) {
         if (activeProblems[player.uniqueId] !== session) return
         if (input.trim() != session.answer) {
-            failProblem("오답입니다. 정답은 ${session.answer}였습니다.")
+            failProblem("오답. 정답은 ${session.answer}였습니다.")
             return
         }
         session.timeoutTask.cancel()
@@ -110,7 +107,7 @@ class Mathematician : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.
         val before = status.power
         status.updatePower((before + session.difficulty).coerceAtMost(100))
         player.sendMiniMessage(
-            "<green><bold>[정답]</bold> <gray>난이도만큼 스택을 획득했습니다. <gold>$before → ${status.power}</gold>"
+            "<gray>정답. <gold>$before → ${status.power}</gold>"
         )
         particles.spawn(player, Particle.TOTEM_OF_UNDYING, count = 22, spread = 0.5, speed = 0.12)
         sounds.play(player, Sound.ENTITY_PLAYER_LEVELUP, volume = 0.9f, pitch = 1.35f)
@@ -119,7 +116,7 @@ class Mathematician : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.
     private fun failProblem(reason: String) {
         activeProblems.remove(player.uniqueId)?.timeoutTask?.cancel()
         stackStatus().updatePower(0)
-        player.sendMiniMessage("<red><bold>[문제 실패]</bold> <gray>$reason 정답 스택이 모두 사라집니다.")
+        player.sendMiniMessage("<gray>문제 실패 $reason 정답 스택이 모두 사라집니다.")
         particles.spawn(player, Particle.SMOKE, count = 18, spread = 0.45, speed = 0.05)
         sounds.playTo(player, Sound.BLOCK_NOTE_BLOCK_BASS, volume = 0.9f, pitch = 0.55f)
     }
@@ -155,13 +152,14 @@ class Mathematician : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.
     private inner class Passive : BasePassive(), OnHitHandler {
         override val name = "<bold>문제 풀이"
         override val description = listOf(
-            "<gray>패시브", "",
+            "<gray>패시브",
+            "",
             "<gray>30초마다 설정한 난이도에 따라 수학 문제가 출제된다.",
-            "<gray>난이도는 1~10이며 최대 난이도에는 고등학교 3학년 과정이 포함된다.",
-            "<gray>사칙연산부터 수열, 로그, 미적분, 확률, 벡터까지 120개 이상의 유형이 출제된다.", "",
+            "<gray>난이도는 1~10까지 존재한다.",
+            "",
             "<gray>정답을 맞추면 정답 스택을 맞춘 문제의 난이도에 비례하여 얻는다.",
             "<gray>오답이거나 제한 시간 초과 시 정답 스택이 전부 사라진다.",
-            "<gray>난이도 1~5의 제한시간은 {g:feature/answer-time:15}초, 6~10은 각각 {g:feature/answer-time:20}/{g:feature/answer-time:22}/{g:feature/answer-time:25}/{g:feature/answer-time:28}/{g:feature/answer-time:30}초다.", "",
+            "",
             "<gray>정답 스택당 가하는 피해가 1% 증가하고 이동 속도가 1% 증가한다. (최대 100스택)"
         )
 
