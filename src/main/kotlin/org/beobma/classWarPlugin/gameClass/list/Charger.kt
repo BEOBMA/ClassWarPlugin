@@ -189,8 +189,7 @@ class Charger : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeathHandl
         override fun isUseSuccess(): Boolean {
             if (chargeStatus?.hasCharge(CHARGER_REQUIRED_CHARGE) == true) return true
             player.sendMiniMessage(
-                "<red><bold>[!] 방출하려면 충전이 $CHARGER_REQUIRED_CHARGE 이상이어야 합니다. " +
-                    "<gray>(현재: <aqua>${chargePower()}</aqua><gray>)",
+                "<red><bold>[!] 방출하려면 충전이 $CHARGER_REQUIRED_CHARGE 이상이어야 합니다. "
             )
             return false
         }

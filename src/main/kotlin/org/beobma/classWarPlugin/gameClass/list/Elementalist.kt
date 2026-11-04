@@ -155,10 +155,7 @@ class Elementalist : GameClass(), GameStatusHandler, GameEndHandler, PlayerDeath
             "",
             "<gray>자신은 원소 배열을 가지며, 원소를 소모한 후 자동으로 {keyword:Charge}을 20 소모하여 다음 원소를 저장한다.",
             "<gray>원소 배열에서 앞으로 저장할 원소 5개의 순서를 항상 볼 수 있다.",
-            "<gray>원소 배열의 요소는 흙, 불, 물, 공기 중 무작위로 배치된다.",
-            "<gray>최근 사용 원소와 연계 시간이 표시되며, 배열의 표식으로 다음 공명·융합·해방 여부를 미리 확인할 수 있다.",
-            "<light_purple>✦ 공명 강화</light_purple> <dark_gray>|</dark_gray> <aqua>◇ 공명</aqua> " +
-                "<dark_gray>|</dark_gray> <yellow>◆ 융합</yellow> <dark_gray>|</dark_gray> <gold>★ 해방</gold>",
+            "<gray>원소 배열의 요소는 흙, 불, 물, 공기 중 무작위로 배치된다."
         )
 
     }

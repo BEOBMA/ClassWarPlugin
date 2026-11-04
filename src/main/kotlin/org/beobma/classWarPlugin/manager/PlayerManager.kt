@@ -11,8 +11,6 @@ import org.beobma.classWarPlugin.entity.player.PlayerData
 import org.beobma.classWarPlugin.damage.DamageContext
 import org.beobma.classWarPlugin.damage.DamagePath
 import org.beobma.classWarPlugin.game.GamePhase
-import org.beobma.classWarPlugin.gameClass.list.Referee
-import org.beobma.classWarPlugin.gameClass.list.Reverse
 import org.beobma.classWarPlugin.manager.GameClassManager.toWeaponItemStack
 import org.beobma.classWarPlugin.manager.GameClassManager.getWeaponClassId
 import org.beobma.classWarPlugin.manager.SkillManager.markSkillItem
@@ -261,7 +259,6 @@ object PlayerManager {
         }
 
         DamageManager.recordSuccessfulDamage(context)
-        Referee.recordDamage(context, damageResult.finalDamage)
         val newHealth = (player.health - damageResult.finalDamage).coerceAtLeast(0.0)
         player.health = newHealth
     }
@@ -273,7 +270,6 @@ object PlayerManager {
         if (finalDamage < 0) {
             return
         }
-        if (Reverse.invertHealingIfNeeded(this, finalDamage)) return
         player.heal(finalDamage)
     }
 
@@ -368,7 +364,6 @@ object PlayerManager {
 
     /** 엔티티 데이터의 실제 종류에 맞춰 회복을 적용한다. 더미는 회복하지 않는다. */
     fun EntityData.heal(damage: Double, damageType: DamageType, healer: PlayerData) {
-        if (Reverse.invertHealingIfNeeded(this, damage)) return
         when (this) {
             is PlayerData -> this.heal(damage, damageType, healer)
             is DummyEntityData -> return

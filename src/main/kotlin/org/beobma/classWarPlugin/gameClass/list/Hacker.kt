@@ -32,7 +32,7 @@ import kotlin.random.Random
 import org.beobma.classWarPlugin.skill.Passive as BasePassive
 
 // 밸런스 조정 상수
-private const val HACKER_HACKING_COOLDOWN_SECONDS = 30
+private const val HACKER_HACKING_COOLDOWN_SECONDS = 0
 private const val HACKER_SNARE_DURATION_SECONDS = 10
 private const val HACKER_CORRUPTION_DAMAGE_DEALT_MULTIPLIER = 0.8
 private const val HACKER_CORRUPTION_DAMAGE_TAKEN_MULTIPLIER = 1.2
@@ -139,7 +139,7 @@ class Hacker : GameClass(), GameStatusHandler, org.beobma.classWarPlugin.gameCla
                 if (previous.progressStatus !== progressStatus) previous.progressStatus.remove()
             }
             player.sendMiniMessage(
-                "<aqua><bold>[해킹 코드]</bold> <dark_gray>(${expected.length}자)</dark_gray> <white>$expected"
+                "<dark_gray>(${expected.length}자)</dark_gray> <white>$expected"
             )
             sounds.playTo(player, Sound.BLOCK_NOTE_BLOCK_BIT, volume = 0.9f, pitch = 1.1f + stage * 0.2f)
         }

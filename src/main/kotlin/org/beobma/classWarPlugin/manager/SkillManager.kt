@@ -211,6 +211,7 @@ object SkillManager {
         val blockRayTraceResult = world.rayTraceBlocks(startLocation, direction, maxDistance)
         return blockRayTraceResult?.hitBlock
     }
+
     /**
      * 플레이어 시선 기준 [angle]도의 원뿔과 [radius] 블록 안에 있는 유효 대상을 반환한다.
      * 반경에는 클래스 사거리 배율이 적용된다.
